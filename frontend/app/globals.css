@@ -4,26 +4,26 @@
 
 @layer base {
   :root {
-    /* Vibrant Nutrition Theme - Light Mode */
-    --background: 120 20% 98%;
-    --foreground: 120 10% 15%;
-    --card: 0 0% 100%;
-    --card-foreground: 120 10% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 120 10% 15%;
-    --primary: 142 76% 36%; /* Vibrant green */
+    /* Nutreek Vibrant Theme - Light Mode */
+    --background: 210 40% 95%; /* Light blue-gray background */
+    --foreground: 215 28% 17%; /* #111827 */
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 215 28% 17%; /* #111827 */
+    --popover: 0 0% 100%; /* #FFFFFF */
+    --popover-foreground: 215 28% 17%; /* #111827 */
+    --primary: 142 71% 44%; /* #4CAF50 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 45 93% 47%; /* Bright yellow */
+    --secondary: 25 100% 54%; /* #FF7043 */
     --secondary-foreground: 0 0% 100%;
-    --muted: 120 10% 95%;
-    --muted-foreground: 120 5% 45%;
-    --accent: 199 89% 48%; /* Ocean blue */
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%; /* #6B7280 */
+    --accent: 217 91% 60%; /* #3B82F6 */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 120 20% 90%;
-    --input: 120 20% 90%;
-    --ring: 142 76% 36%;
+    --border: 210 20% 92%;
+    --input: 210 20% 92%;
+    --ring: 142 71% 44%; /* #4CAF50 */
     --radius: 0.75rem;
 
     /* Custom Nutrition Colors */
@@ -41,26 +41,26 @@
   }
 
   .dark {
-    /* Vibrant Nutrition Theme - Dark Mode */
-    --background: 120 15% 8%;
-    --foreground: 120 20% 95%;
-    --card: 120 10% 12%;
-    --card-foreground: 120 20% 95%;
-    --popover: 120 10% 12%;
-    --popover-foreground: 120 20% 95%;
-    --primary: 142 76% 45%; /* Brighter green for dark */
-    --primary-foreground: 120 10% 8%;
-    --secondary: 45 93% 55%; /* Brighter yellow for dark */
-    --secondary-foreground: 120 10% 8%;
-    --muted: 120 10% 18%;
-    --muted-foreground: 120 10% 65%;
-    --accent: 199 89% 55%; /* Brighter blue for dark */
-    --accent-foreground: 120 10% 8%;
+    /* Nutreek Vibrant Theme - Dark Mode */
+    --background: 210 15% 8%;
+    --foreground: 210 20% 95%;
+    --card: 210 10% 12%;
+    --card-foreground: 210 20% 95%;
+    --popover: 210 10% 12%;
+    --popover-foreground: 210 20% 95%;
+    --primary: 142 71% 52%; /* Brighter #4CAF50 for dark */
+    --primary-foreground: 210 10% 8%;
+    --secondary: 25 100% 62%; /* Brighter #FF7043 for dark */
+    --secondary-foreground: 210 10% 8%;
+    --muted: 210 10% 18%;
+    --muted-foreground: 210 10% 65%;
+    --accent: 217 91% 68%; /* Brighter #3B82F6 for dark */
+    --accent-foreground: 210 10% 8%;
     --destructive: 0 84% 65%;
     --destructive-foreground: 0 0% 100%;
-    --border: 120 10% 20%;
-    --input: 120 10% 20%;
-    --ring: 142 76% 45%;
+    --border: 210 10% 20%;
+    --input: 210 10% 20%;
+    --ring: 142 71% 52%;
 
     /* Custom Nutrition Colors - Dark */
     --nutrition-protein: 25 95% 58%; /* Orange */
@@ -166,19 +166,23 @@
 
   /* Typography scale */
   .text-display {
-    @apply text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight;
+    @apply text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight uppercase;
+    letter-spacing: 0.5px;
   }
 
   .text-heading-1 {
-    @apply text-3xl md:text-4xl font-bold tracking-tight;
+    @apply text-3xl md:text-4xl font-bold tracking-tight uppercase;
+    letter-spacing: 0.5px;
   }
 
   .text-heading-2 {
-    @apply text-2xl md:text-3xl font-semibold tracking-tight;
+    @apply text-2xl md:text-3xl font-bold tracking-tight uppercase;
+    letter-spacing: 0.5px;
   }
 
   .text-heading-3 {
-    @apply text-xl md:text-2xl font-semibold;
+    @apply text-xl md:text-2xl font-bold uppercase;
+    letter-spacing: 0.5px;
   }
 
   .text-body-large {
@@ -257,6 +261,16 @@
 
   .hover-glow {
     @apply transition-all duration-200 ease-out hover:shadow-lg hover:shadow-primary/25;
+  }
+
+  /* Button hover animation */
+  .btn-hover {
+    @apply transition-all duration-200 ease-out hover:scale-105 hover:shadow-lg hover:shadow-primary/50;
+  }
+
+  /* Card hover effect */
+  .card-hover {
+    @apply transition-all duration-300 ease-out hover:scale-[1.03] hover:-translate-y-2 hover:shadow-xl hover:shadow-primary/20;
   }
 
   /* Card styles */
@@ -341,6 +355,28 @@
 
   .gradient-meal {
     background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+  }
+
+  /* Sidebar gradient */
+  .gradient-sidebar {
+    background: linear-gradient(to bottom, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  }
+
+  /* Meal-specific gradients */
+  .gradient-breakfast {
+    background: linear-gradient(135deg, #FFD54F 0%, #FFB74D 100%);
+  }
+
+  .gradient-snack {
+    background: linear-gradient(135deg, #81C784 0%, #4CAF50 100%);
+  }
+
+  .gradient-lunch {
+    background: linear-gradient(135deg, #64B5F6 0%, #2196F3 100%);
+  }
+
+  .gradient-dinner {
+    background: linear-gradient(135deg, #F06292 0%, #E91E63 100%);
   }
 
   /* Glass morphism effect */

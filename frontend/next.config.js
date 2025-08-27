@@ -8,6 +8,25 @@ const nextConfig = {
       },
     ];
   },
+  webpack: (config, { isServer }) => {
+    // Ignore Windows system files to prevent watchpack errors
+    if (!isServer) {
+      const existingIgnored = config.watchOptions?.ignored;
+      const ignoredArray = Array.isArray(existingIgnored) ? existingIgnored : [];
+
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          "**/hiberfil.sys",
+          "**/pagefile.sys",
+          "**/swapfile.sys",
+          ...ignoredArray,
+        ],
+      };
+    }
+
+    return config;
+  },
 };
 
 module.exports = nextConfig;

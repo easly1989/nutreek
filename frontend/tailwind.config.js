@@ -87,4 +87,59 @@ module.exports = {
     },
   },
   plugins: [require("tailwindcss-animate")],
+  safelist: [
+    // Gradient utilities
+    'gradient-sidebar',
+    'gradient-breakfast',
+    'gradient-snack',
+    'gradient-lunch',
+    'gradient-dinner',
+    'gradient-nutrition',
+    'gradient-meal',
+
+    // Animation utilities
+    'btn-hover',
+    'card-hover',
+    'hover-lift',
+    'hover-glow',
+
+    // Typography utilities
+    'text-display',
+    'text-heading-1',
+    'text-heading-2',
+    'text-heading-3',
+    'text-body-large',
+    'text-body',
+    'text-caption',
+
+    // Component utilities
+    'card-nutrition',
+    'card-meal',
+    'btn-nutrition',
+    'btn-nutrition-secondary',
+    'btn-nutrition-outline',
+
+    // Animation classes
+    'animate-fade-in',
+    'animate-slide-up',
+    'animate-scale-in',
+    'animate-bounce-in',
+
+    // Glass morphism
+    'glass',
+    'glass-dark',
+
+    // Nutrition colors
+    'nutrition-protein',
+    'nutrition-carbs',
+    'nutrition-fat',
+    'nutrition-fiber',
+    'nutrition-calories',
+
+    // Meal backgrounds
+    'meal-breakfast',
+    'meal-snack',
+    'meal-lunch',
+    'meal-dinner'
+  ]
 }

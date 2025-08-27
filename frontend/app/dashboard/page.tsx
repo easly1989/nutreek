@@ -20,6 +20,7 @@ import {
 import { useMe, useLogout } from '../../hooks/use-auth';
 import { DashboardLayout } from '../../components/layout/dashboard-layout';
 import HouseholdList from '../../components/HouseholdList';
+import PageTransition from '../../components/PageTransition';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -131,7 +132,8 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <PageTransition>
+        <div className="space-y-8">
         {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -256,7 +258,8 @@ export default function DashboardPage() {
           </div>
           <HouseholdList />
         </motion.div>
-      </div>
+        </div>
+      </PageTransition>
     </DashboardLayout>
   );
 }

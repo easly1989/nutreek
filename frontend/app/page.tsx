@@ -1,64 +1,126 @@
 import Link from 'next/link'
+import { Users, Calendar, ShoppingCart, ArrowRight, Sparkles, ChefHat } from 'lucide-react'
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <h1 className="text-4xl font-bold">Nutreek</h1>
-        <p className="text-lg">Weekly Nutrition Planning App</p>
-      </div>
+    <main className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-8">
+              <ChefHat className="w-8 h-8 text-primary" />
+            </div>
 
-      <div className="relative flex place-items-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold mb-4">Welcome to Nutreek</h2>
-          <p className="text-gray-600 mb-8">
-            Plan your weekly meals, manage household nutrition, and create shopping lists with ease.
-          </p>
-          <div className="space-x-4">
-            <Link
-              href="/auth/login"
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Login
-            </Link>
-            <Link
-              href="/auth/register"
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Register
-            </Link>
+            <h1 className="text-display bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4">
+              Nutreek
+            </h1>
+
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Your intelligent nutrition planning companion for healthier, happier households
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link
+                href="/auth/login"
+                className="btn-nutrition flex items-center gap-2 group"
+              >
+                Get Started
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                href="/auth/register"
+                className="btn-nutrition-secondary flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Create Account
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-3 lg:text-left">
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100">
-          <h3 className="mb-3 text-lg font-semibold">
-            Multi-tenant households
-          </h3>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Manage nutrition planning for your entire household with shared meal plans.
-          </p>
-        </div>
+      {/* Features Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-heading-1 text-foreground mb-4">
+              Why Choose Nutreek?
+            </h2>
+            <p className="text-body-large text-muted-foreground max-w-2xl mx-auto">
+              Everything you need for smart nutrition planning in one beautiful, easy-to-use platform
+            </p>
+          </div>
 
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100">
-          <h3 className="mb-3 text-lg font-semibold">
-            Weekly meal planning
-          </h3>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Plan your meals for the entire week with our intuitive planner interface.
-          </p>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="card-nutrition hover-lift group p-8">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 transition-colors flex-shrink-0">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground">
+                  Multi-tenant households
+                </h3>
+              </div>
+              <p className="text-muted-foreground leading-relaxed">
+                Manage nutrition planning for your entire household with shared meal plans and collaborative features.
+              </p>
+            </div>
 
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100">
-          <h3 className="mb-3 text-lg font-semibold">
-            Smart shopping lists
-          </h3>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Automatically generate shopping lists based on your weekly meal plan.
-          </p>
+            <div className="card-nutrition hover-lift group p-8">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center group-hover:bg-secondary/20 transition-colors flex-shrink-0">
+                  <Calendar className="w-6 h-6 text-secondary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground">
+                  Weekly meal planning
+                </h3>
+              </div>
+              <p className="text-muted-foreground leading-relaxed">
+                Plan your meals for the entire week with our intuitive planner interface and smart suggestions.
+              </p>
+            </div>
+
+            <div className="card-nutrition hover-lift group p-8">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center group-hover:bg-accent/20 transition-colors flex-shrink-0">
+                  <ShoppingCart className="w-6 h-6 text-accent" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground">
+                  Smart shopping lists
+                </h3>
+              </div>
+              <p className="text-muted-foreground leading-relaxed">
+                Automatically generate shopping lists based on your weekly meal plan with smart categorization.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="card-nutrition p-8 md:p-12">
+            <h2 className="text-heading-2 text-foreground mb-4">
+              Ready to transform your nutrition planning?
+            </h2>
+            <p className="text-body-large text-muted-foreground mb-8">
+              Join thousands of households who have simplified their meal planning with Nutreek
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/auth/login"
+                className="btn-nutrition flex items-center gap-2 group"
+              >
+                Start Planning Today
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   )
 }

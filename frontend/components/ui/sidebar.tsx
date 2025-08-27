@@ -59,13 +59,13 @@ export function Sidebar({ className }: SidebarProps) {
         animate={{ x: isCollapsed ? -300 : 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={cn(
-          "fixed left-0 top-0 z-50 h-full w-64 bg-card border-r border-border shadow-lg lg:translate-x-0 overflow-hidden",
+          "fixed left-0 top-0 z-50 h-full w-64 gradient-sidebar border-r border-border shadow-lg lg:translate-x-0 overflow-hidden",
           isCollapsed && "lg:w-16",
           className
         )}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-border">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-white/20">
           <motion.div
             animate={{ opacity: isCollapsed ? 0 : 1 }}
             className="flex items-center space-x-2"
@@ -73,17 +73,17 @@ export function Sidebar({ className }: SidebarProps) {
             <motion.div
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
-              className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center"
+              className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm"
             >
-              <ChefHat className="w-5 h-5 text-primary-foreground" />
+              <ChefHat className="w-5 h-5 text-white" />
             </motion.div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Nutreek
+            <span className="text-xl font-bold text-white">
+              Nutreek 🌿
             </span>
           </motion.div>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors duration-200"
+            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors duration-200 text-white"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -101,10 +101,10 @@ export function Sidebar({ className }: SidebarProps) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className={cn(
-                    "flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
+                    "flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group backdrop-blur-sm",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-white/20 text-white shadow-lg"
+                      : "text-white/80 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
@@ -128,17 +128,17 @@ export function Sidebar({ className }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-white/20">
           <motion.div
             animate={{ opacity: isCollapsed ? 0 : 1 }}
             className="flex items-center space-x-3"
           >
-            <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
-              <span className="text-sm font-semibold text-secondary-foreground">JD</span>
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+              <span className="text-sm font-semibold text-white">JD</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">John Doe</p>
-              <p className="text-xs text-muted-foreground truncate">john@example.com</p>
+              <p className="text-sm font-medium text-white truncate">John Doe</p>
+              <p className="text-xs text-white/70 truncate">john@example.com</p>
             </div>
           </motion.div>
         </div>

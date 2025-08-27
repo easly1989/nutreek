@@ -121,20 +121,23 @@ function SubstitutionModal({ isOpen, onClose, onSubstitutionCreated }: Substitut
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={(e) => e.target === e.currentTarget && handleClose()}
-        >
+        <>
+          {/* Backdrop */}
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            onClick={handleClose}
+          />
+
+          {/* Slide-over Panel */}
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-card rounded-2xl shadow-2xl border border-border"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed right-0 top-0 z-50 h-full w-full max-w-2xl bg-card shadow-2xl border-l border-border overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-border">
@@ -187,7 +190,7 @@ function SubstitutionModal({ isOpen, onClose, onSubstitutionCreated }: Substitut
             </div>
 
             {/* Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+            <div className="p-6 overflow-y-auto flex-1">
               <AnimatePresence mode="wait">
                 {/* Step 1: Select Original */}
                 {step === 'select-original' && (
@@ -422,7 +425,11 @@ function SubstitutionModal({ isOpen, onClose, onSubstitutionCreated }: Substitut
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileTap={{
+                      scale: 0.95,
+                      rotateY: 180,
+                      transition: { duration: 0.3 }
+                    }}
                     onClick={handleConfirm}
                     disabled={createSubstitution.isPending}
                     className="btn-nutrition"
@@ -435,7 +442,12 @@ function SubstitutionModal({ isOpen, onClose, onSubstitutionCreated }: Substitut
                     ) : (
                       <>
                         Create Substitution
-                        <CheckCircle className="w-4 h-4 ml-2" />
+                        <motion.div
+                          whileHover={{ rotate: 360 }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          <CheckCircle className="w-4 h-4 ml-2" />
+                        </motion.div>
                       </>
                     )}
                   </motion.button>
@@ -443,7 +455,7 @@ function SubstitutionModal({ isOpen, onClose, onSubstitutionCreated }: Substitut
               </div>
             </div>
           </motion.div>
-        </motion.div>
+        </>
       )}
     </AnimatePresence>
   );

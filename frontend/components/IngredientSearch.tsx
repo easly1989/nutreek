@@ -157,11 +157,11 @@ export default function IngredientSearch({
         animate={{
           scale: isFocused ? 1.02 : 1,
           boxShadow: isFocused
-            ? '0 0 0 3px rgba(59, 130, 246, 0.1)'
-            : '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+            ? '0 10px 25px -5px rgba(76, 175, 80, 0.2), 0 4px 6px -2px rgba(76, 175, 80, 0.1)'
+            : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
         }}
         transition={{ duration: 0.2 }}
-        className="relative"
+        className="relative z-10"
       >
         <div className="relative">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -173,7 +173,7 @@ export default function IngredientSearch({
             onFocus={() => setIsFocused(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="w-full pl-12 pr-12 py-4 bg-card border border-border rounded-xl focus:outline-none focus:ring-0 transition-all duration-200 text-body"
+            className="w-full pl-12 pr-12 py-4 bg-card border border-border rounded-full focus:outline-none focus:ring-0 transition-all duration-200 text-body"
           />
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
             {isLoading && query.length > 2 && (
@@ -237,10 +237,14 @@ export default function IngredientSearch({
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05, duration: 0.3 }}
-                  whileHover={{ scale: 1.02, backgroundColor: 'hsl(var(--muted))' }}
+                  whileHover={{
+                    scale: 1.05,
+                    backgroundColor: 'hsl(var(--muted))',
+                    boxShadow: '0 10px 25px -5px rgba(76, 175, 80, 0.2), 0 4px 6px -2px rgba(76, 175, 80, 0.1)'
+                  }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleIngredientClick(ingredient)}
-                  className={`w-full px-4 py-3 text-left border-b border-border/50 last:border-b-0 transition-colors duration-200 ${
+                  className={`w-full px-4 py-3 text-left border-b border-border/50 last:border-b-0 transition-all duration-200 ${
                     selectedIndex === index ? 'bg-primary/10' : ''
                   }`}
                 >

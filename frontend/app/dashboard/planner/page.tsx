@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useMe } from '../../../hooks/use-auth';
 import { DashboardLayout } from '../../../components/layout/dashboard-layout';
 import WeeklyPlanner from '../../../components/WeeklyPlanner';
+import PageTransition from '../../../components/PageTransition';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -45,10 +46,12 @@ export default function PlannerPage() {
 
   return (
     <DashboardLayout>
-      <div id="page-title" className="sr-only">
-        Weekly Meal Planner - Nutreek
-      </div>
-      <WeeklyPlanner tenantId="default-tenant" />
+      <PageTransition>
+        <div id="page-title" className="sr-only">
+          Weekly Meal Planner - Nutreek
+        </div>
+        <WeeklyPlanner tenantId="default-tenant" />
+      </PageTransition>
     </DashboardLayout>
   );
 }
