@@ -13,6 +13,9 @@ A multi-tenant nutrition planning web application built with Next.js, NestJS, an
 - **API integration**: Integration with FatSecret API for nutritional data
 - **Caching**: Redis caching for API responses to reduce rate limits
 
+## If you like my work
+Help me pay off my home loan → [Donate on PayPal](https://paypal.me/ruggierocarlo)
+
 ## Tech Stack
 
 ### Frontend
