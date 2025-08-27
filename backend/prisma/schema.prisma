@@ -19,6 +19,10 @@ model User {
   substitutions Substitution[]
   activities   Activity[]
   comments     Comment[]
+  auditLogs    AuditLog[]
+  complianceRecords ComplianceRecord[]
+  dataExports  DataExport[]
+  securityEvents SecurityEvent[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -30,18 +34,48 @@ model Tenant {
   weeklyPlans WeeklyPlan[]
   shoppingLists ShoppingList[]
   activities  Activity[]
+  auditLogs   AuditLog[]
+  dataExports DataExport[]
+  securityEvents SecurityEvent[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  isSystem    Boolean      @default(false)
+  permissions Permission[]
+
+  memberships Membership[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  resource    String   // e.g., "recipe", "meal", "user"
+  action      String   // e.g., "create", "read", "update", "delete"
+  description String?
+
+  roles       Role[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([resource, action])
 }
 
 model Membership {
   id        String   @id @default(cuid())
   userId    String
   tenantId  String
-  role      String   // "admin", "member"
+  roleId    String?
 
   user      User     @relation(fields: [userId], references: [id])
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  role      Role?    @relation(fields: [roleId], references: [id])
 
   @@unique([userId, tenantId])
 }
@@ -156,4 +190,66 @@ model Comment {
   updatedAt  DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  tenantId    String?
+  action      String   // CREATE, UPDATE, DELETE, READ, EXPORT, etc.
+  resource    String   // user, recipe, meal, plan, etc.
+  resourceId  String?
+  details     Json?    // Additional details about the action
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+  success     Boolean  @default(true)
+  errorMessage String?
+
+  user   User?   @relation(fields: [userId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+}
+
+model ComplianceRecord {
+  id          String   @id @default(cuid())
+  userId      String?
+  type        String   // GDPR_REQUEST, DATA_EXPORT, CONSENT_UPDATE, etc.
+  status      String   // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  details     Json?
+  requestedAt DateTime @default(now())
+  completedAt DateTime?
+  expiresAt   DateTime?
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model DataExport {
+  id          String   @id @default(cuid())
+  userId      String
+  tenantId    String?
+  type        String   // FULL_EXPORT, PARTIAL_EXPORT, COMPLIANCE_EXPORT
+  status      String   // REQUESTED, PROCESSING, COMPLETED, FAILED
+  fileUrl     String?
+  expiresAt   DateTime?
+  requestedAt DateTime @default(now())
+  completedAt DateTime?
+
+  user   User?   @relation(fields: [userId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+}
+
+model SecurityEvent {
+  id         String   @id @default(cuid())
+  type       String   // FAILED_LOGIN, SUSPICIOUS_ACTIVITY, RATE_LIMIT_EXCEEDED, etc.
+  severity   String   // LOW, MEDIUM, HIGH, CRITICAL
+  userId     String?
+  tenantId   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime @default(now())
+  resolved   Boolean  @default(false)
+
+  user   User?   @relation(fields: [userId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
 }

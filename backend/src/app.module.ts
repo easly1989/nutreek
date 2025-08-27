@@ -15,6 +15,11 @@ import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { CollaborationModule } from './collaboration/collaboration.module';
 import { HealthModule } from './health/health.module';
+import { MlInsightsModule } from './ml-insights/ml-insights.module';
+import { IntegrationsModule } from './integrations/integrations.module';
+import { I18nModule } from './i18n/i18n.module';
+import { RolesModule } from './roles/roles.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -34,6 +39,11 @@ import { HealthModule } from './health/health.module';
     AnalyticsModule,
     CollaborationModule,
     HealthModule,
+    MlInsightsModule,
+    IntegrationsModule,
+    I18nModule,
+    RolesModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],
