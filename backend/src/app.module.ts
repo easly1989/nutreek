@@ -6,6 +6,11 @@ import { PrismaModule } from './prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { PlansModule } from './plans/plans.module';
+import { MealsModule } from './meals/meals.module';
+import { RecipesModule } from './recipes/recipes.module';
+import { RedisModule } from './redis/redis.module';
+import { IngredientsModule } from './ingredients/ingredients.module';
+import { SubstitutionsModule } from './substitutions/substitutions.module';
 
 @Module({
   imports: [
@@ -13,9 +18,14 @@ import { PlansModule } from './plans/plans.module';
       isGlobal: true,
     }),
     PrismaModule,
+    RedisModule,
     AuthModule,
     TenantsModule,
     PlansModule,
+    MealsModule,
+    RecipesModule,
+    IngredientsModule,
+    SubstitutionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
