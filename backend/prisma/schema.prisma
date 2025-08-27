@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  memberships  Membership[]
+  ingredientQuantities UserIngredientQuantity[]
+  substitutions Substitution[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Tenant {
+  id          String        @id @default(cuid())
+  name        String
+  memberships Membership[]
+  weeklyPlans WeeklyPlan[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  tenantId  String
+  role      String   // "admin", "member"
+
+  user      User     @relation(fields: [userId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([userId, tenantId])
+}
+
+model WeeklyPlan {
+  id        String   @id @default(cuid())
+  tenantId  String
+  startDate DateTime
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  days      Day[]
+}
+
+model Day {
+  id          String   @id @default(cuid())
+  date        DateTime
+  weeklyPlanId String
+
+  weeklyPlan  WeeklyPlan @relation(fields: [weeklyPlanId], references: [id])
+  meals       Meal[]
+}
+
+model Meal {
+  id      String   @id @default(cuid())
+  type    String   // Breakfast, Snack, Lunch, Dinner
+  dayId   String
+
+  day     Day      @relation(fields: [dayId], references: [id])
+  recipes Recipe[]
+}
+
+model Recipe {
+  id        String       @id @default(cuid())
+  name      String
+  mealId    String
+  macros    Json?        // kcal, protein, carbs, fat
+  source    String?      // "fatsecret", "usda", "custom"
+  externalId String?     // id from API
+
+  meal      Meal         @relation(fields: [mealId], references: [id])
+  ingredients Ingredient[]
+}
+
+model Ingredient {
+  id        String       @id @default(cuid())
+  name      String
+  unit      String       // g, ml, piece
+  amount    Float        // base quantity for recipe
+  recipeId  String
+
+  recipe    Recipe       @relation(fields: [recipeId], references: [id])
+  userQuantities UserIngredientQuantity[]
+}
+
+model UserIngredientQuantity {
+  id           String   @id @default(cuid())
+  userId       String
+  ingredientId String
+  quantity     Float
+
+  user         User       @relation(fields: [userId], references: [id])
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([userId, ingredientId])
+}
+
+model Substitution {
+  id         String   @id @default(cuid())
+  userId     String
+  originalId String
+  substituteId String
+
+  user       User     @relation(fields: [userId], references: [id])
+}
