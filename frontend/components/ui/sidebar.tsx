@@ -59,7 +59,7 @@ export function Sidebar({ className }: SidebarProps) {
         animate={{ x: isCollapsed ? -300 : 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={cn(
-          "fixed left-0 top-0 z-50 h-full w-64 bg-card border-r border-border shadow-lg lg:translate-x-0",
+          "fixed left-0 top-0 z-50 h-full w-64 bg-card border-r border-border shadow-lg lg:translate-x-0 overflow-hidden",
           isCollapsed && "lg:w-16",
           className
         )}

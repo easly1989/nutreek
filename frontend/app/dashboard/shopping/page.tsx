@@ -3,12 +3,12 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, Heart } from 'lucide-react';
+import { ShoppingCart, Sparkles, CheckSquare } from 'lucide-react';
 import { useMe } from '../../../hooks/use-auth';
 import { DashboardLayout } from '../../../components/layout/dashboard-layout';
-import SubstitutionManager from '../../../components/SubstitutionManager';
+import ShoppingList from '../../../components/ShoppingList';
 
-export default function SubstitutionsPage() {
+export default function ShoppingPage() {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useMe();
 
@@ -33,7 +33,7 @@ export default function SubstitutionsPage() {
             transition={{ delay: 0.2 }}
             className="mt-4 text-muted-foreground"
           >
-            Loading your substitutions...
+            Loading your shopping list...
           </motion.p>
         </div>
       </div>
@@ -65,14 +65,14 @@ export default function SubstitutionsPage() {
             }}
             className="w-20 h-20 bg-gradient-nutrition rounded-2xl flex items-center justify-center mx-auto mb-6"
           >
-            <ArrowRight className="w-10 h-10 text-white" />
+            <ShoppingCart className="w-10 h-10 text-white" />
           </motion.div>
           <h1 className="text-display bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Ingredient Substitutions
+            Shopping List
           </h1>
           <p className="text-body-large text-muted-foreground mt-2 max-w-2xl mx-auto">
-            Customize your recipes with healthy alternatives. Create smart substitutions
-            that match nutritional profiles and dietary preferences! 🥗🔄
+            Organize your grocery shopping with smart categorization and progress tracking.
+            Never forget an item again! 🛒✅
           </p>
         </motion.div>
 
@@ -88,11 +88,11 @@ export default function SubstitutionsPage() {
             className="text-center p-6 bg-card border border-border rounded-xl"
           >
             <div className="w-12 h-12 bg-nutrition-protein/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-6 h-6 text-nutrition-protein" />
+              <ShoppingCart className="w-6 h-6 text-nutrition-protein" />
             </div>
-            <h3 className="font-semibold mb-2">Smart Matching</h3>
+            <h3 className="font-semibold mb-2">Smart Categories</h3>
             <p className="text-caption text-muted-foreground">
-              Find perfect substitutes that maintain nutritional balance
+              Automatically organized by grocery store sections for efficient shopping
             </p>
           </motion.div>
 
@@ -101,11 +101,11 @@ export default function SubstitutionsPage() {
             className="text-center p-6 bg-card border border-border rounded-xl"
           >
             <div className="w-12 h-12 bg-nutrition-calories/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <ArrowRight className="w-6 h-6 text-nutrition-calories" />
+              <CheckSquare className="w-6 h-6 text-nutrition-calories" />
             </div>
-            <h3 className="font-semibold mb-2">Easy Swapping</h3>
+            <h3 className="font-semibold mb-2">Progress Tracking</h3>
             <p className="text-caption text-muted-foreground">
-              Replace ingredients in recipes with one click
+              Mark items as purchased and track your shopping progress in real-time
             </p>
           </motion.div>
 
@@ -114,22 +114,22 @@ export default function SubstitutionsPage() {
             className="text-center p-6 bg-card border border-border rounded-xl"
           >
             <div className="w-12 h-12 bg-nutrition-carbs/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Heart className="w-6 h-6 text-nutrition-carbs" />
+              <Sparkles className="w-6 h-6 text-nutrition-carbs" />
             </div>
-            <h3 className="font-semibold mb-2">Dietary Friendly</h3>
+            <h3 className="font-semibold mb-2">Recipe Integration</h3>
             <p className="text-caption text-muted-foreground">
-              Perfect for allergies, preferences, and dietary restrictions
+              Automatically generated from your meal plans and recipes
             </p>
           </motion.div>
         </motion.div>
 
-        {/* Substitution Manager Component */}
+        {/* Shopping List Component */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <SubstitutionManager />
+          <ShoppingList tenantId="default-tenant" />
         </motion.div>
       </div>
     </DashboardLayout>

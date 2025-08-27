@@ -11,8 +11,11 @@ yarn-error.log*
 dist/
 build/
 .next/
+.next/
 .nuxt/
 .output/
+out/
+.vercel/
 
 # Environment variables
 .env
@@ -54,6 +57,15 @@ jspm_packages/
 
 # Optional REPL history
 .node_repl_history
+
+# Testing
+.nyc_output
+
+# Dependency directory
+jspm_packages/
+
+# Optional eslint cache
+.eslintcache
 
 # Output of 'npm pack'
 *.tgz

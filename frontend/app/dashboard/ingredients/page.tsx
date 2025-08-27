@@ -2,112 +2,148 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Search, Sparkles, Target } from 'lucide-react';
 import { useMe } from '../../../hooks/use-auth';
+import { DashboardLayout } from '../../../components/layout/dashboard-layout';
 import IngredientSearch from '../../../components/IngredientSearch';
 
 export default function IngredientsPage() {
   const router = useRouter();
-  const { data: user, isLoading } = useMe();
+  const { data: user, isLoading: userLoading } = useMe();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!userLoading && !user) {
       router.push('/auth/login');
     }
-  }, [user, isLoading, router]);
+  }, [user, userLoading, router]);
 
-  if (isLoading) {
+  if (userLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full mx-auto"
+          />
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mt-4 text-muted-foreground"
+          >
+            Loading nutrition database...
+          </motion.p>
+        </div>
       </div>
     );
   }
 
   if (!user) {
-    return null;
+    return null; // Will redirect in useEffect
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center">
-              <Link href="/dashboard" className="text-indigo-600 hover:text-indigo-800 mr-4">
-                ← Back to Dashboard
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Ingredient Database</h1>
-                <p className="text-gray-600">Search and explore nutritional information</p>
-              </div>
+    <DashboardLayout>
+      <div className="space-y-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <motion.div
+            animate={{
+              scale: [1, 1.1, 1],
+              rotate: [0, 10, -10, 0]
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="w-20 h-20 bg-gradient-nutrition rounded-2xl flex items-center justify-center mx-auto mb-6"
+          >
+            <Target className="w-10 h-10 text-white" />
+          </motion.div>
+          <h1 className="text-display bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Ingredient Search
+          </h1>
+          <p className="text-body-large text-muted-foreground mt-2 max-w-2xl mx-auto">
+            Discover nutritious ingredients with detailed nutritional information.
+            Search our comprehensive database to find the perfect ingredients for your recipes! 🥗✨
+          </p>
+        </motion.div>
+
+        {/* Search Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="max-w-4xl mx-auto"
+        >
+          <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
+            <div className="text-center mb-6">
+              <h2 className="text-heading-2 mb-2">Search Nutrition Database</h2>
+              <p className="text-body text-muted-foreground">
+                Type at least 3 characters to start searching
+              </p>
             </div>
+            <IngredientSearch
+              placeholder="Search for any ingredient (e.g., chicken breast, spinach, almonds)..."
+              showDetails={true}
+            />
           </div>
-        </div>
+        </motion.div>
+
+        {/* Features */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        >
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="text-center p-6 bg-card border border-border rounded-xl"
+          >
+            <div className="w-12 h-12 bg-nutrition-protein/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Target className="w-6 h-6 text-nutrition-protein" />
+            </div>
+            <h3 className="font-semibold mb-2">Detailed Nutrition</h3>
+            <p className="text-caption text-muted-foreground">
+              Get comprehensive nutritional information including macros, vitamins, and minerals
+            </p>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="text-center p-6 bg-card border border-border rounded-xl"
+          >
+            <div className="w-12 h-12 bg-nutrition-calories/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Search className="w-6 h-6 text-nutrition-calories" />
+            </div>
+            <h3 className="font-semibold mb-2">Smart Search</h3>
+            <p className="text-caption text-muted-foreground">
+              Advanced search with typeahead suggestions and instant results
+            </p>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="text-center p-6 bg-card border border-border rounded-xl"
+          >
+            <div className="w-12 h-12 bg-nutrition-carbs/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-6 h-6 text-nutrition-carbs" />
+            </div>
+            <h3 className="font-semibold mb-2">Recipe Integration</h3>
+            <p className="text-caption text-muted-foreground">
+              Easily add found ingredients to your recipes and meal plans
+            </p>
+          </motion.div>
+        </motion.div>
       </div>
-
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Search Ingredients</h2>
-              <IngredientSearch showDetails={true} />
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Search Tips</h3>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-start">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Type at least 3 characters to start searching</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Search includes both local database and FatSecret API</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Results are cached for faster subsequent searches</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                  <span>Use specific ingredient names for better results</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <p className="text-sm text-blue-700">
-                    <strong>About the API:</strong> This search integrates with FatSecret's nutrition database to provide comprehensive nutritional information. Results are cached to minimize API calls and ensure fast response times.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <Link
-                  href="/dashboard/substitutions"
-                  className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium text-center"
-                >
-                  Manage Substitutions
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="block w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium text-center"
-                >
-                  Back to Dashboard
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 }

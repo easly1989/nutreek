@@ -260,7 +260,7 @@ export default function WeeklyPlanner({ tenantId }: WeeklyPlannerProps) {
                               initial={{ opacity: 0, scale: 0.9 }}
                               animate={{ opacity: 1, scale: 1 }}
                               transition={{ delay: mealIndex * 0.1 }}
-                              className={`p-3 rounded-lg border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 transition-all duration-200 group ${
+                              className={`p-3 rounded-lg border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 transition-all duration-200 group overflow-hidden ${
                                 meal ? 'bg-muted/30' : 'hover:bg-muted/20'
                               }`}
                             >
