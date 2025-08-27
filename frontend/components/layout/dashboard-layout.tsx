@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sidebar } from "../ui/sidebar";
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, ChefHat } from "lucide-react";
 import { useSkipLink, useAriaExpanded } from "../../hooks/use-accessibility";
 
 interface DashboardLayoutProps {
@@ -12,29 +12,111 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [hoveredIcon, setHoveredIcon] = useState<number | null>(null);
   const skipToMain = useSkipLink('main-content');
   const skipToNav = useSkipLink('main-navigation');
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Skip Links */}
-      <a
-        href="#main-content"
-        onClick={skipToMain}
-        className="skip-link"
-      >
-        Skip to main content
-      </a>
-      <a
-        href="#main-navigation"
-        onClick={skipToNav}
-        className="skip-link"
-      >
-        Skip to main navigation
-      </a>
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth - 0.5) * 20,
+        y: (e.clientY / window.innerHeight - 0.5) * 20,
+      });
+    };
 
-      {/* Sidebar */}
-      <Sidebar />
+    const handleScroll = () => {
+      setScrollPosition(window.scrollY);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  return (
+    <>
+      {/* Fixed Gradient Background */}
+      <div className="fixed inset-0 bg-gradient-to-b from-emerald-100 via-sky-100 to-cyan-100 pointer-events-none" />
+
+      {/* Very Subtle Overlay for Text Contrast */}
+      <div className="fixed inset-0 bg-slate-900/5 pointer-events-none" />
+
+      {/* Floating Chef Icons Pattern Overlay */}
+      <div className="fixed inset-0 overflow-hidden">
+        {[
+          { id: 1, top: '100px', left: '10%', size: 3, color: 'text-red-500', speed: 0.3 },
+          { id: 2, top: '200px', right: '15%', size: 4, color: 'text-blue-500', speed: -0.4 },
+          { id: 3, top: '300px', left: '25%', size: 5, color: 'text-green-500', speed: 0.5 },
+          { id: 4, top: '400px', right: '30%', size: 3, color: 'text-purple-500', speed: -0.6 },
+          { id: 5, top: '500px', left: '65%', size: 4, color: 'text-pink-500', speed: 0.7 },
+          { id: 6, top: '150px', right: '75%', size: 6, color: 'text-teal-500', speed: -0.3 },
+          { id: 7, top: '350px', left: '8%', size: 3, color: 'text-yellow-500', speed: 0.4 },
+          { id: 8, top: '450px', right: '20%', size: 5, color: 'text-indigo-500', speed: -0.5 },
+          { id: 9, top: '550px', left: '50%', size: 4, color: 'text-orange-500', speed: 0.6 },
+          { id: 10, top: '250px', left: '15%', size: 6, color: 'text-emerald-500', speed: 0.8 },
+          { id: 11, top: '350px', right: '10%', size: 4, color: 'text-violet-500', speed: -0.2 },
+          { id: 12, top: '450px', left: '75%', size: 3, color: 'text-rose-500', speed: 0.3 },
+          { id: 13, top: '550px', right: '25%', size: 5, color: 'text-lime-500', speed: -0.4 },
+          { id: 14, top: '200px', left: '12%', size: 4, color: 'text-sky-500', speed: 0.5 },
+          { id: 15, top: '300px', right: '60%', size: 3, color: 'text-fuchsia-500', speed: -0.6 },
+          { id: 16, top: '400px', left: '40%', size: 6, color: 'text-amber-500', speed: 0.7 },
+          { id: 17, top: '500px', right: '18%', size: 4, color: 'text-slate-500', speed: -0.3 },
+          { id: 18, top: '600px', left: '22%', size: 6, color: 'text-orange-500', speed: 0.8 },
+          { id: 19, top: '650px', right: '22%', size: 4, color: 'text-violet-500', speed: -0.2 },
+          { id: 20, top: '700px', left: '40%', size: 3, color: 'text-rose-500', speed: 0.4 }
+        ].map((icon) => {
+          const baseSize = icon.size * 4;
+          const hoverSize = baseSize + 8;
+
+          return (
+            <div
+              key={icon.id}
+              className="absolute transition-all duration-300 cursor-pointer group"
+              style={{
+                top: icon.top,
+                left: icon.left,
+                right: icon.right,
+                transform: `translate(${mousePosition.x * icon.speed}px, ${mousePosition.y * icon.speed + scrollPosition * 0.1}px)`,
+              }}
+            >
+              <ChefHat
+                className={`${icon.color} opacity-20 group-hover:opacity-70 transition-all duration-300`}
+                style={{
+                  width: hoveredIcon === icon.id ? hoverSize : baseSize,
+                  height: hoveredIcon === icon.id ? hoverSize : baseSize,
+                }}
+                onMouseEnter={() => setHoveredIcon(icon.id)}
+                onMouseLeave={() => setHoveredIcon(null)}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="min-h-screen relative z-10">
+        {/* Skip Links */}
+        <a
+          href="#main-content"
+          onClick={skipToMain}
+          className="skip-link"
+        >
+          Skip to main content
+        </a>
+        <a
+          href="#main-navigation"
+          onClick={skipToNav}
+          className="skip-link"
+        >
+          Skip to main navigation
+        </a>
+
+        {/* Sidebar */}
+        <Sidebar />
 
       {/* Main content */}
       <div className="lg:ml-64">
@@ -141,6 +223,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {children}
         </motion.main>
       </div>
-    </div>
+    </>
   );
 }
