@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
+import { AxiosResponse } from 'axios';
 
 export interface NutritionApiResponse {
   foods: Array<{
@@ -78,10 +79,10 @@ export class IntegrationsService {
               'x-app-key': appKey,
             },
           }
-        )
+        ) as any
       );
 
-      return this.transformNutritionData(response.data as NutritionApiResponse);
+      return this.transformNutritionData((response as any).data);
     } catch (error) {
       console.error('Nutrition API error:', error);
       return this.getMockNutritionData(query);
@@ -100,10 +101,10 @@ export class IntegrationsService {
       const response = await firstValueFrom(
         this.httpService.get(
           `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&appid=${apiKey}&units=metric`
-        )
+        ) as any
       );
 
-      return this.transformWeatherData(response.data as any);
+      return this.transformWeatherData((response as any).data);
     } catch (error) {
       console.error('Weather API error:', error);
       return this.getMockWeatherData(location);
@@ -155,10 +156,10 @@ export class IntegrationsService {
     try {
       // This would scrape recipe websites or use APIs like Spoonacular
       const response = await firstValueFrom(
-        this.httpService.get(url)
+        this.httpService.get(url) as any
       );
 
-      return this.parseRecipeFromHtml(response.data as string);
+      return this.parseRecipeFromHtml((response as any).data);
     } catch (error) {
       console.error('Recipe import error:', error);
       throw new Error('Failed to import recipe from URL');
@@ -178,10 +179,10 @@ export class IntegrationsService {
       const response = await firstValueFrom(
         this.httpService.get(
           `https://api.barcodelookup.com/v2/products?barcode=${barcode}&key=${apiKey}`
-        )
+        ) as any
       );
 
-      return this.transformBarcodeData(response.data as any);
+      return this.transformBarcodeData((response as any).data);
     } catch (error) {
       console.error('Barcode API error:', error);
       return this.getMockBarcodeData(barcode);

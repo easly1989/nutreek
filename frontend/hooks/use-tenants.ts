@@ -9,6 +9,7 @@ interface Tenant {
   id: string;
   name: string;
   memberships: any[];
+  createdAt: string;
 }
 
 export function useTenants() {

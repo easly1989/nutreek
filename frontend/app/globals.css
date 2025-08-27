@@ -81,8 +81,10 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
+
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -216,19 +218,19 @@
 
   /* Meal type backgrounds */
   .meal-breakfast {
-    background: linear-gradient(135deg, hsl(var(--meal-breakfast)) 0%, hsl(var(--meal-breakfast) / 0.8) 100%);
+    background: linear-gradient(135deg, hsl(var(--meal-breakfast)) 0%, hsl(var(--meal-breakfast) / 80%) 100%);
   }
 
   .meal-snack {
-    background: linear-gradient(135deg, hsl(var(--meal-snack)) 0%, hsl(var(--meal-snack) / 0.8) 100%);
+    background: linear-gradient(135deg, hsl(var(--meal-snack)) 0%, hsl(var(--meal-snack) / 80%) 100%);
   }
 
   .meal-lunch {
-    background: linear-gradient(135deg, hsl(var(--meal-lunch)) 0%, hsl(var(--meal-lunch) / 0.8) 100%);
+    background: linear-gradient(135deg, hsl(var(--meal-lunch)) 0%, hsl(var(--meal-lunch) / 80%) 100%);
   }
 
   .meal-dinner {
-    background: linear-gradient(135deg, hsl(var(--meal-dinner)) 0%, hsl(var(--meal-dinner) / 0.8) 100%);
+    background: linear-gradient(135deg, hsl(var(--meal-dinner)) 0%, hsl(var(--meal-dinner) / 80%) 100%);
   }
 
   /* Animated components */
@@ -292,6 +294,7 @@
       opacity: 0;
       transform: translateY(20px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -303,6 +306,7 @@
       opacity: 0;
       transform: scale(0.95);
     }
+
     to {
       opacity: 1;
       transform: scale(1);
@@ -314,13 +318,16 @@
       opacity: 0;
       transform: scale(0.3);
     }
+
     50% {
       opacity: 1;
       transform: scale(1.05);
     }
+
     70% {
       transform: scale(0.9);
     }
+
     100% {
       opacity: 1;
       transform: scale(1);
@@ -338,14 +345,14 @@
 
   /* Glass morphism effect */
   .glass {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgb(255 255 255 / 25%);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid rgb(255 255 255 / 18%);
   }
 
   .glass-dark {
-    background: rgba(0, 0, 0, 0.25);
+    background: rgb(0 0 0 / 25%);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.125);
+    border: 1px solid rgb(255 255 255 / 12.5%);
   }
 }
