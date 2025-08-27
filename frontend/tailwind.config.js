@@ -50,6 +50,20 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Custom Nutrition Colors
+        nutrition: {
+          protein: "hsl(var(--nutrition-protein))",
+          carbs: "hsl(var(--nutrition-carbs))",
+          fat: "hsl(var(--nutrition-fat))",
+          fiber: "hsl(var(--nutrition-fiber))",
+          calories: "hsl(var(--nutrition-calories))",
+        },
+        meal: {
+          breakfast: "hsl(var(--meal-breakfast))",
+          snack: "hsl(var(--meal-snack))",
+          lunch: "hsl(var(--meal-lunch))",
+          dinner: "hsl(var(--meal-dinner))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

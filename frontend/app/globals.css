@@ -4,48 +4,76 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Vibrant Nutrition Theme - Light Mode */
+    --background: 120 20% 98%;
+    --foreground: 120 10% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 120 10% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 120 10% 15%;
+    --primary: 142 76% 36%; /* Vibrant green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 93% 47%; /* Bright yellow */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 120 10% 95%;
+    --muted-foreground: 120 5% 45%;
+    --accent: 199 89% 48%; /* Ocean blue */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 120 20% 90%;
+    --input: 120 20% 90%;
+    --ring: 142 76% 36%;
+    --radius: 0.75rem;
+
+    /* Custom Nutrition Colors */
+    --nutrition-protein: 25 95% 53%; /* Orange */
+    --nutrition-carbs: 45 93% 47%; /* Yellow */
+    --nutrition-fat: 280 100% 70%; /* Pink */
+    --nutrition-fiber: 120 60% 50%; /* Green */
+    --nutrition-calories: 0 70% 50%; /* Red */
+
+    /* Meal Type Colors */
+    --meal-breakfast: 45 93% 47%; /* Yellow */
+    --meal-snack: 142 76% 36%; /* Green */
+    --meal-lunch: 199 89% 48%; /* Blue */
+    --meal-dinner: 280 100% 70%; /* Pink */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    /* Vibrant Nutrition Theme - Dark Mode */
+    --background: 120 15% 8%;
+    --foreground: 120 20% 95%;
+    --card: 120 10% 12%;
+    --card-foreground: 120 20% 95%;
+    --popover: 120 10% 12%;
+    --popover-foreground: 120 20% 95%;
+    --primary: 142 76% 45%; /* Brighter green for dark */
+    --primary-foreground: 120 10% 8%;
+    --secondary: 45 93% 55%; /* Brighter yellow for dark */
+    --secondary-foreground: 120 10% 8%;
+    --muted: 120 10% 18%;
+    --muted-foreground: 120 10% 65%;
+    --accent: 199 89% 55%; /* Brighter blue for dark */
+    --accent-foreground: 120 10% 8%;
+    --destructive: 0 84% 65%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 120 10% 20%;
+    --input: 120 10% 20%;
+    --ring: 142 76% 45%;
+
+    /* Custom Nutrition Colors - Dark */
+    --nutrition-protein: 25 95% 58%; /* Orange */
+    --nutrition-carbs: 45 93% 52%; /* Yellow */
+    --nutrition-fat: 280 100% 75%; /* Pink */
+    --nutrition-fiber: 120 60% 55%; /* Green */
+    --nutrition-calories: 0 70% 55%; /* Red */
+
+    /* Meal Type Colors - Dark */
+    --meal-breakfast: 45 93% 52%; /* Yellow */
+    --meal-snack: 142 76% 45%; /* Green */
+    --meal-lunch: 199 89% 55%; /* Blue */
+    --meal-dinner: 280 100% 75%; /* Pink */
   }
 }
 
@@ -54,6 +82,270 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Skip links for keyboard navigation */
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    padding: 8px;
+    border-radius: 4px;
+    text-decoration: none;
+    z-index: 1000;
+    transition: top 0.3s;
+  }
+
+  .skip-link:focus {
+    top: 6px;
+  }
+
+  /* Focus indicators */
+  .focus-visible:focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .card-nutrition {
+      @apply border-2 border-border;
+    }
+
+    .btn-nutrition {
+      @apply border-2 border-primary-foreground;
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in,
+    .animate-slide-up,
+    .animate-scale-in,
+    .animate-bounce-in {
+      animation: none;
+    }
+
+    .hover-lift {
+      @apply hover:scale-100;
+    }
+
+    .transition-all,
+    .transition-colors,
+    .transition-transform,
+    .transition-opacity {
+      transition: none;
+    }
+  }
+
+  /* Screen reader only content */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Focus trap utility */
+  .focus-trap:focus-within {
+    @apply outline-none;
+  }
+
+  /* Custom font loading */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  /* Typography scale */
+  .text-display {
+    @apply text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight;
+  }
+
+  .text-heading-1 {
+    @apply text-3xl md:text-4xl font-bold tracking-tight;
+  }
+
+  .text-heading-2 {
+    @apply text-2xl md:text-3xl font-semibold tracking-tight;
+  }
+
+  .text-heading-3 {
+    @apply text-xl md:text-2xl font-semibold;
+  }
+
+  .text-body-large {
+    @apply text-lg leading-relaxed;
+  }
+
+  .text-body {
+    @apply text-base leading-relaxed;
+  }
+
+  .text-caption {
+    @apply text-sm text-muted-foreground;
+  }
+}
+
+@layer components {
+  /* Nutrition color utilities */
+  .nutrition-protein {
+    color: hsl(var(--nutrition-protein));
+  }
+
+  .nutrition-carbs {
+    color: hsl(var(--nutrition-carbs));
+  }
+
+  .nutrition-fat {
+    color: hsl(var(--nutrition-fat));
+  }
+
+  .nutrition-fiber {
+    color: hsl(var(--nutrition-fiber));
+  }
+
+  .nutrition-calories {
+    color: hsl(var(--nutrition-calories));
+  }
+
+  /* Meal type backgrounds */
+  .meal-breakfast {
+    background: linear-gradient(135deg, hsl(var(--meal-breakfast)) 0%, hsl(var(--meal-breakfast) / 0.8) 100%);
+  }
+
+  .meal-snack {
+    background: linear-gradient(135deg, hsl(var(--meal-snack)) 0%, hsl(var(--meal-snack) / 0.8) 100%);
+  }
+
+  .meal-lunch {
+    background: linear-gradient(135deg, hsl(var(--meal-lunch)) 0%, hsl(var(--meal-lunch) / 0.8) 100%);
+  }
+
+  .meal-dinner {
+    background: linear-gradient(135deg, hsl(var(--meal-dinner)) 0%, hsl(var(--meal-dinner) / 0.8) 100%);
+  }
+
+  /* Animated components */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  .animate-bounce-in {
+    animation: bounceIn 0.4s ease-out;
+  }
+
+  /* Hover effects */
+  .hover-lift {
+    @apply transition-transform duration-200 ease-out hover:scale-[1.02] hover:-translate-y-1;
+  }
+
+  .hover-glow {
+    @apply transition-all duration-200 ease-out hover:shadow-lg hover:shadow-primary/25;
+  }
+
+  /* Card styles */
+  .card-nutrition {
+    @apply bg-card border border-border rounded-xl shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  .card-meal {
+    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden;
+  }
+
+  /* Button variants */
+  .btn-nutrition {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-200 font-medium rounded-lg px-4 py-2;
+  }
+
+  .btn-nutrition-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 transition-colors duration-200 font-medium rounded-lg px-4 py-2;
+  }
+
+  .btn-nutrition-outline {
+    @apply border border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors duration-200 font-medium rounded-lg px-4 py-2;
+  }
+}
+
+@layer utilities {
+  /* Animation keyframes */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes bounceIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Gradient backgrounds */
+  .gradient-nutrition {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  }
+
+  .gradient-meal {
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+  }
+
+  /* Glass morphism effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.125);
   }
 }
