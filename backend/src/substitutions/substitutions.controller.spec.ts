@@ -49,7 +49,7 @@ describe('SubstitutionsController', () => {
 
       jest.spyOn(service, 'remove').mockResolvedValue(mockResult as any);
 
-      const result = await controller.remove('sub1');
+      const result = await controller.remove({ user: { id: 'user1' } } as any, 'sub1');
       expect(result).toEqual(mockResult);
     });
   });

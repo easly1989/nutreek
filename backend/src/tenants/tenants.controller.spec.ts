@@ -45,11 +45,11 @@ describe('TenantsController', () => {
 
   describe('invite', () => {
     it('should invite a member to tenant', async () => {
-      const inviteDto = { email: 'member@example.com', role: 'member' };
+      const inviteDto = { email: 'member@example.com', role: 'member' as const };
       const mockResult = { id: '1', userId: 'user2', tenantId: 'tenant1', role: 'member' };
-      
+
       jest.spyOn(service, 'invite').mockResolvedValue(mockResult as any);
-      
+
       const result = await controller.invite('tenant1', inviteDto);
       expect(result).toEqual(mockResult);
     });
