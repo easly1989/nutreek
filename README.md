@@ -2,6 +2,9 @@
 
 A **comprehensive, enterprise-grade multi-tenant nutrition planning platform** built with modern web technologies and advanced collaboration features.
 
+## If you like my work
+Help me pay off my home loan → [Donate on PayPal](https://paypal.me/ruggierocarlo)
+
 ## 🚀 **Key Features**
 
 ### **Core Functionality**
