@@ -41,4 +41,18 @@ export class PlansController {
   remove(@Param('planId') planId: string) {
     return this.plansService.remove(planId);
   }
+
+  @Get('ui-metadata/config')
+  @ApiOperation({ summary: 'Get UI metadata configuration' })
+  @ApiResponse({ status: 200, description: 'UI metadata configuration' })
+  getUIMetadata() {
+    return this.plansService.getUIMetadata();
+  }
+
+  @Get('ui-metadata/meal-types')
+  @ApiOperation({ summary: 'Get meal type configurations with UI metadata' })
+  @ApiResponse({ status: 200, description: 'Meal type configurations' })
+  getMealTypeConfigs() {
+    return this.plansService.getMealTypeConfigs();
+  }
 }

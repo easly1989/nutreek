@@ -76,6 +76,7 @@ The design system includes comprehensive dark mode support with carefully adjust
 - **Page Transitions**: 300-400ms (route changes, modal open/close)
 - **Complex Animations**: 500-600ms (initial page loads, major state changes)
 - **Easing**: Use spring animations for natural feel (framer-motion default)
+- **NEW**: Enhanced spring physics with custom stiffness and damping values
 
 #### Animation Triggers
 - **Hover**: Scale (1.02-1.05x), slight lift, color transitions
@@ -83,6 +84,32 @@ The design system includes comprehensive dark mode support with carefully adjust
 - **Focus**: Subtle glow effect with smooth transitions
 - **Loading**: Skeleton animations or spinner with breathing effect
 - **Success/Error**: Bounce animation with color feedback
+- **NEW**: 3D hover effects with rotateY and enhanced shadows
+- **NEW**: Staggered animations for list items and grid layouts
+
+### Enhanced Interaction Patterns
+
+#### Meal Card Interactions
+```typescript
+// Enhanced hover effects with 3D transforms
+whileHover={{
+  scale: meal ? 1.03 : 1.02,
+  y: meal ? -3 : -2,
+  rotateY: meal ? 2 : 0,
+  boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04)",
+  transition: {
+    type: "spring",
+    stiffness: 300,
+    damping: 20,
+    duration: 0.3
+  }
+}}
+```
+
+#### Day Header Animations
+- Dynamic color gradients based on day index
+- Scale and lift effects on hover
+- Smooth color transitions for visual feedback
 
 ### Reduced Motion Support
 The design system respects `prefers-reduced-motion` media query:
@@ -202,24 +229,32 @@ The design system respects `prefers-reduced-motion` media query:
 - Use of bright, nutrition-inspired colors
 - Energetic gradients and color combinations
 - Bold typography and high contrast elements
+- **NEW**: Advanced gradient backgrounds for meal types with 3-color combinations
+- **NEW**: Dynamic color coding for day headers with rotating color schemes
 
 ### 2. Soft & Modern
 - **Border Radius**: 8px-16px for modern feel
 - **Shadows**: Soft shadows for depth without harshness
 - **Spacing**: Generous white space for breathing room
 - **Typography**: Clean, readable fonts with proper hierarchy
+- **NEW**: Enhanced glass morphism effects with backdrop blur
+- **NEW**: 3D hover transformations for interactive elements
 
 ### 3. Accessible by Design
 - **High Contrast**: WCAG AA compliant color combinations
 - **Clear Focus**: Obvious focus indicators for keyboard users
 - **Readable Text**: Appropriate font sizes and line heights
-- **Touch Targets**: Adequate size for touch interfaces
+- **Touch Targets**: Adequate size for touch interfaces (minimum 44px)
+- **NEW**: Error boundaries for graceful error handling
+- **NEW**: Touch manipulation CSS for improved mobile interactions
 
 ### 4. Consistent & Scalable
 - **Design Tokens**: Centralized color, spacing, and typography
 - **Component Library**: Reusable, consistent components
 - **Pattern Library**: Established interaction patterns
 - **Documentation**: Comprehensive guidelines for maintenance
+- **NEW**: Backend UI metadata integration for consistent theming
+- **NEW**: Performance-optimized components with memoization
 
 ## 🚀 Performance Considerations
 
@@ -228,12 +263,81 @@ The design system respects `prefers-reduced-motion` media query:
 - Avoid animating layout properties when possible
 - Implement `will-change` for complex animations
 - Respect `prefers-reduced-motion` setting
+- **NEW**: Enhanced spring animations with optimized physics parameters
 
 ### Bundle Optimization
 - Lazy load components for better initial load times
 - Optimize images and icons
 - Use efficient CSS classes and avoid inline styles
 - Implement code splitting for large components
+- **NEW**: React.memo, useMemo, and useCallback for expensive computations
+
+### Frontend Performance Patterns
+
+#### Component Memoization
+```typescript
+// Memoize expensive calculations
+const weekDays = useMemo(() =>
+  getWeekDays(plan.startDate),
+  [plan.startDate, getWeekDays]
+);
+
+// Memoize static data
+const mealTypes = useMemo(() =>
+  ['Breakfast', 'Snack', 'Lunch', 'Dinner'],
+  []
+);
+
+// Optimize event handlers
+const handleAddMeal = useCallback((dayId, dayName, date) => {
+  // handler logic
+}, []);
+```
+
+#### Error Boundary Implementation
+```typescript
+class ErrorBoundary extends Component<ErrorBoundaryState> {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('Component Error:', error, errorInfo);
+  }
+}
+```
+
+## 🔧 Backend Integration
+
+### UI Metadata API
+
+The backend provides rich UI metadata to ensure consistent theming and branding:
+
+#### Meal Type Metadata
+```typescript
+interface MealTypeMetadata {
+  color: string;           // HSL color value
+  icon: string;            // Emoji icon
+  displayName: string;     // Human-readable name
+  gradient: string;        // CSS gradient string
+}
+```
+
+#### Weekly Plan Metadata
+```typescript
+interface WeeklyPlanUIMetadata {
+  weekDisplay: string;     // Formatted week display
+  totalDays: number;       // Total days in plan
+  completedDays: number;   // Completed days
+  color: string;           // Theme color
+  gradient: string;        // Background gradient
+}
+```
+
+#### API Endpoints
+- `GET /tenants/:tenantId/plans/ui-metadata/config` - General UI configuration
+- `GET /tenants/:tenantId/plans/ui-metadata/meal-types` - Meal type configurations
+- `GET /tenants/:tenantId/plans` - Enhanced plan data with UI metadata
 
 ## 🛠️ Development Guidelines
 
@@ -322,6 +426,60 @@ When adding new animations:
 2. Implement reduced motion support
 3. Test performance impact
 4. Document animation purpose and usage
+
+## 🔄 Recent Refactoring Improvements
+
+### Version 2.0 Enhancements
+
+#### 🎨 Enhanced Visual Design
+- **Vibrant Color System**: Implemented advanced 3-color gradients for meal types
+- **Dynamic Day Headers**: Rotating color schemes for weekly planner days
+- **Glass Morphism Effects**: Modern backdrop blur and transparency effects
+- **3D Hover Transformations**: Enhanced depth with rotateY and advanced shadows
+
+#### ⚡ Performance Optimizations
+- **React.memo Integration**: Memoized expensive calculations and static data
+- **useCallback Optimization**: Prevented unnecessary re-renders of event handlers
+- **useMemo for Computations**: Optimized week day calculations and data processing
+- **Error Boundary Protection**: Graceful error handling for component failures
+
+#### 🔧 Backend UI Metadata
+- **Rich API Responses**: Backend now includes colors, icons, and display metadata
+- **Meal Type Configurations**: Centralized theming data for consistent UI
+- **Enhanced Endpoints**: New API routes for UI configuration and metadata
+- **Type Safety**: Comprehensive TypeScript interfaces for UI metadata
+
+#### 📱 Responsive & Mobile Experience
+- **Improved Grid System**: Better breakpoints for tablets and mobile devices
+- **Touch-Friendly Interactions**: Minimum 44px touch targets with touch-manipulation CSS
+- **Responsive Typography**: Optimized font scaling across device sizes
+- **Mobile Navigation**: Enhanced mobile experience with proper spacing
+
+#### ♿ Accessibility Improvements
+- **Error Boundaries**: Better error handling and user feedback
+- **Enhanced Focus States**: Improved keyboard navigation and focus indicators
+- **Screen Reader Support**: Better semantic markup and ARIA labels
+- **Reduced Motion Support**: Respects user motion preferences
+
+#### 🎭 Animation Enhancements
+- **Spring Physics**: Advanced animation parameters for natural feel
+- **Staggered Loading**: Smooth loading animations for grid items
+- **Micro-interactions**: Enhanced hover and tap feedback
+- **Performance Optimized**: GPU-accelerated animations with proper timing
+
+### Clean-up Actions Performed
+- ✅ **Removed Unused Code**: Eliminated deprecated components and dead code
+- ✅ **Optimized Imports**: Consolidated and optimized component imports
+- ✅ **Enhanced Error Handling**: Added comprehensive error boundaries and user feedback
+- ✅ **Performance Profiling**: Identified and optimized slow rendering paths
+- ✅ **Code Organization**: Improved component structure and separation of concerns
+- ✅ **Documentation Updates**: Updated design system with new patterns and guidelines
+
+### Migration Notes
+- **Breaking Changes**: Updated component interfaces to include UI metadata
+- **New Dependencies**: Added performance optimization hooks (useMemo, useCallback)
+- **Enhanced APIs**: Backend responses now include rich UI metadata
+- **Improved Accessibility**: All components now meet WCAG AA standards
 
 ---
 
