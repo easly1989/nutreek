@@ -8,12 +8,11 @@ import { useRegister } from '../../../hooks/use-auth';
 import {
   User,
   Mail,
-  Lock,
   Sparkles,
   ChefHat,
   AlertCircle,
-  CheckCircle,
-  Loader2
+  Loader2,
+  ArrowRight
 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -105,7 +104,7 @@ export default function RegisterPage() {
               }}
             >
               <ChefHat
-                className={`${icon.color}/20 hover:${icon.color}/70 transition-all duration-300`}
+                className={`${icon.color} opacity-20 group-hover:opacity-70 transition-all duration-300`}
                 style={{
                   width: hoveredIcon === icon.id ? hoverSize : baseSize,
                   height: hoveredIcon === icon.id ? hoverSize : baseSize,
@@ -125,174 +124,176 @@ export default function RegisterPage() {
           transition={{ duration: 0.5 }}
           className="max-w-md w-full space-y-8"
         >
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-          className="text-center"
-        >
+          {/* Header */}
           <motion.div
-            animate={{
-              rotate: [0, 10, -10, 0],
-              scale: [1, 1.1, 1]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="text-center"
           >
-            <ChefHat className="w-10 h-10 text-primary" />
+            <motion.div
+              animate={{
+                rotate: [0, 10, -10, 0],
+                scale: [1, 1.1, 1]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm"
+            >
+              <ChefHat className="w-10 h-10 text-primary" />
+            </motion.div>
+            <h1 className="text-display bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+              Join Nutreek
+            </h1>
+            <p className="text-body text-slate-700 mt-2">
+              Start your nutrition journey today! 🥗✨
+            </p>
           </motion.div>
-          <h1 className="text-display bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-            Join Nutreek
-          </h1>
-          <p className="text-body text-slate-700 mt-2">
-            Start your nutrition journey today! 🥗✨
-          </p>
-        </motion.div>
 
-        {/* Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="bg-white/40 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-white/50"
-        >
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Error Message */}
-            {error && (
+          {/* Form */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="bg-white/40 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-white/50"
+          >
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Error Message */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-red-50 border border-red-200 rounded-xl p-4"
+                >
+                  <div className="flex items-center space-x-2 text-red-600">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="text-sm font-medium">{error}</span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Name Input */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-red-50 border border-red-200 rounded-xl p-4"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="space-y-2"
               >
-                <div className="flex items-center space-x-2 text-red-600">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="text-sm font-medium">{error}</span>
+                <label htmlFor="name" className="block text-sm font-medium text-slate-700">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <User className="w-5 h-5 text-slate-500" />
+                  </div>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    required
+                    className="focus-visible w-full pl-12 pr-4 py-4 bg-white/80 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 backdrop-blur-sm"
+                    placeholder="Enter your full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
                 </div>
               </motion.div>
-            )}
 
-            {/* Name Input */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="space-y-2"
-            >
-              <label htmlFor="name" className="block text-sm font-medium text-slate-700">
-                Full Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="w-5 h-5 text-slate-500" />
+              {/* Email Input */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="space-y-2"
+              >
+                <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Mail className="w-5 h-5 text-slate-500" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    className="focus-visible w-full pl-12 pr-4 py-4 bg-white/80 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 backdrop-blur-sm"
+                    placeholder="Enter your email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  autoComplete="name"
-                  required
-                  className="focus-visible w-full pl-12 pr-4 py-4 bg-white/80 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 backdrop-blur-sm"
-                  placeholder="Enter your full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-            </motion.div>
+              </motion.div>
 
-            {/* Email Input */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
-              className="space-y-2"
-            >
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="w-5 h-5 text-slate-500" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="focus-visible w-full pl-12 pr-4 py-4 bg-white/80 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 backdrop-blur-sm"
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-            </motion.div>
+              {/* Submit Button */}
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={register.isPending}
+                className="w-full bg-primary text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 font-semibold py-4 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {register.isPending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Creating account...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    <span>Create Account</span>
+                  </>
+                )}
+              </motion.button>
 
-            {/* Submit Button */}
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={register.isPending}
-              className="w-full bg-primary text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 font-semibold py-4 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-            >
-              {register.isPending ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Creating account...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  <span>Create Account</span>
-                </>
-              )}
-            </motion.button>
+              {/* Sign In Link */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.5 }}
+                className="text-center"
+              >
+                <p className="text-slate-600">
+                  Already have an account?{' '}
+                  <Link
+                    href="/auth/login"
+                    className="font-semibold text-primary hover:text-primary/80 transition-colors duration-200 underline decoration-primary/30 hover:decoration-primary/50 flex items-center justify-center mt-2"
+                  >
+                    Sign in here
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </p>
+              </motion.div>
+            </form>
+          </motion.div>
 
-            {/* Sign In Link */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-              className="text-center"
-            >
-              <p className="text-slate-600">
-                Already have an account?{' '}
-                <Link
-                  href="/auth/login"
-                  className="font-semibold text-primary hover:text-primary/80 transition-colors duration-200 underline decoration-primary/30 hover:decoration-primary/50"
-                >
-                  Sign in here
-                </Link>
-              </p>
-            </motion.div>
-          </form>
+          {/* Footer */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
+            className="text-center text-slate-500 text-sm"
+          >
+            By creating an account, you agree to our{' '}
+            <Link href="/terms" className="hover:text-slate-700 underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="hover:text-slate-700 underline">
+              Privacy Policy
+            </Link>
+          </motion.div>
         </motion.div>
-
-        {/* Footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.5 }}
-          className="text-center text-slate-500 text-sm"
-        >
-          By creating an account, you agree to our{' '}
-          <Link href="/terms" className="hover:text-slate-700 underline">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link href="/privacy" className="hover:text-slate-700 underline">
-            Privacy Policy
-          </Link>
-        </motion.div>
-      </motion.div>
+      </div>
     </>
   );
 }

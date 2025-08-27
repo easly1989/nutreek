@@ -122,142 +122,143 @@ export default function LoginPage() {
           transition={{ duration: 0.5 }}
           className="max-w-md w-full space-y-8"
         >
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-          className="text-center"
-        >
+          {/* Header */}
           <motion.div
-            animate={{
-              rotate: [0, 10, -10, 0],
-              scale: [1, 1.1, 1]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="text-center"
           >
-            <ChefHat className="w-10 h-10 text-primary" />
+            <motion.div
+              animate={{
+                rotate: [0, 10, -10, 0],
+                scale: [1, 1.1, 1]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm"
+            >
+              <ChefHat className="w-10 h-10 text-primary" />
+            </motion.div>
+            <h1 className="text-display bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+              Welcome Back
+            </h1>
+            <p className="text-body text-slate-700 mt-2">
+              Continue your nutrition journey! 🥗✨
+            </p>
           </motion.div>
-          <h1 className="text-display bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-            Welcome Back
-          </h1>
-          <p className="text-body text-slate-700 mt-2">
-            Continue your nutrition journey! 🥗✨
-          </p>
-        </motion.div>
 
-        {/* Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="bg-white/40 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-white/50"
-        >
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Error Message */}
-            {error && (
+          {/* Form */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="bg-white/40 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-white/50"
+          >
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Error Message */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-red-50 border border-red-200 rounded-xl p-4"
+                >
+                  <div className="flex items-center space-x-2 text-red-600">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="text-sm font-medium">{error}</span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Email Input */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-red-50 border border-red-200 rounded-xl p-4"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="space-y-2"
               >
-                <div className="flex items-center space-x-2 text-red-600">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="text-sm font-medium">{error}</span>
+                <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Mail className="w-5 h-5 text-slate-500" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    className="focus-visible w-full pl-12 pr-4 py-4 bg-white/80 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 backdrop-blur-sm"
+                    placeholder="Enter your email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
               </motion.div>
-            )}
 
-            {/* Email Input */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="space-y-2"
-            >
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="w-5 h-5 text-slate-500" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="focus-visible w-full pl-12 pr-4 py-4 bg-white/80 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 backdrop-blur-sm"
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-            </motion.div>
+              {/* Submit Button */}
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={login.isPending}
+                className="w-full bg-primary text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 font-semibold py-4 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {login.isPending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    <span>Sign In</span>
+                  </>
+                )}
+              </motion.button>
 
-            {/* Submit Button */}
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={login.isPending}
-              className="w-full bg-primary text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 font-semibold py-4 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-            >
-              {login.isPending ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Signing in...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  <span>Sign In</span>
-                </>
-              )}
-            </motion.button>
+              {/* Register Link */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className="text-center"
+              >
+                <p className="text-slate-600">
+                  New to Nutreek?{' '}
+                  <Link
+                    href="/auth/register"
+                    className="font-semibold text-primary hover:text-primary/80 transition-colors duration-200 underline decoration-primary/30 hover:decoration-primary/50 flex items-center justify-center mt-2"
+                  >
+                    Create Account
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </p>
+              </motion.div>
+            </form>
+          </motion.div>
 
-            {/* Register Link */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-              className="text-center"
-            >
-              <p className="text-slate-600">
-                New to Nutreek?{' '}
-                <Link
-                  href="/auth/register"
-                  className="font-semibold text-primary hover:text-primary/80 transition-colors duration-200 underline decoration-primary/30 hover:decoration-primary/50 flex items-center justify-center mt-2"
-                >
-                  Create Account
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Link>
-              </p>
-            </motion.div>
-          </form>
+          {/* Footer */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            className="text-center text-slate-500 text-sm"
+          >
+            <Link href="/forgot-password" className="hover:text-slate-700 underline">
+              Forgot your password?
+            </Link>
+          </motion.div>
         </motion.div>
-
-        {/* Footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-          className="text-center text-slate-500 text-sm"
-        >
-          <Link href="/forgot-password" className="hover:text-slate-700 underline">
-            Forgot your password?
-          </Link>
-        </motion.div>
-      </motion.div>
+      </div>
     </>
   );
 }
