@@ -7,7 +7,11 @@
       "cache": false,
       "persistent": true
     },
-    "test": {},
+    "test": {
+      "dependsOn": ["test:unit"]
+    },
+    "test:unit": {},
+    "test:e2e": {},
     "lint": {}
   }
 }

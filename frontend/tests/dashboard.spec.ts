@@ -101,7 +101,7 @@ test.describe('Dashboard', () => {
     await page.addInitScript(() => {
       // Override localStorage.removeItem for testing
       const originalRemoveItem = localStorage.removeItem;
-      localStorage.removeItem = (key: string) => {
+      localStorage.removeItem = function(key) {
         if (key === 'auth_token') {
           // Simulate successful logout
           return;

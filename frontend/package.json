@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:e2e": "playwright test"
+    "test": "echo 'Frontend tests are split into unit and e2e - use test:unit or test:e2e'",
+    "test:unit": "echo 'No unit tests for frontend - add Jest tests in __tests__ directory if needed'",
+    "test:e2e": "playwright test",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.0.2",

@@ -1,15 +1,49 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { IngredientsController } from './ingredients.controller';
 import { IngredientsService } from './ingredients.service';
+import { PrismaService } from '../prisma.service';
+import { RedisService } from '../redis/redis.service';
 
 describe('IngredientsController', () => {
   let controller: IngredientsController;
   let service: IngredientsService;
 
   beforeEach(async () => {
+    const mockPrismaService = {
+      ingredient: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      userIngredientQuantity: {
+        upsert: jest.fn(),
+        findMany: jest.fn(),
+      },
+    };
+
+    const mockRedisService = {
+      getClient: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        setex: jest.fn(),
+        incr: jest.fn(),
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [IngredientsController],
-      providers: [IngredientsService],
+      providers: [
+        IngredientsService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        {
+          provide: RedisService,
+          useValue: mockRedisService,
+        },
+      ],
     }).compile();
 
     controller = module.get<IngredientsController>(IngredientsController);

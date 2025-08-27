@@ -1,15 +1,36 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecipesController } from './recipes.controller';
 import { RecipesService } from './recipes.service';
+import { PrismaService } from '../prisma.service';
 
 describe('RecipesController', () => {
   let controller: RecipesController;
   let service: RecipesService;
 
   beforeEach(async () => {
+    const mockPrismaService = {
+      recipe: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      ingredient: {
+        create: jest.fn(),
+        delete: jest.fn(),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RecipesController],
-      providers: [RecipesService],
+      providers: [
+        RecipesService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+      ],
     }).compile();
 
     controller = module.get<RecipesController>(RecipesController);

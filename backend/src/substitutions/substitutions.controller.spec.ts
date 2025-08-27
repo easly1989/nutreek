@@ -1,15 +1,32 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SubstitutionsController } from './substitutions.controller';
 import { SubstitutionsService } from './substitutions.service';
+import { PrismaService } from '../prisma.service';
 
 describe('SubstitutionsController', () => {
   let controller: SubstitutionsController;
   let service: SubstitutionsService;
 
   beforeEach(async () => {
+    const mockPrismaService = {
+      substitution: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SubstitutionsController],
-      providers: [SubstitutionsService],
+      providers: [
+        SubstitutionsService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+      ],
     }).compile();
 
     controller = module.get<SubstitutionsController>(SubstitutionsController);

@@ -8,7 +8,10 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "test": "turbo test",
+    "test": "turbo test:unit",
+    "test:unit": "turbo test:unit",
+    "test:e2e": "turbo test:e2e",
+    "test:e2e:setup": "node -e \"require('os').platform() === 'win32' ? require('child_process').execSync('scripts\\\\setup-e2e.bat', { stdio: 'inherit' }) : require('child_process').execSync('./scripts/setup-e2e.sh', { stdio: 'inherit' })\"",
     "lint": "turbo lint"
   },
   "devDependencies": {
