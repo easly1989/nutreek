@@ -26,6 +26,7 @@ model Tenant {
   name        String
   memberships Membership[]
   weeklyPlans WeeklyPlan[]
+  shoppingLists ShoppingList[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 }
@@ -47,8 +48,9 @@ model WeeklyPlan {
   tenantId  String
   startDate DateTime
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  days      Day[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  days         Day[]
+  shoppingList ShoppingList?
 }
 
 model Day {
@@ -111,4 +113,16 @@ model Substitution {
   substituteId String
 
   user       User     @relation(fields: [userId], references: [id])
+}
+
+model ShoppingList {
+  id            String   @id @default(cuid())
+  tenantId      String
+  weeklyPlanId  String   @unique
+  items         Json     // Array of ShoppingListItem
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  weeklyPlan   WeeklyPlan   @relation(fields: [weeklyPlanId], references: [id])
 }

@@ -11,6 +11,7 @@ import { RecipesModule } from './recipes/recipes.module';
 import { RedisModule } from './redis/redis.module';
 import { IngredientsModule } from './ingredients/ingredients.module';
 import { SubstitutionsModule } from './substitutions/substitutions.module';
+import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { SubstitutionsModule } from './substitutions/substitutions.module';
     RecipesModule,
     IngredientsModule,
     SubstitutionsModule,
+    ShoppingListsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
