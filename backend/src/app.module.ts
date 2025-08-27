@@ -12,6 +12,9 @@ import { RedisModule } from './redis/redis.module';
 import { IngredientsModule } from './ingredients/ingredients.module';
 import { SubstitutionsModule } from './substitutions/substitutions.module';
 import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { CollaborationModule } from './collaboration/collaboration.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -28,6 +31,9 @@ import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
     IngredientsModule,
     SubstitutionsModule,
     ShoppingListsModule,
+    AnalyticsModule,
+    CollaborationModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
