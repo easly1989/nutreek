@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useMe, useLogout } from '../../hooks/use-auth';
 import HouseholdList from '../../components/HouseholdList';
 
@@ -82,15 +83,19 @@ export default function DashboardPage() {
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">R</span>
+                    <span className="text-white text-sm font-medium">I</span>
                   </div>
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">
-                      Recipes
+                      Ingredients
                     </dt>
-                    <dd className="text-lg font-medium text-gray-900">0</dd>
+                    <dd className="text-lg font-medium text-gray-900">
+                      <Link href="/dashboard/ingredients" className="text-yellow-600 hover:text-yellow-800">
+                        Search →
+                      </Link>
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -108,9 +113,13 @@ export default function DashboardPage() {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">
-                      Shopping Lists
+                      Substitutions
                     </dt>
-                    <dd className="text-lg font-medium text-gray-900">0</dd>
+                    <dd className="text-lg font-medium text-gray-900">
+                      <Link href="/dashboard/substitutions" className="text-purple-600 hover:text-purple-800">
+                        Manage →
+                      </Link>
+                    </dd>
                   </dl>
                 </div>
               </div>
