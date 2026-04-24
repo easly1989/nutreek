@@ -1,9 +1,14 @@
 # Makefile per Nutreek
 #
 # Variabili piattaforma (Windows / Unix)
+# NOTE: pinned a Tailwind v3.4.17 perche' v4 ha cambiato CLI/config
+# (niente tailwind.config.js in JS, @import al posto di @tailwind, ecc.).
+# Upgrade a v4 si fa in una tappa dedicata.
+TAILWIND_VERSION := v3.4.17
+
 ifeq ($(OS),Windows_NT)
 	EXE := .exe
-	TAILWIND_URL := https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-windows-x64.exe
+	TAILWIND_URL := https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSION)/tailwindcss-windows-x64.exe
 	MKDIR := powershell -NoProfile -Command New-Item -ItemType Directory -Force -Path
 	DOWNLOAD = powershell -NoProfile -Command "Invoke-WebRequest -Uri '$(1)' -OutFile '$(2)'"
 else
@@ -25,7 +30,7 @@ else
 	ifeq ($(UNAME_M),aarch64)
 		TAILWIND_ARCH := arm64
 	endif
-	TAILWIND_URL := https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-$(TAILWIND_OS)-$(TAILWIND_ARCH)
+	TAILWIND_URL := https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSION)/tailwindcss-$(TAILWIND_OS)-$(TAILWIND_ARCH)
 	MKDIR := mkdir -p
 	DOWNLOAD = curl -sSL -o $(2) $(1)
 endif

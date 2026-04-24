@@ -28,6 +28,7 @@ Thumbs.db
 # Claude Code local state
 /.claude/settings.local.json
 /.claude/worktrees/
+/.claude/launch.json
 
 # Local env
 .env
