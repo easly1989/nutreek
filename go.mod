@@ -3,6 +3,10 @@ module github.com/amon2126/nutreek
 go 1.23
 
 require (
+	github.com/alexedwards/scs/sqlite3store v0.0.0-20251002162104-209de6e426de
+	github.com/alexedwards/scs/v2 v2.9.0
+	github.com/go-chi/chi/v5 v5.2.5
+	github.com/justinas/nosurf v1.2.0
 	github.com/pressly/goose/v3 v3.22.1
 	golang.org/x/crypto v0.27.0
 	modernc.org/sqlite v1.34.1
