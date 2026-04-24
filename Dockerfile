@@ -1,0 +1,46 @@
+# syntax=docker/dockerfile:1.7
+
+# --- Stage 1: Tailwind CSS bundle --------------------------------------------
+FROM alpine:3.20 AS tailwind-builder
+RUN apk add --no-cache curl ca-certificates
+WORKDIR /src
+ARG TARGETARCH
+RUN case "$TARGETARCH" in \
+      amd64) TW_ARCH=x64 ;; \
+      arm64) TW_ARCH=arm64 ;; \
+      *) echo "unsupported arch: $TARGETARCH"; exit 1 ;; \
+    esac && \
+    curl -sSL -o /usr/local/bin/tailwindcss \
+      "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-${TW_ARCH}" && \
+    chmod +x /usr/local/bin/tailwindcss
+COPY web/tailwind ./web/tailwind
+COPY internal/web/templates ./internal/web/templates
+COPY internal/app ./internal/app
+RUN mkdir -p internal/web/static/css && \
+    tailwindcss \
+      -c ./web/tailwind/tailwind.config.js \
+      -i ./web/tailwind/input.css \
+      -o ./internal/web/static/css/tailwind.css \
+      --minify
+
+# --- Stage 2: Go build -------------------------------------------------------
+FROM golang:1.23-alpine AS go-builder
+WORKDIR /src
+ENV CGO_ENABLED=0 GOFLAGS=-trimpath
+COPY go.mod go.sum* ./
+RUN go mod download || true
+COPY . .
+COPY --from=tailwind-builder /src/internal/web/static/css/tailwind.css ./internal/web/static/css/tailwind.css
+RUN go build -ldflags="-s -w" -o /out/nutreek ./cmd/nutreek
+
+# --- Stage 3: runtime --------------------------------------------------------
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /app
+COPY --from=go-builder /out/nutreek /app/nutreek
+ENV NUTREEK_ADDR=:8080 \
+    NUTREEK_DB_PATH=/data/nutreek.db \
+    NUTREEK_ENV=prod
+EXPOSE 8080
+USER nonroot:nonroot
+VOLUME ["/data"]
+ENTRYPOINT ["/app/nutreek"]

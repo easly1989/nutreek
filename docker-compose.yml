@@ -1,0 +1,17 @@
+services:
+  nutreek:
+    build: .
+    image: nutreek:latest
+    container_name: nutreek
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      NUTREEK_ADDR: ":8080"
+      NUTREEK_DB_PATH: /data/nutreek.db
+      NUTREEK_ENV: prod
+      NUTREEK_SESSION_KEY: ${NUTREEK_SESSION_KEY:?set NUTREEK_SESSION_KEY in env (es. openssl rand -hex 32)}
+    restart: unless-stopped
+    # Healthcheck: distroless non ha shell. Quando aggiungeremo un endpoint
+    # interno o passeremo a una base con wget, aggiungeremo test qui.
