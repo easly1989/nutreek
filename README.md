@@ -19,26 +19,32 @@ Eseguibile sia **nativamente** (binario Go, nessuna dipendenza esterna) sia in u
 
 Per sviluppo nativo (senza Docker):
 - Go 1.23 o superiore — https://go.dev/dl/
-- Nient'altro. Il CLI standalone di Tailwind e gli altri tool vengono scaricati dal `Makefile` in `./bin/`.
+- Nient'altro. Il CLI standalone di Tailwind viene scaricato automaticamente in `./bin/`.
 
 Per deploy in container:
 - Docker 24+ e Docker Compose v2
 
 ## Quickstart (dev, senza Docker)
 
+### Linux / macOS (con `make`)
+
 ```bash
-# 1. Setup tool locali (Tailwind CLI, sqlc)
-make setup
-
-# 2. Genera codice (sqlc) e CSS
-make generate
-
-# 3. Avvia l'app in modalità dev
-make dev
-# -> http://localhost:8080
+make setup       # scarica Tailwind CLI in ./bin/
+make tailwind    # genera internal/web/static/css/tailwind.css
+make dev         # go run ./cmd/nutreek -> http://localhost:8080
 ```
 
-Il DB SQLite viene creato in `./data/nutreek.db` al primo avvio e le migrazioni sono applicate automaticamente.
+### Windows (PowerShell, senza `make`)
+
+```powershell
+pwsh scripts/setup.ps1       # scarica Tailwind CLI in .\bin\
+pwsh scripts/tailwind.ps1    # build CSS (aggiungere -Watch per watch mode)
+pwsh scripts/dev.ps1         # avvia il server su http://localhost:8080
+```
+
+In alternativa, se hai installato GNU Make su Windows (es. `winget install ezwinports.make`) funzionano anche i target del `Makefile`.
+
+Il DB SQLite viene creato in `./data/nutreek.db` al primo avvio e le migrazioni sono applicate automaticamente. Il CSS generato (`internal/web/static/css/tailwind.css`) è embeddato nel binario a compile-time: va **sempre** rigenerato prima di `go build` o `go run` dopo aver modificato template o classi Tailwind.
 
 ## Quickstart (Docker)
 
@@ -105,8 +111,9 @@ internal/
   service/            business logic
   web/
     templates/        pagine e partial HTMX (embedded)
-    static/           css, js (embedded)
-web/tailwind/         input.css e tailwind.config.js
+    static/           css, js (embedded, generati)
+web/tailwind/         input.css e tailwind.config.js (sorgenti)
+scripts/              setup.ps1, tailwind.ps1, dev.ps1 (Windows)
 ```
 
 ## Licenza
