@@ -1,0 +1,19 @@
+{{define "title"}}Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-3xl">
+  <h1 class="text-3xl font-semibold mb-4">Ciao {{if .User}}{{.User.DisplayName}}{{else}}su Nutreek{{end}}</h1>
+  {{if .User}}
+    <p class="text-slate-600 mb-6">Il piano settimanale, ingredienti e ricette arriveranno nelle prossime tappe. Per ora l'autenticazione e' attiva.</p>
+    <div class="rounded border border-slate-200 bg-white p-4 text-sm text-slate-700">
+      <p><span class="font-medium">Email:</span> {{.User.Email}}</p>
+      <p><span class="font-medium">Registrato il:</span> {{.User.CreatedAt.Format "02/01/2006 15:04"}}</p>
+    </div>
+  {{else}}
+    <p class="text-slate-600 mb-6">Gestisci il tuo piano nutrizionale settimanale con ingredienti condivisi (OpenFoodFacts), ricette personali e vista macro per pasto, giorno e settimana.</p>
+    <div class="flex gap-3">
+      <a href="/login" class="inline-block bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Accedi</a>
+      <a href="/register" class="inline-block border border-slate-300 rounded px-4 py-2 hover:bg-slate-100">Registrati</a>
+    </div>
+  {{end}}
+</div>
+{{end}}
