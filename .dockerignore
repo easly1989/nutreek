@@ -1,0 +1,17 @@
+.git
+.gitignore
+.dockerignore
+README.md
+LICENSE
+.idea
+.vscode
+bin/
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+coverage.out
+coverage.html
+.env
+.env.local
