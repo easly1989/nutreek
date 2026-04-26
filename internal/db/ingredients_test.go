@@ -111,6 +111,43 @@ func TestIngredientsSearchAndList(t *testing.T) {
 	}
 }
 
+func TestIngredientsCreateOFFAndDup(t *testing.T) {
+	store := newTestStore(t)
+	ings := NewIngredients(store.DB)
+	ctx := context.Background()
+
+	brand := "Consorzio"
+	id, err := ings.CreateOFF(ctx, "8000000000017", "Grana Padano", &brand, domain.UnitGram, 384, 33, 0, 28)
+	if err != nil {
+		t.Fatalf("CreateOFF: %v", err)
+	}
+	got, err := ings.GetByBarcode(ctx, "8000000000017")
+	if err != nil {
+		t.Fatalf("GetByBarcode: %v", err)
+	}
+	if got.ID != id {
+		t.Errorf("id mismatch: %d vs %d", got.ID, id)
+	}
+	if got.Source != domain.IngredientSourceOFF {
+		t.Errorf("source: got %q want openfoodfacts", got.Source)
+	}
+	if got.LastVerifiedAt == nil {
+		t.Errorf("last_verified_at non settato")
+	}
+
+	// Duplicate barcode -> ErrBarcodeAlreadyUsed
+	_, err = ings.CreateOFF(ctx, "8000000000017", "Altro", nil, domain.UnitGram, 1, 1, 1, 1)
+	if !errors.Is(err, ErrBarcodeAlreadyUsed) {
+		t.Fatalf("atteso ErrBarcodeAlreadyUsed, got %v", err)
+	}
+
+	// GetByBarcode su barcode inesistente -> not found
+	_, err = ings.GetByBarcode(ctx, "0000000000000")
+	if !errors.Is(err, ErrIngredientNotFound) {
+		t.Fatalf("atteso ErrIngredientNotFound, got %v", err)
+	}
+}
+
 func names(in []*domain.Ingredient) []string {
 	out := make([]string, len(in))
 	for i, x := range in {

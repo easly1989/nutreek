@@ -1,15 +1,31 @@
 {{define "ingredient_results"}}
-{{if .Ingredients}}
+{{if .OFFWarning}}
+  <div class="mb-3 rounded border border-amber-200 bg-amber-50 text-amber-900 px-3 py-2 text-xs">{{.OFFWarning}}</div>
+{{end}}
+{{if .Rows}}
   <ul class="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
-    {{range .Ingredients}}
+    {{range .Rows}}
       <li class="px-4 py-3 flex items-baseline justify-between gap-4">
         <div class="min-w-0">
-          <p class="font-medium text-slate-900 truncate">{{.Name}}{{if .Brand}} <span class="text-slate-500 font-normal">— {{.Brand}}</span>{{end}}</p>
+          <p class="font-medium text-slate-900 truncate">
+            {{.Name}}{{with .Brand}} <span class="text-slate-500 font-normal">— {{.}}</span>{{end}}
+          </p>
           <p class="text-xs text-slate-500">
-            {{if eq (printf "%s" .Source) "openfoodfacts"}}OpenFoodFacts{{else}}Locale{{end}}
-            · {{printf "%.0f" .KcalPer100}} kcal · P {{printf "%.1f" .ProteinPer100}}g · C {{printf "%.1f" .CarbsPer100}}g · F {{printf "%.1f" .FatPer100}}g (per 100{{.Unit}})
+            <span class="{{if .IsOFF}}text-emerald-700{{else}}text-slate-500{{end}}">{{.SourceLabel}}</span>
+            · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
           </p>
         </div>
+        {{if .IsOFF}}
+          {{if .Importable}}
+            <form method="post" action="/ingredients/off-import" class="shrink-0">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <input type="hidden" name="barcode" value="{{.Barcode}}">
+              <button class="text-xs bg-emerald-600 text-white rounded px-3 py-1 hover:bg-emerald-700">Importa</button>
+            </form>
+          {{else}}
+            <span class="text-xs text-slate-400 shrink-0">macro incompleti</span>
+          {{end}}
+        {{end}}
       </li>
     {{end}}
   </ul>

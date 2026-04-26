@@ -9,6 +9,7 @@ import (
 	"github.com/amon2126/nutreek/internal/config"
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/web"
 )
 
@@ -18,6 +19,7 @@ type App struct {
 	Store       *db.Store
 	Users       *db.Users
 	Ingredients *db.Ingredients
+	OFF         *off.Client
 	Sessions    *scs.SessionManager
 	Render      *web.Renderer
 	Logger      *slog.Logger
