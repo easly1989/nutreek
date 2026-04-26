@@ -66,6 +66,26 @@ func (r *Renderer) Render(w http.ResponseWriter, status int, name string, data a
 	return err
 }
 
+// RenderPartial esegue un template definito (di solito un partial caricato
+// da templates/partials/*.html) senza wrappare nel layout. Usato per le
+// risposte HTMX che inseriscono frammenti nella pagina esistente. `page` e'
+// una qualunque pagina registrata: serve solo a localizzare il template,
+// dato che ParseFS condivide i partial fra tutte le pagine.
+func (r *Renderer) RenderPartial(w http.ResponseWriter, status int, page, partial string, data any) error {
+	tpl, ok := r.pages[page]
+	if !ok {
+		return fmt.Errorf("template %q non registrato", page)
+	}
+	var buf bytes.Buffer
+	if err := tpl.ExecuteTemplate(&buf, partial, data); err != nil {
+		return fmt.Errorf("execute partial %s/%s: %w", page, partial, err)
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 func funcMap() template.FuncMap {
 	return template.FuncMap{
 		"add": func(a, b int) int { return a + b },

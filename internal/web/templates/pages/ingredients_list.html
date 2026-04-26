@@ -1,0 +1,32 @@
+{{define "title"}}Ingredienti — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-3xl">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-semibold">Ingredienti</h1>
+    <a href="/ingredients/new" class="inline-block bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Nuovo</a>
+  </div>
+
+  <p class="text-sm text-slate-600 mb-4">
+    Pool condiviso fra tutti gli utenti. La ricerca live filtra il DB locale; in tappa 7 si aggiungera' il fallback OpenFoodFacts.
+  </p>
+
+  <div class="mb-6">
+    <input
+      type="search"
+      name="q"
+      value="{{.Query}}"
+      placeholder="Cerca per nome..."
+      class="w-full rounded border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400"
+      hx-get="/ingredients/search"
+      hx-trigger="input changed delay:200ms, search"
+      hx-target="#ingredient-results"
+      hx-swap="innerHTML"
+      autofocus
+    >
+  </div>
+
+  <div id="ingredient-results">
+    {{template "ingredient_results" .}}
+  </div>
+</div>
+{{end}}

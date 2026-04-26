@@ -40,5 +40,14 @@ func (a *App) Router() http.Handler {
 	r.Post("/register", a.handleRegister)
 	r.Post("/logout", a.handleLogout)
 
+	// Sezioni protette: ingredienti / ricette / piano. Tutte sotto requireAuth.
+	r.Group(func(r chi.Router) {
+		r.Use(a.requireAuth)
+		r.Get("/ingredients", a.handleIngredientsList)
+		r.Get("/ingredients/search", a.handleIngredientsSearchPartial)
+		r.Get("/ingredients/new", a.handleIngredientNewForm)
+		r.Post("/ingredients", a.handleIngredientCreate)
+	})
+
 	return r
 }

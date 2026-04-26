@@ -66,12 +66,13 @@ func run(logger *slog.Logger) error {
 	}
 
 	a := &app.App{
-		Cfg:      cfg,
-		Store:    store,
-		Users:    db.NewUsers(store.DB),
-		Sessions: sessions,
-		Render:   renderer,
-		Logger:   logger,
+		Cfg:         cfg,
+		Store:       store,
+		Users:       db.NewUsers(store.DB),
+		Ingredients: db.NewIngredients(store.DB),
+		Sessions:    sessions,
+		Render:      renderer,
+		Logger:      logger,
 	}
 
 	srv := &http.Server{
