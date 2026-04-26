@@ -14,12 +14,13 @@ import (
 
 // App raccoglie le dipendenze condivise fra handler e middleware.
 type App struct {
-	Cfg      *config.Config
-	Store    *db.Store
-	Users    *db.Users
-	Sessions *scs.SessionManager
-	Render   *web.Renderer
-	Logger   *slog.Logger
+	Cfg         *config.Config
+	Store       *db.Store
+	Users       *db.Users
+	Ingredients *db.Ingredients
+	Sessions    *scs.SessionManager
+	Render      *web.Renderer
+	Logger      *slog.Logger
 }
 
 type ctxKey int

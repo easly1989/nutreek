@@ -1,0 +1,21 @@
+{{define "ingredient_results"}}
+{{if .Ingredients}}
+  <ul class="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+    {{range .Ingredients}}
+      <li class="px-4 py-3 flex items-baseline justify-between gap-4">
+        <div class="min-w-0">
+          <p class="font-medium text-slate-900 truncate">{{.Name}}{{if .Brand}} <span class="text-slate-500 font-normal">— {{.Brand}}</span>{{end}}</p>
+          <p class="text-xs text-slate-500">
+            {{if eq (printf "%s" .Source) "openfoodfacts"}}OpenFoodFacts{{else}}Locale{{end}}
+            · {{printf "%.0f" .KcalPer100}} kcal · P {{printf "%.1f" .ProteinPer100}}g · C {{printf "%.1f" .CarbsPer100}}g · F {{printf "%.1f" .FatPer100}}g (per 100{{.Unit}})
+          </p>
+        </div>
+      </li>
+    {{end}}
+  </ul>
+{{else}}
+  <p class="text-sm text-slate-500 px-4 py-6 text-center border border-dashed border-slate-300 rounded">
+    {{if .Query}}Nessun ingrediente trovato per &laquo;{{.Query}}&raquo;.{{else}}Nessun ingrediente ancora. Crea il primo qui sotto.{{end}}
+  </p>
+{{end}}
+{{end}}
