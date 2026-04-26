@@ -1,19 +1,127 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/justinas/nosurf"
+
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/off"
 )
 
-// ---- pages -----------------------------------------------------------------
+// ---- view models -----------------------------------------------------------
+
+// ingredientRow rappresenta una riga della lista risultati: puo' essere un
+// ingrediente gia' nel DB oppure un prodotto OFF candidato all'import.
+type ingredientRow struct {
+	Local *domain.Ingredient // nil se la riga e' un OFF non ancora importato
+	OFF   *off.Product       // nil se la riga e' gia' nel DB
+}
+
+// IsOFF e' usato dal template per decidere se mostrare il pulsante Importa.
+func (r ingredientRow) IsOFF() bool { return r.Local == nil && r.OFF != nil }
+
+// Name normalizza il nome per il template.
+func (r ingredientRow) Name() string {
+	if r.Local != nil {
+		return r.Local.Name
+	}
+	if r.OFF != nil {
+		return r.OFF.Name
+	}
+	return ""
+}
+
+// Brand normalizza il brand per il template.
+func (r ingredientRow) Brand() string {
+	if r.Local != nil && r.Local.Brand != nil {
+		return *r.Local.Brand
+	}
+	if r.OFF != nil {
+		return r.OFF.Brand
+	}
+	return ""
+}
+
+// SourceLabel ritorna la label per il badge.
+func (r ingredientRow) SourceLabel() string {
+	if r.Local != nil {
+		if r.Local.Source == domain.IngredientSourceOFF {
+			return "OpenFoodFacts"
+		}
+		return "Locale"
+	}
+	return "OpenFoodFacts (importabile)"
+}
+
+// Kcal/Protein/Carbs/Fat/Unit espongono i macro per il template.
+// I template Go non possono unpackare multi-return, quindi un getter per campo.
+func (r ingredientRow) Kcal() float64 {
+	if r.Local != nil {
+		return r.Local.KcalPer100
+	}
+	if r.OFF != nil {
+		return r.OFF.Kcal
+	}
+	return 0
+}
+func (r ingredientRow) Protein() float64 {
+	if r.Local != nil {
+		return r.Local.ProteinPer100
+	}
+	if r.OFF != nil {
+		return r.OFF.Protein
+	}
+	return 0
+}
+func (r ingredientRow) Carbs() float64 {
+	if r.Local != nil {
+		return r.Local.CarbsPer100
+	}
+	if r.OFF != nil {
+		return r.OFF.Carbs
+	}
+	return 0
+}
+func (r ingredientRow) Fat() float64 {
+	if r.Local != nil {
+		return r.Local.FatPer100
+	}
+	if r.OFF != nil {
+		return r.OFF.Fat
+	}
+	return 0
+}
+func (r ingredientRow) Unit() string {
+	if r.Local != nil {
+		return string(r.Local.Unit)
+	}
+	return "g"
+}
+
+// Barcode espone l'identificatore OFF per la form di import.
+func (r ingredientRow) Barcode() string {
+	if r.OFF != nil {
+		return r.OFF.Code
+	}
+	return ""
+}
+
+// Importable indica se la riga OFF puo' essere importata (nutrienti completi).
+func (r ingredientRow) Importable() bool {
+	return r.OFF != nil && r.OFF.HasFullNutrients
+}
 
 type ingredientsListData struct {
 	authPageData
-	Ingredients []*domain.Ingredient
-	Query       string
+	Rows       []ingredientRow
+	Query      string
+	OFFWarning string // riempito se la search OFF e' fallita
 }
 
 type ingredientsNewData struct {
@@ -34,25 +142,20 @@ type ingredientForm struct {
 	Fat     string
 }
 
+// ---- handlers --------------------------------------------------------------
+
 func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	var (
-		list []*domain.Ingredient
-		err  error
-	)
-	if q != "" {
-		list, err = a.Ingredients.SearchActive(r.Context(), q, 50)
-	} else {
-		list, err = a.Ingredients.ListActive(r.Context(), 0, 50)
-	}
+	rows, warn, err := a.searchMixed(r.Context(), q)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	data := ingredientsListData{
 		authPageData: a.baseData(r),
-		Ingredients:  list,
+		Rows:         rows,
 		Query:        q,
+		OFFWarning:   warn,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "ingredients_list", data); err != nil {
 		a.serverError(w, r, err)
@@ -63,15 +166,67 @@ func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 // dei risultati. Usato dall'input live-search.
 func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	list, err := a.Ingredients.SearchActive(r.Context(), q, 20)
+	rows, warn, err := a.searchMixed(r.Context(), q)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	data := ingredientsListData{Ingredients: list, Query: q}
+	// CSRF token serve nel partial per il form Importa.
+	data := ingredientsListData{
+		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+		Rows:         rows,
+		Query:        q,
+		OFFWarning:   warn,
+	}
 	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "ingredient_results", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+// searchMixed esegue search locale e (se q != "") OFF, deduplica per barcode
+// e ritorna la lista unita. warn != "" se OFF e' fallito (degradiamo).
+func (a *App) searchMixed(ctx context.Context, q string) ([]ingredientRow, string, error) {
+	var (
+		locals []*domain.Ingredient
+		err    error
+	)
+	if q == "" {
+		locals, err = a.Ingredients.ListActive(ctx, 0, 50)
+	} else {
+		locals, err = a.Ingredients.SearchActive(ctx, q, 20)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+
+	rows := make([]ingredientRow, 0, len(locals))
+	knownBarcodes := make(map[string]bool, len(locals))
+	for _, l := range locals {
+		rows = append(rows, ingredientRow{Local: l})
+		if l.OFFBarcode != nil {
+			knownBarcodes[*l.OFFBarcode] = true
+		}
+	}
+
+	// Solo se l'utente ha digitato qualcosa interpelliamo OFF: senza query
+	// non vogliamo bombardare il loro endpoint per la lista vuota.
+	if q == "" {
+		return rows, "", nil
+	}
+
+	products, offErr := a.OFF.SearchByName(ctx, q)
+	if offErr != nil {
+		a.Logger.Warn("OFF search failed", "err", offErr, "q", q)
+		return rows, "OpenFoodFacts non raggiungibile, mostro solo gli ingredienti locali.", nil
+	}
+	for i := range products {
+		p := products[i]
+		if knownBarcodes[p.Code] {
+			continue // gia' importato
+		}
+		rows = append(rows, ingredientRow{OFF: &p})
+	}
+	return rows, "", nil
 }
 
 func (a *App) handleIngredientNewForm(w http.ResponseWriter, r *http.Request) {
@@ -146,6 +301,59 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), "flash", "Ingrediente creato.")
+	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
+}
+
+// handleIngredientOFFImport importa per barcode dal pulsante "Importa".
+// Idempotente: se gia' presente in DB, flash "gia' presente" senza errore.
+func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) {
+	barcode := strings.TrimSpace(r.PostFormValue("barcode"))
+	if barcode == "" {
+		http.Error(w, "barcode mancante", http.StatusBadRequest)
+		return
+	}
+
+	// Pre-check: gia' importato?
+	existing, err := a.Ingredients.GetByBarcode(r.Context(), barcode)
+	if err != nil && !errors.Is(err, db.ErrIngredientNotFound) {
+		a.serverError(w, r, err)
+		return
+	}
+	if existing != nil {
+		a.Sessions.Put(r.Context(), "flash", "Ingrediente gia' presente nel DB.")
+		http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
+		return
+	}
+
+	product, err := a.OFF.GetByBarcode(r.Context(), barcode)
+	if err != nil {
+		if errors.Is(err, off.ErrNotFound) {
+			http.Error(w, "Prodotto non trovato su OpenFoodFacts", http.StatusNotFound)
+			return
+		}
+		a.Logger.Error("OFF GetByBarcode failed", "err", err, "barcode", barcode)
+		http.Error(w, "OpenFoodFacts non raggiungibile, riprova fra poco.", http.StatusBadGateway)
+		return
+	}
+	if !product.HasFullNutrients {
+		http.Error(w, "Il prodotto OFF non ha tutti i macro: crea un ingrediente locale.", http.StatusUnprocessableEntity)
+		return
+	}
+
+	var brandPtr *string
+	if b := strings.TrimSpace(product.Brand); b != "" {
+		brandPtr = &b
+	}
+	if _, err := a.Ingredients.CreateOFF(
+		r.Context(),
+		product.Code, product.Name, brandPtr,
+		domain.UnitGram, // OFF e' sempre per 100g (per liquidi spesso aggiungono 100ml in ratio fra loro, lasciamo g per MVP)
+		product.Kcal, product.Protein, product.Carbs, product.Fat,
+	); err != nil && !errors.Is(err, db.ErrBarcodeAlreadyUsed) {
+		a.serverError(w, r, err)
+		return
+	}
+	a.Sessions.Put(r.Context(), "flash", "Ingrediente importato da OpenFoodFacts.")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 

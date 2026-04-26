@@ -16,6 +16,7 @@ import (
 	"github.com/amon2126/nutreek/internal/app"
 	"github.com/amon2126/nutreek/internal/config"
 	"github.com/amon2126/nutreek/internal/db"
+	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/web"
 )
 
@@ -70,6 +71,7 @@ func run(logger *slog.Logger) error {
 		Store:       store,
 		Users:       db.NewUsers(store.DB),
 		Ingredients: db.NewIngredients(store.DB),
+		OFF:         off.NewClient(cfg.OFFBaseURL, logger),
 		Sessions:    sessions,
 		Render:      renderer,
 		Logger:      logger,

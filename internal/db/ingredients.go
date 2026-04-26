@@ -13,6 +13,10 @@ import (
 // ErrIngredientNotFound viene restituito dalle Get quando la riga non esiste.
 var ErrIngredientNotFound = errors.New("ingrediente non trovato")
 
+// ErrBarcodeAlreadyUsed viene restituito da CreateOFF se il barcode esiste gia'.
+// Il chiamante puo' recuperare la riga esistente con GetByBarcode.
+var ErrBarcodeAlreadyUsed = errors.New("barcode gia' presente")
+
 // Ingredients e' il repository degli ingredienti.
 type Ingredients struct {
 	db *sql.DB
@@ -53,6 +57,48 @@ func (r *Ingredients) CreateLocal(
 func (r *Ingredients) GetByID(ctx context.Context, id int64) (*domain.Ingredient, error) {
 	row := r.db.QueryRowContext(ctx, selectIngredientCols+` FROM ingredients WHERE id = ?`, id)
 	return scanIngredient(row.Scan)
+}
+
+// GetByBarcode ritorna l'ingrediente OFF con quel barcode o ErrIngredientNotFound.
+func (r *Ingredients) GetByBarcode(ctx context.Context, barcode string) (*domain.Ingredient, error) {
+	row := r.db.QueryRowContext(ctx,
+		selectIngredientCols+` FROM ingredients WHERE off_barcode = ?`,
+		strings.TrimSpace(barcode),
+	)
+	return scanIngredient(row.Scan)
+}
+
+// CreateOFF inserisce un ingrediente importato da OpenFoodFacts. Setta
+// `last_verified_at = CURRENT_TIMESTAMP` perche' il dato e' appena stato
+// preso da OFF. Se il barcode esiste gia' ritorna ErrBarcodeAlreadyUsed.
+func (r *Ingredients) CreateOFF(
+	ctx context.Context,
+	barcode, name string,
+	brand *string,
+	unit domain.IngredientUnit,
+	kcal, protein, carbs, fat float64,
+) (int64, error) {
+	res, err := r.db.ExecContext(ctx, `
+		INSERT INTO ingredients (
+			source, off_barcode, name, brand, unit,
+			kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
+			last_verified_at
+		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`,
+		strings.TrimSpace(barcode), strings.TrimSpace(name), brand, string(unit),
+		kcal, protein, carbs, fat,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return 0, ErrBarcodeAlreadyUsed
+		}
+		return 0, fmt.Errorf("insert OFF ingredient: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("last insert id: %w", err)
+	}
+	return id, nil
 }
 
 // SearchActive cerca ingredienti non superseded che hanno q come substring

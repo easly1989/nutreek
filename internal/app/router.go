@@ -47,6 +47,7 @@ func (a *App) Router() http.Handler {
 		r.Get("/ingredients/search", a.handleIngredientsSearchPartial)
 		r.Get("/ingredients/new", a.handleIngredientNewForm)
 		r.Post("/ingredients", a.handleIngredientCreate)
+		r.Post("/ingredients/off-import", a.handleIngredientOFFImport)
 	})
 
 	return r
