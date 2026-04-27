@@ -89,5 +89,26 @@ func (r *Renderer) RenderPartial(w http.ResponseWriter, status int, page, partia
 func funcMap() template.FuncMap {
 	return template.FuncMap{
 		"add": func(a, b int) int { return a + b },
+		"dayLabel": func(d int) string {
+			switch {
+			case d == -1:
+				return "Ogni giorno"
+			case d == 0:
+				return "Lun"
+			case d == 1:
+				return "Mar"
+			case d == 2:
+				return "Mer"
+			case d == 3:
+				return "Gio"
+			case d == 4:
+				return "Ven"
+			case d == 5:
+				return "Sab"
+			case d == 6:
+				return "Dom"
+			}
+			return "?"
+		},
 	}
 }
