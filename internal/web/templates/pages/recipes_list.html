@@ -1,0 +1,44 @@
+{{define "title"}}Ricette — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-3xl">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-semibold">Ricette</h1>
+    <a href="/recipes/new" class="inline-block bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Nuova</a>
+  </div>
+
+  <section class="mb-8">
+    <h2 class="text-lg font-medium mb-3">Le mie</h2>
+    {{if .Mine}}
+      <ul class="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+        {{range .Mine}}
+          <li class="px-4 py-3 flex items-baseline justify-between gap-4">
+            <a href="/recipes/{{.ID}}" class="font-medium text-slate-900 hover:underline">{{.Name}}</a>
+            <span class="text-xs text-slate-500">
+              {{.Servings}} porzion{{if eq .Servings 1}}e{{else}}i{{end}}
+              {{if .IsPublic}}· <span class="text-emerald-700">pubblica</span>{{end}}
+            </span>
+          </li>
+        {{end}}
+      </ul>
+    {{else}}
+      <p class="text-sm text-slate-500 px-4 py-6 text-center border border-dashed border-slate-300 rounded">
+        Nessuna ricetta ancora. Crea la prima.
+      </p>
+    {{end}}
+  </section>
+
+  {{if .Others}}
+    <section>
+      <h2 class="text-lg font-medium mb-3">Pubbliche di altri utenti</h2>
+      <ul class="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+        {{range .Others}}
+          <li class="px-4 py-3 flex items-baseline justify-between gap-4">
+            <a href="/recipes/{{.ID}}" class="font-medium text-slate-900 hover:underline">{{.Name}}</a>
+            <span class="text-xs text-slate-500">{{.Servings}} porzioni</span>
+          </li>
+        {{end}}
+      </ul>
+    </section>
+  {{end}}
+</div>
+{{end}}
