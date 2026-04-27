@@ -1,0 +1,37 @@
+{{define "title"}}Nuova ricetta — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-xl">
+  <h1 class="text-3xl font-semibold mb-6">Nuova ricetta</h1>
+
+  {{if .Error}}
+    <div class="mb-4 rounded border border-red-200 bg-red-50 text-red-900 px-4 py-2 text-sm">{{.Error}}</div>
+  {{end}}
+
+  <form method="post" action="/recipes" class="space-y-4 bg-white border border-slate-200 rounded p-6">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="f-name">Nome</label>
+      <input id="f-name" name="name" required value="{{.Form.Name}}" class="w-full rounded border border-slate-300 px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="f-desc">Descrizione <span class="text-slate-400 font-normal">(opzionale)</span></label>
+      <textarea id="f-desc" name="description" rows="3" class="w-full rounded border border-slate-300 px-3 py-2">{{.Form.Description}}</textarea>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="f-srv">Porzioni</label>
+        <input id="f-srv" name="servings" required inputmode="numeric" value="{{.Form.Servings}}" class="w-full rounded border border-slate-300 px-3 py-2">
+      </div>
+      <label class="flex items-center gap-2 mt-6">
+        <input type="checkbox" name="is_public" {{if .Form.IsPublic}}checked{{end}} class="rounded border-slate-300">
+        <span class="text-sm text-slate-700">Pubblica (visibile agli altri utenti)</span>
+      </label>
+    </div>
+    <div class="flex items-center justify-between pt-2">
+      <a href="/recipes" class="text-sm text-slate-600 hover:underline">Annulla</a>
+      <button class="bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Crea</button>
+    </div>
+  </form>
+</div>
+{{end}}

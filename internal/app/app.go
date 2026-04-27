@@ -19,6 +19,7 @@ type App struct {
 	Store       *db.Store
 	Users       *db.Users
 	Ingredients *db.Ingredients
+	Recipes     *db.Recipes
 	OFF         *off.Client
 	Sessions    *scs.SessionManager
 	Render      *web.Renderer

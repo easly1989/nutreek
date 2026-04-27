@@ -14,6 +14,7 @@
       {{if .User}}
         <div class="flex items-center gap-4 text-sm">
           <a href="/ingredients" class="text-slate-700 hover:underline">Ingredienti</a>
+          <a href="/recipes" class="text-slate-700 hover:underline">Ricette</a>
           <span class="text-slate-600">{{.User.DisplayName}}</span>
           <form method="post" action="/logout" class="inline">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
