@@ -1,0 +1,36 @@
+{{define "title"}}Template pasti — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-3xl">
+  <div class="flex items-center justify-between mb-2">
+    <h1 class="text-3xl font-semibold">Template pasti</h1>
+    <a href="/templates/new" class="inline-block bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Nuovo</a>
+  </div>
+  <p class="text-sm text-slate-600 mb-6">
+    I template definiscono lo schema di pasti settimanale (Colazione, Pranzo, Cena, ...). Quello "attivo" verra' applicato di default alle nuove settimane.
+  </p>
+
+  {{if .Templates}}
+    <ul class="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+      {{range .Templates}}
+        <li class="px-4 py-3 flex items-baseline justify-between gap-4">
+          <a href="/templates/{{.ID}}" class="font-medium text-slate-900 hover:underline">{{.Name}}</a>
+          <div class="flex items-center gap-3 text-xs text-slate-500">
+            {{if .IsActive}}
+              <span class="text-emerald-700">attivo</span>
+            {{else}}
+              <form method="post" action="/templates/{{.ID}}/activate" class="inline">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <button class="text-slate-700 hover:underline">Attiva</button>
+              </form>
+            {{end}}
+          </div>
+        </li>
+      {{end}}
+    </ul>
+  {{else}}
+    <p class="text-sm text-slate-500 px-4 py-6 text-center border border-dashed border-slate-300 rounded">
+      Nessun template ancora. Crea il primo per iniziare.
+    </p>
+  {{end}}
+</div>
+{{end}}

@@ -57,6 +57,16 @@ func (a *App) Router() http.Handler {
 		r.Post("/recipes/{id}/delete", a.handleRecipeDelete)
 		r.Post("/recipes/{id}/items", a.handleRecipeAddItem)
 		r.Post("/recipes/{id}/items/{itemID}/delete", a.handleRecipeRemoveItem)
+
+		r.Get("/templates", a.handleTemplatesList)
+		r.Get("/templates/new", a.handleTemplateNewForm)
+		r.Post("/templates", a.handleTemplateCreate)
+		r.Get("/templates/{id}", a.handleTemplateEdit)
+		r.Post("/templates/{id}", a.handleTemplateRename)
+		r.Post("/templates/{id}/activate", a.handleTemplateActivate)
+		r.Post("/templates/{id}/delete", a.handleTemplateDelete)
+		r.Post("/templates/{id}/slots", a.handleTemplateAddSlot)
+		r.Post("/templates/{id}/slots/{slotID}/delete", a.handleTemplateRemoveSlot)
 	})
 
 	return r
