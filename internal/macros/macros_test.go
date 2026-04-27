@@ -104,3 +104,70 @@ func TestForRecipeEmpty(t *testing.T) {
 		t.Error("ricetta vuota dovrebbe essere zero")
 	}
 }
+
+func TestForMealItemIngredient(t *testing.T) {
+	pane := domain.Ingredient{KcalPer100: 240, ProteinPer100: 8, CarbsPer100: 44, FatPer100: 2}
+	item := domain.MealItemFull{
+		MealItem:   domain.MealItem{Quantity: 50},
+		Ingredient: &pane,
+	}
+	got := ForMealItem(item)
+	want := Macros{Kcal: 120, Protein: 4, Carbs: 22, Fat: 1}
+	if got != want {
+		t.Errorf("got %+v want %+v", got, want)
+	}
+}
+
+func TestForMealItemRecipe(t *testing.T) {
+	pane := domain.Ingredient{KcalPer100: 240, ProteinPer100: 8, CarbsPer100: 44, FatPer100: 2}
+	olio := domain.Ingredient{KcalPer100: 900, FatPer100: 100}
+	recipe := domain.Recipe{Servings: 2}
+	// Ricetta totale: 200g pane (480 kcal) + 10g olio (90 kcal) = 570 kcal,
+	// 14g fat. Per 2 porzioni: 285 kcal, 7g fat per porzione.
+	rItems := []domain.RecipeItemFull{
+		{RecipeItem: domain.RecipeItem{Quantity: 200}, Ingredient: pane},
+		{RecipeItem: domain.RecipeItem{Quantity: 10}, Ingredient: olio},
+	}
+	// Item da 1.5 porzioni → 285 * 1.5 = 427.5 kcal.
+	item := domain.MealItemFull{
+		MealItem:    domain.MealItem{Quantity: 1.5},
+		Recipe:      &recipe,
+		RecipeItems: rItems,
+	}
+	got := ForMealItem(item)
+	if !almostEqual(got.Kcal, 427.5) {
+		t.Errorf("kcal: got %v want 427.5", got.Kcal)
+	}
+	if !almostEqual(got.Fat, 10.5) { // 7 * 1.5
+		t.Errorf("fat: got %v want 10.5", got.Fat)
+	}
+}
+
+func TestForDayAndWeek(t *testing.T) {
+	pane := domain.Ingredient{KcalPer100: 240, ProteinPer100: 8, CarbsPer100: 44, FatPer100: 2}
+	makeMeal := func(name string, qty float64) domain.MealWithItems {
+		return domain.MealWithItems{
+			Meal: domain.Meal{Name: name},
+			Items: []domain.MealItemFull{
+				{MealItem: domain.MealItem{Quantity: qty}, Ingredient: &pane},
+			},
+		}
+	}
+	day := []domain.MealWithItems{
+		makeMeal("Colazione", 100), // 240 kcal
+		makeMeal("Pranzo", 200),    // 480 kcal
+	}
+	got := ForDay(day)
+	if !almostEqual(got.Kcal, 720) {
+		t.Errorf("ForDay kcal: %v want 720", got.Kcal)
+	}
+
+	var week [7][]domain.MealWithItems
+	for i := range week {
+		week[i] = day
+	}
+	gotW := ForWeek(week)
+	if !almostEqual(gotW.Kcal, 720*7) {
+		t.Errorf("ForWeek kcal: %v want 5040", gotW.Kcal)
+	}
+}

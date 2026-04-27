@@ -1,0 +1,129 @@
+{{define "title"}}Dashboard — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-5xl">
+  <!-- Header settimana -->
+  <div class="flex items-center justify-between mb-1 flex-wrap gap-3">
+    <h1 class="text-3xl font-semibold">
+      Settimana del {{.WeekStart.Format "02/01/2006"}}
+    </h1>
+    <div class="flex items-center gap-2 text-sm">
+      <a href="/?start={{.PrevWeek}}" class="rounded border border-slate-300 px-3 py-1 hover:bg-slate-100">&larr; precedente</a>
+      <a href="/" class="rounded border border-slate-300 px-3 py-1 hover:bg-slate-100">oggi</a>
+      <a href="/?start={{.NextWeek}}" class="rounded border border-slate-300 px-3 py-1 hover:bg-slate-100">prossima &rarr;</a>
+    </div>
+  </div>
+
+  <!-- Macro settimana -->
+  <div class="mt-4 mb-6 rounded border border-slate-200 bg-white p-4 grid grid-cols-4 gap-4 text-center">
+    <div>
+      <p class="text-xs text-slate-500 uppercase">Kcal sett.</p>
+      <p class="text-2xl font-semibold">{{printf "%.0f" .WeekTotal.Kcal}}</p>
+    </div>
+    <div>
+      <p class="text-xs text-slate-500 uppercase">Proteine</p>
+      <p class="text-2xl font-semibold">{{printf "%.0f" .WeekTotal.Protein}}<span class="text-sm font-normal text-slate-500">g</span></p>
+    </div>
+    <div>
+      <p class="text-xs text-slate-500 uppercase">Carbo</p>
+      <p class="text-2xl font-semibold">{{printf "%.0f" .WeekTotal.Carbs}}<span class="text-sm font-normal text-slate-500">g</span></p>
+    </div>
+    <div>
+      <p class="text-xs text-slate-500 uppercase">Grassi</p>
+      <p class="text-2xl font-semibold">{{printf "%.0f" .WeekTotal.Fat}}<span class="text-sm font-normal text-slate-500">g</span></p>
+    </div>
+  </div>
+
+  <!-- Apply-template / Add-meal toolbox -->
+  <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <form method="post" action="/week/apply-template" class="bg-white border border-slate-200 rounded p-4">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <input type="hidden" name="start" value="{{.WeekStart.Format "2006-01-02"}}">
+      <p class="text-sm font-medium text-slate-700 mb-2">Applica template</p>
+      <div class="flex items-center gap-2">
+        <select name="template_id" required class="grow rounded border border-slate-300 px-3 py-2">
+          <option value="">— scegli —</option>
+          {{range .Templates}}
+            <option value="{{.ID}}" {{if .IsActive}}selected{{end}}>{{.Name}}{{if .IsActive}} (attivo){{end}}</option>
+          {{end}}
+        </select>
+        <button class="bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800 text-sm">Applica</button>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">Funziona solo se la settimana e' vuota.</p>
+    </form>
+
+    <form method="post" action="/meals" class="bg-white border border-slate-200 rounded p-4">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <input type="hidden" name="start" value="{{.WeekStart.Format "2006-01-02"}}">
+      <p class="text-sm font-medium text-slate-700 mb-2">Aggiungi pasto manuale</p>
+      <div class="flex items-center gap-2">
+        <input name="name" required placeholder="es. Spuntino" class="grow rounded border border-slate-300 px-3 py-2">
+        <select name="day_of_week" class="rounded border border-slate-300 px-3 py-2">
+          <option value="0">Lun</option><option value="1">Mar</option><option value="2">Mer</option>
+          <option value="3">Gio</option><option value="4">Ven</option><option value="5">Sab</option>
+          <option value="6">Dom</option>
+        </select>
+        <button class="bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800 text-sm">+</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Griglia 7 giorni -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {{range .Days}}
+      <section class="bg-white border border-slate-200 rounded p-4">
+        <header class="flex items-baseline justify-between mb-2">
+          <h2 class="font-medium text-slate-900">
+            {{.Label}}
+            <span class="text-xs text-slate-500 font-normal">{{.Date.Format "02/01"}}</span>
+          </h2>
+          <span class="text-xs text-slate-500">{{printf "%.0f" .DayTotal.Kcal}} kcal</span>
+        </header>
+        {{if .Meals}}
+          <ul class="divide-y divide-slate-100">
+            {{range .Meals}}
+              <li class="py-2">
+                <div class="flex items-baseline justify-between gap-2 mb-1">
+                  <p class="text-sm font-medium text-slate-800">{{.Meal.Name}}</p>
+                  <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span>{{printf "%.0f" .MealTotal.Kcal}} kcal</span>
+                    <a href="/meals/{{.Meal.ID}}/items/new?start={{$.WeekStart.Format "2006-01-02"}}"
+                       class="text-slate-700 hover:underline">+</a>
+                    <form method="post" action="/meals/{{.Meal.ID}}/delete?start={{$.WeekStart.Format "2006-01-02"}}" class="inline">
+                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                      <button class="text-red-700 hover:underline">×</button>
+                    </form>
+                  </div>
+                </div>
+                {{if .ItemViews}}
+                  <ul class="text-xs text-slate-600 space-y-1 ml-2">
+                    {{range .ItemViews}}
+                      <li class="flex items-baseline justify-between gap-2">
+                        <span>
+                          {{if .Item.Recipe}}
+                            <span class="text-slate-500">[ric]</span> {{.Item.Recipe.Name}} × {{printf "%.1f" .Item.Quantity}}
+                          {{else if .Item.Ingredient}}
+                            {{.Item.Ingredient.Name}} {{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}
+                          {{end}}
+                        </span>
+                        <span class="flex items-center gap-2">
+                          <span class="text-slate-500">{{printf "%.0f" .Macros.Kcal}}</span>
+                          <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart.Format "2006-01-02"}}" class="inline">
+                            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                            <button class="text-red-700 hover:underline text-xs">×</button>
+                          </form>
+                        </span>
+                      </li>
+                    {{end}}
+                  </ul>
+                {{end}}
+              </li>
+            {{end}}
+          </ul>
+        {{else}}
+          <p class="text-xs text-slate-500 italic">Nessun pasto.</p>
+        {{end}}
+      </section>
+    {{end}}
+  </div>
+</div>
+{{end}}
