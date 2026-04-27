@@ -1,0 +1,492 @@
+package db
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/amon2126/nutreek/internal/domain"
+)
+
+// ErrPlanNotFound = piano inesistente.
+var ErrPlanNotFound = errors.New("piano settimanale non trovato")
+
+// ErrMealNotFound / ErrMealItemNotFound: stessa logica di RecipeItem.
+var (
+	ErrMealNotFound     = errors.New("pasto non trovato")
+	ErrMealItemNotFound = errors.New("voce di pasto non trovata")
+)
+
+// WeeklyPlans e' il repo dei piani settimanali.
+type WeeklyPlans struct {
+	db *sql.DB
+}
+
+func NewWeeklyPlans(db *sql.DB) *WeeklyPlans {
+	return &WeeklyPlans{db: db}
+}
+
+// MondayOf normalizza una data al lunedi' della stessa settimana (ISO).
+func MondayOf(t time.Time) time.Time {
+	wd := int(t.Weekday()) // domenica=0, lunedi'=1
+	// Trasformo a 0=lun..6=dom:
+	off := (wd + 6) % 7
+	return time.Date(t.Year(), t.Month(), t.Day()-off, 0, 0, 0, 0, t.Location())
+}
+
+// GetOrCreateForWeek ritorna il piano per (user, weekStart). Se non esiste,
+// lo crea (idempotente). weekStart deve essere un lunedi'.
+func (r *WeeklyPlans) GetOrCreateForWeek(ctx context.Context, userID int64, weekStart time.Time) (*domain.WeeklyPlan, error) {
+	weekStart = MondayOf(weekStart)
+	dateStr := weekStart.Format("2006-01-02")
+
+	// INSERT OR IGNORE per evitare race su unique(user, week_start).
+	if _, err := r.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO weekly_plans (user_id, week_start) VALUES (?, ?)`,
+		userID, dateStr,
+	); err != nil {
+		return nil, fmt.Errorf("upsert plan: %w", err)
+	}
+
+	row := r.db.QueryRowContext(ctx,
+		`SELECT id, user_id, week_start, template_id
+		 FROM weekly_plans WHERE user_id = ? AND week_start = ?`,
+		userID, dateStr,
+	)
+	var (
+		p          domain.WeeklyPlan
+		dateScan   string
+	)
+	if err := row.Scan(&p.ID, &p.UserID, &dateScan, &p.TemplateID); err != nil {
+		return nil, fmt.Errorf("read plan: %w", err)
+	}
+	if t, err := time.Parse("2006-01-02", strings.Split(dateScan, "T")[0]); err == nil {
+		p.WeekStart = t
+	} else {
+		p.WeekStart = weekStart
+	}
+	return &p, nil
+}
+
+// HasMeals indica se il piano ha gia' almeno un meal (per evitare double apply).
+func (r *WeeklyPlans) HasMeals(ctx context.Context, planID int64) (bool, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM meals WHERE weekly_plan_id = ?`, planID,
+	).Scan(&n)
+	if err != nil {
+		return false, fmt.Errorf("count meals: %w", err)
+	}
+	return n > 0, nil
+}
+
+// ApplyTemplate espande gli slot del template in righe `meals`. Slot con
+// day_of_week=-1 vengono espansi a 7 righe (una per giorno). Esegue in
+// transazione. Se il piano gia' contiene meals, ritorna senza fare niente
+// (idempotente lato chiamante: usare HasMeals per decidere prima).
+func (r *WeeklyPlans) ApplyTemplate(ctx context.Context, planID, userID, templateID int64) error {
+	// Verifica ownership del piano + del template.
+	var pUser int64
+	err := r.db.QueryRowContext(ctx, `SELECT user_id FROM weekly_plans WHERE id = ?`, planID).Scan(&pUser)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrPlanNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("plan owner: %w", err)
+	}
+	if pUser != userID {
+		return ErrMealTemplateForbidden
+	}
+	var tUser int64
+	err = r.db.QueryRowContext(ctx, `SELECT user_id FROM meal_templates WHERE id = ?`, templateID).Scan(&tUser)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrMealTemplateNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("template owner: %w", err)
+	}
+	if tUser != userID {
+		return ErrMealTemplateForbidden
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Tag the plan with the template id.
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE weekly_plans SET template_id = ? WHERE id = ?`, templateID, planID,
+	); err != nil {
+		return fmt.Errorf("tag plan: %w", err)
+	}
+
+	// Carica le slot.
+	rows, err := tx.QueryContext(ctx,
+		`SELECT day_of_week, name, sort_order
+		 FROM meal_template_slots WHERE template_id = ?
+		 ORDER BY day_of_week, sort_order`, templateID,
+	)
+	if err != nil {
+		return fmt.Errorf("load slots: %w", err)
+	}
+	type slot struct {
+		Day       int
+		Name      string
+		SortOrder int
+	}
+	var slots []slot
+	for rows.Next() {
+		var s slot
+		if err := rows.Scan(&s.Day, &s.Name, &s.SortOrder); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan slot: %w", err)
+		}
+		slots = append(slots, s)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	// Espandi e inserisci. day=-1 → loop 0..6.
+	stmt, err := tx.PrepareContext(ctx,
+		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`,
+	)
+	if err != nil {
+		return fmt.Errorf("prepare insert meal: %w", err)
+	}
+	defer stmt.Close()
+	for _, s := range slots {
+		if s.Day == domain.DayOfWeekEvery {
+			for d := 0; d < 7; d++ {
+				if _, err := stmt.ExecContext(ctx, planID, d, s.Name, s.SortOrder); err != nil {
+					return fmt.Errorf("insert meal: %w", err)
+				}
+			}
+		} else {
+			if _, err := stmt.ExecContext(ctx, planID, s.Day, s.Name, s.SortOrder); err != nil {
+				return fmt.Errorf("insert meal: %w", err)
+			}
+		}
+	}
+	return tx.Commit()
+}
+
+// AddMeal manualmente (override del template).
+func (r *WeeklyPlans) AddMeal(ctx context.Context, planID, userID int64, day int, name string) (int64, error) {
+	if err := r.assertPlanOwner(ctx, planID, userID); err != nil {
+		return 0, err
+	}
+	if day < 0 || day > 6 {
+		return 0, fmt.Errorf("day_of_week fuori range")
+	}
+	if strings.TrimSpace(name) == "" {
+		return 0, fmt.Errorf("nome pasto vuoto")
+	}
+	var nextOrder int
+	if err := r.db.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(sort_order)+1, 0) FROM meals WHERE weekly_plan_id = ? AND day_of_week = ?`,
+		planID, day,
+	).Scan(&nextOrder); err != nil {
+		return 0, fmt.Errorf("compute sort_order: %w", err)
+	}
+	res, err := r.db.ExecContext(ctx,
+		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`,
+		planID, day, strings.TrimSpace(name), nextOrder,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("insert meal: %w", err)
+	}
+	return res.LastInsertId()
+}
+
+// RemoveMeal cancella un pasto (e items via CASCADE).
+func (r *WeeklyPlans) RemoveMeal(ctx context.Context, mealID, userID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+		DELETE FROM meals
+		WHERE id = ?
+		  AND weekly_plan_id IN (SELECT id FROM weekly_plans WHERE user_id = ?)
+	`, mealID, userID)
+	if err != nil {
+		return fmt.Errorf("delete meal: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrMealNotFound
+	}
+	return nil
+}
+
+// AddItem aggiunge una voce a un pasto. Esattamente uno fra recipeID e
+// ingredientID dev'essere != 0 (= nil pointer). Quantity > 0.
+func (r *WeeklyPlans) AddItem(
+	ctx context.Context,
+	mealID, userID int64,
+	recipeID, ingredientID *int64,
+	quantity float64,
+) (int64, error) {
+	// Verifica che il pasto appartenga a un piano dell'utente.
+	var planUser int64
+	err := r.db.QueryRowContext(ctx, `
+		SELECT wp.user_id
+		FROM meals m JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
+		WHERE m.id = ?`, mealID,
+	).Scan(&planUser)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrMealNotFound
+	}
+	if err != nil {
+		return 0, fmt.Errorf("meal owner: %w", err)
+	}
+	if planUser != userID {
+		return 0, ErrPlanNotFound
+	}
+	if (recipeID == nil) == (ingredientID == nil) {
+		return 0, fmt.Errorf("specifica esattamente una fra recipe_id e ingredient_id")
+	}
+	if quantity <= 0 {
+		return 0, fmt.Errorf("quantita' deve essere > 0")
+	}
+	res, err := r.db.ExecContext(ctx,
+		`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity) VALUES (?, ?, ?, ?)`,
+		mealID, recipeID, ingredientID, quantity,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("insert meal_item: %w", err)
+	}
+	return res.LastInsertId()
+}
+
+// RemoveItem cancella un meal_item; verifica ownership tramite join.
+func (r *WeeklyPlans) RemoveItem(ctx context.Context, itemID, userID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+		DELETE FROM meal_items
+		WHERE id = ?
+		  AND meal_id IN (
+		    SELECT m.id FROM meals m
+		    JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
+		    WHERE wp.user_id = ?
+		  )
+	`, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("delete meal_item: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrMealItemNotFound
+	}
+	return nil
+}
+
+// LoadFull carica plan + meals + items + (recipes + ingredients) in 4 query.
+// Mette tutto sotto WeeklyPlanFull.Days[0..6]. La risoluzione di Recipe/
+// Ingredient e' caricata in batch (una query per tipo) e poi mappata.
+func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*domain.WeeklyPlanFull, error) {
+	out := &domain.WeeklyPlanFull{WeeklyPlan: *plan}
+
+	// 1. meals
+	mealRows, err := r.db.QueryContext(ctx,
+		`SELECT id, weekly_plan_id, day_of_week, name, sort_order
+		 FROM meals WHERE weekly_plan_id = ?
+		 ORDER BY day_of_week, sort_order, id`, plan.ID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("load meals: %w", err)
+	}
+	mealByID := make(map[int64]*domain.MealWithItems)
+	var mealIDs []int64
+	for mealRows.Next() {
+		var m domain.Meal
+		if err := mealRows.Scan(&m.ID, &m.WeeklyPlanID, &m.DayOfWeek, &m.Name, &m.SortOrder); err != nil {
+			mealRows.Close()
+			return nil, fmt.Errorf("scan meal: %w", err)
+		}
+		mw := &domain.MealWithItems{Meal: m}
+		mealByID[m.ID] = mw
+		mealIDs = append(mealIDs, m.ID)
+	}
+	mealRows.Close()
+
+	if len(mealIDs) == 0 {
+		// Nessun pasto: ritorna struct vuota.
+		return out, nil
+	}
+
+	// 2. items per quei meals.
+	placeholders := strings.Repeat("?,", len(mealIDs)-1) + "?"
+	args := make([]any, len(mealIDs))
+	for i, id := range mealIDs {
+		args[i] = id
+	}
+	itemRows, err := r.db.QueryContext(ctx, `
+		SELECT id, meal_id, recipe_id, ingredient_id, quantity
+		FROM meal_items WHERE meal_id IN (`+placeholders+`)
+		ORDER BY id
+	`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("load items: %w", err)
+	}
+	itemsByMeal := make(map[int64][]*domain.MealItemFull)
+	var recipeIDs, ingredientIDs []int64
+	for itemRows.Next() {
+		var it domain.MealItem
+		if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngredientID, &it.Quantity); err != nil {
+			itemRows.Close()
+			return nil, fmt.Errorf("scan item: %w", err)
+		}
+		full := &domain.MealItemFull{MealItem: it}
+		itemsByMeal[it.MealID] = append(itemsByMeal[it.MealID], full)
+		if it.RecipeID != nil {
+			recipeIDs = append(recipeIDs, *it.RecipeID)
+		}
+		if it.IngredientID != nil {
+			ingredientIDs = append(ingredientIDs, *it.IngredientID)
+		}
+	}
+	itemRows.Close()
+
+	// 3. ingredients in batch.
+	ingMap := make(map[int64]*domain.Ingredient)
+	if len(ingredientIDs) > 0 {
+		ph := strings.Repeat("?,", len(ingredientIDs)-1) + "?"
+		ia := make([]any, len(ingredientIDs))
+		for i, id := range ingredientIDs {
+			ia[i] = id
+		}
+		ingRows, err := r.db.QueryContext(ctx, `
+			SELECT id, source, off_barcode, name, brand, unit,
+			       kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
+			       created_by, created_at, last_verified_at, superseded_by
+			FROM ingredients WHERE id IN (`+ph+`)
+		`, ia...)
+		if err != nil {
+			return nil, fmt.Errorf("load ingredients: %w", err)
+		}
+		for ingRows.Next() {
+			var ing domain.Ingredient
+			var src, unit string
+			err := ingRows.Scan(
+				&ing.ID, &src, &ing.OFFBarcode, &ing.Name, &ing.Brand, &unit,
+				&ing.KcalPer100, &ing.ProteinPer100, &ing.CarbsPer100, &ing.FatPer100,
+				&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy,
+			)
+			if err != nil {
+				ingRows.Close()
+				return nil, fmt.Errorf("scan ingredient: %w", err)
+			}
+			ing.Source = domain.IngredientSource(src)
+			ing.Unit = domain.IngredientUnit(unit)
+			ingMap[ing.ID] = &ing
+		}
+		ingRows.Close()
+	}
+
+	// 4. recipes (con i loro items joined a ingredients) in batch.
+	recipeMap := make(map[int64]*domain.Recipe)
+	recipeItemsMap := make(map[int64][]domain.RecipeItemFull)
+	if len(recipeIDs) > 0 {
+		ph := strings.Repeat("?,", len(recipeIDs)-1) + "?"
+		ra := make([]any, len(recipeIDs))
+		for i, id := range recipeIDs {
+			ra[i] = id
+		}
+		recRows, err := r.db.QueryContext(ctx, `
+			SELECT id, user_id, name, description, servings, is_public, created_at, updated_at
+			FROM recipes WHERE id IN (`+ph+`)
+		`, ra...)
+		if err != nil {
+			return nil, fmt.Errorf("load recipes: %w", err)
+		}
+		for recRows.Next() {
+			var rec domain.Recipe
+			var pub int
+			err := recRows.Scan(&rec.ID, &rec.UserID, &rec.Name, &rec.Description,
+				&rec.Servings, &pub, &rec.CreatedAt, &rec.UpdatedAt)
+			if err != nil {
+				recRows.Close()
+				return nil, fmt.Errorf("scan recipe: %w", err)
+			}
+			rec.IsPublic = pub == 1
+			recipeMap[rec.ID] = &rec
+		}
+		recRows.Close()
+
+		// recipe_ingredients joined a ingredients per ognuna delle ricette.
+		ph2 := strings.Repeat("?,", len(recipeIDs)-1) + "?"
+		ra2 := make([]any, len(recipeIDs))
+		for i, id := range recipeIDs {
+			ra2[i] = id
+		}
+		riRows, err := r.db.QueryContext(ctx, `
+			SELECT ri.id, ri.recipe_id, ri.ingredient_id, ri.quantity, ri.sort_order,
+			       i.id, i.source, i.off_barcode, i.name, i.brand, i.unit,
+			       i.kcal_per_100, i.protein_per_100, i.carbs_per_100, i.fat_per_100,
+			       i.created_by, i.created_at, i.last_verified_at, i.superseded_by
+			FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id
+			WHERE ri.recipe_id IN (`+ph2+`)
+			ORDER BY ri.recipe_id, ri.sort_order, ri.id
+		`, ra2...)
+		if err != nil {
+			return nil, fmt.Errorf("load recipe_items: %w", err)
+		}
+		for riRows.Next() {
+			var it domain.RecipeItemFull
+			var src, unit string
+			err := riRows.Scan(
+				&it.ID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder,
+				&it.Ingredient.ID, &src, &it.Ingredient.OFFBarcode, &it.Ingredient.Name,
+				&it.Ingredient.Brand, &unit,
+				&it.Ingredient.KcalPer100, &it.Ingredient.ProteinPer100,
+				&it.Ingredient.CarbsPer100, &it.Ingredient.FatPer100,
+				&it.Ingredient.CreatedBy, &it.Ingredient.CreatedAt,
+				&it.Ingredient.LastVerifiedAt, &it.Ingredient.SupersededBy,
+			)
+			if err != nil {
+				riRows.Close()
+				return nil, fmt.Errorf("scan recipe_item: %w", err)
+			}
+			it.Ingredient.Source = domain.IngredientSource(src)
+			it.Ingredient.Unit = domain.IngredientUnit(unit)
+			recipeItemsMap[it.RecipeID] = append(recipeItemsMap[it.RecipeID], it)
+		}
+		riRows.Close()
+	}
+
+	// 5. assemble: collega items con i loro target, distribuisce nei Days.
+	for mealID, mw := range mealByID {
+		for _, it := range itemsByMeal[mealID] {
+			if it.RecipeID != nil {
+				it.Recipe = recipeMap[*it.RecipeID]
+				it.RecipeItems = recipeItemsMap[*it.RecipeID]
+			}
+			if it.IngredientID != nil {
+				it.Ingredient = ingMap[*it.IngredientID]
+			}
+			mw.Items = append(mw.Items, *it)
+		}
+		if mw.DayOfWeek >= 0 && mw.DayOfWeek < 7 {
+			out.Days[mw.DayOfWeek] = append(out.Days[mw.DayOfWeek], *mw)
+		}
+	}
+	return out, nil
+}
+
+func (r *WeeklyPlans) assertPlanOwner(ctx context.Context, planID, userID int64) error {
+	var owner int64
+	err := r.db.QueryRowContext(ctx, `SELECT user_id FROM weekly_plans WHERE id = ?`, planID).Scan(&owner)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrPlanNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("plan owner: %w", err)
+	}
+	if owner != userID {
+		return ErrPlanNotFound
+	}
+	return nil
+}

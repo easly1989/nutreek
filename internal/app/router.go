@@ -32,7 +32,7 @@ func (a *App) Router() http.Handler {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	r.Get("/", a.handleHome)
+	r.Get("/", a.handleDashboard)
 
 	r.Get("/login", a.handleLoginForm)
 	r.Post("/login", a.handleLogin)
@@ -67,6 +67,14 @@ func (a *App) Router() http.Handler {
 		r.Post("/templates/{id}/delete", a.handleTemplateDelete)
 		r.Post("/templates/{id}/slots", a.handleTemplateAddSlot)
 		r.Post("/templates/{id}/slots/{slotID}/delete", a.handleTemplateRemoveSlot)
+
+		// Piano settimanale (la dashboard e' montata su /).
+		r.Post("/week/apply-template", a.handleApplyTemplate)
+		r.Post("/meals", a.handleAddMeal)
+		r.Post("/meals/{mealID}/delete", a.handleRemoveMeal)
+		r.Get("/meals/{mealID}/items/new", a.handleAddItemForm)
+		r.Post("/meals/{mealID}/items", a.handleAddMealItem)
+		r.Post("/meal-items/{itemID}/delete", a.handleRemoveMealItem)
 	})
 
 	return r

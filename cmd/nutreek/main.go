@@ -73,6 +73,7 @@ func run(logger *slog.Logger) error {
 		Ingredients:   db.NewIngredients(store.DB),
 		Recipes:       db.NewRecipes(store.DB),
 		MealTemplates: db.NewMealTemplates(store.DB),
+		WeeklyPlans:   db.NewWeeklyPlans(store.DB),
 		OFF:           off.NewClient(cfg.OFFBaseURL, logger),
 		Sessions:      sessions,
 		Render:        renderer,

@@ -80,3 +80,55 @@ func PerServing(total Macros, servings int) Macros {
 	}
 	return total.Scale(1.0 / float64(servings))
 }
+
+// ForMealItem calcola i macro di una singola voce di pasto. La quantita'
+// in MealItem e' interpretata diversamente a seconda del tipo:
+//   - se e' un ingrediente: g/ml -> FromIngredient.
+//   - se e' una ricetta: numero di porzioni -> PerServing(totale ricetta) *
+//     quantita'. Quindi quantity=2 = 2 porzioni della ricetta.
+func ForMealItem(item domain.MealItemFull) Macros {
+	if item.Ingredient != nil {
+		return FromIngredient(*item.Ingredient, item.Quantity)
+	}
+	if item.Recipe != nil {
+		// Calcola macro totale della ricetta dai suoi RecipeItems.
+		ingredients := make([]IngredientItem, 0, len(item.RecipeItems))
+		for _, ri := range item.RecipeItems {
+			ingredients = append(ingredients, IngredientItem{
+				Ingredient: ri.Ingredient,
+				Quantity:   ri.Quantity,
+			})
+		}
+		total := ForRecipe(ingredients)
+		per := PerServing(total, item.Recipe.Servings)
+		return per.Scale(item.Quantity) // quantity = porzioni
+	}
+	return Macros{}
+}
+
+// ForMeal somma i macro di tutti gli items di un pasto.
+func ForMeal(items []domain.MealItemFull) Macros {
+	var out Macros
+	for _, it := range items {
+		out = out.Add(ForMealItem(it))
+	}
+	return out
+}
+
+// ForDay somma i macro di tutti i pasti di un giorno.
+func ForDay(meals []domain.MealWithItems) Macros {
+	var out Macros
+	for _, m := range meals {
+		out = out.Add(ForMeal(m.Items))
+	}
+	return out
+}
+
+// ForWeek somma i macro di tutti i giorni della settimana.
+func ForWeek(days [7][]domain.MealWithItems) Macros {
+	var out Macros
+	for _, day := range days {
+		out = out.Add(ForDay(day))
+	}
+	return out
+}

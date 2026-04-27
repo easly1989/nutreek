@@ -1,0 +1,60 @@
+{{define "title"}}Aggiungi al pasto — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-xl">
+  <h1 class="text-3xl font-semibold mb-6">Aggiungi al pasto</h1>
+
+  {{if .Error}}
+    <div class="mb-4 rounded border border-red-200 bg-red-50 text-red-900 px-4 py-2 text-sm">{{.Error}}</div>
+  {{end}}
+
+  <form method="post" action="/meals/{{.MealID}}/items?start={{.WeekStart}}" class="space-y-4 bg-white border border-slate-200 rounded p-6">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+    <fieldset class="space-y-2">
+      <legend class="text-sm font-medium text-slate-700 mb-1">Tipo</legend>
+      <label class="flex items-center gap-2">
+        <input type="radio" name="kind" value="recipe" checked> <span class="text-sm">Ricetta (quantita' = porzioni)</span>
+      </label>
+      <label class="flex items-center gap-2">
+        <input type="radio" name="kind" value="ingredient"> <span class="text-sm">Ingrediente (quantita' = g/ml)</span>
+      </label>
+    </fieldset>
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1">Ricetta</label>
+      <select name="ref_id_recipe" class="w-full rounded border border-slate-300 px-3 py-2"
+              onchange="document.querySelector('input[name=ref_id]').value=this.value;document.querySelector('input[value=recipe]').checked=true">
+        <option value="">— scegli ricetta —</option>
+        {{range .Recipes}}
+          <option value="{{.ID}}">{{.Name}} ({{.Servings}}p{{if .IsPublic}}, pub{{end}})</option>
+        {{end}}
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1">Ingrediente</label>
+      <select name="ref_id_ingredient" class="w-full rounded border border-slate-300 px-3 py-2"
+              onchange="document.querySelector('input[name=ref_id]').value=this.value;document.querySelector('input[value=ingredient]').checked=true">
+        <option value="">— scegli ingrediente —</option>
+        {{range .Ingredients}}
+          <option value="{{.ID}}">{{.Name}}{{with .Brand}} — {{.}}{{end}} ({{printf "%.0f" .KcalPer100}} kcal/100{{.Unit}})</option>
+        {{end}}
+      </select>
+    </div>
+
+    <input type="hidden" name="ref_id" value="">
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="qty">Quantita'</label>
+      <input id="qty" name="quantity" required inputmode="decimal" placeholder="es. 1, 200"
+             class="w-full rounded border border-slate-300 px-3 py-2">
+      <p class="text-xs text-slate-500 mt-1">Per le ricette = numero di porzioni; per gli ingredienti = grammi o millilitri.</p>
+    </div>
+
+    <div class="flex items-center justify-between pt-2">
+      <a href="/?start={{.WeekStart}}" class="text-sm text-slate-600 hover:underline">Annulla</a>
+      <button class="bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Aggiungi</button>
+    </div>
+  </form>
+</div>
+{{end}}
