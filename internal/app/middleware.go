@@ -41,6 +41,10 @@ func (a *App) csrfMiddleware(next http.Handler) http.Handler {
 		)
 		http.Error(w, "CSRF verification failed", http.StatusForbidden)
 	}))
+	// Endpoint admin sono machine-to-machine (curl/script con X-Admin-Token):
+	// niente cookie, niente CSRF token. La protezione e' gia' nel token in
+	// header confrontato in constant-time.
+	csrf.ExemptGlob("/admin/*")
 	return csrf
 }
 

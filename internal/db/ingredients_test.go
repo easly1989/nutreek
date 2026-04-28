@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/amon2126/nutreek/internal/domain"
 )
@@ -145,6 +146,76 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	_, err = ings.GetByBarcode(ctx, "0000000000000")
 	if !errors.Is(err, ErrIngredientNotFound) {
 		t.Fatalf("atteso ErrIngredientNotFound, got %v", err)
+	}
+}
+
+func TestIngredientsReconcileHelpers(t *testing.T) {
+	store := newTestStore(t)
+	ings := NewIngredients(store.DB)
+	ctx := context.Background()
+
+	// 3 locals: A, B, C. Tutti senza last_verified_at.
+	idA, _ := ings.CreateLocal(ctx, "A", nil, "g", 100, 5, 10, 1, nil)
+	idB, _ := ings.CreateLocal(ctx, "B", nil, "g", 100, 5, 10, 1, nil)
+	idC, _ := ings.CreateLocal(ctx, "C", nil, "g", 100, 5, 10, 1, nil)
+	// Un OFF (non deve apparire fra i candidati).
+	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Touch B come "verificato di recente" (ora).
+	if err := ings.TouchVerified(ctx, idB); err != nil {
+		t.Fatal(err)
+	}
+
+	// Ora: locals non verificati o verificati prima di "now-1ms" → A e C
+	// (B e' stato touchato a CURRENT_TIMESTAMP, quindi >= 1ms fa non e' vero).
+	// Per essere sicuri uso una soglia futura: quelli con last_verified_at
+	// PRIMA di "now+1h" sono tutti, ma escludo B che e' "appena ora".
+	// Useremo invece "1 minuto fa" come threshold: A e C (NULL) appaiono, B no.
+	sinceAgo := time.Now().Add(-1 * time.Minute)
+	candidates, err := ings.LocalsToReconcile(ctx, 10, sinceAgo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotIDs := map[int64]bool{}
+	for _, c := range candidates {
+		gotIDs[c.ID] = true
+	}
+	if !gotIDs[idA] || !gotIDs[idC] {
+		t.Errorf("A e C dovrebbero essere candidati, got %v", gotIDs)
+	}
+	if gotIDs[idB] {
+		t.Errorf("B appena verificato non dovrebbe essere candidato")
+	}
+	if gotIDs[idOFF] {
+		t.Errorf("OFF non deve mai essere candidato (source != local)")
+	}
+
+	// MarkSuperseded: A diventa superseded da OFF.
+	if err := ings.MarkSuperseded(ctx, idA, idOFF); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := ings.GetByID(ctx, idA)
+	if got.SupersededBy == nil || *got.SupersededBy != idOFF {
+		t.Errorf("A non superseded da OFF: %v", got.SupersededBy)
+	}
+	if got.LastVerifiedAt == nil {
+		t.Errorf("A last_verified_at non aggiornato")
+	}
+
+	// MarkSuperseded su un OFF deve fallire (no rows affected).
+	if err := ings.MarkSuperseded(ctx, idOFF, idA); !errors.Is(err, ErrIngredientNotFound) {
+		t.Errorf("MarkSuperseded su OFF dovrebbe ErrIngredientNotFound, got %v", err)
+	}
+
+	// Adesso A e' superseded → non e' piu' candidato.
+	candidates, _ = ings.LocalsToReconcile(ctx, 10, sinceAgo)
+	for _, c := range candidates {
+		if c.ID == idA {
+			t.Errorf("A superseded non dovrebbe ricomparire fra i candidati")
+		}
 	}
 }
 

@@ -77,5 +77,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/meal-items/{itemID}/delete", a.handleRemoveMealItem)
 	})
 
+	// Admin: protetto da X-Admin-Token (vedi requireAdmin). Esente CSRF
+	// (esclusione configurata in csrfMiddleware via ExemptGlob).
+	r.Post("/admin/reconcile-ingredients", a.requireAdmin(a.handleAdminReconcile))
+
 	return r
 }
