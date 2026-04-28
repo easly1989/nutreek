@@ -1,12 +1,12 @@
 .git
 .gitignore
 .dockerignore
-README.md
-LICENSE
 .idea
 .vscode
+.claude/
 bin/
 data/
+scripts/
 *.db
 *.db-journal
 *.db-wal
@@ -15,3 +15,6 @@ coverage.out
 coverage.html
 .env
 .env.local
+# CSS generato in locale: il tailwind-builder lo rigenera nel container.
+# Non ingombrare il context (e non rischiare di committare CSS stale).
+internal/web/static/css/tailwind.css

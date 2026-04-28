@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -21,6 +24,15 @@ import (
 )
 
 func main() {
+	// Sub-comando di healthcheck: usato dal Dockerfile (distroless non ha
+	// shell ne' wget/curl, quindi facciamo l'HTTP probe in-process). Esce 0
+	// se /healthz risponde 200, 1 altrimenti.
+	healthcheck := flag.Bool("healthcheck", false, "esegue una GET su /healthz e termina con exit code 0/1")
+	flag.Parse()
+	if *healthcheck {
+		os.Exit(runHealthcheck())
+	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
 
@@ -28,6 +40,33 @@ func main() {
 		logger.Error("fatal", "err", err)
 		os.Exit(1)
 	}
+}
+
+// runHealthcheck contatta il server locale e ritorna il codice exit per
+// docker HEALTHCHECK. Cerca l'addr in NUTREEK_ADDR (es. ":8080") e si
+// connette su localhost.
+func runHealthcheck() int {
+	addr := os.Getenv("NUTREEK_ADDR")
+	if addr == "" {
+		addr = ":8080"
+	}
+	// ":8080" -> "localhost:8080"
+	if strings.HasPrefix(addr, ":") {
+		addr = "localhost" + addr
+	}
+	url := "http://" + addr + "/healthz"
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "healthcheck: %v\n", err)
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "healthcheck: status %d\n", resp.StatusCode)
+		return 1
+	}
+	return 0
 }
 
 func run(logger *slog.Logger) error {
