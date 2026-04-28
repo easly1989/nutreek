@@ -1,0 +1,62 @@
+{{define "picker_results"}}
+{{/* Renderizza una lista di righe ingrediente cliccabili per aggiungere
+     a un meal o a una ricetta. A differenza di ingredient_results
+     (display-only sulla pagina /ingredients), qui ogni riga ha un form
+     "Aggiungi" che POSTa direttamente. Per gli OFF non importati,
+     passiamo il barcode al posto di ingredient_id e il server fa
+     l'auto-import in modo idempotente. */}}
+{{if .OFFWarning}}
+  <div class="mb-3 rounded border border-amber-200 bg-amber-50 text-amber-900 px-3 py-2 text-xs">{{.OFFWarning}}</div>
+{{end}}
+{{if .Rows}}
+  <ul class="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+    {{range .Rows}}
+      <li class="px-4 py-3 flex items-baseline justify-between gap-4">
+        <div class="min-w-0">
+          <p class="font-medium text-slate-900 truncate">
+            {{.Name}}{{with .Brand}} <span class="text-slate-500 font-normal">— {{.}}</span>{{end}}
+          </p>
+          <p class="text-xs text-slate-500">
+            <span class="{{if .IsOFF}}text-emerald-700{{else}}text-slate-500{{end}}">{{.SourceLabel}}</span>
+            · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
+          </p>
+        </div>
+        {{/* Form "Aggiungi": comparso solo se la riga e' utilizzabile.
+             Locali → sempre OK. OFF → solo se ha tutti i nutrienti. */}}
+        {{if or (not .IsOFF) .Importable}}
+          {{if eq $.PickerKind "recipe_item"}}
+            <form method="post" action="/recipes/{{$.RecipeID}}/items" class="shrink-0 flex items-center gap-2">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              {{if .IsOFF}}
+                <input type="hidden" name="barcode" value="{{.Barcode}}">
+              {{else}}
+                <input type="hidden" name="ingredient_id" value="{{.Local.ID}}">
+              {{end}}
+              <input name="quantity" required inputmode="decimal" placeholder="g" class="w-20 rounded border border-slate-300 px-2 py-1 text-xs">
+              <button class="text-xs bg-emerald-600 text-white rounded px-3 py-1 hover:bg-emerald-700">Aggiungi</button>
+            </form>
+          {{else if eq $.PickerKind "meal_item"}}
+            <form method="post" action="/meals/{{$.MealID}}/items?start={{$.WeekStart}}" class="shrink-0 flex items-center gap-2">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <input type="hidden" name="kind" value="ingredient">
+              {{if .IsOFF}}
+                <input type="hidden" name="barcode" value="{{.Barcode}}">
+              {{else}}
+                <input type="hidden" name="ref_id" value="{{.Local.ID}}">
+              {{end}}
+              <input name="quantity" required inputmode="decimal" placeholder="g" class="w-20 rounded border border-slate-300 px-2 py-1 text-xs">
+              <button class="text-xs bg-emerald-600 text-white rounded px-3 py-1 hover:bg-emerald-700">Aggiungi</button>
+            </form>
+          {{end}}
+        {{else}}
+          <span class="text-xs text-slate-400 shrink-0">macro incompleti</span>
+        {{end}}
+      </li>
+    {{end}}
+  </ul>
+{{else}}
+  <p class="text-sm text-slate-500 px-4 py-6 text-center border border-dashed border-slate-300 rounded">
+    {{if .Query}}Nessun ingrediente trovato per &laquo;{{.Query}}&raquo;.{{else}}Inizia a digitare per cercare un ingrediente locale o su OpenFoodFacts.{{end}}
+  </p>
+{{end}}
+{{end}}

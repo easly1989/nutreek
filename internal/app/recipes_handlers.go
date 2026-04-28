@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
@@ -245,7 +246,12 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }
 
-// handleRecipeAddItem POST /recipes/{id}/items.
+// handleRecipeAddItem POST /recipes/{id}/items. Accetta uno fra:
+//   - ingredient_id: id di un ingrediente gia' nel DB locale.
+//   - barcode: codice OFF di un prodotto NON ancora importato; il server
+//     fa auto-import (idempotente: se gia' presente recupera l'esistente).
+// La distinzione viene fatta dal partial picker_results in base alla
+// natura della riga cliccata.
 func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
@@ -253,23 +259,78 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	ingIDStr := r.PostFormValue("ingredient_id")
 	qtyStr := strings.TrimSpace(r.PostFormValue("quantity"))
-	ingID, err := strconv.ParseInt(ingIDStr, 10, 64)
-	if err != nil || ingID <= 0 {
-		a.reRenderEditItem(w, r, id, "Seleziona un ingrediente.", qtyStr, ingIDStr)
-		return
-	}
 	qty, err := parseNonNegFloat(qtyStr)
 	if err != nil || qty <= 0 {
-		a.reRenderEditItem(w, r, id, "Quantita' non valida.", qtyStr, ingIDStr)
+		a.reRenderEditItem(w, r, id, "Quantita' non valida.", qtyStr, r.PostFormValue("ingredient_id"))
 		return
 	}
+
+	// Risolvi l'ingrediente target. Due strade:
+	barcode := strings.TrimSpace(r.PostFormValue("barcode"))
+	var ingID int64
+	if barcode != "" {
+		// Auto-import OFF idempotente.
+		resolved, err := a.resolveOFFBarcode(r.Context(), barcode)
+		if err != nil {
+			a.reRenderEditItem(w, r, id, "Import OFF fallito: "+err.Error(), qtyStr, "")
+			return
+		}
+		ingID = resolved
+	} else {
+		ingIDStr := r.PostFormValue("ingredient_id")
+		parsed, err := strconv.ParseInt(ingIDStr, 10, 64)
+		if err != nil || parsed <= 0 {
+			a.reRenderEditItem(w, r, id, "Seleziona un ingrediente.", qtyStr, ingIDStr)
+			return
+		}
+		ingID = parsed
+	}
+
 	if _, err := a.Recipes.AddItem(r.Context(), id, user.ID, ingID, qty); err != nil {
 		a.handleRecipeError(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+}
+
+// handleRecipePicker GET /recipes/{id}/picker?q=...
+// Renderizza il partial picker_results in modalita' recipe_item.
+// Usa lo stesso searchMixed della pagina /ingredients (locale + OFF).
+func (a *App) handleRecipePicker(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	id, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	// Verifica che l'utente sia autore (solo l'autore puo' editare).
+	rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID)
+	if err != nil {
+		a.handleRecipeError(w, r, err)
+		return
+	}
+	if rec.UserID != user.ID {
+		http.Error(w, "non sei l'autore", http.StatusForbidden)
+		return
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	rows, warn, err := a.searchMixed(r.Context(), q)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	data := ingredientsListData{
+		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+		Rows:         rows,
+		Query:        q,
+		OFFWarning:   warn,
+		PickerKind:   "recipe_item",
+		RecipeID:     id,
+	}
+	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
+		a.serverError(w, r, err)
+	}
 }
 
 // handleRecipeRemoveItem POST /recipes/{id}/items/{itemID}/delete (form-driven).

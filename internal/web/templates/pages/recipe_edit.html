@@ -55,25 +55,24 @@
       {{if .ItemError}}
         <div class="mt-3 rounded border border-red-200 bg-red-50 text-red-900 px-4 py-2 text-sm">{{.ItemError}}</div>
       {{end}}
-      <form method="post" action="/recipes/{{.Recipe.ID}}/items" class="mt-4 flex flex-wrap items-end gap-3 bg-white border border-slate-200 rounded p-4">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <div class="grow min-w-[12rem]">
-          <label class="block text-xs text-slate-500 mb-1" for="i-ing">Ingrediente</label>
-          <select id="i-ing" name="ingredient_id" required class="w-full rounded border border-slate-300 px-3 py-2">
-            <option value="">— scegli —</option>
-            {{range .Ingredients}}
-              <option value="{{.ID}}" {{if eq (printf "%d" .ID) $.NewItemIng}}selected{{end}}>
-                {{.Name}}{{with .Brand}} — {{.}}{{end}} ({{printf "%.0f" .KcalPer100}} kcal/100{{.Unit}})
-              </option>
-            {{end}}
-          </select>
-        </div>
-        <div class="w-28">
-          <label class="block text-xs text-slate-500 mb-1" for="i-qty">Quantita'</label>
-          <input id="i-qty" name="quantity" required inputmode="decimal" value="{{.NewItemQty}}" class="w-full rounded border border-slate-300 px-3 py-2">
-        </div>
-        <button class="bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Aggiungi</button>
-      </form>
+      {{/* Picker HTMX: search live, mostra locali + risultati OFF.
+           Click su una riga importa OFF (se serve) e aggiunge l'item.
+           La quantita' e' parametro del form della riga selezionata. */}}
+      <div class="mt-4 bg-white border border-slate-200 rounded p-4">
+        <label class="block text-sm font-medium text-slate-700 mb-2" for="i-search">Aggiungi ingrediente</label>
+        <input id="i-search" type="search" name="q"
+               placeholder="Cerca per nome (locale + OpenFoodFacts)..."
+               class="w-full rounded border border-slate-300 px-3 py-2 mb-3"
+               hx-get="/recipes/{{.Recipe.ID}}/picker"
+               hx-trigger="input changed delay:200ms, search"
+               hx-target="#picker-results"
+               hx-swap="innerHTML"
+               autocomplete="off">
+        <div id="picker-results"></div>
+        <p class="text-xs text-slate-500 mt-2">
+          Inserisci la quantita' (g per cibi solidi, ml per liquidi) e clicca <span class="text-emerald-700 font-medium">Aggiungi</span>. Gli ingredienti OpenFoodFacts vengono importati automaticamente al primo utilizzo.
+        </p>
+      </div>
     {{end}}
   </section>
 

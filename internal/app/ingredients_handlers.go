@@ -122,6 +122,16 @@ type ingredientsListData struct {
 	Rows       []ingredientRow
 	Query      string
 	OFFWarning string // riempito se la search OFF e' fallita
+
+	// Campi di context del picker. Quando il partial e' renderizzato in
+	// modalita' "picker" (es. dentro la pagina recipe-edit o nella card
+	// di un meal), questi campi guidano il form action e i parametri.
+	// PickerKind = "" -> modalita' display (pagina /ingredients), nessun
+	// bottone "Aggiungi" (solo "Importa" sui soli OFF).
+	PickerKind string // "recipe_item" | "meal_item" | ""
+	RecipeID   int64  // se PickerKind == "recipe_item"
+	MealID     int64  // se PickerKind == "meal_item"
+	WeekStart  string // YYYY-MM-DD, per redirect post-add da meal_item
 }
 
 type ingredientsNewData struct {
@@ -355,6 +365,58 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 	}
 	a.Sessions.Put(r.Context(), "flash", "Ingrediente importato da OpenFoodFacts.")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
+}
+
+// resolveOFFBarcode importa l'OFF identificato dal barcode nel DB locale e
+// ritorna l'id dell'ingrediente locale corrispondente. Idempotente: se il
+// barcode e' gia' nel DB, ritorna l'esistente senza richiamare OFF.
+// Se OFF non ha tutti i nutrienti, ritorna errore.
+//
+// Usato sia da handleRecipeAddItem (auto-import al click) sia (in tappa
+// 16) dal flow meal_item, per evitare duplicare la logica.
+func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, error) {
+	barcode = strings.TrimSpace(barcode)
+	if barcode == "" {
+		return 0, errEmpty
+	}
+	// Pre-check DB: evita una chiamata HTTP se gia' importato.
+	existing, err := a.Ingredients.GetByBarcode(ctx, barcode)
+	if err == nil {
+		return existing.ID, nil
+	}
+	if !errors.Is(err, db.ErrIngredientNotFound) {
+		return 0, err
+	}
+	// Non in DB: chiama OFF.
+	product, err := a.OFF.GetByBarcode(ctx, barcode)
+	if err != nil {
+		return 0, err
+	}
+	if !product.HasFullNutrients {
+		return 0, errors.New("prodotto OFF senza macro completi")
+	}
+	var brandPtr *string
+	if b := strings.TrimSpace(product.Brand); b != "" {
+		brandPtr = &b
+	}
+	id, err := a.Ingredients.CreateOFF(
+		ctx,
+		product.Code, product.Name, brandPtr,
+		domain.UnitGram,
+		product.Kcal, product.Protein, product.Carbs, product.Fat,
+	)
+	if err == nil {
+		return id, nil
+	}
+	if errors.Is(err, db.ErrBarcodeAlreadyUsed) {
+		// Race / barcode appena creato da un altro path: recupera.
+		got, gerr := a.Ingredients.GetByBarcode(ctx, product.Code)
+		if gerr != nil {
+			return 0, gerr
+		}
+		return got.ID, nil
+	}
+	return 0, err
 }
 
 func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form ingredientForm, msg string) {
