@@ -12,6 +12,17 @@ services:
       NUTREEK_DB_PATH: /data/nutreek.db
       NUTREEK_ENV: prod
       NUTREEK_SESSION_KEY: ${NUTREEK_SESSION_KEY:?set NUTREEK_SESSION_KEY in env (es. openssl rand -hex 32)}
+      NUTREEK_OFF_BASE_URL: ${NUTREEK_OFF_BASE_URL:-https://world.openfoodfacts.org}
+      NUTREEK_RECONCILE_ENABLED: ${NUTREEK_RECONCILE_ENABLED:-true}
+      NUTREEK_RECONCILE_INTERVAL: ${NUTREEK_RECONCILE_INTERVAL:-24h}
+      NUTREEK_ADMIN_TOKEN: ${NUTREEK_ADMIN_TOKEN:-}
     restart: unless-stopped
-    # Healthcheck: distroless non ha shell. Quando aggiungeremo un endpoint
-    # interno o passeremo a una base con wget, aggiungeremo test qui.
+    # Healthcheck: distroless non ha shell ne' wget/curl. Il binario
+    # supporta `-healthcheck` (sub-comando in cmd/nutreek/main.go) che
+    # fa una GET locale su /healthz e termina con exit 0 / 1.
+    healthcheck:
+      test: ["CMD", "/app/nutreek", "-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s

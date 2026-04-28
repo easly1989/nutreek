@@ -85,6 +85,24 @@ nutreek.example.com {
 
 Il container **non** termina TLS: assumi sempre un reverse proxy davanti in produzione pubblica.
 
+L'immagine usa `gcr.io/distroless/static:nonroot` come base finale (~15 MB totali). Niente shell, niente pacchetti: il binario e' compilato in pure Go (`CGO_ENABLED=0`, SQLite via `modernc.org/sqlite`). Il container espone una healthcheck via sub-comando `nutreek -healthcheck` (HTTP probe locale su `/healthz`), gia' configurato in `docker-compose.yml` con interval 30s.
+
+Sub-comandi del binario:
+
+```bash
+nutreek                # avvia il server
+nutreek -healthcheck   # GET /healthz, exit 0 se ok 1 altrimenti
+```
+
+Endpoint amministrativi (se `NUTREEK_ADMIN_TOKEN` e' settato):
+
+```bash
+# Forza una riconciliazione on-demand (matcha local → OFF, idempotente).
+curl -H "X-Admin-Token: $NUTREEK_ADMIN_TOKEN" -X POST \
+     http://localhost:8080/admin/reconcile-ingredients
+# -> {"considered":N,"matched":...,"no_match":...,"errors":...}
+```
+
 ## Backup
 
 Il DB è un singolo file SQLite. Backup consigliato:
