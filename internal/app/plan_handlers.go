@@ -233,6 +233,10 @@ func (a *App) handleAddMeal(w http.ResponseWriter, r *http.Request) {
 		a.flashAndBack(w, r, weekStart, "Nome pasto obbligatorio.")
 		return
 	}
+	if !withinLen(name, MaxNameLen) {
+		a.flashAndBack(w, r, weekStart, "Nome troppo lungo (max 200 caratteri).")
+		return
+	}
 	plan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), user.ID, weekStart)
 	if err != nil {
 		a.serverError(w, r, err)
@@ -251,7 +255,7 @@ func (a *App) handleRemoveMeal(w http.ResponseWriter, r *http.Request) {
 	weekStart := parseWeekStart(r)
 	mealID, err := parseID(r, "mealID")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	if err := a.WeeklyPlans.RemoveMeal(r.Context(), mealID, user.ID); err != nil {
@@ -271,7 +275,7 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 	weekStart := parseWeekStart(r)
 	mealID, err := parseID(r, "mealID")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	kind := r.PostFormValue("kind") // "recipe" | "ingredient"
@@ -310,7 +314,7 @@ func (a *App) handleRemoveMealItem(w http.ResponseWriter, r *http.Request) {
 	weekStart := parseWeekStart(r)
 	itemID, err := parseID(r, "itemID")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	if err := a.WeeklyPlans.RemoveItem(r.Context(), itemID, user.ID); err != nil {
@@ -339,7 +343,7 @@ func (a *App) handleAddItemForm(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	mealID, err := parseID(r, "mealID")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	weekStart := parseWeekStart(r)

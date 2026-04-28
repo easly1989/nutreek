@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/mail"
 	"strings"
+	"time"
 
 	"github.com/justinas/nosurf"
 
@@ -56,6 +57,21 @@ func (a *App) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
+	// Rate limit per IP: max 5 tentativi per minuto, in-memory.
+	if a.loginLimiter == nil {
+		a.loginLimiter = newLoginRateLimiter(5, time.Minute)
+	}
+	ip := remoteIP(r)
+	if !a.loginLimiter.allow(ip) {
+		a.Logger.Warn("login rate limit hit", "ip", ip)
+		data := a.baseData(r)
+		data.Error = "Troppi tentativi. Riprova fra un minuto."
+		if err := a.Render.Render(w, http.StatusTooManyRequests, "login", data); err != nil {
+			a.serverError(w, r, err)
+		}
+		return
+	}
+
 	email := strings.TrimSpace(r.PostFormValue("email"))
 	password := r.PostFormValue("password")
 
@@ -80,6 +96,10 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+
+	// Login riuscito: reset del rate limiter cosi' un utente legittimo
+	// non resta sotto threshold per i tentativi falliti precedenti.
+	a.loginLimiter.reset(ip)
 
 	// Regenerate the session id on privilege change to prevent fixation.
 	if err := a.Sessions.RenewToken(r.Context()); err != nil {
@@ -177,7 +197,20 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 // ---- helpers ---------------------------------------------------------------
 
+// serverError logga, prova a renderizzare la pagina di errore 500 con
+// layout, e in caso di doppio fallimento fa il fallback a http.Error
+// testuale: meglio una pagina brutta che una connessione mezza scritta.
 func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	a.Logger.Error("server error", "err", err, "path", r.URL.Path)
-	http.Error(w, "Errore interno", http.StatusInternalServerError)
+	if rerr := a.Render.Render(w, http.StatusInternalServerError, "error_500", a.baseData(r)); rerr != nil {
+		http.Error(w, "Errore interno", http.StatusInternalServerError)
+	}
+}
+
+// notFound renderizza la pagina 404 con layout. Il fallback testuale
+// vale quanto sopra.
+func (a *App) notFound(w http.ResponseWriter, r *http.Request) {
+	if rerr := a.Render.Render(w, http.StatusNotFound, "error_404", a.baseData(r)); rerr != nil {
+		http.NotFound(w, r)
+	}
 }

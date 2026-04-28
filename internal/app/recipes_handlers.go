@@ -98,6 +98,14 @@ func (a *App) handleRecipeCreate(w http.ResponseWriter, r *http.Request) {
 		a.renderRecipeNewError(w, r, form, "Il nome e' obbligatorio.")
 		return
 	}
+	if !withinLen(form.Name, MaxNameLen) {
+		a.renderRecipeNewError(w, r, form, "Nome troppo lungo (max 200 caratteri).")
+		return
+	}
+	if !withinLen(form.Description, MaxDescriptionLen) {
+		a.renderRecipeNewError(w, r, form, "Descrizione troppo lunga (max 2000 caratteri).")
+		return
+	}
 	servings, err := strconv.Atoi(form.Servings)
 	if err != nil || servings <= 0 {
 		a.renderRecipeNewError(w, r, form, "Porzioni: serve un intero > 0.")
@@ -129,7 +137,7 @@ func (a *App) handleRecipeEdit(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID)
@@ -199,7 +207,7 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	form := recipeForm{
@@ -210,6 +218,14 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if form.Name == "" {
 		a.reRenderEdit(w, r, id, "Il nome e' obbligatorio.", "")
+		return
+	}
+	if !withinLen(form.Name, MaxNameLen) {
+		a.reRenderEdit(w, r, id, "Nome troppo lungo (max 200 caratteri).", "")
+		return
+	}
+	if !withinLen(form.Description, MaxDescriptionLen) {
+		a.reRenderEdit(w, r, id, "Descrizione troppo lunga (max 2000 caratteri).", "")
 		return
 	}
 	servings, err := strconv.Atoi(form.Servings)
@@ -234,7 +250,7 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	ingIDStr := r.PostFormValue("ingredient_id")
@@ -262,12 +278,12 @@ func (a *App) handleRecipeRemoveItem(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	itemID, err := parseID(r, "itemID")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	if err := a.Recipes.RemoveItem(r.Context(), itemID, user.ID); err != nil {
@@ -286,7 +302,7 @@ func (a *App) handleRecipeDelete(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	if err := a.Recipes.Delete(r.Context(), id, user.ID); err != nil {
@@ -322,7 +338,7 @@ func (a *App) reRenderEditItem(w http.ResponseWriter, r *http.Request, id int64,
 func (a *App) handleRecipeError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, db.ErrRecipeNotFound):
-		http.NotFound(w, r)
+		a.notFound(w, r)
 	case errors.Is(err, db.ErrRecipeForbidden):
 		http.Error(w, "operazione non consentita", http.StatusForbidden)
 	default:
