@@ -66,15 +66,26 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	ingredientsRepo := db.NewIngredients(store.DB)
+	offClient := off.NewClient(cfg.OFFBaseURL, logger)
+	reconciler := &off.Reconciler{
+		Ingredients: ingredientsRepo,
+		Client:      offClient,
+		Logger:      logger,
+		MaxBatch:    50,
+		MinAge:      7 * 24 * time.Hour,
+	}
+
 	a := &app.App{
 		Cfg:           cfg,
 		Store:         store,
 		Users:         db.NewUsers(store.DB),
-		Ingredients:   db.NewIngredients(store.DB),
+		Ingredients:   ingredientsRepo,
 		Recipes:       db.NewRecipes(store.DB),
 		MealTemplates: db.NewMealTemplates(store.DB),
 		WeeklyPlans:   db.NewWeeklyPlans(store.DB),
-		OFF:           off.NewClient(cfg.OFFBaseURL, logger),
+		OFF:           offClient,
+		Reconciler:    reconciler,
 		Sessions:      sessions,
 		Render:        renderer,
 		Logger:        logger,
@@ -93,6 +104,12 @@ func run(logger *slog.Logger) error {
 			stop()
 		}
 	}()
+
+	if cfg.ReconcileEnabled {
+		go reconciler.Run(ctx, cfg.ReconcileInterval)
+	} else {
+		logger.Info("reconciler disabilitato (NUTREEK_RECONCILE_ENABLED=false)")
+	}
 
 	<-ctx.Done()
 	logger.Info("shutdown requested")

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/amon2126/nutreek/internal/domain"
 )
@@ -144,6 +145,72 @@ func (r *Ingredients) ListActive(ctx context.Context, offset, limit int) ([]*dom
 	}
 	defer rows.Close()
 	return collectIngredients(rows)
+}
+
+// LocalsToReconcile ritorna fino a `limit` ingredienti `source='local'`
+// non superseded la cui `last_verified_at` e' anteriore a `since` (o NULL).
+// Usato dal job di reconciliation OFF.
+//
+// Note implementative: SQLite memorizza CURRENT_TIMESTAMP nel formato
+// "YYYY-MM-DD HH:MM:SS" (UTC). Per evitare differenze di formato fra il
+// param Go (time.Time) e quello stored, formattiamo `since` esplicitamente
+// nello stesso layout, cosi' il confronto lessicografico coincide con
+// quello cronologico.
+func (r *Ingredients) LocalsToReconcile(ctx context.Context, limit int, since time.Time) ([]*domain.Ingredient, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 50
+	}
+	threshold := since.UTC().Format("2006-01-02 15:04:05")
+	rows, err := r.db.QueryContext(ctx, selectIngredientCols+`
+		FROM ingredients
+		WHERE source = 'local'
+		  AND superseded_by IS NULL
+		  AND (last_verified_at IS NULL OR last_verified_at < ?)
+		ORDER BY last_verified_at IS NOT NULL, last_verified_at, id
+		LIMIT ?`,
+		threshold, limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("locals to reconcile: %w", err)
+	}
+	defer rows.Close()
+	return collectIngredients(rows)
+}
+
+// MarkSuperseded segna `localID` come soppiantato da `byID`. Sicuro: aggiorna
+// solo se la riga era source='local' (un OFF non puo' essere superseded).
+func (r *Ingredients) MarkSuperseded(ctx context.Context, localID, byID int64) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE ingredients
+		 SET superseded_by = ?, last_verified_at = CURRENT_TIMESTAMP
+		 WHERE id = ? AND source = 'local'`,
+		byID, localID,
+	)
+	if err != nil {
+		return fmt.Errorf("mark superseded: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrIngredientNotFound
+	}
+	return nil
+}
+
+// TouchVerified aggiorna last_verified_at a CURRENT_TIMESTAMP per skip-pare
+// la riconciliazione di un local in N giorni anche se non ha trovato match.
+func (r *Ingredients) TouchVerified(ctx context.Context, id int64) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE ingredients SET last_verified_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("touch verified: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrIngredientNotFound
+	}
+	return nil
 }
 
 const selectIngredientCols = `SELECT
