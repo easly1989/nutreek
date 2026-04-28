@@ -90,8 +90,12 @@ func (a *App) handleTemplateNewForm(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleTemplateCreate(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	name := strings.TrimSpace(r.PostFormValue("name"))
-	if name == "" {
-		data := templateNewData{authPageData: a.baseData(r), Name: name, Error: "Nome obbligatorio."}
+	if name == "" || !withinLen(name, MaxNameLen) {
+		msg := "Nome obbligatorio."
+		if name != "" {
+			msg = "Nome troppo lungo (max 200 caratteri)."
+		}
+		data := templateNewData{authPageData: a.baseData(r), Name: name, Error: msg}
 		if err := a.Render.Render(w, http.StatusUnprocessableEntity, "template_new", data); err != nil {
 			a.serverError(w, r, err)
 		}
@@ -110,7 +114,7 @@ func (a *App) handleTemplateEdit(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	tpl, err := a.MealTemplates.GetWithSlots(r.Context(), id, user.ID)
@@ -152,17 +156,21 @@ func (a *App) handleTemplateRename(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	name := strings.TrimSpace(r.PostFormValue("name"))
-	if name == "" {
+	if name == "" || !withinLen(name, MaxNameLen) {
 		tpl, err := a.MealTemplates.GetWithSlots(r.Context(), id, user.ID)
 		if err != nil {
 			a.handleTemplateError(w, r, err)
 			return
 		}
-		a.renderTemplateEdit(w, r, tpl, name, "Nome obbligatorio.",
+		msg := "Nome obbligatorio."
+		if name != "" {
+			msg = "Nome troppo lungo (max 200 caratteri)."
+		}
+		a.renderTemplateEdit(w, r, tpl, name, msg,
 			slotForm{DayOfWeek: strconv.Itoa(domain.DayOfWeekEvery)}, "")
 		return
 	}
@@ -178,7 +186,7 @@ func (a *App) handleTemplateAddSlot(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	dayStr := strings.TrimSpace(r.PostFormValue("day_of_week"))
@@ -193,6 +201,10 @@ func (a *App) handleTemplateAddSlot(w http.ResponseWriter, r *http.Request) {
 		a.reRenderTemplate(w, r, id, user.ID, form, "Nome del pasto obbligatorio.")
 		return
 	}
+	if !withinLen(name, MaxNameLen) {
+		a.reRenderTemplate(w, r, id, user.ID, form, "Nome troppo lungo (max 200 caratteri).")
+		return
+	}
 	if _, err := a.MealTemplates.AddSlot(r.Context(), id, user.ID, day, name); err != nil {
 		a.handleTemplateError(w, r, err)
 		return
@@ -204,12 +216,12 @@ func (a *App) handleTemplateRemoveSlot(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	slotID, err := parseID(r, "slotID")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	if err := a.MealTemplates.RemoveSlot(r.Context(), slotID, user.ID); err != nil {
@@ -227,7 +239,7 @@ func (a *App) handleTemplateActivate(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	if err := a.MealTemplates.SetActive(r.Context(), id, user.ID); err != nil {
@@ -242,7 +254,7 @@ func (a *App) handleTemplateDelete(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
 	if err != nil {
-		http.NotFound(w, r)
+		a.notFound(w, r)
 		return
 	}
 	if err := a.MealTemplates.Delete(r.Context(), id, user.ID); err != nil {
@@ -267,7 +279,7 @@ func (a *App) reRenderTemplate(w http.ResponseWriter, r *http.Request, id, userI
 func (a *App) handleTemplateError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, db.ErrMealTemplateNotFound):
-		http.NotFound(w, r)
+		a.notFound(w, r)
 	case errors.Is(err, db.ErrMealTemplateForbidden):
 		http.Error(w, "operazione non consentita", http.StatusForbidden)
 	default:

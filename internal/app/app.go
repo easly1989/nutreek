@@ -27,6 +27,10 @@ type App struct {
 	Sessions      *scs.SessionManager
 	Render        *web.Renderer
 	Logger        *slog.Logger
+
+	// loginLimiter limita i tentativi POST /login per IP. Inizializzato
+	// pigramente al primo accesso dentro handleLogin (non serve in test).
+	loginLimiter *loginRateLimiter
 }
 
 type ctxKey int

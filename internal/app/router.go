@@ -21,6 +21,11 @@ func (a *App) Router() http.Handler {
 	r.Use(a.csrfMiddleware)
 	r.Use(a.loadUserMiddleware)
 
+	// Pagina 404 stylata per i path non matchati. chi chiama questo
+	// handler dopo aver girato la chain dei middleware sopra: la pagina
+	// vede sessione/csrf/utente normalmente.
+	r.NotFound(a.notFound)
+
 	// Static assets: serviti dal filesystem embedded.
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(web.Static()))))
 
