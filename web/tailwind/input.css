@@ -1,3 +1,86 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---- Theme palettes -------------------------------------------------------
+ * Quattro temi completi, selezionabili via attributo `data-theme` su <html>.
+ * Tutti i template usano le utility semantiche (bg-bg, text-text, ecc.) che
+ * Tailwind risolve in `var(--*)` definite qui sotto.
+ *
+ *   forest  - verdi/terra (default)
+ *   ocean   - blu/teal
+ *   sunset  - rosa/arancio caldo
+ *   mono    - dark grayscale
+ * ------------------------------------------------------------------------ */
+
+:root,
+:root[data-theme="forest"] {
+  --bg: #f5f7f2;
+  --surface: #ffffff;
+  --surface-2: #ecf1e6;
+  --border: #d6e0c9;
+  --text: #1d2a1a;
+  --muted: #5b6b53;
+  --accent: #2f7d32;
+  --accent-fg: #ffffff;
+  --accent-soft: #d8ead4;
+  --warn-bg: #fff7d6;
+  --warn-fg: #5a4500;
+  --danger: #b3261e;
+}
+
+:root[data-theme="ocean"] {
+  --bg: #f1f6fb;
+  --surface: #ffffff;
+  --surface-2: #e3edf6;
+  --border: #c6d8ea;
+  --text: #102233;
+  --muted: #4f6378;
+  --accent: #0a6b9a;
+  --accent-fg: #ffffff;
+  --accent-soft: #cfe5f3;
+  --warn-bg: #fff3cd;
+  --warn-fg: #5a4500;
+  --danger: #b3261e;
+}
+
+:root[data-theme="sunset"] {
+  --bg: #fff5ee;
+  --surface: #ffffff;
+  --surface-2: #ffe5d4;
+  --border: #f6cdb1;
+  --text: #2a1610;
+  --muted: #7a5347;
+  --accent: #d2691e;
+  --accent-fg: #ffffff;
+  --accent-soft: #ffd9bd;
+  --warn-bg: #fff3cd;
+  --warn-fg: #5a4500;
+  --danger: #b3261e;
+}
+
+:root[data-theme="mono"] {
+  --bg: #0f1115;
+  --surface: #181b21;
+  --surface-2: #20242c;
+  --border: #2c313b;
+  --text: #f1f3f7;
+  --muted: #9aa0ad;
+  --accent: #e8eaf0;
+  --accent-fg: #0f1115;
+  --accent-soft: #2c313b;
+  --warn-bg: #3a2e10;
+  --warn-fg: #ffd166;
+  --danger: #ff6b6b;
+}
+
+@layer base {
+  html, body {
+    background-color: var(--bg);
+    color: var(--text);
+  }
+  /* Smooth transition fra temi senza flash */
+  html {
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+}

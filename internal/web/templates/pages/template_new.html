@@ -3,18 +3,18 @@
 <div class="max-w-md">
   <h1 class="text-3xl font-semibold mb-6">Nuovo template pasti</h1>
   {{if .Error}}
-    <div class="mb-4 rounded border border-red-200 bg-red-50 text-red-900 px-4 py-2 text-sm">{{.Error}}</div>
+    <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
   {{end}}
-  <form method="post" action="/templates" class="space-y-4 bg-white border border-slate-200 rounded p-6">
+  <form method="post" action="/templates" class="space-y-4 bg-surface border border-border rounded p-6">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="f-name">Nome</label>
+      <label class="block text-sm font-medium text-text mb-1" for="f-name">Nome</label>
       <input id="f-name" name="name" required value="{{.Name}}" placeholder="es. 5 pasti, Solo lavorativi"
-             class="w-full rounded border border-slate-300 px-3 py-2">
+             class="w-full rounded border border-border px-3 py-2">
     </div>
     <div class="flex items-center justify-between pt-2">
-      <a href="/templates" class="text-sm text-slate-600 hover:underline">Annulla</a>
-      <button class="bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Crea</button>
+      <a href="/templates" class="text-sm text-muted hover:underline">Annulla</a>
+      <button class="bg-surface-2 text-white rounded px-4 py-2 hover:bg-surface-2">Crea</button>
     </div>
   </form>
 </div>

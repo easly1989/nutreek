@@ -1,40 +1,56 @@
 {{define "layout"}}<!doctype html>
-<html lang="it">
+<html lang="it" data-theme="{{or .Theme "forest"}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{block "title" .}}Nutreek{{end}}</title>
   <link rel="stylesheet" href="/static/css/tailwind.css">
   <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/theme.js" defer></script>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
-  <nav class="bg-white border-b border-slate-200">
+<body class="bg-bg text-text min-h-screen">
+  <nav class="bg-surface border-b border-border">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
       <a href="/" class="font-semibold text-lg tracking-tight">Nutreek</a>
-      {{if .User}}
-        <div class="flex items-center gap-4 text-sm">
-          <a href="/ingredients" class="text-slate-700 hover:underline">Ingredienti</a>
-          <a href="/recipes" class="text-slate-700 hover:underline">Ricette</a>
-          <a href="/templates" class="text-slate-700 hover:underline">Template</a>
-          <span class="text-slate-600">{{.User.DisplayName}}</span>
-          <form method="post" action="/logout" class="inline">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <button class="text-slate-700 hover:underline">Esci</button>
-          </form>
-        </div>
-      {{else}}
-        <div class="flex items-center gap-3 text-sm">
+      <div class="flex items-center gap-4 text-sm">
+        {{if .User}}
+          <a href="/ingredients" class="text-text hover:underline">Ingredienti</a>
+          <a href="/recipes" class="text-text hover:underline">Ricette</a>
+          <a href="/templates" class="text-text hover:underline">Template</a>
+          <span class="text-muted">{{.User.DisplayName}}</span>
+        {{else}}
           <a href="/login" class="hover:underline">Login</a>
           <a href="/register" class="hover:underline">Registrati</a>
+        {{end}}
+        <div class="relative">
+          <button type="button" data-theme-trigger
+                  class="px-2 py-1 rounded border border-border text-text hover:bg-surface-2 transition flex items-center gap-1"
+                  aria-haspopup="true" aria-label="Cambia tema">
+            <span aria-hidden="true">&#9728;</span>
+            <span data-theme-current-label class="text-xs hidden sm:inline">Forest</span>
+          </button>
+          <div data-theme-menu class="hidden absolute right-0 mt-2 w-40 bg-surface border border-border rounded shadow-md py-1 z-20" role="menu">
+            <button type="button" data-theme-option="forest" role="menuitemradio" class="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm">Forest</button>
+            <button type="button" data-theme-option="ocean"  role="menuitemradio" class="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm">Ocean</button>
+            <button type="button" data-theme-option="sunset" role="menuitemradio" class="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm">Sunset</button>
+            <button type="button" data-theme-option="mono"   role="menuitemradio" class="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm">Mono</button>
+          </div>
         </div>
-      {{end}}
+        {{if .User}}
+          <form method="post" action="/logout" class="inline">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button class="text-text hover:underline">Esci</button>
+          </form>
+        {{end}}
+      </div>
     </div>
   </nav>
   <main class="max-w-5xl mx-auto px-4 py-8">
     {{if .Flash}}
-      <div class="mb-4 rounded border border-amber-200 bg-amber-50 text-amber-900 px-4 py-2">{{.Flash}}</div>
+      <div class="mb-4 rounded border border-warn-fg/20 bg-warn-bg text-warn-fg px-4 py-2">{{.Flash}}</div>
     {{end}}
     {{block "content" .}}{{end}}
   </main>
+  <div id="modal-host"></div>
 </body>
 </html>{{end}}

@@ -3,24 +3,24 @@
 <div class="max-w-3xl">
   <div class="flex items-center justify-between mb-2">
     <h1 class="text-3xl font-semibold">Template pasti</h1>
-    <a href="/templates/new" class="inline-block bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Nuovo</a>
+    <a href="/templates/new" class="inline-block bg-surface-2 text-white rounded px-4 py-2 hover:bg-surface-2">Nuovo</a>
   </div>
-  <p class="text-sm text-slate-600 mb-6">
+  <p class="text-sm text-muted mb-6">
     I template definiscono lo schema di pasti settimanale (Colazione, Pranzo, Cena, ...). Quello "attivo" verra' applicato di default alle nuove settimane.
   </p>
 
   {{if .Templates}}
-    <ul class="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+    <ul class="divide-y divide-border rounded border border-border bg-surface">
       {{range .Templates}}
         <li class="px-4 py-3 flex items-baseline justify-between gap-4">
-          <a href="/templates/{{.ID}}" class="font-medium text-slate-900 hover:underline">{{.Name}}</a>
-          <div class="flex items-center gap-3 text-xs text-slate-500">
+          <a href="/templates/{{.ID}}" class="font-medium text-text hover:underline">{{.Name}}</a>
+          <div class="flex items-center gap-3 text-xs text-muted">
             {{if .IsActive}}
-              <span class="text-emerald-700">attivo</span>
+              <span class="text-accent">attivo</span>
             {{else}}
               <form method="post" action="/templates/{{.ID}}/activate" class="inline">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <button class="text-slate-700 hover:underline">Attiva</button>
+                <button class="text-text hover:underline">Attiva</button>
               </form>
             {{end}}
           </div>
@@ -28,7 +28,7 @@
       {{end}}
     </ul>
   {{else}}
-    <p class="text-sm text-slate-500 px-4 py-6 text-center border border-dashed border-slate-300 rounded">
+    <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
       Nessun template ancora. Crea il primo per iniziare.
     </p>
   {{end}}
