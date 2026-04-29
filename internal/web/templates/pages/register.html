@@ -5,26 +5,26 @@
   {{if .Error}}
     <div class="mb-4 rounded border border-rose-200 bg-rose-50 text-rose-900 px-4 py-2 text-sm">{{.Error}}</div>
   {{end}}
-  <form method="post" action="/register" class="space-y-4 bg-white p-6 rounded border border-slate-200">
+  <form method="post" action="/register" class="space-y-4 bg-surface p-6 rounded border border-border">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div>
       <label class="block text-sm font-medium mb-1" for="display_name">Nome</label>
       <input id="display_name" name="display_name" type="text" required value="{{.Form.DisplayName}}"
-             class="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900">
+             class="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
     </div>
     <div>
       <label class="block text-sm font-medium mb-1" for="email">Email</label>
       <input id="email" name="email" type="email" required value="{{.Form.Email}}"
-             class="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900">
+             class="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
     </div>
     <div>
       <label class="block text-sm font-medium mb-1" for="password">Password</label>
       <input id="password" name="password" type="password" required minlength="8" maxlength="72"
-             class="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900">
-      <p class="text-xs text-slate-500 mt-1">Minimo 8 caratteri, massimo 72.</p>
+             class="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+      <p class="text-xs text-muted mt-1">Minimo 8 caratteri, massimo 72.</p>
     </div>
-    <button type="submit" class="w-full bg-slate-900 text-white rounded py-2 hover:bg-slate-800">Registrati</button>
+    <button type="submit" class="w-full bg-surface-2 text-white rounded py-2 hover:bg-surface-2">Registrati</button>
   </form>
-  <p class="text-sm text-slate-600 mt-4 text-center">Hai gia' un account? <a href="/login" class="underline">Accedi</a></p>
+  <p class="text-sm text-muted mt-4 text-center">Hai gia' un account? <a href="/login" class="underline">Accedi</a></p>
 </div>
 {{end}}

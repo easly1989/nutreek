@@ -2,30 +2,30 @@
 {{define "content"}}
 <div class="max-w-xl">
   <h1 class="text-3xl font-semibold mb-2">Nuovo ingrediente</h1>
-  <p class="text-sm text-slate-600 mb-6">
+  <p class="text-sm text-muted mb-6">
     Inserisci un ingrediente <strong>locale</strong>: i valori sono per 100 g (o 100 ml). Verra' candidato alla riconciliazione automatica con OpenFoodFacts.
   </p>
 
   {{if .Error}}
-    <div class="mb-4 rounded border border-red-200 bg-red-50 text-red-900 px-4 py-2 text-sm">{{.Error}}</div>
+    <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
   {{end}}
 
-  <form method="post" action="/ingredients" class="space-y-4 bg-white border border-slate-200 rounded p-6">
+  <form method="post" action="/ingredients" class="space-y-4 bg-surface border border-border rounded p-6">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
     <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="f-name">Nome</label>
-      <input id="f-name" name="name" required value="{{.Form.Name}}" class="w-full rounded border border-slate-300 px-3 py-2">
+      <label class="block text-sm font-medium text-text mb-1" for="f-name">Nome</label>
+      <input id="f-name" name="name" required value="{{.Form.Name}}" class="w-full rounded border border-border px-3 py-2">
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="f-brand">Marca <span class="text-slate-400 font-normal">(opzionale)</span></label>
-        <input id="f-brand" name="brand" value="{{.Form.Brand}}" class="w-full rounded border border-slate-300 px-3 py-2">
+        <label class="block text-sm font-medium text-text mb-1" for="f-brand">Marca <span class="text-muted font-normal">(opzionale)</span></label>
+        <input id="f-brand" name="brand" value="{{.Form.Brand}}" class="w-full rounded border border-border px-3 py-2">
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="f-unit">Unita'</label>
-        <select id="f-unit" name="unit" class="w-full rounded border border-slate-300 px-3 py-2">
+        <label class="block text-sm font-medium text-text mb-1" for="f-unit">Unita'</label>
+        <select id="f-unit" name="unit" class="w-full rounded border border-border px-3 py-2">
           <option value="g" {{if eq .Form.Unit "g"}}selected{{end}}>grammi (g)</option>
           <option value="ml" {{if eq .Form.Unit "ml"}}selected{{end}}>millilitri (ml)</option>
         </select>
@@ -33,28 +33,28 @@
     </div>
 
     <fieldset class="grid grid-cols-2 gap-4">
-      <legend class="text-sm font-medium text-slate-700 mb-1 col-span-2">Macro per 100 {{if eq .Form.Unit "ml"}}ml{{else}}g{{end}}</legend>
+      <legend class="text-sm font-medium text-text mb-1 col-span-2">Macro per 100 {{if eq .Form.Unit "ml"}}ml{{else}}g{{end}}</legend>
       <div>
-        <label class="block text-xs text-slate-500 mb-1" for="f-kcal">Kcal</label>
-        <input id="f-kcal" name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="w-full rounded border border-slate-300 px-3 py-2">
+        <label class="block text-xs text-muted mb-1" for="f-kcal">Kcal</label>
+        <input id="f-kcal" name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="w-full rounded border border-border px-3 py-2">
       </div>
       <div>
-        <label class="block text-xs text-slate-500 mb-1" for="f-protein">Proteine (g)</label>
-        <input id="f-protein" name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="w-full rounded border border-slate-300 px-3 py-2">
+        <label class="block text-xs text-muted mb-1" for="f-protein">Proteine (g)</label>
+        <input id="f-protein" name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="w-full rounded border border-border px-3 py-2">
       </div>
       <div>
-        <label class="block text-xs text-slate-500 mb-1" for="f-carbs">Carboidrati (g)</label>
-        <input id="f-carbs" name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="w-full rounded border border-slate-300 px-3 py-2">
+        <label class="block text-xs text-muted mb-1" for="f-carbs">Carboidrati (g)</label>
+        <input id="f-carbs" name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="w-full rounded border border-border px-3 py-2">
       </div>
       <div>
-        <label class="block text-xs text-slate-500 mb-1" for="f-fat">Grassi (g)</label>
-        <input id="f-fat" name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="w-full rounded border border-slate-300 px-3 py-2">
+        <label class="block text-xs text-muted mb-1" for="f-fat">Grassi (g)</label>
+        <input id="f-fat" name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="w-full rounded border border-border px-3 py-2">
       </div>
     </fieldset>
 
     <div class="flex items-center justify-between pt-2">
-      <a href="/ingredients" class="text-sm text-slate-600 hover:underline">Annulla</a>
-      <button class="bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Salva</button>
+      <a href="/ingredients" class="text-sm text-muted hover:underline">Annulla</a>
+      <button class="bg-surface-2 text-white rounded px-4 py-2 hover:bg-surface-2">Salva</button>
     </div>
   </form>
 </div>

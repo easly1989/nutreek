@@ -3,55 +3,55 @@
 <div class="max-w-3xl">
   <div class="flex items-baseline justify-between mb-1">
     <h1 class="text-3xl font-semibold">{{.Template.Name}}</h1>
-    <a href="/templates" class="text-sm text-slate-600 hover:underline">&larr; Tutti i template</a>
+    <a href="/templates" class="text-sm text-muted hover:underline">&larr; Tutti i template</a>
   </div>
-  <p class="text-xs text-slate-500 mb-6">
-    {{if .Template.IsActive}}<span class="text-emerald-700">Attivo</span>{{else}}Non attivo{{end}}
+  <p class="text-xs text-muted mb-6">
+    {{if .Template.IsActive}}<span class="text-accent">Attivo</span>{{else}}Non attivo{{end}}
   </p>
 
   <!-- Slots -->
   <section class="mb-8">
     <h2 class="text-lg font-medium mb-3">Pasti</h2>
     {{if .Template.Slots}}
-      <ul class="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+      <ul class="divide-y divide-border rounded border border-border bg-surface">
         {{range .Template.Slots}}
           <li class="px-4 py-3 flex items-baseline justify-between gap-4">
             <div>
-              <p class="text-slate-900">{{.Name}}</p>
-              <p class="text-xs text-slate-500">{{dayLabel .DayOfWeek}}</p>
+              <p class="text-text">{{.Name}}</p>
+              <p class="text-xs text-muted">{{dayLabel .DayOfWeek}}</p>
             </div>
             <form method="post" action="/templates/{{$.Template.ID}}/slots/{{.ID}}/delete" class="shrink-0">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button class="text-xs text-red-700 hover:underline">Rimuovi</button>
+              <button class="text-xs text-danger hover:underline">Rimuovi</button>
             </form>
           </li>
         {{end}}
       </ul>
     {{else}}
-      <p class="text-sm text-slate-500 px-4 py-6 text-center border border-dashed border-slate-300 rounded">
+      <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
         Nessun pasto nel template. Aggiungine uno qui sotto.
       </p>
     {{end}}
 
     {{if .SlotError}}
-      <div class="mt-3 rounded border border-red-200 bg-red-50 text-red-900 px-4 py-2 text-sm">{{.SlotError}}</div>
+      <div class="mt-3 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.SlotError}}</div>
     {{end}}
-    <form method="post" action="/templates/{{.Template.ID}}/slots" class="mt-4 flex flex-wrap items-end gap-3 bg-white border border-slate-200 rounded p-4">
+    <form method="post" action="/templates/{{.Template.ID}}/slots" class="mt-4 flex flex-wrap items-end gap-3 bg-surface border border-border rounded p-4">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <div class="grow min-w-[10rem]">
-        <label class="block text-xs text-slate-500 mb-1" for="s-name">Nome pasto</label>
+        <label class="block text-xs text-muted mb-1" for="s-name">Nome pasto</label>
         <input id="s-name" name="slot_name" required value="{{.SlotForm.Name}}" placeholder="Colazione, Pranzo, ..."
-               class="w-full rounded border border-slate-300 px-3 py-2">
+               class="w-full rounded border border-border px-3 py-2">
       </div>
       <div>
-        <label class="block text-xs text-slate-500 mb-1" for="s-day">Giorno</label>
-        <select id="s-day" name="day_of_week" class="rounded border border-slate-300 px-3 py-2">
+        <label class="block text-xs text-muted mb-1" for="s-day">Giorno</label>
+        <select id="s-day" name="day_of_week" class="rounded border border-border px-3 py-2">
           {{range .DayOptions}}
             <option value="{{.Value}}" {{if eq (printf "%d" .Value) $.SlotForm.DayOfWeek}}selected{{end}}>{{.Label}}</option>
           {{end}}
         </select>
       </div>
-      <button class="bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Aggiungi</button>
+      <button class="bg-surface-2 text-white rounded px-4 py-2 hover:bg-surface-2">Aggiungi</button>
     </form>
   </section>
 
@@ -59,15 +59,15 @@
   <section class="mb-8">
     <h2 class="text-lg font-medium mb-3">Impostazioni</h2>
     {{if .NameError}}
-      <div class="mb-3 rounded border border-red-200 bg-red-50 text-red-900 px-4 py-2 text-sm">{{.NameError}}</div>
+      <div class="mb-3 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.NameError}}</div>
     {{end}}
-    <form method="post" action="/templates/{{.Template.ID}}" class="space-y-4 bg-white border border-slate-200 rounded p-6">
+    <form method="post" action="/templates/{{.Template.ID}}" class="space-y-4 bg-surface border border-border rounded p-6">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="f-name">Nome</label>
-        <input id="f-name" name="name" required value="{{.NameForm}}" class="w-full rounded border border-slate-300 px-3 py-2">
+        <label class="block text-sm font-medium text-text mb-1" for="f-name">Nome</label>
+        <input id="f-name" name="name" required value="{{.NameForm}}" class="w-full rounded border border-border px-3 py-2">
       </div>
-      <button class="bg-slate-900 text-white rounded px-4 py-2 hover:bg-slate-800">Salva nome</button>
+      <button class="bg-surface-2 text-white rounded px-4 py-2 hover:bg-surface-2">Salva nome</button>
     </form>
   </section>
 
@@ -76,7 +76,7 @@
     {{if not .Template.IsActive}}
       <form method="post" action="/templates/{{.Template.ID}}/activate">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <button class="text-sm text-emerald-700 hover:underline">Attiva questo template</button>
+        <button class="text-sm text-accent hover:underline">Attiva questo template</button>
       </form>
     {{else}}
       <span></span>
@@ -84,7 +84,7 @@
     <form method="post" action="/templates/{{.Template.ID}}/delete"
           onsubmit="return confirm('Eliminare il template? Operazione non reversibile.');">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button class="text-xs text-red-700 hover:underline">Elimina template</button>
+      <button class="text-xs text-danger hover:underline">Elimina template</button>
     </form>
   </div>
 </div>

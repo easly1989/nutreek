@@ -26,6 +26,29 @@ type authPageData struct {
 	Flash     string
 	Error     string
 	Form      authFormData
+	Theme     string
+}
+
+// validThemes elenca i temi accettati. Tenuto allineato a web/tailwind/input.css
+// e internal/web/static/js/theme.js.
+var validThemes = map[string]struct{}{
+	"forest": {},
+	"ocean":  {},
+	"sunset": {},
+	"mono":   {},
+}
+
+// readTheme legge il cookie `theme` e ritorna un valore valido,
+// con fallback al default `forest`. Evita FOUC iniettando data-theme
+// lato server prima del primo render.
+func readTheme(r *http.Request) string {
+	c, err := r.Cookie("theme")
+	if err == nil {
+		if _, ok := validThemes[c.Value]; ok {
+			return c.Value
+		}
+	}
+	return "forest"
 }
 
 func (a *App) baseData(r *http.Request) authPageData {
@@ -33,6 +56,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 		User:      userFromContext(r.Context()),
 		CSRFToken: nosurf.Token(r),
 		Flash:     a.Sessions.PopString(r.Context(), "flash"),
+		Theme:     readTheme(r),
 	}
 }
 

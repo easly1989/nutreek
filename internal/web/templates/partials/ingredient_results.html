@@ -1,17 +1,17 @@
 {{define "ingredient_results"}}
 {{if .OFFWarning}}
-  <div class="mb-3 rounded border border-amber-200 bg-amber-50 text-amber-900 px-3 py-2 text-xs">{{.OFFWarning}}</div>
+  <div class="mb-3 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-xs">{{.OFFWarning}}</div>
 {{end}}
 {{if .Rows}}
-  <ul class="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+  <ul class="divide-y divide-border rounded border border-border bg-surface">
     {{range .Rows}}
       <li class="px-4 py-3 flex items-baseline justify-between gap-4">
         <div class="min-w-0">
-          <p class="font-medium text-slate-900 truncate">
-            {{.Name}}{{with .Brand}} <span class="text-slate-500 font-normal">— {{.}}</span>{{end}}
+          <p class="font-medium text-text truncate">
+            {{.Name}}{{with .Brand}} <span class="text-muted font-normal">— {{.}}</span>{{end}}
           </p>
-          <p class="text-xs text-slate-500">
-            <span class="{{if .IsOFF}}text-emerald-700{{else}}text-slate-500{{end}}">{{.SourceLabel}}</span>
+          <p class="text-xs text-muted">
+            <span class="{{if .IsOFF}}text-accent{{else}}text-muted{{end}}">{{.SourceLabel}}</span>
             · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
           </p>
         </div>
@@ -20,17 +20,17 @@
             <form method="post" action="/ingredients/off-import" class="shrink-0">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <input type="hidden" name="barcode" value="{{.Barcode}}">
-              <button class="text-xs bg-emerald-600 text-white rounded px-3 py-1 hover:bg-emerald-700">Importa</button>
+              <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Importa</button>
             </form>
           {{else}}
-            <span class="text-xs text-slate-400 shrink-0">macro incompleti</span>
+            <span class="text-xs text-muted shrink-0">macro incompleti</span>
           {{end}}
         {{end}}
       </li>
     {{end}}
   </ul>
 {{else}}
-  <p class="text-sm text-slate-500 px-4 py-6 text-center border border-dashed border-slate-300 rounded">
+  <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
     {{if .Query}}Nessun ingrediente trovato per &laquo;{{.Query}}&raquo;.{{else}}Nessun ingrediente ancora. Crea il primo qui sotto.{{end}}
   </p>
 {{end}}
