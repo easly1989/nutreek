@@ -52,18 +52,19 @@
   </form>
   {{end}}
 
-  <!-- Timeline giorni passati (collassati). Click sulla pillola li promuove a focus. -->
-  {{if .PastDays}}
-  <div id="timeline-past" class="mb-4 flex gap-2 overflow-x-auto pb-2">
-    {{range .PastDays}}
-      {{template "day_card" .}}
+  <!-- Timeline: TUTTI i giorni della settimana, sempre visibili. Le pillole
+       in focus sono evidenziate (accent). Click sulla pillola toggla il
+       relativo card piena in #focus-grid. -->
+  <div id="timeline-pills" class="mb-4 flex gap-2 overflow-x-auto pb-2">
+    {{range .AllCards}}
+      {{template "day_pill" .}}
     {{end}}
   </div>
-  {{end}}
 
-  <!-- Griglia focus: oggi + futuri (e i passati promossi via click). -->
+  <!-- Griglia focus: card piene per i giorni "in focus" (default oggi+futuri,
+       l'utente puo' aggiungere passati o togliere oggi/futuri). -->
   <div id="focus-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {{range .FocusDays}}
+    {{range .FocusCards}}
       {{template "day_card" .}}
     {{end}}
   </div>
