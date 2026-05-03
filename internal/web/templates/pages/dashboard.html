@@ -61,9 +61,10 @@
     {{end}}
   </div>
 
-  <!-- Griglia focus: card piene per i giorni "in focus" (default oggi+futuri,
-       l'utente puo' aggiungere passati o togliere oggi/futuri). -->
-  <div id="focus-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <!-- Lista focus: card piene impilate verticalmente, riordinabili via
+       drag-and-drop client-side (ordine non persistito: e' solo l'ordine
+       di visualizzazione nella sessione corrente). -->
+  <div id="focus-grid" class="flex flex-col gap-4" data-sortable="focus" data-sortable-handle="header">
     {{range .FocusCards}}
       {{template "day_card" .}}
     {{end}}
