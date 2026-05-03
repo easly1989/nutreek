@@ -1,0 +1,119 @@
+{{define "day_card"}}
+{{- /*
+  day_card.html — view-model: dayCardData
+    .Day        dayView (Index, Label, Date, Meals, DayTotal)
+    .DateStr    YYYY-MM-DD
+    .State      "past" | "today" | "future" | "focus"
+    .WeekStart  YYYY-MM-DD
+    .CSRFToken
+  Stati:
+    past   = pillola compatta nella timeline (no body, click espande)
+    today  = card piena con ring accent
+    future = card piena standard
+    focus  = card piena promossa da timeline (UI-only)
+*/ -}}
+{{- if eq .State "past" -}}
+<button type="button"
+        data-day="{{.DateStr}}"
+        data-state="past"
+        class="shrink-0 px-3 py-2 rounded border border-border bg-surface-2 text-text hover:bg-surface text-left transition"
+        hx-get="/days/{{.DateStr}}?focus=1"
+        hx-target="this"
+        hx-swap="outerHTML">
+  <span class="block text-xs text-muted">{{.Day.Label}}</span>
+  <span class="block text-sm font-medium">{{.Day.Date.Format "02/01"}}</span>
+  <span class="block text-xs text-muted">{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
+</button>
+{{- else -}}
+<section data-day="{{.DateStr}}"
+         data-state="{{.State}}"
+         class="bg-surface border rounded p-4 transition-all duration-200
+                {{if eq .State "today"}}border-accent ring-2 ring-accent/40{{else}}border-border{{end}}">
+  <header class="flex items-baseline justify-between mb-3">
+    <h2 class="font-medium text-text">
+      {{.Day.Label}}
+      <span class="text-xs text-muted font-normal">{{.Day.Date.Format "02/01"}}</span>
+      {{if eq .State "today"}}<span class="ml-1 text-xs text-accent font-semibold uppercase">oggi</span>{{end}}
+    </h2>
+    <span class="text-xs text-muted">{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
+  </header>
+
+  {{if .Day.Meals}}
+    <ul class="divide-y divide-border" data-sortable="meals" data-sort-url="/meals/reorder?day_of_week={{.Day.Index}}&start={{.WeekStart}}">
+      {{range .Day.Meals}}
+        <li class="py-2" data-id="{{.Meal.ID}}">
+          <div class="flex items-baseline justify-between gap-2 mb-1">
+            <p class="text-sm font-medium text-text">
+              <span class="cursor-grab text-muted/60 select-none mr-1" aria-hidden="true">⠿</span>
+              {{.Meal.Name}}
+            </p>
+            <div class="flex items-center gap-2 text-xs text-muted">
+              <span>{{printf "%.0f" .MealTotal.Kcal}} kcal</span>
+              <a href="/meals/{{.Meal.ID}}/items/new?start={{$.WeekStart}}"
+                 class="text-text hover:underline">+</a>
+              <form method="post" action="/meals/{{.Meal.ID}}/delete?start={{$.WeekStart}}"
+                    hx-post="/meals/{{.Meal.ID}}/delete?start={{$.WeekStart}}"
+                    hx-target="closest section[data-day]"
+                    hx-swap="outerHTML"
+                    hx-confirm="Eliminare questo pasto?"
+                    class="inline">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <button class="text-danger hover:underline">×</button>
+              </form>
+            </div>
+          </div>
+          {{if .ItemViews}}
+            <ul class="text-xs space-y-1 ml-2" data-sortable="items" data-sort-url="/meals/{{.Meal.ID}}/items/reorder?start={{$.WeekStart}}">
+              {{range .ItemViews}}
+                <li class="flex items-baseline justify-between gap-2" data-id="{{.Item.ID}}">
+                  <span class="text-muted">
+                    {{if .Item.Recipe}}
+                      <span class="text-accent font-medium">{{.Item.Recipe.Name}}</span>
+                      <span class="text-muted">× {{printf "%.1f" .Item.Quantity}} porz.</span>
+                      {{if .Item.RecipeItems}}
+                        <span class="block text-muted/70 italic ml-3">
+                          {{range $i, $ri := .Item.RecipeItems}}{{if $i}}, {{end}}{{$ri.Ingredient.Name}}{{end}}
+                        </span>
+                      {{end}}
+                    {{else if .Item.Ingredient}}
+                      <span class="font-medium text-text">{{.Item.Ingredient.Name}}</span>
+                      <span>{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
+                    {{end}}
+                  </span>
+                  <span class="flex items-center gap-2 shrink-0">
+                    <span class="text-muted">{{printf "%.0f" .Macros.Kcal}}</span>
+                    <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
+                          hx-post="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
+                          hx-target="closest section[data-day]"
+                          hx-swap="outerHTML"
+                          class="inline">
+                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                      <button class="text-danger hover:underline">×</button>
+                    </form>
+                  </span>
+                </li>
+              {{end}}
+            </ul>
+          {{end}}
+        </li>
+      {{end}}
+    </ul>
+  {{else}}
+    <p class="text-xs text-muted italic">Nessun pasto.</p>
+  {{end}}
+
+  <form method="post" action="/meals?start={{.WeekStart}}"
+        hx-post="/meals?start={{.WeekStart}}"
+        hx-target="closest section[data-day]"
+        hx-swap="outerHTML"
+        class="mt-3 flex items-center gap-2">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="start" value="{{.WeekStart}}">
+    <input type="hidden" name="day_of_week" value="{{.Day.Index}}">
+    <input name="name" required placeholder="+ pasto extra"
+           class="grow rounded border border-border bg-surface px-2 py-1 text-sm placeholder:text-muted">
+    <button class="rounded bg-accent text-accent-fg px-3 py-1 text-sm hover:bg-accent/90">+</button>
+  </form>
+</section>
+{{- end -}}
+{{end}}

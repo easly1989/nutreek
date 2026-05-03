@@ -2,10 +2,14 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
@@ -17,8 +21,11 @@ import (
 type dashboardData struct {
 	authPageData
 	Plan         *domain.WeeklyPlanFull
-	Days         []dayView
+	Days         []dayView // legacy: usato nei test eventuali
+	PastDays     []dayCardData
+	FocusDays    []dayCardData
 	WeekStart    time.Time
+	WeekStartStr string // YYYY-MM-DD per i form
 	PrevWeek     string // YYYY-MM-DD
 	NextWeek     string
 	WeekTotal    macros.Macros
@@ -35,6 +42,17 @@ type dayView struct {
 	Date     time.Time // data effettiva
 	Meals    []mealView
 	DayTotal macros.Macros
+}
+
+// dayCardData e' il view-model passato al partial day_card.html. Self-contained
+// per essere renderizzabile sia inline (dashboard) sia da solo (HTMX swap dopo
+// add/remove meal o item).
+type dayCardData struct {
+	Day       dayView
+	DateStr   string // YYYY-MM-DD per data-day attribute
+	State     string // "past" | "today" | "future" | "focus"
+	WeekStart string // YYYY-MM-DD per nascondere/passare nei form
+	CSRFToken string
 }
 
 type mealView struct {
@@ -72,6 +90,159 @@ func parseWeekStart(r *http.Request) time.Time {
 }
 
 func formatDate(t time.Time) string { return t.Format("2006-01-02") }
+
+// todayDate ritorna la data odierna normalizzata a mezzanotte locale.
+func todayDate() time.Time {
+	now := time.Now()
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+}
+
+// dayState classifica un giorno come "past", "today" o "future" rispetto a
+// today. Usa il confronto sulla rappresentazione calendariale (YYYY-MM-DD)
+// per essere robusto a timezone/DST/clock_drift dei time.Time interni.
+func dayState(date, today time.Time) string {
+	a, b := date.Format("2006-01-02"), today.Format("2006-01-02")
+	switch {
+	case a < b:
+		return "past"
+	case a == b:
+		return "today"
+	default:
+		return "future"
+	}
+}
+
+// buildDayViews popola un []dayView a partire dal piano completo, calcolando
+// i totali macro per giorno e la struttura items.
+func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
+	out := make([]dayView, 7)
+	for d := 0; d < 7; d++ {
+		dv := dayView{
+			Index: d,
+			Label: dayLabelsFull[d],
+			Date:  weekStart.AddDate(0, 0, d),
+		}
+		for _, m := range full.Days[d] {
+			mv := mealView{Meal: m}
+			for _, it := range m.Items {
+				macroIt := macros.ForMealItem(it)
+				mv.ItemViews = append(mv.ItemViews, mealItemView{Item: it, Macros: macroIt})
+				mv.MealTotal = mv.MealTotal.Add(macroIt)
+			}
+			dv.Meals = append(dv.Meals, mv)
+			dv.DayTotal = dv.DayTotal.Add(mv.MealTotal)
+		}
+		out[d] = dv
+	}
+	return out
+}
+
+// makeDayCard costruisce dayCardData a partire da una dayView e dal contesto.
+func makeDayCard(dv dayView, state, weekStartStr, csrfToken string) dayCardData {
+	return dayCardData{
+		Day:       dv,
+		DateStr:   formatDate(dv.Date),
+		State:     state,
+		WeekStart: weekStartStr,
+		CSRFToken: csrfToken,
+	}
+}
+
+// splitDayCards divide i 7 giorni in due liste in base al giorno odierno:
+// passati (collassati nella timeline) e focus (oggi + futuri, in griglia
+// piena). Il giorno odierno e' sempre primo nei focus.
+func splitDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string) (past, focus []dayCardData) {
+	past = make([]dayCardData, 0, 6)
+	focus = make([]dayCardData, 0, 7)
+	for _, dv := range days {
+		state := dayState(dv.Date, today)
+		card := makeDayCard(dv, state, weekStartStr, csrfToken)
+		if state == "past" {
+			past = append(past, card)
+		} else {
+			focus = append(focus, card)
+		}
+	}
+	return past, focus
+}
+
+// renderDayCard scrive il partial day_card per una specifica dayView. Usato
+// per gli swap HTMX dopo le mutazioni e per l'endpoint /days/{date}.
+func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, weekStart time.Time, state string) {
+	card := makeDayCard(dv, state, formatDate(weekStart), nosurfTokenOrEmpty(r))
+	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card", card); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
+// loadDayCard carica il piano dell'utente per la settimana data, costruisce
+// la dayView del giorno richiesto e ritorna nil se il giorno e' fuori range.
+func (a *App) loadDayCard(r *http.Request, userID int64, weekStart time.Time, dayIndex int) (*dayView, error) {
+	if dayIndex < 0 || dayIndex > 6 {
+		return nil, fmt.Errorf("day_index fuori range")
+	}
+	plan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), userID, weekStart)
+	if err != nil {
+		return nil, err
+	}
+	full, err := a.WeeklyPlans.LoadFull(r.Context(), plan)
+	if err != nil {
+		return nil, err
+	}
+	days := buildDayViews(full, weekStart)
+	dv := days[dayIndex]
+	return &dv, nil
+}
+
+// nosurfTokenOrEmpty e' un thin wrapper per leggere il CSRF token; usato dai
+// renderer di partial dove non c'e' un baseData() pre-costruito.
+func nosurfTokenOrEmpty(r *http.Request) string {
+	return nosurf.Token(r)
+}
+
+// respondMutationOrRedirect gestisce in modo uniforme il dual-mode (HTMX
+// vs full navigation) dopo una mutazione su un meal/item. Per HX-Request
+// ritorna il partial day_card; altrimenti redirect alla settimana.
+func (a *App) respondMutationOrRedirect(w http.ResponseWriter, r *http.Request, weekStart time.Time, dayIndex int) {
+	if r.Header.Get("HX-Request") != "true" {
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	user := userFromContext(r.Context())
+	dv, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	state := dayState(dv.Date, todayDate())
+	// Se la mutazione e' avvenuta su un giorno passato, l'utente l'ha
+	// "messo a focus" nella timeline: rimaniamo in focus per non far
+	// sparire la card mentre la sta usando.
+	if state == "past" {
+		state = "focus"
+	}
+	a.renderDayCard(w, r, *dv, weekStart, state)
+}
+
+// dayIndexFromMealID risolve il day_of_week di un meal a partire dal suo id.
+// Necessario per sapere quale card swappare dopo remove/add-item, dato che
+// il client non passa sempre l'index esplicito.
+func (a *App) dayIndexFromMealID(r *http.Request, mealID int64) (int, error) {
+	var day int
+	err := a.Store.DB.QueryRowContext(r.Context(),
+		`SELECT day_of_week FROM meals WHERE id = ?`, mealID).Scan(&day)
+	return day, err
+}
+
+// dayIndexFromItemID risolve il day_of_week del meal che contiene l'item.
+func (a *App) dayIndexFromItemID(r *http.Request, itemID int64) (int, error) {
+	var day int
+	err := a.Store.DB.QueryRowContext(r.Context(),
+		`SELECT m.day_of_week FROM meals m
+		 JOIN meal_items mi ON mi.meal_id = m.id
+		 WHERE mi.id = ?`, itemID).Scan(&day)
+	return day, err
+}
 
 // ---- handlers --------------------------------------------------------------
 
@@ -114,34 +285,28 @@ func (a *App) renderDashboard(
 	applyErr string,
 	mealForm newMealForm, mealErr string,
 ) {
-	days := make([]dayView, 7)
+	base := a.baseData(r)
+	days := buildDayViews(full, weekStart)
 	hasMeals := false
-	for d := 0; d < 7; d++ {
-		dv := dayView{
-			Index: d,
-			Label: dayLabelsFull[d],
-			Date:  weekStart.AddDate(0, 0, d),
-		}
-		for _, m := range full.Days[d] {
+	for _, dv := range days {
+		if len(dv.Meals) > 0 {
 			hasMeals = true
-			mv := mealView{Meal: m}
-			for _, it := range m.Items {
-				macroIt := macros.ForMealItem(it)
-				mv.ItemViews = append(mv.ItemViews, mealItemView{Item: it, Macros: macroIt})
-				mv.MealTotal = mv.MealTotal.Add(macroIt)
-			}
-			dv.Meals = append(dv.Meals, mv)
-			dv.DayTotal = dv.DayTotal.Add(mv.MealTotal)
+			break
 		}
-		days[d] = dv
 	}
+	today := todayDate()
+	weekStartStr := formatDate(weekStart)
+	pastDays, focusDays := splitDayCards(days, today, weekStartStr, base.CSRFToken)
 	weekTotal := macros.ForWeek(full.Days)
 
 	data := dashboardData{
-		authPageData: a.baseData(r),
+		authPageData: base,
 		Plan:         full,
 		Days:         days,
+		PastDays:     pastDays,
+		FocusDays:    focusDays,
 		WeekStart:    weekStart,
+		WeekStartStr: weekStartStr,
 		PrevWeek:     formatDate(weekStart.AddDate(0, 0, -7)),
 		NextWeek:     formatDate(weekStart.AddDate(0, 0, 7)),
 		WeekTotal:    weekTotal,
@@ -246,7 +411,7 @@ func (a *App) handleAddMeal(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.redirectToWeek(w, r, weekStart)
+	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
 // handleRemoveMeal POST /meals/{mealID}/delete?start=YYYY-MM-DD
@@ -258,6 +423,7 @@ func (a *App) handleRemoveMeal(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
+	day, dayErr := a.dayIndexFromMealID(r, mealID)
 	if err := a.WeeklyPlans.RemoveMeal(r.Context(), mealID, user.ID); err != nil {
 		if errors.Is(err, db.ErrMealNotFound) {
 			http.Error(w, "pasto non trovato", http.StatusNotFound)
@@ -266,7 +432,11 @@ func (a *App) handleRemoveMeal(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.redirectToWeek(w, r, weekStart)
+	if dayErr != nil {
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
 // handleAddMealItem POST /meals/{mealID}/items — recipe XOR ingredient.
@@ -305,7 +475,12 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		a.flashAndBack(w, r, weekStart, "Impossibile aggiungere la voce: "+err.Error())
 		return
 	}
-	a.redirectToWeek(w, r, weekStart)
+	day, dayErr := a.dayIndexFromMealID(r, mealID)
+	if dayErr != nil {
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
 // handleRemoveMealItem POST /meal-items/{itemID}/delete?start=YYYY-MM-DD
@@ -317,6 +492,7 @@ func (a *App) handleRemoveMealItem(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
+	day, dayErr := a.dayIndexFromItemID(r, itemID)
 	if err := a.WeeklyPlans.RemoveItem(r.Context(), itemID, user.ID); err != nil {
 		if errors.Is(err, db.ErrMealItemNotFound) {
 			http.Error(w, "voce non trovata", http.StatusNotFound)
@@ -325,7 +501,40 @@ func (a *App) handleRemoveMealItem(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.redirectToWeek(w, r, weekStart)
+	if dayErr != nil {
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	a.respondMutationOrRedirect(w, r, weekStart, day)
+}
+
+// handleDayCard GET /days/{date}?focus=1 ritorna il partial day_card per il
+// giorno indicato. Usato dalla timeline per "promuovere" un giorno passato
+// nella griglia focus senza ricaricare la pagina.
+func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	dateStr := chi.URLParam(r, "date")
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	weekStart := db.MondayOf(date)
+	dayIndex := int(date.Sub(weekStart).Hours() / 24)
+	if dayIndex < 0 || dayIndex > 6 {
+		a.notFound(w, r)
+		return
+	}
+	dv, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	state := dayState(dv.Date, todayDate())
+	if r.URL.Query().Get("focus") == "1" {
+		state = "focus"
+	}
+	a.renderDayCard(w, r, *dv, weekStart, state)
 }
 
 // handleAddItemForm GET /meals/{mealID}/items/new — form picker per aggiungere
