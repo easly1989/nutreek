@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 )
@@ -39,12 +41,39 @@ type templateNewData struct {
 
 type templateEditData struct {
 	authPageData
-	Template     *domain.MealTemplateWithSlots
-	NameForm     string
-	NameError    string
-	SlotForm     slotForm
-	SlotError    string
-	DayOptions   []dayOption
+	Template   *domain.MealTemplateWithSlots
+	SlotGroups []slotGroup
+	NameForm   string
+	NameError  string
+	SlotForm   slotForm
+	SlotError  string
+	DayOptions []dayOption
+}
+
+// slotGroup raggruppa gli slot per giorno per la UI di drag-and-drop.
+// Ogni gruppo ha il proprio container ordinabile in template_edit.html.
+type slotGroup struct {
+	Day   int
+	Label string
+	Slots []domain.MealTemplateSlot
+}
+
+// groupSlotsByDay raggruppa gli slot del template per day_of_week, mantenendo
+// l'ordine corrente (slots gia' arriva ORDER BY day_of_week, sort_order).
+// Ritorna sempre 8 gruppi (-1 + 0..6) anche se vuoti, cosi' il drag-and-drop
+// puo' funzionare anche con un solo elemento.
+func groupSlotsByDay(slots []domain.MealTemplateSlot) []slotGroup {
+	out := make([]slotGroup, 0, 8)
+	for _, day := range []int{domain.DayOfWeekEvery, 0, 1, 2, 3, 4, 5, 6} {
+		g := slotGroup{Day: day, Label: dayLabel(day)}
+		for _, s := range slots {
+			if s.DayOfWeek == day {
+				g.Slots = append(g.Slots, s)
+			}
+		}
+		out = append(out, g)
+	}
+	return out
 }
 
 type slotForm struct {
@@ -137,6 +166,7 @@ func (a *App) renderTemplateEdit(
 	data := templateEditData{
 		authPageData: a.baseData(r),
 		Template:     tpl,
+		SlotGroups:   groupSlotsByDay(tpl.Slots),
 		NameForm:     nameForm,
 		NameError:    nameErr,
 		SlotForm:     slotF,
@@ -230,6 +260,46 @@ func (a *App) handleTemplateRemoveSlot(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/templates/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+}
+
+// handleReorderTemplateSlots POST /templates/{id}/days/{day}/slots/reorder
+// Body: ids=12,9,15. Persiste l'ordine degli slot del template per il giorno
+// indicato (e' supportato anche -1 per "ogni giorno"). Risponde redirect alla
+// pagina del template (la UI fa swap automatico via HTMX dopo Sortable).
+func (a *App) handleReorderTemplateSlots(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	id, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	dayStr := chi.URLParam(r, "day")
+	day, err := strconv.Atoi(dayStr)
+	if err != nil || day < domain.DayOfWeekEvery || day > 6 {
+		http.Error(w, "day_of_week invalido", http.StatusBadRequest)
+		return
+	}
+	ids, err := parseIDList(r.PostFormValue("ids"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := a.MealTemplates.ReorderSlots(r.Context(), id, user.ID, day, ids); err != nil {
+		if errors.Is(err, db.ErrReorderMismatch) {
+			http.Error(w, "ordine non valido", http.StatusConflict)
+			return
+		}
+		a.handleTemplateError(w, r, err)
+		return
+	}
+	// Per ora il template_edit non ha un partial dedicato: per HX-Request
+	// rispondiamo 204 e il client puo' aggiornare l'UI da solo (Sortable
+	// l'ha gia' fatto). Per navigazione classica redirect alla pagina.
+	if r.Header.Get("HX-Request") == "true" {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	http.Redirect(w, r, "/templates/"+strconv.FormatInt(id, 10), http.StatusSeeOther)

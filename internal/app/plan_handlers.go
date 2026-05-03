@@ -508,6 +508,99 @@ func (a *App) handleRemoveMealItem(w http.ResponseWriter, r *http.Request) {
 	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
+// parseIDList interpreta il valore form `ids` come lista comma-separated e
+// ritorna gli int64 corrispondenti. Errore se vuoto o malformato.
+func parseIDList(s string) ([]int64, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil, fmt.Errorf("ids vuoto")
+	}
+	parts := strings.Split(s, ",")
+	out := make([]int64, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		n, err := strconv.ParseInt(p, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("id non valido: %q", p)
+		}
+		out = append(out, n)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("ids vuoto")
+	}
+	return out, nil
+}
+
+// handleReorderMeals POST /meals/reorder?day_of_week=N&start=YYYY-MM-DD
+// Body: ids=12,9,15  (form-encoded). Persiste l'ordine dei meal_id per quel
+// giorno e ritorna il partial day_card aggiornato.
+func (a *App) handleReorderMeals(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	weekStart := parseWeekStart(r)
+	dayStr := r.URL.Query().Get("day_of_week")
+	day, err := strconv.Atoi(dayStr)
+	if err != nil || day < 0 || day > 6 {
+		http.Error(w, "day_of_week mancante o invalido", http.StatusBadRequest)
+		return
+	}
+	ids, err := parseIDList(r.PostFormValue("ids"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	plan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), user.ID, weekStart)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := a.WeeklyPlans.ReorderMeals(r.Context(), plan.ID, user.ID, day, ids); err != nil {
+		if errors.Is(err, db.ErrReorderMismatch) {
+			http.Error(w, "ordine non valido", http.StatusConflict)
+			return
+		}
+		a.serverError(w, r, err)
+		return
+	}
+	a.respondMutationOrRedirect(w, r, weekStart, day)
+}
+
+// handleReorderMealItems POST /meals/{mealID}/items/reorder?start=YYYY-MM-DD
+func (a *App) handleReorderMealItems(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	weekStart := parseWeekStart(r)
+	mealID, err := parseID(r, "mealID")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	ids, err := parseIDList(r.PostFormValue("ids"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := a.WeeklyPlans.ReorderMealItems(r.Context(), mealID, user.ID, ids); err != nil {
+		if errors.Is(err, db.ErrReorderMismatch) {
+			http.Error(w, "ordine non valido", http.StatusConflict)
+			return
+		}
+		if errors.Is(err, db.ErrMealNotFound) || errors.Is(err, db.ErrPlanNotFound) {
+			a.notFound(w, r)
+			return
+		}
+		a.serverError(w, r, err)
+		return
+	}
+	day, dayErr := a.dayIndexFromMealID(r, mealID)
+	if dayErr != nil {
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	a.respondMutationOrRedirect(w, r, weekStart, day)
+}
+
 // handleDayCard GET /days/{date}?focus=1 ritorna il partial day_card per il
 // giorno indicato. Usato dalla timeline per "promuovere" un giorno passato
 // nella griglia focus senza ricaricare la pagina.
