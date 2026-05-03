@@ -444,6 +444,8 @@ func (a *App) handleRemoveMeal(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAddMealItem POST /meals/{mealID}/items — recipe XOR ingredient.
+// Per ingredient supporta sia `ref_id` (locale gia' in DB) sia `barcode`
+// (OFF, auto-import idempotente via resolveOFFBarcode).
 func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	weekStart := parseWeekStart(r)
@@ -453,28 +455,49 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	kind := r.PostFormValue("kind") // "recipe" | "ingredient"
-	idStr := r.PostFormValue("ref_id")
 	qtyStr := r.PostFormValue("quantity")
-	refID, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || refID <= 0 {
-		a.flashAndBack(w, r, weekStart, "Seleziona una ricetta o un ingrediente.")
-		return
-	}
 	qty, err := parseNonNegFloat(qtyStr)
 	if err != nil || qty <= 0 {
 		a.flashAndBack(w, r, weekStart, "Quantita' non valida.")
 		return
 	}
+
 	var rPtr, iPtr *int64
 	switch kind {
 	case "recipe":
+		idStr := r.PostFormValue("ref_id")
+		refID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || refID <= 0 {
+			a.flashAndBack(w, r, weekStart, "Seleziona una ricetta.")
+			return
+		}
 		rPtr = &refID
 	case "ingredient":
-		iPtr = &refID
+		barcode := strings.TrimSpace(r.PostFormValue("barcode"))
+		if barcode != "" {
+			ingID, err := a.resolveOFFBarcode(r.Context(), barcode)
+			if err != nil {
+				a.flashAndBack(w, r, weekStart, "Import OFF fallito: "+err.Error())
+				return
+			}
+			iPtr = &ingID
+		} else {
+			idStr := r.PostFormValue("ref_id")
+			if idStr == "" {
+				idStr = r.PostFormValue("ingredient_id")
+			}
+			refID, err := strconv.ParseInt(idStr, 10, 64)
+			if err != nil || refID <= 0 {
+				a.flashAndBack(w, r, weekStart, "Seleziona un ingrediente.")
+				return
+			}
+			iPtr = &refID
+		}
 	default:
 		a.flashAndBack(w, r, weekStart, "Tipo non valido.")
 		return
 	}
+
 	if _, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, rPtr, iPtr, qty); err != nil {
 		a.flashAndBack(w, r, weekStart, "Impossibile aggiungere la voce: "+err.Error())
 		return
@@ -485,6 +508,82 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.respondMutationOrRedirect(w, r, weekStart, day)
+}
+
+// handleMealPicker GET /meals/{mealID}/picker?kind=ingredient|recipe&q=...&start=
+// Renderizza il partial picker (live HTMX) con le righe filtrate. Per
+// kind=ingredient usa searchMixed (DB + OFF unificato). Per kind=recipe
+// filtra le ricette visibili all'utente per nome.
+func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	mealID, err := parseID(r, "mealID")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	kind := r.URL.Query().Get("kind")
+	if kind == "" {
+		kind = "ingredient"
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	weekStart := parseWeekStart(r)
+	weekStartStr := formatDate(weekStart)
+
+	switch kind {
+	case "ingredient":
+		rows, warn, err := a.searchMixed(r.Context(), q)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		data := ingredientsListData{
+			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+			Rows:         rows,
+			Query:        q,
+			OFFWarning:   warn,
+			PickerKind:   "meal_item",
+			MealID:       mealID,
+			WeekStart:    weekStartStr,
+		}
+		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
+			a.serverError(w, r, err)
+		}
+	case "recipe":
+		recipes, err := a.Recipes.ListVisible(r.Context(), user.ID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		// Filtra per nome (case-insensitive).
+		filtered := recipes
+		if q != "" {
+			ql := strings.ToLower(q)
+			filtered = filtered[:0]
+			for _, rc := range recipes {
+				if strings.Contains(strings.ToLower(rc.Name), ql) {
+					filtered = append(filtered, rc)
+				}
+			}
+		}
+		data := struct {
+			authPageData
+			Recipes   []*domain.Recipe
+			Query     string
+			MealID    int64
+			WeekStart string
+		}{
+			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+			Recipes:      filtered,
+			Query:        q,
+			MealID:       mealID,
+			WeekStart:    weekStartStr,
+		}
+		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "recipe_picker_results", data); err != nil {
+			a.serverError(w, r, err)
+		}
+	default:
+		http.Error(w, "kind non valido", http.StatusBadRequest)
+	}
 }
 
 // handleRemoveMealItem POST /meal-items/{itemID}/delete?start=YYYY-MM-DD
@@ -632,41 +731,26 @@ func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 	a.renderDayCard(w, r, *dv, weekStart, state)
 }
 
-// handleAddItemForm GET /meals/{mealID}/items/new — form picker per aggiungere
-// ricetta o ingrediente al pasto.
+// handleAddItemForm GET /meals/{mealID}/items/new — shell del picker live
+// HTMX. Le liste sono caricate via /meals/{id}/picker, niente precaricamento.
 type addItemFormData struct {
 	authPageData
-	MealID      int64
-	WeekStart   string
-	Recipes     []*domain.Recipe
-	Ingredients []*domain.Ingredient
-	Error       string
+	MealID    int64
+	WeekStart string
+	Error     string
 }
 
 func (a *App) handleAddItemForm(w http.ResponseWriter, r *http.Request) {
-	user := userFromContext(r.Context())
 	mealID, err := parseID(r, "mealID")
 	if err != nil {
 		a.notFound(w, r)
 		return
 	}
 	weekStart := parseWeekStart(r)
-	recipes, err := a.Recipes.ListVisible(r.Context(), user.ID)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	ings, err := a.Ingredients.ListActive(r.Context(), 0, 200)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
 	data := addItemFormData{
 		authPageData: a.baseData(r),
 		MealID:       mealID,
 		WeekStart:    formatDate(weekStart),
-		Recipes:      recipes,
-		Ingredients:  ings,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "meal_item_new", data); err != nil {
 		a.serverError(w, r, err)
