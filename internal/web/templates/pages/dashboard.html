@@ -33,97 +33,40 @@
     </div>
   </div>
 
-  <!-- Apply-template / Add-meal toolbox -->
-  <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-    <form method="post" action="/week/apply-template" class="bg-surface border border-border rounded p-4">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <input type="hidden" name="start" value="{{.WeekStart.Format "2006-01-02"}}">
-      <p class="text-sm font-medium text-text mb-2">Applica template</p>
-      <div class="flex items-center gap-2">
-        <select name="template_id" required class="grow rounded border border-border px-3 py-2">
-          <option value="">— scegli —</option>
-          {{range .Templates}}
-            <option value="{{.ID}}" {{if .IsActive}}selected{{end}}>{{.Name}}{{if .IsActive}} (attivo){{end}}</option>
-          {{end}}
-        </select>
-        <button class="bg-surface-2 text-white rounded px-4 py-2 hover:bg-surface-2 text-sm">Applica</button>
-      </div>
-      <p class="text-xs text-muted mt-2">Funziona solo se la settimana e' vuota.</p>
-    </form>
-
-    <form method="post" action="/meals" class="bg-surface border border-border rounded p-4">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <input type="hidden" name="start" value="{{.WeekStart.Format "2006-01-02"}}">
-      <p class="text-sm font-medium text-text mb-2">Aggiungi pasto manuale</p>
-      <div class="flex items-center gap-2">
-        <input name="name" required placeholder="es. Spuntino" class="grow rounded border border-border px-3 py-2">
-        <select name="day_of_week" class="rounded border border-border px-3 py-2">
-          <option value="0">Lun</option><option value="1">Mar</option><option value="2">Mer</option>
-          <option value="3">Gio</option><option value="4">Ven</option><option value="5">Sab</option>
-          <option value="6">Dom</option>
-        </select>
-        <button class="bg-surface-2 text-white rounded px-4 py-2 hover:bg-surface-2 text-sm">+</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- Griglia 7 giorni -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {{range .Days}}
-      <section class="bg-surface border border-border rounded p-4">
-        <header class="flex items-baseline justify-between mb-2">
-          <h2 class="font-medium text-text">
-            {{.Label}}
-            <span class="text-xs text-muted font-normal">{{.Date.Format "02/01"}}</span>
-          </h2>
-          <span class="text-xs text-muted">{{printf "%.0f" .DayTotal.Kcal}} kcal</span>
-        </header>
-        {{if .Meals}}
-          <ul class="divide-y divide-border">
-            {{range .Meals}}
-              <li class="py-2">
-                <div class="flex items-baseline justify-between gap-2 mb-1">
-                  <p class="text-sm font-medium text-text">{{.Meal.Name}}</p>
-                  <div class="flex items-center gap-2 text-xs text-muted">
-                    <span>{{printf "%.0f" .MealTotal.Kcal}} kcal</span>
-                    <a href="/meals/{{.Meal.ID}}/items/new?start={{$.WeekStart.Format "2006-01-02"}}"
-                       class="text-text hover:underline">+</a>
-                    <form method="post" action="/meals/{{.Meal.ID}}/delete?start={{$.WeekStart.Format "2006-01-02"}}" class="inline">
-                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                      <button class="text-danger hover:underline">×</button>
-                    </form>
-                  </div>
-                </div>
-                {{if .ItemViews}}
-                  <ul class="text-xs text-muted space-y-1 ml-2">
-                    {{range .ItemViews}}
-                      <li class="flex items-baseline justify-between gap-2">
-                        <span>
-                          {{if .Item.Recipe}}
-                            <span class="text-muted">[ric]</span> {{.Item.Recipe.Name}} × {{printf "%.1f" .Item.Quantity}}
-                          {{else if .Item.Ingredient}}
-                            {{.Item.Ingredient.Name}} {{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}
-                          {{end}}
-                        </span>
-                        <span class="flex items-center gap-2">
-                          <span class="text-muted">{{printf "%.0f" .Macros.Kcal}}</span>
-                          <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart.Format "2006-01-02"}}" class="inline">
-                            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                            <button class="text-danger hover:underline text-xs">×</button>
-                          </form>
-                        </span>
-                      </li>
-                    {{end}}
-                  </ul>
-                {{end}}
-              </li>
-            {{end}}
-          </ul>
-        {{else}}
-          <p class="text-xs text-muted italic">Nessun pasto.</p>
+  <!-- Apply-template (form unico, l'add-meal ora vive dentro ogni card) -->
+  {{if .Templates}}
+  <form method="post" action="/week/apply-template" class="mb-6 bg-surface border border-border rounded p-4">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="start" value="{{.WeekStartStr}}">
+    <p class="text-sm font-medium text-text mb-2">Applica template alla settimana</p>
+    <div class="flex items-center gap-2">
+      <select name="template_id" required class="grow rounded border border-border bg-surface px-3 py-2">
+        <option value="">— scegli —</option>
+        {{range .Templates}}
+          <option value="{{.ID}}" {{if .IsActive}}selected{{end}}>{{.Name}}{{if .IsActive}} (attivo){{end}}</option>
         {{end}}
-      </section>
+      </select>
+      <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90 text-sm">Applica</button>
+    </div>
+    <p class="text-xs text-muted mt-2">Funziona solo se la settimana e' vuota.</p>
+  </form>
+  {{end}}
+
+  <!-- Timeline giorni passati (collassati). Click sulla pillola li promuove a focus. -->
+  {{if .PastDays}}
+  <div id="timeline-past" class="mb-4 flex gap-2 overflow-x-auto pb-2">
+    {{range .PastDays}}
+      {{template "day_card" .}}
+    {{end}}
+  </div>
+  {{end}}
+
+  <!-- Griglia focus: oggi + futuri (e i passati promossi via click). -->
+  <div id="focus-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {{range .FocusDays}}
+      {{template "day_card" .}}
     {{end}}
   </div>
 </div>
+<script src="/static/js/day_focus.js" defer></script>
 {{end}}
