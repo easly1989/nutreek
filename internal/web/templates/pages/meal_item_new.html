@@ -1,68 +1,94 @@
 {{define "title"}}Aggiungi al pasto — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-xl">
-  <h1 class="text-3xl font-semibold mb-6">Aggiungi al pasto</h1>
+<div class="max-w-2xl">
+  <h1 class="text-3xl font-semibold mb-2">Aggiungi al pasto</h1>
+  <p class="text-sm text-muted mb-6">Cerca nel database locale e su OpenFoodFacts. Le voci OFF sono importate al primo utilizzo.</p>
 
   {{if .Error}}
     <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
   {{end}}
 
-  <form method="post" action="/meals/{{.MealID}}/items?start={{.WeekStart}}" class="space-y-4 bg-surface border border-border rounded p-6">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-
-    <fieldset class="space-y-2">
-      <legend class="text-sm font-medium text-text mb-1">Tipo</legend>
-      <label class="flex items-center gap-2">
-        <input type="radio" name="kind" value="recipe" checked> <span class="text-sm">Ricetta (quantita' = porzioni)</span>
-      </label>
-      <label class="flex items-center gap-2">
-        <input type="radio" name="kind" value="ingredient"> <span class="text-sm">Ingrediente (quantita' = g/ml)</span>
-      </label>
-    </fieldset>
-
-    <div>
-      <div class="flex items-baseline justify-between mb-1">
-        <label class="block text-sm font-medium text-text">Ricetta</label>
-        <button type="button" hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML"
-                class="text-xs text-accent hover:underline">+ Nuova ricetta</button>
-      </div>
-      <select name="ref_id_recipe" class="w-full rounded border border-border px-3 py-2"
-              onchange="document.querySelector('input[name=ref_id]').value=this.value;document.querySelector('input[value=recipe]').checked=true">
-        <option value="">— scegli ricetta —</option>
-        {{range .Recipes}}
-          <option value="{{.ID}}">{{.Name}} ({{.Servings}}p{{if .IsPublic}}, pub{{end}})</option>
-        {{end}}
-      </select>
+  <div class="bg-surface border border-border rounded p-4">
+    <!-- Tab switch ingredient/recipe -->
+    <div class="flex items-center gap-1 mb-3" role="tablist">
+      <button type="button" data-picker-tab="ingredient" aria-selected="true"
+              class="px-3 py-1.5 text-sm rounded-t border-b-2 border-accent text-text">Ingrediente</button>
+      <button type="button" data-picker-tab="recipe" aria-selected="false"
+              class="px-3 py-1.5 text-sm rounded-t border-b-2 border-transparent text-muted hover:text-text">Ricetta</button>
+      <span class="grow"></span>
+      <button type="button" data-quick-target="ingredient"
+              hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML"
+              class="text-xs text-accent hover:underline">+ Nuovo ingrediente</button>
+      <button type="button" data-quick-target="recipe"
+              hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML"
+              class="text-xs text-accent hover:underline hidden">+ Nuova ricetta</button>
     </div>
 
-    <div>
-      <div class="flex items-baseline justify-between mb-1">
-        <label class="block text-sm font-medium text-text">Ingrediente</label>
-        <button type="button" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML"
-                class="text-xs text-accent hover:underline">+ Nuovo ingrediente</button>
-      </div>
-      <select name="ref_id_ingredient" class="w-full rounded border border-border px-3 py-2"
-              onchange="document.querySelector('input[name=ref_id]').value=this.value;document.querySelector('input[value=ingredient]').checked=true">
-        <option value="">— scegli ingrediente —</option>
-        {{range .Ingredients}}
-          <option value="{{.ID}}">{{.Name}}{{with .Brand}} — {{.}}{{end}} ({{printf "%.0f" .KcalPer100}} kcal/100{{.Unit}})</option>
-        {{end}}
-      </select>
-    </div>
+    <input id="picker-search" type="search" name="q" placeholder="Cerca per nome..." autocomplete="off"
+           class="w-full rounded border border-border bg-surface px-3 py-2 mb-3"
+           hx-get="/meals/{{.MealID}}/picker?kind=ingredient&start={{.WeekStart}}"
+           hx-trigger="input changed delay:200ms, search, picker-refresh from:body"
+           hx-target="#picker-results"
+           hx-swap="innerHTML"
+           hx-include="this">
 
-    <input type="hidden" name="ref_id" value="">
-
-    <div>
-      <label class="block text-sm font-medium text-text mb-1" for="qty">Quantita'</label>
-      <input id="qty" name="quantity" required inputmode="decimal" placeholder="es. 1, 200"
-             class="w-full rounded border border-border px-3 py-2">
-      <p class="text-xs text-muted mt-1">Per le ricette = numero di porzioni; per gli ingredienti = grammi o millilitri.</p>
+    <div id="picker-results"
+         hx-get="/meals/{{.MealID}}/picker?kind=ingredient&q=&start={{.WeekStart}}"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
+      <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">Caricamento...</p>
     </div>
+  </div>
 
-    <div class="flex items-center justify-between pt-2">
-      <a href="/?start={{.WeekStart}}" class="text-sm text-muted hover:underline">Annulla</a>
-      <button class="bg-surface-2 text-white rounded px-4 py-2 hover:bg-surface-2">Aggiungi</button>
-    </div>
-  </form>
+  <div class="mt-6 text-sm">
+    <a href="/?start={{.WeekStart}}" class="text-muted hover:underline">&larr; Torna alla settimana</a>
+  </div>
 </div>
+
+<script>
+// Tab switch + auto-refresh picker dopo creazione modal.
+(function () {
+  var search = document.getElementById('picker-search');
+  var mealID = '{{.MealID}}';
+  var weekStart = '{{.WeekStart}}';
+  var currentKind = 'ingredient';
+
+  function setTab(kind) {
+    currentKind = kind;
+    document.querySelectorAll('[data-picker-tab]').forEach(function (b) {
+      var on = b.dataset.pickerTab === kind;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.classList.toggle('border-accent', on);
+      b.classList.toggle('text-text', on);
+      b.classList.toggle('border-transparent', !on);
+      b.classList.toggle('text-muted', !on);
+    });
+    document.querySelectorAll('[data-quick-target]').forEach(function (b) {
+      b.classList.toggle('hidden', b.dataset.quickTarget !== kind);
+    });
+    var url = '/meals/' + mealID + '/picker?kind=' + kind + '&start=' + weekStart;
+    search.setAttribute('hx-get', url);
+    htmx.process(search);
+    // Trigger ricarica con la query corrente.
+    htmx.ajax('GET', url + '&q=' + encodeURIComponent(search.value || ''), {
+      target: '#picker-results', swap: 'innerHTML',
+    });
+  }
+
+  document.querySelectorAll('[data-picker-tab]').forEach(function (b) {
+    b.addEventListener('click', function () { setTab(b.dataset.pickerTab); });
+  });
+
+  // Refresh picker dopo creazione al volo (modal.js dispatch su window).
+  ['ingredient-created', 'recipe-created'].forEach(function (ev) {
+    window.addEventListener(ev, function () {
+      // Richiama l'endpoint picker con la query corrente; il nuovo elemento
+      // sara' incluso (locale, prima di tutto).
+      var url = '/meals/' + mealID + '/picker?kind=' + currentKind + '&start=' + weekStart + '&q=' + encodeURIComponent(search.value || '');
+      htmx.ajax('GET', url, { target: '#picker-results', swap: 'innerHTML' });
+    });
+  });
+})();
+</script>
 {{end}}
