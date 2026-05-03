@@ -118,3 +118,36 @@ func TestMealTemplatesCRUDAndActivate(t *testing.T) {
 		t.Errorf("dopo delete dovrebbe ErrMealTemplateNotFound, got %v", err)
 	}
 }
+
+func TestReorderSlots(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	tpls := NewMealTemplates(store.DB)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
+	tplID, _ := tpls.Create(ctx, alice, "Test")
+
+	// 3 slot per il giorno -1 (every).
+	s1, _ := tpls.AddSlot(ctx, tplID, alice, domain.DayOfWeekEvery, "A")
+	s2, _ := tpls.AddSlot(ctx, tplID, alice, domain.DayOfWeekEvery, "B")
+	s3, _ := tpls.AddSlot(ctx, tplID, alice, domain.DayOfWeekEvery, "C")
+
+	if err := tpls.ReorderSlots(ctx, tplID, alice, domain.DayOfWeekEvery, []int64{s3, s1, s2}); err != nil {
+		t.Fatalf("ReorderSlots: %v", err)
+	}
+	got, _ := tpls.GetWithSlots(ctx, tplID, alice)
+	if len(got.Slots) != 3 || got.Slots[0].ID != s3 || got.Slots[1].ID != s1 || got.Slots[2].ID != s2 {
+		t.Errorf("ordine = [%d %d %d], atteso [%d %d %d]",
+			got.Slots[0].ID, got.Slots[1].ID, got.Slots[2].ID, s3, s1, s2)
+	}
+
+	// Mismatch + ownership.
+	if err := tpls.ReorderSlots(ctx, tplID, alice, domain.DayOfWeekEvery, []int64{s1}); !errors.Is(err, ErrReorderMismatch) {
+		t.Errorf("parziale: atteso ErrReorderMismatch, got %v", err)
+	}
+	if err := tpls.ReorderSlots(ctx, tplID, bob, domain.DayOfWeekEvery, []int64{s1, s2, s3}); !errors.Is(err, ErrMealTemplateForbidden) {
+		t.Errorf("bob: atteso forbidden, got %v", err)
+	}
+}

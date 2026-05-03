@@ -208,6 +208,30 @@ func (r *MealTemplates) RemoveSlot(ctx context.Context, slotID, userID int64) er
 	return nil
 }
 
+// ReorderSlots persiste l'ordine degli slot di un template per un giorno
+// specifico (incluso DayOfWeekEvery=-1). `ids` deve contenere ESATTAMENTE
+// l'insieme degli slot id presenti per quel (templateID, day).
+func (r *MealTemplates) ReorderSlots(ctx context.Context, templateID, userID int64, day int, ids []int64) error {
+	if err := r.assertOwner(ctx, templateID, userID); err != nil {
+		return err
+	}
+	if day < domain.DayOfWeekEvery || day > 6 {
+		return fmt.Errorf("day_of_week fuori range")
+	}
+	currentIDs, err := scanInt64Set(ctx, r.db,
+		`SELECT id FROM meal_template_slots WHERE template_id = ? AND day_of_week = ?`,
+		templateID, day)
+	if err != nil {
+		return fmt.Errorf("load current slots: %w", err)
+	}
+	if !sameInt64Set(currentIDs, ids) {
+		return ErrReorderMismatch
+	}
+	return runReorderTx(ctx, r.db,
+		`UPDATE meal_template_slots SET sort_order = ? WHERE id = ? AND template_id = ?`,
+		ids, templateID)
+}
+
 // ---- helpers ---------------------------------------------------------------
 
 func (r *MealTemplates) assertOwner(ctx context.Context, id, userID int64) error {
