@@ -252,9 +252,16 @@ func (r *WeeklyPlans) AddItem(
 	if quantity <= 0 {
 		return 0, fmt.Errorf("quantita' deve essere > 0")
 	}
+	var nextOrder int
+	if err := r.db.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(sort_order)+1, 0) FROM meal_items WHERE meal_id = ?`,
+		mealID,
+	).Scan(&nextOrder); err != nil {
+		return 0, fmt.Errorf("compute item sort_order: %w", err)
+	}
 	res, err := r.db.ExecContext(ctx,
-		`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity) VALUES (?, ?, ?, ?)`,
-		mealID, recipeID, ingredientID, quantity,
+		`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, sort_order) VALUES (?, ?, ?, ?, ?)`,
+		mealID, recipeID, ingredientID, quantity, nextOrder,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("insert meal_item: %w", err)
@@ -324,9 +331,9 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		args[i] = id
 	}
 	itemRows, err := r.db.QueryContext(ctx, `
-		SELECT id, meal_id, recipe_id, ingredient_id, quantity
+		SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order
 		FROM meal_items WHERE meal_id IN (`+placeholders+`)
-		ORDER BY id
+		ORDER BY meal_id, sort_order, id
 	`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("load items: %w", err)
@@ -335,7 +342,7 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	var recipeIDs, ingredientIDs []int64
 	for itemRows.Next() {
 		var it domain.MealItem
-		if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngredientID, &it.Quantity); err != nil {
+		if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder); err != nil {
 			itemRows.Close()
 			return nil, fmt.Errorf("scan item: %w", err)
 		}
@@ -474,6 +481,133 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		}
 	}
 	return out, nil
+}
+
+// ErrReorderMismatch segnala che la lista di id passata a un Reorder non
+// corrisponde esattamente all'insieme delle righe esistenti per quel
+// container (id estranei, mancanti, duplicati).
+var ErrReorderMismatch = errors.New("ordine non valido: ids non corrispondono alle righe esistenti")
+
+// ReorderMealItems persiste l'ordine di tutti i meal_items di un meal.
+// `ids` deve contenere esattamente l'insieme degli id correnti, una sola
+// volta ognuno: scrive sort_order = indice. Verifica ownership tramite
+// JOIN su weekly_plans.user_id.
+func (r *WeeklyPlans) ReorderMealItems(ctx context.Context, mealID, userID int64, ids []int64) error {
+	// Verifica meal -> plan -> user.
+	var planUser int64
+	err := r.db.QueryRowContext(ctx, `
+		SELECT wp.user_id
+		FROM meals m JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
+		WHERE m.id = ?`, mealID,
+	).Scan(&planUser)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrMealNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("meal owner: %w", err)
+	}
+	if planUser != userID {
+		return ErrPlanNotFound
+	}
+
+	// Carica gli id correnti per validare l'input.
+	currentIDs, err := scanInt64Set(ctx, r.db,
+		`SELECT id FROM meal_items WHERE meal_id = ?`, mealID)
+	if err != nil {
+		return fmt.Errorf("load current items: %w", err)
+	}
+	if !sameInt64Set(currentIDs, ids) {
+		return ErrReorderMismatch
+	}
+	return runReorderTx(ctx, r.db,
+		`UPDATE meal_items SET sort_order = ? WHERE id = ? AND meal_id = ?`,
+		ids, mealID)
+}
+
+// ReorderMeals persiste l'ordine dei meals di un giorno specifico per un
+// piano settimanale. `ids` deve contenere ESATTAMENTE l'insieme dei
+// meal id presenti per quel (planID, day).
+func (r *WeeklyPlans) ReorderMeals(ctx context.Context, planID, userID int64, day int, ids []int64) error {
+	if err := r.assertPlanOwner(ctx, planID, userID); err != nil {
+		return err
+	}
+	if day < 0 || day > 6 {
+		return fmt.Errorf("day_of_week fuori range")
+	}
+	currentIDs, err := scanInt64Set(ctx, r.db,
+		`SELECT id FROM meals WHERE weekly_plan_id = ? AND day_of_week = ?`,
+		planID, day)
+	if err != nil {
+		return fmt.Errorf("load current meals: %w", err)
+	}
+	if !sameInt64Set(currentIDs, ids) {
+		return ErrReorderMismatch
+	}
+	return runReorderTx(ctx, r.db,
+		`UPDATE meals SET sort_order = ? WHERE id = ? AND weekly_plan_id = ?`,
+		ids, planID)
+}
+
+// ---- helpers di reorder (riusati anche da MealTemplates) -------------------
+
+// scanInt64Set esegue una query e ritorna gli id come slice. Il chiamante
+// passa la query e gli args; la funzione e' interna al package.
+func scanInt64Set(ctx context.Context, db *sql.DB, query string, args ...any) ([]int64, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]int64, 0, 8)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// sameInt64Set ritorna true se a e b contengono esattamente gli stessi
+// elementi (ognuno una sola volta), ignorando l'ordine.
+func sameInt64Set(a, b []int64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	m := make(map[int64]int, len(a))
+	for _, v := range a {
+		m[v]++
+	}
+	for _, v := range b {
+		m[v]--
+		if m[v] < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// runReorderTx esegue gli UPDATE sort_order=index in transazione, con un
+// secondo argomento parent (mealID/planID/templateID) per ulteriore safety
+// nel WHERE.
+func runReorderTx(ctx context.Context, db *sql.DB, updateQuery string, ids []int64, parentID int64) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	stmt, err := tx.PrepareContext(ctx, updateQuery)
+	if err != nil {
+		return fmt.Errorf("prepare reorder: %w", err)
+	}
+	defer stmt.Close()
+	for idx, id := range ids {
+		if _, err := stmt.ExecContext(ctx, idx, id, parentID); err != nil {
+			return fmt.Errorf("update sort_order id=%d: %w", id, err)
+		}
+	}
+	return tx.Commit()
 }
 
 func (r *WeeklyPlans) assertPlanOwner(ctx context.Context, planID, userID int64) error {

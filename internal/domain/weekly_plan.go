@@ -29,6 +29,7 @@ type MealItem struct {
 	RecipeID     *int64
 	IngredientID *int64
 	Quantity     float64
+	SortOrder    int
 }
 
 // IsRecipe ritorna true se l'item punta a una ricetta.

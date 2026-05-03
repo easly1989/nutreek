@@ -156,3 +156,70 @@ func TestWeeklyPlansItemsXOR(t *testing.T) {
 		t.Errorf("Bob remove item dovrebbe fallire, got %v", err)
 	}
 }
+
+func TestReorderMealItemsAndMeals(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	plans := NewWeeklyPlans(store.DB)
+	ings := NewIngredients(store.DB)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
+	monday, _ := time.Parse("2006-01-02", "2026-04-27")
+	plan, _ := plans.GetOrCreateForWeek(ctx, alice, monday)
+
+	// 3 meals nel giorno 0.
+	m1, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "A")
+	m2, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "B")
+	m3, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "C")
+
+	// 3 items nel meal m1.
+	ing1, _ := ings.CreateLocal(ctx, "X", nil, "g", 100, 1, 1, 1, &alice)
+	ing2, _ := ings.CreateLocal(ctx, "Y", nil, "g", 100, 1, 1, 1, &alice)
+	ing3, _ := ings.CreateLocal(ctx, "Z", nil, "g", 100, 1, 1, 1, &alice)
+	i1, _ := plans.AddItem(ctx, m1, alice, nil, &ing1, 10)
+	i2, _ := plans.AddItem(ctx, m1, alice, nil, &ing2, 10)
+	i3, _ := plans.AddItem(ctx, m1, alice, nil, &ing3, 10)
+
+	// Reorder meals: C, A, B.
+	if err := plans.ReorderMeals(ctx, plan.ID, alice, 0, []int64{m3, m1, m2}); err != nil {
+		t.Fatalf("ReorderMeals: %v", err)
+	}
+	full, _ := plans.LoadFull(ctx, plan)
+	gotOrder := []int64{full.Days[0][0].ID, full.Days[0][1].ID, full.Days[0][2].ID}
+	if gotOrder[0] != m3 || gotOrder[1] != m1 || gotOrder[2] != m2 {
+		t.Errorf("ReorderMeals: ordine dopo = %v, atteso [%d %d %d]", gotOrder, m3, m1, m2)
+	}
+
+	// Reorder items: i3, i1, i2.
+	if err := plans.ReorderMealItems(ctx, m1, alice, []int64{i3, i1, i2}); err != nil {
+		t.Fatalf("ReorderMealItems: %v", err)
+	}
+	full, _ = plans.LoadFull(ctx, plan)
+	// Trova m1 nella lista (e' il secondo dopo il reorder).
+	var m1Items []domain.MealItemFull
+	for _, m := range full.Days[0] {
+		if m.ID == m1 {
+			m1Items = m.Items
+		}
+	}
+	if len(m1Items) != 3 || m1Items[0].ID != i3 || m1Items[1].ID != i1 || m1Items[2].ID != i2 {
+		t.Errorf("ReorderMealItems: ordine = %+v, atteso [%d %d %d]",
+			[]int64{m1Items[0].ID, m1Items[1].ID, m1Items[2].ID}, i3, i1, i2)
+	}
+
+	// Mismatch: id estraneo -> ErrReorderMismatch, niente scrittura.
+	if err := plans.ReorderMealItems(ctx, m1, alice, []int64{i1, i2, 9999}); !errors.Is(err, ErrReorderMismatch) {
+		t.Errorf("ids estranei: atteso ErrReorderMismatch, got %v", err)
+	}
+	// Mancante: input piu' corto.
+	if err := plans.ReorderMealItems(ctx, m1, alice, []int64{i1, i2}); !errors.Is(err, ErrReorderMismatch) {
+		t.Errorf("ids parziali: atteso ErrReorderMismatch, got %v", err)
+	}
+
+	// Bob non puo' riordinare i meals di Alice.
+	if err := plans.ReorderMeals(ctx, plan.ID, bob, 0, []int64{m1, m2, m3}); !errors.Is(err, ErrPlanNotFound) {
+		t.Errorf("Bob reorder: atteso ErrPlanNotFound, got %v", err)
+	}
+}
