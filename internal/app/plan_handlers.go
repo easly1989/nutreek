@@ -21,9 +21,9 @@ import (
 type dashboardData struct {
 	authPageData
 	Plan         *domain.WeeklyPlanFull
-	Days         []dayView // legacy: usato nei test eventuali
-	PastDays     []dayCardData
-	FocusDays    []dayCardData
+	Days         []dayView     // legacy: usato nei test eventuali
+	AllCards     []dayCardData // 7 giorni, in ordine, ognuno renderizzato come pill in timeline
+	FocusCards   []dayCardData // sotto-insieme di AllCards: card piene in #focus-grid
 	WeekStart    time.Time
 	WeekStartStr string // YYYY-MM-DD per i form
 	PrevWeek     string // YYYY-MM-DD
@@ -44,13 +44,18 @@ type dayView struct {
 	DayTotal macros.Macros
 }
 
-// dayCardData e' il view-model passato al partial day_card.html. Self-contained
-// per essere renderizzabile sia inline (dashboard) sia da solo (HTMX swap dopo
-// add/remove meal o item).
+// dayCardData e' il view-model passato ai partial day_pill.html (timeline)
+// e day_card.html (focus-grid). Self-contained per essere renderizzabile
+// sia inline (dashboard) sia da solo (HTMX swap dopo mutation).
+//
+// `State` descrive il giorno calendariale (past/today/future). `InFocus` dice
+// se il giorno e' attualmente nella griglia focus. Default iniziale:
+// today + future = InFocus=true; past = InFocus=false.
 type dayCardData struct {
 	Day       dayView
 	DateStr   string // YYYY-MM-DD per data-day attribute
-	State     string // "past" | "today" | "future" | "focus"
+	State     string // "past" | "today" | "future"
+	InFocus   bool   // true = card piena visibile in #focus-grid
 	WeekStart string // YYYY-MM-DD per nascondere/passare nei form
 	CSRFToken string
 }
@@ -138,39 +143,38 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 }
 
 // makeDayCard costruisce dayCardData a partire da una dayView e dal contesto.
-func makeDayCard(dv dayView, state, weekStartStr, csrfToken string) dayCardData {
+// `state` e' il giorno calendariale; `inFocus` decide se andra' anche nella
+// griglia focus. Default: today/future = true, past = false.
+func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken string) dayCardData {
 	return dayCardData{
 		Day:       dv,
 		DateStr:   formatDate(dv.Date),
 		State:     state,
+		InFocus:   inFocus,
 		WeekStart: weekStartStr,
 		CSRFToken: csrfToken,
 	}
 }
 
-// splitDayCards divide i 7 giorni in due liste in base al giorno odierno:
-// passati (collassati nella timeline) e focus (oggi + futuri, in griglia
-// piena). Il giorno odierno e' sempre primo nei focus.
-func splitDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string) (past, focus []dayCardData) {
-	past = make([]dayCardData, 0, 6)
-	focus = make([]dayCardData, 0, 7)
+// buildDayCards costruisce le 7 dayCardData con InFocus default-driven dallo
+// stato calendariale: today + future = true, past = false. La timeline
+// renderizza tutte e 7 le pillole; #focus-grid solo quelle InFocus.
+func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string) []dayCardData {
+	out := make([]dayCardData, 0, 7)
 	for _, dv := range days {
 		state := dayState(dv.Date, today)
-		card := makeDayCard(dv, state, weekStartStr, csrfToken)
-		if state == "past" {
-			past = append(past, card)
-		} else {
-			focus = append(focus, card)
-		}
+		out = append(out, makeDayCard(dv, state, state != "past", weekStartStr, csrfToken))
 	}
-	return past, focus
+	return out
 }
 
-// renderDayCard scrive il partial day_card per una specifica dayView. Usato
-// per gli swap HTMX dopo le mutazioni e per l'endpoint /days/{date}.
+// renderDayCard scrive il partial day_card piu' la pillola corrispondente
+// con HX-OOB swap, in un unico response. Cosi' una mutation aggiorna sia
+// la card in #focus-grid sia la pillola in #timeline-pills (kcal totali,
+// accent state).
 func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, weekStart time.Time, state string) {
-	card := makeDayCard(dv, state, formatDate(weekStart), nosurfTokenOrEmpty(r))
-	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card", card); err != nil {
+	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r))
+	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card_with_pill_oob", card); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -202,7 +206,7 @@ func nosurfTokenOrEmpty(r *http.Request) string {
 
 // respondMutationOrRedirect gestisce in modo uniforme il dual-mode (HTMX
 // vs full navigation) dopo una mutazione su un meal/item. Per HX-Request
-// ritorna il partial day_card; altrimenti redirect alla settimana.
+// ritorna la card piena + la pillola OOB; altrimenti redirect alla settimana.
 func (a *App) respondMutationOrRedirect(w http.ResponseWriter, r *http.Request, weekStart time.Time, dayIndex int) {
 	if r.Header.Get("HX-Request") != "true" {
 		a.redirectToWeek(w, r, weekStart)
@@ -215,12 +219,6 @@ func (a *App) respondMutationOrRedirect(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	state := dayState(dv.Date, todayDate())
-	// Se la mutazione e' avvenuta su un giorno passato, l'utente l'ha
-	// "messo a focus" nella timeline: rimaniamo in focus per non far
-	// sparire la card mentre la sta usando.
-	if state == "past" {
-		state = "focus"
-	}
 	a.renderDayCard(w, r, *dv, weekStart, state)
 }
 
@@ -296,15 +294,21 @@ func (a *App) renderDashboard(
 	}
 	today := todayDate()
 	weekStartStr := formatDate(weekStart)
-	pastDays, focusDays := splitDayCards(days, today, weekStartStr, base.CSRFToken)
+	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken)
+	focusCards := make([]dayCardData, 0, len(allCards))
+	for _, c := range allCards {
+		if c.InFocus {
+			focusCards = append(focusCards, c)
+		}
+	}
 	weekTotal := macros.ForWeek(full.Days)
 
 	data := dashboardData{
 		authPageData: base,
 		Plan:         full,
 		Days:         days,
-		PastDays:     pastDays,
-		FocusDays:    focusDays,
+		AllCards:     allCards,
+		FocusCards:   focusCards,
 		WeekStart:    weekStart,
 		WeekStartStr: weekStartStr,
 		PrevWeek:     formatDate(weekStart.AddDate(0, 0, -7)),
@@ -601,9 +605,10 @@ func (a *App) handleReorderMealItems(w http.ResponseWriter, r *http.Request) {
 	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
-// handleDayCard GET /days/{date}?focus=1 ritorna il partial day_card per il
-// giorno indicato. Usato dalla timeline per "promuovere" un giorno passato
-// nella griglia focus senza ricaricare la pagina.
+// handleDayCard GET /days/{date} ritorna la card piena (+ pillola OOB) per
+// il giorno indicato. Chiamato dal client quando l'utente porta un giorno
+// in focus (click su una pillola not-in-focus). Il "togliere dal focus"
+// e' UI-only, lato client (rimuove la card dal DOM).
 func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	dateStr := chi.URLParam(r, "date")
@@ -624,9 +629,6 @@ func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state := dayState(dv.Date, todayDate())
-	if r.URL.Query().Get("focus") == "1" {
-		state = "focus"
-	}
 	a.renderDayCard(w, r, *dv, weekStart, state)
 }
 
