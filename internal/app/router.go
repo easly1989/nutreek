@@ -73,14 +73,17 @@ func (a *App) Router() http.Handler {
 		r.Post("/templates/{id}/delete", a.handleTemplateDelete)
 		r.Post("/templates/{id}/slots", a.handleTemplateAddSlot)
 		r.Post("/templates/{id}/slots/{slotID}/delete", a.handleTemplateRemoveSlot)
+		r.Post("/templates/{id}/days/{day}/slots/reorder", a.handleReorderTemplateSlots)
 
 		// Piano settimanale (la dashboard e' montata su /).
 		r.Post("/week/apply-template", a.handleApplyTemplate)
 		r.Get("/days/{date}", a.handleDayCard) // partial HTMX per una singola card
 		r.Post("/meals", a.handleAddMeal)
+		r.Post("/meals/reorder", a.handleReorderMeals)
 		r.Post("/meals/{mealID}/delete", a.handleRemoveMeal)
 		r.Get("/meals/{mealID}/items/new", a.handleAddItemForm)
 		r.Post("/meals/{mealID}/items", a.handleAddMealItem)
+		r.Post("/meals/{mealID}/items/reorder", a.handleReorderMealItems)
 		r.Post("/meal-items/{itemID}/delete", a.handleRemoveMealItem)
 	})
 

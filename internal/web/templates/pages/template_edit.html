@@ -9,24 +9,34 @@
     {{if .Template.IsActive}}<span class="text-accent">Attivo</span>{{else}}Non attivo{{end}}
   </p>
 
-  <!-- Slots -->
+  <!-- Slots, raggruppati per giorno (drag-and-drop intra-gruppo) -->
   <section class="mb-8">
     <h2 class="text-lg font-medium mb-3">Pasti</h2>
     {{if .Template.Slots}}
-      <ul class="divide-y divide-border rounded border border-border bg-surface">
-        {{range .Template.Slots}}
-          <li class="px-4 py-3 flex items-baseline justify-between gap-4">
-            <div>
-              <p class="text-text">{{.Name}}</p>
-              <p class="text-xs text-muted">{{dayLabel .DayOfWeek}}</p>
+      <div class="space-y-3">
+        {{range .SlotGroups}}
+          {{if .Slots}}
+            <div class="rounded border border-border bg-surface">
+              <p class="px-4 py-2 text-xs uppercase text-muted border-b border-border">{{.Label}}</p>
+              <ul class="divide-y divide-border" data-sortable="slots"
+                  data-sort-url="/templates/{{$.Template.ID}}/days/{{.Day}}/slots/reorder">
+                {{range .Slots}}
+                  <li class="px-4 py-3 flex items-baseline justify-between gap-4" data-id="{{.ID}}">
+                    <div class="flex items-baseline gap-2">
+                      <span class="cursor-grab text-muted/60 select-none" aria-hidden="true">⠿</span>
+                      <p class="text-text">{{.Name}}</p>
+                    </div>
+                    <form method="post" action="/templates/{{$.Template.ID}}/slots/{{.ID}}/delete" class="shrink-0">
+                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                      <button class="text-xs text-danger hover:underline">Rimuovi</button>
+                    </form>
+                  </li>
+                {{end}}
+              </ul>
             </div>
-            <form method="post" action="/templates/{{$.Template.ID}}/slots/{{.ID}}/delete" class="shrink-0">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button class="text-xs text-danger hover:underline">Rimuovi</button>
-            </form>
-          </li>
+          {{end}}
         {{end}}
-      </ul>
+      </div>
     {{else}}
       <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
         Nessun pasto nel template. Aggiungine uno qui sotto.
