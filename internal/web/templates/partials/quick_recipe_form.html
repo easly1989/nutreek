@@ -1,0 +1,37 @@
+{{define "quick_recipe_form"}}
+{{- /*
+  quick_recipe_form.html — view-model: quickRecipeData
+  Form compatto per creare una ricetta vuota al volo. La ricetta sara'
+  senza ingredienti: l'utente potra' aprirla da /recipes per popolarla.
+*/ -}}
+<form method="post" action="/quick/recipe"
+      hx-post="/quick/recipe"
+      hx-target="this"
+      hx-swap="outerHTML"
+      class="space-y-3 text-sm">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+  {{if .Error}}
+    <p class="rounded border border-danger/30 bg-danger/10 text-danger px-3 py-2 text-xs">{{.Error}}</p>
+  {{end}}
+
+  <p class="text-xs text-muted">La ricetta verra' creata vuota. Aprila da <a href="/recipes" class="underline">Ricette</a> per aggiungere gli ingredienti.</p>
+
+  <div>
+    <label class="block text-xs text-muted mb-1" for="qr-name">Nome ricetta</label>
+    <input id="qr-name" name="name" required value="{{.Form.Name}}" autofocus
+           class="w-full rounded border border-border bg-surface px-2 py-1">
+  </div>
+  <div>
+    <label class="block text-xs text-muted mb-1" for="qr-srv">Porzioni totali</label>
+    <input id="qr-srv" name="servings" required inputmode="numeric" value="{{.Form.Servings}}"
+           class="w-full rounded border border-border bg-surface px-2 py-1">
+  </div>
+
+  <div class="flex items-center justify-end gap-2 pt-2">
+    <button type="button" data-modal-close
+            class="text-xs text-muted hover:underline px-3 py-1">Annulla</button>
+    <button class="bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90 text-sm">Crea</button>
+  </div>
+</form>
+{{end}}

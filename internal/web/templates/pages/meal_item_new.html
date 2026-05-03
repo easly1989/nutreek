@@ -21,7 +21,11 @@
     </fieldset>
 
     <div>
-      <label class="block text-sm font-medium text-text mb-1">Ricetta</label>
+      <div class="flex items-baseline justify-between mb-1">
+        <label class="block text-sm font-medium text-text">Ricetta</label>
+        <button type="button" hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML"
+                class="text-xs text-accent hover:underline">+ Nuova ricetta</button>
+      </div>
       <select name="ref_id_recipe" class="w-full rounded border border-border px-3 py-2"
               onchange="document.querySelector('input[name=ref_id]').value=this.value;document.querySelector('input[value=recipe]').checked=true">
         <option value="">— scegli ricetta —</option>
@@ -32,7 +36,11 @@
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-text mb-1">Ingrediente</label>
+      <div class="flex items-baseline justify-between mb-1">
+        <label class="block text-sm font-medium text-text">Ingrediente</label>
+        <button type="button" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML"
+                class="text-xs text-accent hover:underline">+ Nuovo ingrediente</button>
+      </div>
       <select name="ref_id_ingredient" class="w-full rounded border border-border px-3 py-2"
               onchange="document.querySelector('input[name=ref_id]').value=this.value;document.querySelector('input[value=ingredient]').checked=true">
         <option value="">— scegli ingrediente —</option>
