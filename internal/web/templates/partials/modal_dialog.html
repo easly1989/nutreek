@@ -1,0 +1,19 @@
+{{define "modal_dialog"}}
+{{- /*
+  modal_dialog.html — wrapper generico per `<dialog>` HTML5.
+  view-model: modalDialogData { Title string, Inner string, InnerData any }
+  Inner = nome del partial da includere ("quick_ingredient_form" etc.).
+  Modal.js intercetta l'inserimento in #modal-host e chiama showModal().
+*/ -}}
+<dialog data-modal class="rounded-lg border border-border bg-surface p-0 max-w-md w-full text-text backdrop:bg-black/40">
+  <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+    <h2 class="text-base font-medium text-text">{{.Title}}</h2>
+    <button type="button" data-modal-close
+            class="text-muted hover:text-danger leading-none text-lg" aria-label="Chiudi">&times;</button>
+  </div>
+  <div class="px-5 py-4">
+    {{if eq .Inner "quick_ingredient_form"}}{{template "quick_ingredient_form" .InnerData}}{{end}}
+    {{if eq .Inner "quick_recipe_form"}}{{template "quick_recipe_form" .InnerData}}{{end}}
+  </div>
+</dialog>
+{{end}}

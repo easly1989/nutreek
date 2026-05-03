@@ -1,0 +1,65 @@
+{{define "quick_ingredient_form"}}
+{{- /*
+  quick_ingredient_form.html — view-model: quickIngredientData
+  Form compatto per creare un ingrediente locale al volo. Renderizzato
+  dentro <dialog> via partial modal_dialog. Submit POSTa /quick/ingredient
+  con HTMX: in caso di errore di validazione il server re-renderizza il
+  form (rimanendo nel dialog); in caso di success ritorna 204 + header
+  HX-Trigger=ingredient-created che modal.js intercetta per chiudere.
+*/ -}}
+<form method="post" action="/quick/ingredient"
+      hx-post="/quick/ingredient"
+      hx-target="this"
+      hx-swap="outerHTML"
+      class="space-y-3 text-sm">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+  {{if .Error}}
+    <p class="rounded border border-danger/30 bg-danger/10 text-danger px-3 py-2 text-xs">{{.Error}}</p>
+  {{end}}
+
+  <div>
+    <label class="block text-xs text-muted mb-1" for="qi-name">Nome</label>
+    <input id="qi-name" name="name" required value="{{.Form.Name}}" autofocus
+           class="w-full rounded border border-border bg-surface px-2 py-1">
+  </div>
+  <div class="grid grid-cols-2 gap-2">
+    <div>
+      <label class="block text-xs text-muted mb-1" for="qi-brand">Marca <span class="text-muted/70">(opt)</span></label>
+      <input id="qi-brand" name="brand" value="{{.Form.Brand}}" class="w-full rounded border border-border bg-surface px-2 py-1">
+    </div>
+    <div>
+      <label class="block text-xs text-muted mb-1" for="qi-unit">Unita'</label>
+      <select id="qi-unit" name="unit" class="w-full rounded border border-border bg-surface px-2 py-1">
+        <option value="g" {{if eq .Form.Unit "g"}}selected{{end}}>g</option>
+        <option value="ml" {{if eq .Form.Unit "ml"}}selected{{end}}>ml</option>
+      </select>
+    </div>
+  </div>
+  <fieldset class="grid grid-cols-4 gap-2">
+    <legend class="text-xs text-muted col-span-4 mb-1">Macro per 100 {{if eq .Form.Unit "ml"}}ml{{else}}g{{end}}</legend>
+    <div>
+      <label class="block text-xs text-muted mb-1">Kcal</label>
+      <input name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="w-full rounded border border-border bg-surface px-2 py-1">
+    </div>
+    <div>
+      <label class="block text-xs text-muted mb-1">P</label>
+      <input name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="w-full rounded border border-border bg-surface px-2 py-1">
+    </div>
+    <div>
+      <label class="block text-xs text-muted mb-1">C</label>
+      <input name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="w-full rounded border border-border bg-surface px-2 py-1">
+    </div>
+    <div>
+      <label class="block text-xs text-muted mb-1">F</label>
+      <input name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="w-full rounded border border-border bg-surface px-2 py-1">
+    </div>
+  </fieldset>
+
+  <div class="flex items-center justify-end gap-2 pt-2">
+    <button type="button" data-modal-close
+            class="text-xs text-muted hover:underline px-3 py-1">Annulla</button>
+    <button class="bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90 text-sm">Crea</button>
+  </div>
+</form>
+{{end}}
