@@ -20,6 +20,14 @@ var (
 	ErrMealItemNotFound = errors.New("voce di pasto non trovata")
 )
 
+// ErrPlanNotEmpty / ErrSourcePlanEmpty per CopyFrom: rispettivamente il
+// piano destinazione contiene gia' meals (refuse il copy per evitare
+// merge ambigui) o il piano sorgente e' vuoto (niente da copiare).
+var (
+	ErrPlanNotEmpty    = errors.New("piano destinazione gia' popolato")
+	ErrSourcePlanEmpty = errors.New("piano sorgente vuoto")
+)
+
 // WeeklyPlans e' il repo dei piani settimanali.
 type WeeklyPlans struct {
 	db *sql.DB
@@ -174,6 +182,164 @@ func (r *WeeklyPlans) ApplyTemplate(ctx context.Context, planID, userID, templat
 			}
 		}
 	}
+	return tx.Commit()
+}
+
+// CopyFrom clona meals e meal_items dal piano sorgente al piano destinazione,
+// in transazione. Verifica ownership di entrambi (devono essere dello stesso
+// userID), rifiuta se dst contiene gia' meals (ErrPlanNotEmpty) o se src e'
+// vuoto (ErrSourcePlanEmpty). NON copia righe dalla tabella meal_cheat_items
+// (introdotta in 0004) — gli sgarri sono per definizione contestuali alla
+// settimana in cui sono avvenuti, non vanno propagati.
+func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID int64) error {
+	if srcPlanID == dstPlanID {
+		return fmt.Errorf("src e dst coincidono")
+	}
+	// Ownership src.
+	var srcUser int64
+	err := r.db.QueryRowContext(ctx, `SELECT user_id FROM weekly_plans WHERE id = ?`, srcPlanID).Scan(&srcUser)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrPlanNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("src plan owner: %w", err)
+	}
+	if srcUser != userID {
+		return ErrPlanNotFound
+	}
+	// Ownership dst.
+	var dstUser int64
+	err = r.db.QueryRowContext(ctx, `SELECT user_id FROM weekly_plans WHERE id = ?`, dstPlanID).Scan(&dstUser)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrPlanNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("dst plan owner: %w", err)
+	}
+	if dstUser != userID {
+		return ErrPlanNotFound
+	}
+	// Refuse se dst gia' popolato (analogo a ApplyTemplate).
+	dstHas, err := r.HasMeals(ctx, dstPlanID)
+	if err != nil {
+		return err
+	}
+	if dstHas {
+		return ErrPlanNotEmpty
+	}
+	srcHas, err := r.HasMeals(ctx, srcPlanID)
+	if err != nil {
+		return err
+	}
+	if !srcHas {
+		return ErrSourcePlanEmpty
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// 1. Copia i meals e mantiene una mappa srcMealID -> dstMealID.
+	mealRows, err := tx.QueryContext(ctx,
+		`SELECT id, day_of_week, name, sort_order
+		 FROM meals WHERE weekly_plan_id = ?
+		 ORDER BY id`, srcPlanID)
+	if err != nil {
+		return fmt.Errorf("load src meals: %w", err)
+	}
+	type srcMeal struct {
+		ID        int64
+		Day       int
+		Name      string
+		SortOrder int
+	}
+	var meals []srcMeal
+	for mealRows.Next() {
+		var m srcMeal
+		if err := mealRows.Scan(&m.ID, &m.Day, &m.Name, &m.SortOrder); err != nil {
+			mealRows.Close()
+			return fmt.Errorf("scan src meal: %w", err)
+		}
+		meals = append(meals, m)
+	}
+	mealRows.Close()
+	if err := mealRows.Err(); err != nil {
+		return err
+	}
+
+	insMeal, err := tx.PrepareContext(ctx,
+		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("prepare insert meal: %w", err)
+	}
+	defer insMeal.Close()
+	idMap := make(map[int64]int64, len(meals))
+	for _, m := range meals {
+		res, err := insMeal.ExecContext(ctx, dstPlanID, m.Day, m.Name, m.SortOrder)
+		if err != nil {
+			return fmt.Errorf("insert dst meal: %w", err)
+		}
+		newID, err := res.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("lastinsertid meal: %w", err)
+		}
+		idMap[m.ID] = newID
+	}
+
+	// 2. Copia i meal_items per ogni meal sorgente.
+	if len(meals) > 0 {
+		insItem, err := tx.PrepareContext(ctx,
+			`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, sort_order) VALUES (?, ?, ?, ?, ?)`)
+		if err != nil {
+			return fmt.Errorf("prepare insert item: %w", err)
+		}
+		defer insItem.Close()
+		// Una singola query batch per tutti gli items dei meals sorgente.
+		srcIDs := make([]any, 0, len(meals))
+		for _, m := range meals {
+			srcIDs = append(srcIDs, m.ID)
+		}
+		ph := strings.Repeat("?,", len(srcIDs)-1) + "?"
+		itemRows, err := tx.QueryContext(ctx,
+			`SELECT meal_id, recipe_id, ingredient_id, quantity, sort_order
+			 FROM meal_items WHERE meal_id IN (`+ph+`)
+			 ORDER BY meal_id, sort_order, id`, srcIDs...)
+		if err != nil {
+			return fmt.Errorf("load src items: %w", err)
+		}
+		type srcItem struct {
+			MealID    int64
+			RecipeID  *int64
+			IngID     *int64
+			Quantity  float64
+			SortOrder int
+		}
+		var items []srcItem
+		for itemRows.Next() {
+			var it srcItem
+			if err := itemRows.Scan(&it.MealID, &it.RecipeID, &it.IngID, &it.Quantity, &it.SortOrder); err != nil {
+				itemRows.Close()
+				return fmt.Errorf("scan src item: %w", err)
+			}
+			items = append(items, it)
+		}
+		itemRows.Close()
+		if err := itemRows.Err(); err != nil {
+			return err
+		}
+		for _, it := range items {
+			dstMealID, ok := idMap[it.MealID]
+			if !ok {
+				continue // sicurezza, non dovrebbe succedere
+			}
+			if _, err := insItem.ExecContext(ctx, dstMealID, it.RecipeID, it.IngID, it.Quantity, it.SortOrder); err != nil {
+				return fmt.Errorf("insert dst item: %w", err)
+			}
+		}
+	}
+
 	return tx.Commit()
 }
 

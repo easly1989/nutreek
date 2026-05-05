@@ -83,6 +83,7 @@ func (a *App) Router() http.Handler {
 
 		// Piano settimanale (la dashboard e' montata su /).
 		r.Post("/week/apply-template", a.handleApplyTemplate)
+		r.Post("/week/copy-previous", a.handleCopyPrevious)
 		r.Get("/days/{date}", a.handleDayCard) // partial HTMX per una singola card
 		r.Post("/meals", a.handleAddMeal)
 		r.Post("/meals/reorder", a.handleReorderMeals)
