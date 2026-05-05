@@ -29,14 +29,17 @@
       {{range .Day.Meals}}
         <li class="py-2" data-id="{{.Meal.ID}}">
           <div class="flex items-baseline justify-between gap-2 mb-1">
-            <p class="text-sm font-medium text-text">
+            <p class="text-sm font-medium {{if .HasCheats}}text-danger{{else}}text-text{{end}}">
               <span class="cursor-grab text-muted/60 select-none mr-1" aria-hidden="true">⠿</span>
               {{.Meal.Name}}
+              {{if .HasCheats}}<span class="ml-2 text-xs uppercase font-semibold text-danger">Sgarro</span>{{end}}
             </p>
             <div class="flex items-center gap-2 text-xs text-muted">
               <span>{{printf "%.0f" .MealTotal.Kcal}} kcal</span>
               <a href="/meals/{{.Meal.ID}}/items/new?start={{$.WeekStart}}"
-                 class="text-text hover:underline">+</a>
+                 class="text-text hover:underline" title="Aggiungi voce">+</a>
+              <a href="/meals/{{.Meal.ID}}/items/new?cheat=1&start={{$.WeekStart}}"
+                 class="text-danger hover:underline" title="Aggiungi sgarro">🍔</a>
               <form method="post" action="/meals/{{.Meal.ID}}/delete?start={{$.WeekStart}}"
                     hx-post="/meals/{{.Meal.ID}}/delete?start={{$.WeekStart}}"
                     hx-target="closest section[data-day]"
@@ -44,30 +47,31 @@
                     hx-confirm="Eliminare questo pasto?"
                     class="inline">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <button class="text-danger hover:underline">×</button>
+                <button class="text-danger hover:underline" title="Elimina pasto">×</button>
               </form>
             </div>
           </div>
           {{if .ItemViews}}
-            <ul class="text-xs space-y-1 ml-2" data-sortable="items" data-sort-url="/meals/{{.Meal.ID}}/items/reorder?start={{$.WeekStart}}">
+            <ul class="text-xs space-y-1 ml-2 {{if .HasCheats}}opacity-60{{end}}" data-sortable="items" data-sort-url="/meals/{{.Meal.ID}}/items/reorder?start={{$.WeekStart}}">
+              {{$hc := .HasCheats}}
               {{range .ItemViews}}
                 <li class="flex items-baseline justify-between gap-2" data-id="{{.Item.ID}}">
-                  <span class="text-muted">
+                  <span class="{{if $hc}}line-through text-muted{{else}}text-muted{{end}}">
                     {{if .Item.Recipe}}
-                      <span class="text-accent font-medium">{{.Item.Recipe.Name}}</span>
-                      <span class="text-muted">× {{printf "%.1f" .Item.Quantity}} porz.</span>
+                      <span class="{{if not $hc}}text-accent {{end}}font-medium">{{.Item.Recipe.Name}}</span>
+                      <span>× {{printf "%.1f" .Item.Quantity}} porz.</span>
                       {{if .Item.RecipeItems}}
                         <span class="block text-muted/70 italic ml-3">
                           {{range $i, $ri := .Item.RecipeItems}}{{if $i}}, {{end}}{{$ri.Ingredient.Name}}{{end}}
                         </span>
                       {{end}}
                     {{else if .Item.Ingredient}}
-                      <span class="font-medium text-text">{{.Item.Ingredient.Name}}</span>
+                      <span class="font-medium {{if not $hc}}text-text{{end}}">{{.Item.Ingredient.Name}}</span>
                       <span>{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
                     {{end}}
                   </span>
                   <span class="flex items-center gap-2 shrink-0">
-                    <span class="text-muted">{{printf "%.0f" .Macros.Kcal}}</span>
+                    <span class="text-muted {{if $hc}}line-through{{end}}">{{printf "%.0f" .Macros.Kcal}}</span>
                     <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
                           hx-post="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
                           hx-target="closest section[data-day]"
@@ -80,6 +84,48 @@
                 </li>
               {{end}}
             </ul>
+          {{end}}
+          {{if .HasCheats}}
+            <div class="mt-2 ml-3 border-l-2 border-danger/50 pl-3">
+              <div class="flex items-baseline justify-between mb-1">
+                <p class="text-xs font-semibold uppercase text-danger">Sgarro effettivo</p>
+                <form method="post" action="/meals/{{.Meal.ID}}/cheat/clear?start={{$.WeekStart}}"
+                      hx-post="/meals/{{.Meal.ID}}/cheat/clear?start={{$.WeekStart}}"
+                      hx-target="closest section[data-day]"
+                      hx-swap="outerHTML"
+                      hx-confirm="Annullare lo sgarro? I valori ufficiali del pasto torneranno attivi."
+                      class="inline">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                  <button class="text-xs text-muted hover:text-danger hover:underline">annulla sgarro</button>
+                </form>
+              </div>
+              <ul class="text-xs space-y-1">
+                {{range .CheatViews}}
+                  <li class="flex items-baseline justify-between gap-2" data-id="{{.Item.ID}}">
+                    <span class="text-text">
+                      {{if .Item.Recipe}}
+                        <span class="font-medium">{{.Item.Recipe.Name}}</span>
+                        <span class="text-muted">× {{printf "%.1f" .Item.Quantity}} porz.</span>
+                      {{else if .Item.Ingredient}}
+                        <span class="font-medium">{{.Item.Ingredient.Name}}</span>
+                        <span class="text-muted">{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
+                      {{end}}
+                    </span>
+                    <span class="flex items-center gap-2 shrink-0">
+                      <span class="text-danger">{{printf "%.0f" .Macros.Kcal}}</span>
+                      <form method="post" action="/meal-cheat-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
+                            hx-post="/meal-cheat-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
+                            hx-target="closest section[data-day]"
+                            hx-swap="outerHTML"
+                            class="inline">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                        <button class="text-danger hover:underline">×</button>
+                      </form>
+                    </span>
+                  </li>
+                {{end}}
+              </ul>
+            </div>
           {{end}}
         </li>
       {{end}}

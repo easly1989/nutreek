@@ -115,16 +115,27 @@ func ForMeal(items []domain.MealItemFull) Macros {
 	return out
 }
 
-// ForDay somma i macro di tutti i pasti di un giorno.
+// ForMealEffective ritorna i macro "effettivi" del pasto: se ci sono sgarri
+// registrati, sostituiscono completamente gli items ufficiali (l'utente ha
+// mangiato lo sgarro al loro posto). Senza sgarri, equivale a ForMeal(Items).
+func ForMealEffective(meal domain.MealWithItems) Macros {
+	if meal.HasCheats() {
+		return ForMeal(meal.Cheats)
+	}
+	return ForMeal(meal.Items)
+}
+
+// ForDay somma i macro effettivi di tutti i pasti di un giorno (sgarri
+// inclusi al posto degli items quando presenti).
 func ForDay(meals []domain.MealWithItems) Macros {
 	var out Macros
 	for _, m := range meals {
-		out = out.Add(ForMeal(m.Items))
+		out = out.Add(ForMealEffective(m))
 	}
 	return out
 }
 
-// ForWeek somma i macro di tutti i giorni della settimana.
+// ForWeek somma i macro effettivi di tutti i giorni della settimana.
 func ForWeek(days [7][]domain.MealWithItems) Macros {
 	var out Macros
 	for _, day := range days {

@@ -1,14 +1,17 @@
-{{define "title"}}Aggiungi al pasto — Nutreek{{end}}
+{{define "title"}}{{if .Cheat}}Sgarro — Nutreek{{else}}Aggiungi al pasto — Nutreek{{end}}{{end}}
 {{define "content"}}
+{{- $asParam := "" -}}{{- if .Cheat -}}{{- $asParam = "&as=cheat" -}}{{- end -}}
 <div class="max-w-2xl">
-  <h1 class="text-3xl font-semibold mb-2">Aggiungi al pasto</h1>
-  <p class="text-sm text-muted mb-6">Cerca nel database locale e su OpenFoodFacts. Le voci OFF sono importate al primo utilizzo.</p>
+  <h1 class="text-3xl font-semibold mb-2">{{if .Cheat}}Aggiungi sgarro al pasto{{else}}Aggiungi al pasto{{end}}</h1>
+  <p class="text-sm text-muted mb-6">
+    {{if .Cheat}}Lo sgarro sostituisce le macro ufficiali del pasto. {{end}}Cerca nel database locale e su OpenFoodFacts. Le voci OFF sono importate al primo utilizzo.
+  </p>
 
   {{if .Error}}
     <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
   {{end}}
 
-  <div class="bg-surface border border-border rounded p-4">
+  <div class="bg-surface border {{if .Cheat}}border-danger/40 ring-2 ring-danger/20{{else}}border-border{{end}} rounded p-4">
     <!-- Tab switch ingredient/recipe -->
     <div class="flex items-center gap-1 mb-3" role="tablist">
       <button type="button" data-picker-tab="ingredient" aria-selected="true"
@@ -26,14 +29,14 @@
 
     <input id="picker-search" type="search" name="q" placeholder="Cerca per nome..." autocomplete="off"
            class="w-full rounded border border-border bg-surface px-3 py-2 mb-3"
-           hx-get="/meals/{{.MealID}}/picker?kind=ingredient&start={{.WeekStart}}"
+           hx-get="/meals/{{.MealID}}/picker?kind=ingredient&start={{.WeekStart}}{{$asParam}}"
            hx-trigger="input changed delay:200ms, search, picker-refresh from:body"
            hx-target="#picker-results"
            hx-swap="innerHTML"
            hx-include="this">
 
     <div id="picker-results"
-         hx-get="/meals/{{.MealID}}/picker?kind=ingredient&q=&start={{.WeekStart}}"
+         hx-get="/meals/{{.MealID}}/picker?kind=ingredient&q=&start={{.WeekStart}}{{$asParam}}"
          hx-trigger="load"
          hx-target="this"
          hx-swap="innerHTML">
@@ -52,6 +55,7 @@
   var search = document.getElementById('picker-search');
   var mealID = '{{.MealID}}';
   var weekStart = '{{.WeekStart}}';
+  var asParam = {{if .Cheat}}'&as=cheat'{{else}}''{{end}};
   var currentKind = 'ingredient';
 
   function setTab(kind) {
@@ -67,10 +71,9 @@
     document.querySelectorAll('[data-quick-target]').forEach(function (b) {
       b.classList.toggle('hidden', b.dataset.quickTarget !== kind);
     });
-    var url = '/meals/' + mealID + '/picker?kind=' + kind + '&start=' + weekStart;
+    var url = '/meals/' + mealID + '/picker?kind=' + kind + '&start=' + weekStart + asParam;
     search.setAttribute('hx-get', url);
     htmx.process(search);
-    // Trigger ricarica con la query corrente.
     htmx.ajax('GET', url + '&q=' + encodeURIComponent(search.value || ''), {
       target: '#picker-results', swap: 'innerHTML',
     });
@@ -80,12 +83,9 @@
     b.addEventListener('click', function () { setTab(b.dataset.pickerTab); });
   });
 
-  // Refresh picker dopo creazione al volo (modal.js dispatch su window).
   ['ingredient-created', 'recipe-created'].forEach(function (ev) {
     window.addEventListener(ev, function () {
-      // Richiama l'endpoint picker con la query corrente; il nuovo elemento
-      // sara' incluso (locale, prima di tutto).
-      var url = '/meals/' + mealID + '/picker?kind=' + currentKind + '&start=' + weekStart + '&q=' + encodeURIComponent(search.value || '');
+      var url = '/meals/' + mealID + '/picker?kind=' + currentKind + '&start=' + weekStart + asParam + '&q=' + encodeURIComponent(search.value || '');
       htmx.ajax('GET', url, { target: '#picker-results', swap: 'innerHTML' });
     });
   });
