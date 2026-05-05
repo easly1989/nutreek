@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"path"
 	"strings"
+
+	"github.com/amon2126/nutreek/internal/domain"
 )
 
 // Renderer mantiene i template parsati e offre Render per scriverli sulla
@@ -86,6 +88,15 @@ func (r *Renderer) RenderPartial(w http.ResponseWriter, status int, page, partia
 	return err
 }
 
+// ShoppingRowAutoData e' il view-model per il partial shopping_row_auto.
+// Esposto come tipo pubblico cosi' il funcMap puo' istanziarlo dentro
+// un range del template.
+type ShoppingRowAutoData struct {
+	Item      *domain.ShoppingListItem
+	WeekStart string
+	CSRFToken string
+}
+
 func funcMap() template.FuncMap {
 	return template.FuncMap{
 		"add": func(a, b int) int { return a + b },
@@ -109,6 +120,12 @@ func funcMap() template.FuncMap {
 				return "Dom"
 			}
 			return "?"
+		},
+		// rowAuto costruisce il view-model per shopping_row_auto da
+		// dentro un range del template (html/template non permette
+		// struct literal). Riceve l'item per valore (Items[i] in range).
+		"rowAuto": func(item domain.ShoppingListItem, weekStart, csrf string) ShoppingRowAutoData {
+			return ShoppingRowAutoData{Item: &item, WeekStart: weekStart, CSRFToken: csrf}
 		},
 	}
 }
