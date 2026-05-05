@@ -658,7 +658,9 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	}
 
 	// 5. assemble: collega items e cheats con i loro target, distribuisce
-	//    nei Days. Items e cheats condividono i lookup recipeMap/ingMap.
+	//    nei Days. Iteriamo `mealIDs` (ordinato dal SELECT iniziale per
+	//    day_of_week, sort_order, id) per garantire l'ordine determinist
+	//    nei Days[]. Items e cheats condividono i lookup recipeMap/ingMap.
 	resolve := func(it *domain.MealItemFull) {
 		if it.RecipeID != nil {
 			it.Recipe = recipeMap[*it.RecipeID]
@@ -668,7 +670,8 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 			it.Ingredient = ingMap[*it.IngredientID]
 		}
 	}
-	for mealID, mw := range mealByID {
+	for _, mealID := range mealIDs {
+		mw := mealByID[mealID]
 		for _, it := range itemsByMeal[mealID] {
 			resolve(it)
 			mw.Items = append(mw.Items, *it)

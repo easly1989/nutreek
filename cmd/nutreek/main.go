@@ -115,6 +115,7 @@ func run(logger *slog.Logger) error {
 		MinAge:      7 * 24 * time.Hour,
 	}
 
+	weeklyPlansRepo := db.NewWeeklyPlans(store.DB)
 	a := &app.App{
 		Cfg:           cfg,
 		Store:         store,
@@ -122,7 +123,8 @@ func run(logger *slog.Logger) error {
 		Ingredients:   ingredientsRepo,
 		Recipes:       db.NewRecipes(store.DB),
 		MealTemplates: db.NewMealTemplates(store.DB),
-		WeeklyPlans:   db.NewWeeklyPlans(store.DB),
+		WeeklyPlans:   weeklyPlansRepo,
+		ShoppingLists: db.NewShoppingLists(store.DB, weeklyPlansRepo),
 		OFF:           offClient,
 		Reconciler:    reconciler,
 		Sessions:      sessions,
