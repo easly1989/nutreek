@@ -1,0 +1,65 @@
+{{define "title"}}Lista della spesa — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-2xl">
+  <!-- Header -->
+  <div class="flex items-baseline justify-between mb-2 flex-wrap gap-2">
+    <h1 class="text-3xl font-semibold">Lista della spesa</h1>
+    <div class="flex items-center gap-2 text-sm">
+      <a href="/?start={{.WeekStart}}" class="rounded border border-border px-3 py-1 hover:bg-surface-2">&larr; Settimana</a>
+    </div>
+  </div>
+  <p class="text-sm text-muted mb-4">
+    Settimana del <strong class="text-text">{{.List.WeekStart.Format "02/01/2006"}}</strong>.
+    Aggregata da pasti e ricette pianificate; gli sgarri non sono inclusi.
+  </p>
+
+  <!-- Toolbox: navigazione settimana + rigenera -->
+  <div class="bg-surface border border-border rounded p-3 mb-4 flex items-center justify-between gap-2 flex-wrap">
+    <div class="flex items-center gap-2 text-sm">
+      <a href="/shopping-list?week={{.PrevWeek}}&weeks={{.WeekCount}}"
+         class="rounded border border-border px-3 py-1 hover:bg-surface-2">&larr;</a>
+      <span class="text-muted">Settimana {{.List.WeekStart.Format "02/01"}}</span>
+      <a href="/shopping-list?week={{.NextWeek}}&weeks={{.WeekCount}}"
+         class="rounded border border-border px-3 py-1 hover:bg-surface-2">&rarr;</a>
+    </div>
+    <form method="post" action="/shopping-list/generate?week={{.WeekStart}}&weeks={{.WeekCount}}" class="inline">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button class="rounded border border-border px-3 py-1 text-sm hover:bg-surface-2">Rigenera</button>
+    </form>
+  </div>
+
+  <!-- Lista auto -->
+  <section class="bg-surface border border-border rounded mb-4">
+    <h2 class="px-3 py-2 text-xs uppercase text-muted border-b border-border">Da comprare</h2>
+    {{if .List.Items}}
+      <ul class="divide-y divide-border">
+        {{$ws := .WeekStart}}
+        {{$csrf := .CSRFToken}}
+        {{range .List.Items}}
+          {{template "shopping_row_auto" (rowAuto . $ws $csrf)}}
+        {{end}}
+      </ul>
+    {{else}}
+      <p class="px-3 py-6 text-center text-sm text-muted italic">
+        Nessun ingrediente nei pasti pianificati.
+      </p>
+    {{end}}
+  </section>
+
+  <!-- Lista user-items: vuota in v1, riempita in Tappa 6 -->
+  {{if .List.UserItems}}
+    <section class="bg-accent-soft/30 border-l-2 border-accent rounded mb-4">
+      <h2 class="px-3 py-2 text-xs uppercase text-muted">Aggiunte manuali</h2>
+      <ul class="divide-y divide-border">
+        {{range .List.UserItems}}
+          <li class="px-3 py-2 flex items-center gap-3 min-h-12">
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded border-2 {{if .Checked}}bg-accent border-accent{{else}}border-border bg-surface{{end}} shrink-0"></span>
+            <span class="grow {{if .Checked}}line-through text-muted{{end}}">{{.Description}}</span>
+            {{with .QuantityText}}<span class="text-sm text-muted">{{.}}</span>{{end}}
+          </li>
+        {{end}}
+      </ul>
+    </section>
+  {{end}}
+</div>
+{{end}}

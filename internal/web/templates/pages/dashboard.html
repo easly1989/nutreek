@@ -7,6 +7,7 @@
       Settimana del {{.WeekStart.Format "02/01/2006"}}
     </h1>
     <div class="flex items-center gap-2 text-sm">
+      <a href="/shopping-list?week={{.NextWeek}}" class="rounded border border-accent bg-accent-soft text-text px-3 py-1 hover:bg-accent/20">📋 Lista spesa</a>
       <a href="/?start={{.PrevWeek}}" class="rounded border border-border px-3 py-1 hover:bg-surface-2">&larr; precedente</a>
       <a href="/" class="rounded border border-border px-3 py-1 hover:bg-surface-2">oggi</a>
       <a href="/?start={{.NextWeek}}" class="rounded border border-border px-3 py-1 hover:bg-surface-2">prossima &rarr;</a>

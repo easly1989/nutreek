@@ -1,0 +1,29 @@
+{{define "shopping_row_auto"}}
+{{- /*
+  shopping_row_auto.html — view-model: shoppingRowData (Item set)
+  Riga di un ingrediente in lista. Touch-friendly: l'intero <label>
+  fa da target tap (min-h ~48px). Toggle via HTMX, swappa la riga
+  stessa con la versione aggiornata (checked/non-checked).
+*/ -}}
+<li id="row-{{.Item.ID}}" data-id="{{.Item.ID}}"
+    class="{{if .Item.Checked}}bg-surface-2/60{{end}}">
+  <form method="post" action="/shopping-list/items/{{.Item.ID}}/toggle?week={{.WeekStart}}"
+        hx-post="/shopping-list/items/{{.Item.ID}}/toggle?week={{.WeekStart}}"
+        hx-target="#row-{{.Item.ID}}"
+        hx-swap="outerHTML"
+        class="block">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="w-full flex items-center gap-3 min-h-12 px-3 py-2 text-left hover:bg-surface-2 active:bg-surface-2 transition">
+      <span class="inline-flex items-center justify-center w-6 h-6 rounded border-2 {{if .Item.Checked}}bg-accent border-accent text-accent-fg{{else}}border-border bg-surface{{end}} shrink-0" aria-hidden="true">
+        {{if .Item.Checked}}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>{{end}}
+      </span>
+      <span class="grow {{if .Item.Checked}}line-through text-muted{{else}}text-text{{end}}">
+        <span class="font-medium">{{.Item.Ingredient.Name}}</span>{{with .Item.Ingredient.Brand}} <span class="text-muted text-xs">({{.}})</span>{{end}}
+      </span>
+      <span class="text-sm {{if .Item.Checked}}line-through text-muted{{else}}text-text{{end}} tabular-nums">
+        {{printf "%.0f" .Item.TotalQuantity}}{{.Item.Ingredient.Unit}}
+      </span>
+    </button>
+  </form>
+</li>
+{{end}}
