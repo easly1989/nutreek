@@ -22,6 +22,7 @@ type App struct {
 	Recipes       *db.Recipes
 	MealTemplates *db.MealTemplates
 	WeeklyPlans   *db.WeeklyPlans
+	ShoppingLists *db.ShoppingLists
 	OFF           *off.Client
 	Reconciler    *off.Reconciler
 	Sessions      *scs.SessionManager
