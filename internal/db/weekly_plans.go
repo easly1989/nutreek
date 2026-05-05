@@ -523,6 +523,33 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	}
 	itemRows.Close()
 
+	// 2b. cheats per quei meals (stessa struttura di meal_items).
+	cheatRows, err := r.db.QueryContext(ctx, `
+		SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order
+		FROM meal_cheat_items WHERE meal_id IN (`+placeholders+`)
+		ORDER BY meal_id, sort_order, id
+	`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("load cheats: %w", err)
+	}
+	cheatsByMeal := make(map[int64][]*domain.MealItemFull)
+	for cheatRows.Next() {
+		var it domain.MealItem
+		if err := cheatRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder); err != nil {
+			cheatRows.Close()
+			return nil, fmt.Errorf("scan cheat: %w", err)
+		}
+		full := &domain.MealItemFull{MealItem: it}
+		cheatsByMeal[it.MealID] = append(cheatsByMeal[it.MealID], full)
+		if it.RecipeID != nil {
+			recipeIDs = append(recipeIDs, *it.RecipeID)
+		}
+		if it.IngredientID != nil {
+			ingredientIDs = append(ingredientIDs, *it.IngredientID)
+		}
+	}
+	cheatRows.Close()
+
 	// 3. ingredients in batch.
 	ingMap := make(map[int64]*domain.Ingredient)
 	if len(ingredientIDs) > 0 {
@@ -630,17 +657,25 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		riRows.Close()
 	}
 
-	// 5. assemble: collega items con i loro target, distribuisce nei Days.
+	// 5. assemble: collega items e cheats con i loro target, distribuisce
+	//    nei Days. Items e cheats condividono i lookup recipeMap/ingMap.
+	resolve := func(it *domain.MealItemFull) {
+		if it.RecipeID != nil {
+			it.Recipe = recipeMap[*it.RecipeID]
+			it.RecipeItems = recipeItemsMap[*it.RecipeID]
+		}
+		if it.IngredientID != nil {
+			it.Ingredient = ingMap[*it.IngredientID]
+		}
+	}
 	for mealID, mw := range mealByID {
 		for _, it := range itemsByMeal[mealID] {
-			if it.RecipeID != nil {
-				it.Recipe = recipeMap[*it.RecipeID]
-				it.RecipeItems = recipeItemsMap[*it.RecipeID]
-			}
-			if it.IngredientID != nil {
-				it.Ingredient = ingMap[*it.IngredientID]
-			}
+			resolve(it)
 			mw.Items = append(mw.Items, *it)
+		}
+		for _, it := range cheatsByMeal[mealID] {
+			resolve(it)
+			mw.Cheats = append(mw.Cheats, *it)
 		}
 		if mw.DayOfWeek >= 0 && mw.DayOfWeek < 7 {
 			out.Days[mw.DayOfWeek] = append(out.Days[mw.DayOfWeek], *mw)

@@ -48,10 +48,17 @@ type MealItemFull struct {
 }
 
 // MealWithItems e' Meal + items risolti.
+// Cheats e' la lista degli sgarri associati al pasto: quando ne contiene
+// almeno uno, i macro effettivi del pasto sono dati da Cheats invece che
+// da Items (gli Items "ufficiali" restano presenti per riferimento UI).
 type MealWithItems struct {
 	Meal
-	Items []MealItemFull
+	Items  []MealItemFull
+	Cheats []MealItemFull
 }
+
+// HasCheats e' true quando il pasto ha sgarri registrati.
+func (m MealWithItems) HasCheats() bool { return len(m.Cheats) > 0 }
 
 // WeeklyPlanFull e' la struttura completa renderizzata in dashboard:
 // piano + tutti i meals raggruppati per giorno (slice 7 lunghezza).
