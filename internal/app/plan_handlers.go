@@ -373,6 +373,48 @@ func (a *App) handleApplyTemplate(w http.ResponseWriter, r *http.Request) {
 	a.redirectToWeek(w, r, weekStart)
 }
 
+// handleCopyPrevious POST /week/copy-previous?start=YYYY-MM-DD
+// Clona meals + meal_items dal piano della settimana precedente al piano
+// corrente. Refuse se la settimana corrente non e' vuota o se la
+// precedente non ha meals.
+func (a *App) handleCopyPrevious(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	weekStart := parseWeekStart(r)
+	if v := r.PostFormValue("start"); v != "" {
+		if t, err := time.Parse("2006-01-02", v); err == nil {
+			weekStart = db.MondayOf(t)
+		}
+	}
+	prevWeekStart := weekStart.AddDate(0, 0, -7)
+	dstPlan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), user.ID, weekStart)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	srcPlan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), user.ID, prevWeekStart)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := a.WeeklyPlans.CopyFrom(r.Context(), srcPlan.ID, dstPlan.ID, user.ID); err != nil {
+		switch {
+		case errors.Is(err, db.ErrSourcePlanEmpty):
+			a.flashAndBack(w, r, weekStart, "La settimana scorsa e' vuota: niente da copiare.")
+			return
+		case errors.Is(err, db.ErrPlanNotEmpty):
+			a.flashAndBack(w, r, weekStart, "La settimana ha gia' dei pasti: cancellali prima di copiare.")
+			return
+		case errors.Is(err, db.ErrPlanNotFound):
+			a.notFound(w, r)
+			return
+		}
+		a.serverError(w, r, err)
+		return
+	}
+	a.Sessions.Put(r.Context(), "flash", "Piano copiato dalla settimana precedente.")
+	a.redirectToWeek(w, r, weekStart)
+}
+
 func (a *App) flashAndBack(w http.ResponseWriter, r *http.Request, weekStart time.Time, msg string) {
 	a.Sessions.Put(r.Context(), "flash", msg)
 	a.redirectToWeek(w, r, weekStart)

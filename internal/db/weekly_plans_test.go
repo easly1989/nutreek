@@ -223,3 +223,78 @@ func TestReorderMealItemsAndMeals(t *testing.T) {
 		t.Errorf("Bob reorder: atteso ErrPlanNotFound, got %v", err)
 	}
 }
+
+func TestCopyFrom(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	plans := NewWeeklyPlans(store.DB)
+	ings := NewIngredients(store.DB)
+	recipes := NewRecipes(store.DB)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
+
+	weekA, _ := time.Parse("2006-01-02", "2026-04-27")
+	weekB, _ := time.Parse("2006-01-02", "2026-05-04") // settimana successiva
+
+	planA, _ := plans.GetOrCreateForWeek(ctx, alice, weekA)
+	planB, _ := plans.GetOrCreateForWeek(ctx, alice, weekB)
+
+	// Popolo planA: 2 pasti con items.
+	mA1, _ := plans.AddMeal(ctx, planA.ID, alice, 0, "Colazione")
+	mA2, _ := plans.AddMeal(ctx, planA.ID, alice, 3, "Pranzo")
+
+	ing1, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice)
+	rec1, _ := recipes.Create(ctx, alice, "Pasta", nil, 2, false)
+	if _, err := plans.AddItem(ctx, mA1, alice, nil, &ing1, 50); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plans.AddItem(ctx, mA2, alice, &rec1, nil, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	// Copia dst non vuoto -> ok.
+	if err := plans.CopyFrom(ctx, planA.ID, planB.ID, alice); err != nil {
+		t.Fatalf("CopyFrom: %v", err)
+	}
+	full, err := plans.LoadFull(ctx, planB)
+	if err != nil {
+		t.Fatalf("LoadFull: %v", err)
+	}
+	totalMeals := 0
+	totalItems := 0
+	for d := 0; d < 7; d++ {
+		for _, m := range full.Days[d] {
+			totalMeals++
+			totalItems += len(m.Items)
+		}
+	}
+	if totalMeals != 2 {
+		t.Errorf("planB meals=%d, atteso 2", totalMeals)
+	}
+	if totalItems != 2 {
+		t.Errorf("planB items=%d, atteso 2", totalItems)
+	}
+
+	// Re-copia su dst gia' popolato -> ErrPlanNotEmpty.
+	if err := plans.CopyFrom(ctx, planA.ID, planB.ID, alice); !errors.Is(err, ErrPlanNotEmpty) {
+		t.Errorf("re-copy: atteso ErrPlanNotEmpty, got %v", err)
+	}
+
+	// Bob non puo' copiare il piano di Alice.
+	weekC, _ := time.Parse("2006-01-02", "2026-05-11")
+	planBobC, _ := plans.GetOrCreateForWeek(ctx, bob, weekC)
+	if err := plans.CopyFrom(ctx, planA.ID, planBobC.ID, bob); !errors.Is(err, ErrPlanNotFound) {
+		t.Errorf("Bob copy from Alice: atteso ErrPlanNotFound, got %v", err)
+	}
+
+	// Sorgente vuota -> ErrSourcePlanEmpty.
+	weekD, _ := time.Parse("2006-01-02", "2026-05-18")
+	weekE, _ := time.Parse("2006-01-02", "2026-05-25")
+	planEmpty, _ := plans.GetOrCreateForWeek(ctx, alice, weekD)
+	planDst, _ := plans.GetOrCreateForWeek(ctx, alice, weekE)
+	if err := plans.CopyFrom(ctx, planEmpty.ID, planDst.ID, alice); !errors.Is(err, ErrSourcePlanEmpty) {
+		t.Errorf("src vuoto: atteso ErrSourcePlanEmpty, got %v", err)
+	}
+}
