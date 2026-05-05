@@ -93,6 +93,11 @@ func (a *App) Router() http.Handler {
 		r.Post("/meals/{mealID}/items", a.handleAddMealItem)
 		r.Post("/meals/{mealID}/items/reorder", a.handleReorderMealItems)
 		r.Post("/meal-items/{itemID}/delete", a.handleRemoveMealItem)
+
+		// Sgarri (meal_cheat_items).
+		r.Post("/meals/{mealID}/cheat/items", a.handleAddMealCheat)
+		r.Post("/meals/{mealID}/cheat/clear", a.handleClearMealCheats)
+		r.Post("/meal-cheat-items/{cheatID}/delete", a.handleRemoveMealCheat)
 	})
 
 	// Admin: protetto da X-Admin-Token (vedi requireAdmin). Esente CSRF

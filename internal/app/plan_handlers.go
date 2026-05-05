@@ -62,8 +62,10 @@ type dayCardData struct {
 
 type mealView struct {
 	Meal       domain.MealWithItems
-	MealTotal  macros.Macros
+	MealTotal  macros.Macros // effettivo: cheats se presenti, altrimenti items
 	ItemViews  []mealItemView
+	CheatViews []mealItemView // popolato se HasCheats
+	HasCheats  bool
 }
 
 type mealItemView struct {
@@ -128,12 +130,19 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 			Date:  weekStart.AddDate(0, 0, d),
 		}
 		for _, m := range full.Days[d] {
-			mv := mealView{Meal: m}
+			mv := mealView{Meal: m, HasCheats: m.HasCheats()}
+			// Items "ufficiali" sempre popolati (UI mostra greyed se sgarro).
 			for _, it := range m.Items {
 				macroIt := macros.ForMealItem(it)
 				mv.ItemViews = append(mv.ItemViews, mealItemView{Item: it, Macros: macroIt})
-				mv.MealTotal = mv.MealTotal.Add(macroIt)
 			}
+			// Cheat views popolati se ci sono sgarri.
+			for _, ch := range m.Cheats {
+				macroIt := macros.ForMealItem(ch)
+				mv.CheatViews = append(mv.CheatViews, mealItemView{Item: ch, Macros: macroIt})
+			}
+			// Totale effettivo: cheats sostituiscono items se presenti.
+			mv.MealTotal = macros.ForMealEffective(m)
 			dv.Meals = append(dv.Meals, mv)
 			dv.DayTotal = dv.DayTotal.Add(mv.MealTotal)
 		}
@@ -567,6 +576,7 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 	if kind == "" {
 		kind = "ingredient"
 	}
+	asCheat := r.URL.Query().Get("as") == "cheat"
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	weekStart := parseWeekStart(r)
 	weekStartStr := formatDate(weekStart)
@@ -578,12 +588,16 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, err)
 			return
 		}
+		pkind := "meal_item"
+		if asCheat {
+			pkind = "meal_cheat"
+		}
 		data := ingredientsListData{
 			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
 			Rows:         rows,
 			Query:        q,
 			OFFWarning:   warn,
-			PickerKind:   "meal_item",
+			PickerKind:   pkind,
 			MealID:       mealID,
 			WeekStart:    weekStartStr,
 		}
@@ -613,12 +627,14 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			Query     string
 			MealID    int64
 			WeekStart string
+			Cheat     bool
 		}{
 			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
 			Recipes:      filtered,
 			Query:        q,
 			MealID:       mealID,
 			WeekStart:    weekStartStr,
+			Cheat:        asCheat,
 		}
 		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "recipe_picker_results", data); err != nil {
 			a.serverError(w, r, err)
@@ -779,6 +795,7 @@ type addItemFormData struct {
 	authPageData
 	MealID    int64
 	WeekStart string
+	Cheat     bool // true = aggiungi come sgarro (POSTa a /meals/{id}/cheat/items)
 	Error     string
 }
 
@@ -793,6 +810,7 @@ func (a *App) handleAddItemForm(w http.ResponseWriter, r *http.Request) {
 		authPageData: a.baseData(r),
 		MealID:       mealID,
 		WeekStart:    formatDate(weekStart),
+		Cheat:        r.URL.Query().Get("cheat") == "1",
 	}
 	if err := a.Render.Render(w, http.StatusOK, "meal_item_new", data); err != nil {
 		a.serverError(w, r, err)
