@@ -84,3 +84,34 @@
     transition: background-color 200ms ease, color 200ms ease;
   }
 }
+
+/* ---- Print styles ----------------------------------------------------------
+ * Per la lista della spesa (e in generale per qualunque pagina). Nasconde nav,
+ * modal-host e qualunque elemento marcato `print:hidden` (utility Tailwind).
+ * Forza fondo bianco / testo nero indipendentemente dal tema attivo per
+ * non sprecare toner.
+ * --------------------------------------------------------------------- */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  nav, #modal-host {
+    display: none !important;
+  }
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  /* Le card/box bianchi diventano flat (no border, no shadow) per stampa pulita */
+  .bg-surface, .bg-surface-2, .bg-accent-soft\/30 {
+    background: #ffffff !important;
+  }
+  /* Le checkbox custom (span con bg-accent) diventano box neri se checked,
+     box vuoti altrimenti, leggibili in B/W */
+  span.bg-accent {
+    background: #000000 !important;
+    color: #ffffff !important;
+  }
+}
