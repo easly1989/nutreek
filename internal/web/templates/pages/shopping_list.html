@@ -14,7 +14,9 @@
   <!-- Header per stampa: solo mostrato in print -->
   <div class="hidden print:block mb-4">
     <h1 class="text-2xl font-semibold">Lista della spesa</h1>
-    <p class="text-sm">Settimana del {{.List.WeekStart.Format "02/01/2006"}}</p>
+    <p class="text-sm">
+      {{if gt .WeekCount 1}}{{.WeekCount}} settimane a partire dal {{else}}Settimana del {{end}}{{.List.WeekStart.Format "02/01/2006"}}
+    </p>
   </div>
 
   <p class="text-sm text-muted mb-4 print:hidden">
@@ -22,7 +24,7 @@
     Aggregata da pasti e ricette pianificate; gli sgarri non sono inclusi.
   </p>
 
-  <!-- Toolbox: navigazione settimana + rigenera -->
+  <!-- Toolbox: navigazione settimana + dropdown settimane + rigenera -->
   <div class="bg-surface border border-border rounded p-3 mb-4 flex items-center justify-between gap-2 flex-wrap print:hidden">
     <div class="flex items-center gap-2 text-sm">
       <a href="/shopping-list?week={{.PrevWeek}}&weeks={{.WeekCount}}"
@@ -31,11 +33,28 @@
       <a href="/shopping-list?week={{.NextWeek}}&weeks={{.WeekCount}}"
          class="rounded border border-border px-3 py-1 hover:bg-surface-2">&rarr;</a>
     </div>
-    <form method="post" action="/shopping-list/generate?week={{.WeekStart}}&weeks={{.WeekCount}}" class="inline">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button class="rounded border border-border px-3 py-1 text-sm hover:bg-surface-2">Rigenera</button>
-    </form>
+    <div class="flex items-center gap-2 text-sm">
+      <label for="weeks-select" class="text-muted text-xs uppercase">Settimane</label>
+      <select id="weeks-select" class="rounded border border-border bg-surface px-2 py-1 text-sm"
+              onchange="location.href='/shopping-list?week={{.WeekStart}}&weeks=' + this.value">
+        <option value="1" {{if eq .WeekCount 1}}selected{{end}}>1</option>
+        <option value="2" {{if eq .WeekCount 2}}selected{{end}}>2</option>
+        <option value="3" {{if eq .WeekCount 3}}selected{{end}}>3</option>
+        <option value="4" {{if eq .WeekCount 4}}selected{{end}}>4</option>
+      </select>
+      <form method="post" action="/shopping-list/generate?week={{.WeekStart}}&weeks={{.WeekCount}}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button class="rounded border border-border px-3 py-1 text-sm hover:bg-surface-2">Rigenera</button>
+      </form>
+    </div>
   </div>
+
+  {{if gt .WeekCount 1}}
+    <div class="mb-4 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-sm">
+      ⚠️ <strong>Attenzione</strong>: lista per {{.WeekCount}} settimane consecutive.
+      Per gli alimenti freschi (frutta, verdura, latticini, carne/pesce) valuta tu la deperibilità o pianifica più visite al supermercato.
+    </div>
+  {{end}}
 
   {{if .Flash}}
     <div class="mb-3 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-sm print:hidden">{{.Flash}}</div>
