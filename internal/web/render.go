@@ -97,6 +97,14 @@ type ShoppingRowAutoData struct {
 	CSRFToken string
 }
 
+// ShoppingRowUserData e' il view-model per shopping_row_user.
+type ShoppingRowUserData struct {
+	Item      domain.ShoppingUserItem
+	Duplicate bool
+	WeekStart string
+	CSRFToken string
+}
+
 func funcMap() template.FuncMap {
 	return template.FuncMap{
 		"add": func(a, b int) int { return a + b },
@@ -126,6 +134,11 @@ func funcMap() template.FuncMap {
 		// struct literal). Riceve l'item per valore (Items[i] in range).
 		"rowAuto": func(item domain.ShoppingListItem, weekStart, csrf string) ShoppingRowAutoData {
 			return ShoppingRowAutoData{Item: &item, WeekStart: weekStart, CSRFToken: csrf}
+		},
+		// rowUser idem per shopping_row_user (chiamato come
+		// {{template "shopping_row_user" (rowUser .Item .Duplicate $ws $csrf)}}).
+		"rowUser": func(item domain.ShoppingUserItem, dup bool, weekStart, csrf string) ShoppingRowUserData {
+			return ShoppingRowUserData{Item: item, Duplicate: dup, WeekStart: weekStart, CSRFToken: csrf}
 		},
 	}
 }
