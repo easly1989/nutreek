@@ -56,12 +56,21 @@
               {{$hc := .HasCheats}}
               {{range .ItemViews}}
                 <li class="flex items-baseline justify-between gap-2" data-id="{{.Item.ID}}">
-                  <span class="{{if $hc}}line-through text-muted{{else}}text-muted{{end}}">
+                  <span class="grow {{if $hc}}line-through text-muted{{else}}text-muted{{end}}">
                     {{if .Item.Recipe}}
-                      <span class="{{if not $hc}}text-accent {{end}}font-medium">{{.Item.Recipe.Name}}</span>
-                      <span>× {{printf "%.1f" .Item.Quantity}} porz.</span>
+                      {{/* Riga ricetta: icona + nome (link al dettaglio) + porzioni "X di Y". */}}
+                      <span class="inline-flex items-baseline gap-1">
+                        <span aria-hidden="true">🍽️</span>
+                        <a href="/recipes/{{.Item.Recipe.ID}}" class="{{if not $hc}}text-accent {{end}}font-medium hover:underline" title="Apri la ricetta">{{.Item.Recipe.Name}}</a>
+                        <span class="text-muted text-xs whitespace-nowrap">
+                          {{printf "%.1f" .Item.Quantity}} di {{.Item.Recipe.Servings}} porz.
+                        </span>
+                      </span>
+                      {{with .Item.Recipe.Description}}
+                        <span class="block ml-5 italic text-muted/80 text-xs">{{.}}</span>
+                      {{end}}
                       {{if .ScaledRecipeItems}}
-                        <ul class="block ml-3 mt-0.5 text-muted/80">
+                        <ul class="block ml-5 mt-0.5 text-muted/80">
                           {{range .ScaledRecipeItems}}
                             <li class="flex items-baseline gap-1">
                               <span aria-hidden="true">·</span>
@@ -76,7 +85,7 @@
                       <span>{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
                     {{end}}
                   </span>
-                  <span class="flex items-center gap-2 shrink-0">
+                  <span class="flex items-baseline gap-2 shrink-0">
                     <span class="text-muted {{if $hc}}line-through{{end}}">{{printf "%.0f" .Macros.Kcal}}</span>
                     <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
                           hx-post="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
@@ -108,12 +117,20 @@
               <ul class="text-xs space-y-1">
                 {{range .CheatViews}}
                   <li class="flex items-baseline justify-between gap-2" data-id="{{.Item.ID}}">
-                    <span class="text-text">
+                    <span class="grow text-text">
                       {{if .Item.Recipe}}
-                        <span class="font-medium">{{.Item.Recipe.Name}}</span>
-                        <span class="text-muted">× {{printf "%.1f" .Item.Quantity}} porz.</span>
+                        <span class="inline-flex items-baseline gap-1">
+                          <span aria-hidden="true">🍽️</span>
+                          <a href="/recipes/{{.Item.Recipe.ID}}" class="font-medium hover:underline" title="Apri la ricetta">{{.Item.Recipe.Name}}</a>
+                          <span class="text-muted text-xs whitespace-nowrap">
+                            {{printf "%.1f" .Item.Quantity}} di {{.Item.Recipe.Servings}} porz.
+                          </span>
+                        </span>
+                        {{with .Item.Recipe.Description}}
+                          <span class="block ml-5 italic text-muted/80 text-xs">{{.}}</span>
+                        {{end}}
                         {{if .ScaledRecipeItems}}
-                          <ul class="block ml-3 mt-0.5 text-muted/80">
+                          <ul class="block ml-5 mt-0.5 text-muted/80">
                             {{range .ScaledRecipeItems}}
                               <li class="flex items-baseline gap-1">
                                 <span aria-hidden="true">·</span>
