@@ -68,9 +68,22 @@ type mealView struct {
 	HasCheats  bool
 }
 
+// scaledIngredient e' un ingrediente di una ricetta con quantita' scalata
+// rispetto al numero di porzioni del meal_item. Es. ricetta da 4 porzioni
+// con 200g pasta, in un meal_item con quantity=2 → quantity scalata = 100g.
+type scaledIngredient struct {
+	Name     string
+	Quantity float64
+	Unit     string
+}
+
 type mealItemView struct {
 	Item   domain.MealItemFull
 	Macros macros.Macros
+	// ScaledRecipeItems: per item ricetta, lista degli ingredienti con
+	// quantita' scalata = recipeItem.Quantity * (item.Quantity /
+	// recipe.Servings). Vuoto per gli item ingrediente puro.
+	ScaledRecipeItems []scaledIngredient
 }
 
 type newMealForm struct {
@@ -134,12 +147,20 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 			// Items "ufficiali" sempre popolati (UI mostra greyed se sgarro).
 			for _, it := range m.Items {
 				macroIt := macros.ForMealItem(it)
-				mv.ItemViews = append(mv.ItemViews, mealItemView{Item: it, Macros: macroIt})
+				mv.ItemViews = append(mv.ItemViews, mealItemView{
+					Item:              it,
+					Macros:            macroIt,
+					ScaledRecipeItems: scaleRecipeItems(it),
+				})
 			}
 			// Cheat views popolati se ci sono sgarri.
 			for _, ch := range m.Cheats {
 				macroIt := macros.ForMealItem(ch)
-				mv.CheatViews = append(mv.CheatViews, mealItemView{Item: ch, Macros: macroIt})
+				mv.CheatViews = append(mv.CheatViews, mealItemView{
+					Item:              ch,
+					Macros:            macroIt,
+					ScaledRecipeItems: scaleRecipeItems(ch),
+				})
 			}
 			// Totale effettivo: cheats sostituiscono items se presenti.
 			mv.MealTotal = macros.ForMealEffective(m)
@@ -147,6 +168,25 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 			dv.DayTotal = dv.DayTotal.Add(mv.MealTotal)
 		}
 		out[d] = dv
+	}
+	return out
+}
+
+// scaleRecipeItems espande gli ingredienti di una ricetta scalando le
+// quantita' per il numero di porzioni richieste. Ritorna nil se l'item
+// non e' una ricetta o se non ha RecipeItems caricati.
+func scaleRecipeItems(it domain.MealItemFull) []scaledIngredient {
+	if it.Recipe == nil || it.Recipe.Servings <= 0 || len(it.RecipeItems) == 0 {
+		return nil
+	}
+	scale := it.Quantity / float64(it.Recipe.Servings)
+	out := make([]scaledIngredient, 0, len(it.RecipeItems))
+	for _, ri := range it.RecipeItems {
+		out = append(out, scaledIngredient{
+			Name:     ri.Ingredient.Name,
+			Quantity: ri.Quantity * scale,
+			Unit:     string(ri.Ingredient.Unit),
+		})
 	}
 	return out
 }
