@@ -2,7 +2,7 @@
 {{define "content"}}
 <div class="max-w-2xl">
   <!-- Header -->
-  <div class="flex items-baseline justify-between mb-2 flex-wrap gap-2 print:hidden">
+  <div class="flex items-baseline justify-between mb-2 flex-wrap gap-2 no-print">
     <h1 class="text-3xl font-semibold">Lista della spesa</h1>
     <div class="flex items-center gap-2 text-sm">
       <button type="button" onclick="window.print()"
@@ -12,20 +12,20 @@
   </div>
 
   <!-- Header per stampa: solo mostrato in print -->
-  <div class="hidden print:block mb-4">
+  <div class="only-print mb-4">
     <h1 class="text-2xl font-semibold">Lista della spesa</h1>
     <p class="text-sm">
       {{if gt .WeekCount 1}}{{.WeekCount}} settimane a partire dal {{else}}Settimana del {{end}}{{.List.WeekStart.Format "02/01/2006"}}
     </p>
   </div>
 
-  <p class="text-sm text-muted mb-4 print:hidden">
+  <p class="text-sm text-muted mb-4 no-print">
     Settimana del <strong class="text-text">{{.List.WeekStart.Format "02/01/2006"}}</strong>.
     Aggregata da pasti e ricette pianificate; gli sgarri non sono inclusi.
   </p>
 
   <!-- Toolbox: navigazione settimana + dropdown settimane + rigenera -->
-  <div class="bg-surface border border-border rounded p-3 mb-4 flex items-center justify-between gap-2 flex-wrap print:hidden">
+  <div class="bg-surface border border-border rounded p-3 mb-4 flex items-center justify-between gap-2 flex-wrap no-print">
     <div class="flex items-center gap-2 text-sm">
       <a href="/shopping-list?week={{.PrevWeek}}&weeks={{.WeekCount}}"
          class="rounded border border-border px-3 py-1 hover:bg-surface-2">&larr;</a>
@@ -57,7 +57,7 @@
   {{end}}
 
   {{if .Flash}}
-    <div class="mb-3 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-sm print:hidden">{{.Flash}}</div>
+    <div class="mb-3 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-sm no-print">{{.Flash}}</div>
   {{end}}
 
   <!-- Lista auto -->
@@ -90,13 +90,13 @@
         {{end}}
       </ul>
     {{else}}
-      <p class="px-3 py-4 text-center text-sm text-muted italic print:hidden">
+      <p class="px-3 py-4 text-center text-sm text-muted italic no-print">
         Nessuna voce manuale.
       </p>
     {{end}}
 
     <form method="post" action="/shopping-list/{{.List.ID}}/user-items"
-          class="px-3 py-3 border-t border-accent/30 flex items-end gap-2 print:hidden">
+          class="px-3 py-3 border-t border-accent/30 flex items-end gap-2 no-print">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <input type="hidden" name="week" value="{{.WeekStart}}">
       <input type="hidden" name="weeks" value="{{.WeekCount}}">

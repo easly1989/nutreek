@@ -59,7 +59,7 @@
         hx-target="#urow-{{.Item.ID}}"
         hx-swap="outerHTML swap:0s"
         hx-confirm="Rimuovere questa voce?"
-        class="flex items-stretch print:hidden">
+        class="flex items-stretch no-print">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <button type="submit" class="px-3 text-muted hover:text-danger" title="Rimuovi" aria-label="Rimuovi">×</button>
   </form>

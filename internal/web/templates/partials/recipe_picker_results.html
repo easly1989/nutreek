@@ -12,11 +12,11 @@
           <p class="font-medium text-text truncate">{{.Name}}</p>
           <p class="text-xs text-muted">{{.Servings}} porzion{{if eq .Servings 1}}e{{else}}i{{end}}{{if .IsPublic}} · <span class="text-accent">pubblica</span>{{end}}</p>
         </div>
+        {{/* form standard (POST + redirect server-side): la pagina meal_item_new
+             non e' un container HTMX-aware, lasciamo che il server faccia
+             redirectToWeek dopo l'add. */}}
         {{if $.Cheat}}
           <form method="post" action="/meals/{{$.MealID}}/cheat/items?start={{$.WeekStart}}"
-                hx-post="/meals/{{$.MealID}}/cheat/items?start={{$.WeekStart}}"
-                hx-target="closest section[data-day]"
-                hx-swap="outerHTML"
                 class="shrink-0 flex items-center gap-2">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <input type="hidden" name="kind" value="recipe">
@@ -26,9 +26,6 @@
           </form>
         {{else}}
           <form method="post" action="/meals/{{$.MealID}}/items?start={{$.WeekStart}}"
-                hx-post="/meals/{{$.MealID}}/items?start={{$.WeekStart}}"
-                hx-target="closest section[data-day]"
-                hx-swap="outerHTML"
                 class="shrink-0 flex items-center gap-2">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <input type="hidden" name="kind" value="recipe">
