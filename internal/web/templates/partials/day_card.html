@@ -60,10 +60,16 @@
                     {{if .Item.Recipe}}
                       <span class="{{if not $hc}}text-accent {{end}}font-medium">{{.Item.Recipe.Name}}</span>
                       <span>× {{printf "%.1f" .Item.Quantity}} porz.</span>
-                      {{if .Item.RecipeItems}}
-                        <span class="block text-muted/70 italic ml-3">
-                          {{range $i, $ri := .Item.RecipeItems}}{{if $i}}, {{end}}{{$ri.Ingredient.Name}}{{end}}
-                        </span>
+                      {{if .ScaledRecipeItems}}
+                        <ul class="block ml-3 mt-0.5 text-muted/80">
+                          {{range .ScaledRecipeItems}}
+                            <li class="flex items-baseline gap-1">
+                              <span aria-hidden="true">·</span>
+                              <span>{{.Name}}</span>
+                              <span class="tabular-nums">{{printf "%.0f" .Quantity}}{{.Unit}}</span>
+                            </li>
+                          {{end}}
+                        </ul>
                       {{end}}
                     {{else if .Item.Ingredient}}
                       <span class="font-medium {{if not $hc}}text-text{{end}}">{{.Item.Ingredient.Name}}</span>
@@ -106,6 +112,17 @@
                       {{if .Item.Recipe}}
                         <span class="font-medium">{{.Item.Recipe.Name}}</span>
                         <span class="text-muted">× {{printf "%.1f" .Item.Quantity}} porz.</span>
+                        {{if .ScaledRecipeItems}}
+                          <ul class="block ml-3 mt-0.5 text-muted/80">
+                            {{range .ScaledRecipeItems}}
+                              <li class="flex items-baseline gap-1">
+                                <span aria-hidden="true">·</span>
+                                <span>{{.Name}}</span>
+                                <span class="tabular-nums">{{printf "%.0f" .Quantity}}{{.Unit}}</span>
+                              </li>
+                            {{end}}
+                          </ul>
+                        {{end}}
                       {{else if .Item.Ingredient}}
                         <span class="font-medium">{{.Item.Ingredient.Name}}</span>
                         <span class="text-muted">{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
