@@ -91,27 +91,37 @@
  * Forza fondo bianco / testo nero indipendentemente dal tema attivo per
  * non sprecare toner.
  * --------------------------------------------------------------------- */
+/* Utility nostre, sempre presenti (non dipendiamo dalla variant Tailwind
+   `print:` che richiederebbe purge-aware scan e tende a non generarsi). */
+.no-print { /* normale = visibile, override solo in print */ }
+.only-print { display: none; }
+
 @media print {
   html, body {
     background: #ffffff !important;
     color: #000000 !important;
   }
-  nav, #modal-host {
+  nav, #modal-host, .no-print {
     display: none !important;
+  }
+  .only-print {
+    display: block !important;
   }
   main {
     max-width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
   }
-  /* Le card/box bianchi diventano flat (no border, no shadow) per stampa pulita */
+  /* Card/box bianchi diventano flat per stampa pulita */
   .bg-surface, .bg-surface-2, .bg-accent-soft\/30 {
     background: #ffffff !important;
+    border-color: #cccccc !important;
   }
-  /* Le checkbox custom (span con bg-accent) diventano box neri se checked,
-     box vuoti altrimenti, leggibili in B/W */
+  /* Checkbox custom (span con bg-accent) diventano box neri se checked
+     per leggibilita' in B/W */
   span.bg-accent {
     background: #000000 !important;
     color: #ffffff !important;
+    border-color: #000000 !important;
   }
 }

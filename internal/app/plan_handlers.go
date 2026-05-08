@@ -424,6 +424,30 @@ func (a *App) handleCopyPrevious(w http.ResponseWriter, r *http.Request) {
 	a.redirectToWeek(w, r, weekStart)
 }
 
+// handleResetWeek POST /week/reset?start=YYYY-MM-DD — cancella tutti i
+// meals della settimana corrente. Usato per annullare una copia o un
+// apply-template fatti per sbaglio.
+func (a *App) handleResetWeek(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	weekStart := parseWeekStart(r)
+	if v := r.PostFormValue("start"); v != "" {
+		if t, err := time.Parse("2006-01-02", v); err == nil {
+			weekStart = db.MondayOf(t)
+		}
+	}
+	plan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), user.ID, weekStart)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := a.WeeklyPlans.ClearMeals(r.Context(), plan.ID, user.ID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.Sessions.Put(r.Context(), "flash", "Settimana svuotata.")
+	a.redirectToWeek(w, r, weekStart)
+}
+
 func (a *App) flashAndBack(w http.ResponseWriter, r *http.Request, weekStart time.Time, msg string) {
 	a.Sessions.Put(r.Context(), "flash", msg)
 	a.redirectToWeek(w, r, weekStart)

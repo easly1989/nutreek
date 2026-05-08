@@ -343,6 +343,23 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 	return tx.Commit()
 }
 
+// ClearMeals cancella TUTTI i meals di un piano (e a cascata gli items
+// e i cheat_items). Usato per "reset settimana" UI: l'utente puo'
+// annullare una copia/template applicato per sbaglio. Idempotente: se
+// il piano e' gia' vuoto non e' un errore.
+func (r *WeeklyPlans) ClearMeals(ctx context.Context, planID, userID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+		DELETE FROM meals
+		WHERE weekly_plan_id = ?
+		  AND weekly_plan_id IN (SELECT id FROM weekly_plans WHERE user_id = ?)
+	`, planID, userID)
+	if err != nil {
+		return fmt.Errorf("clear meals: %w", err)
+	}
+	_, _ = res.RowsAffected()
+	return nil
+}
+
 // AddMeal manualmente (override del template).
 func (r *WeeklyPlans) AddMeal(ctx context.Context, planID, userID int64, day int, name string) (int64, error) {
 	if err := r.assertPlanOwner(ctx, planID, userID); err != nil {
