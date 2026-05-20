@@ -28,12 +28,17 @@
     </div>
 
     <input id="picker-search" type="search" name="q" placeholder="Cerca per nome..." autocomplete="off"
-           class="w-full rounded border border-border bg-surface px-3 py-2 mb-3"
-           hx-get="/meals/{{.MealID}}/picker?kind=ingredient&start={{.WeekStart}}{{$asParam}}"
-           hx-trigger="input changed delay:200ms, search, picker-refresh from:body"
-           hx-target="#picker-results"
-           hx-swap="innerHTML"
-           hx-include="this">
+           class="w-full rounded border border-border bg-surface px-3 py-2 mb-2"
+           data-ingredient-search
+           data-search-url="/meals/{{.MealID}}/picker"
+           data-search-extra="kind=ingredient&start={{.WeekStart}}{{$asParam}}"
+           data-search-target="#picker-results"
+           data-search-spinner="#meal-picker-spinner">
+
+    <div id="meal-picker-spinner" class="hidden mb-2 flex items-center gap-2 text-xs text-muted px-1">
+      <span class="inline-block h-3 w-3 rounded-full border-2 border-muted border-t-transparent animate-spin" aria-hidden="true"></span>
+      <span>Cerco anche su OpenFoodFacts…</span>
+    </div>
 
     <div id="picker-results"
          hx-get="/meals/{{.MealID}}/picker?kind=ingredient&q=&start={{.WeekStart}}{{$asParam}}"
@@ -71,12 +76,16 @@
     document.querySelectorAll('[data-quick-target]').forEach(function (b) {
       b.classList.toggle('hidden', b.dataset.quickTarget !== kind);
     });
-    var url = '/meals/' + mealID + '/picker?kind=' + kind + '&start=' + weekStart + asParam;
-    search.setAttribute('hx-get', url);
-    htmx.process(search);
-    htmx.ajax('GET', url + '&q=' + encodeURIComponent(search.value || ''), {
-      target: '#picker-results', swap: 'innerHTML',
-    });
+    // Aggiorna i data-attrs letti dall'helper di ingredient_search.js.
+    // kind=recipe disabilita la chiamata OFF (solo DB locale).
+    search.dataset.searchExtra = 'kind=' + kind + '&start=' + weekStart + asParam;
+    search.dataset.searchNoOff = kind === 'recipe' ? '1' : '0';
+    // Nascondi spinner OFF se siamo passati a ricette.
+    var spinner = document.getElementById('meal-picker-spinner');
+    if (spinner && kind === 'recipe') spinner.classList.add('hidden');
+    // Refresh immediato della lista col nuovo kind, senza aspettare typing.
+    var url = '/meals/' + mealID + '/picker?kind=' + kind + '&start=' + weekStart + asParam + '&q=' + encodeURIComponent(search.value || '');
+    htmx.ajax('GET', url, { target: '#picker-results', swap: 'innerHTML' });
   }
 
   document.querySelectorAll('[data-picker-tab]').forEach(function (b) {

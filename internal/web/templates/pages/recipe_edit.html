@@ -62,12 +62,16 @@
         <label class="block text-sm font-medium text-text mb-2" for="i-search">Aggiungi ingrediente</label>
         <input id="i-search" type="search" name="q"
                placeholder="Cerca per nome (locale + OpenFoodFacts)..."
-               class="w-full rounded border border-border px-3 py-2 mb-3"
-               hx-get="/recipes/{{.Recipe.ID}}/picker"
-               hx-trigger="input changed delay:200ms, search"
-               hx-target="#picker-results"
-               hx-swap="innerHTML"
+               class="w-full rounded border border-border px-3 py-2 mb-2"
+               data-ingredient-search
+               data-search-url="/recipes/{{.Recipe.ID}}/picker"
+               data-search-target="#picker-results"
+               data-search-spinner="#recipe-picker-spinner"
                autocomplete="off">
+        <div id="recipe-picker-spinner" class="hidden mb-2 flex items-center gap-2 text-xs text-muted px-1">
+          <span class="inline-block h-3 w-3 rounded-full border-2 border-muted border-t-transparent animate-spin" aria-hidden="true"></span>
+          <span>Cerco anche su OpenFoodFacts…</span>
+        </div>
         <div id="picker-results"></div>
         <p class="text-xs text-muted mt-2">
           Inserisci la quantita' (g per cibi solidi, ml per liquidi) e clicca <span class="text-accent font-medium">Aggiungi</span>. Gli ingredienti OpenFoodFacts vengono importati automaticamente al primo utilizzo.

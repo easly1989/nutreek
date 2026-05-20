@@ -156,7 +156,9 @@ type ingredientForm struct {
 
 func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	rows, warn, err := a.searchMixed(r.Context(), q)
+	// Render iniziale SSR: includi OFF solo se l'utente arriva gia' con una
+	// query in URL (link condiviso, refresh). Senza q, lista solo locali.
+	rows, warn, err := a.searchMixed(r.Context(), q, q != "")
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -174,9 +176,10 @@ func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 
 // handleIngredientsSearchPartial risponde a HTMX con il solo partial
 // dei risultati. Usato dall'input live-search.
+// Param `off=1` per includere OpenFoodFacts; senza, solo DB locale (veloce).
 func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	rows, warn, err := a.searchMixed(r.Context(), q)
+	rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r))
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -193,9 +196,19 @@ func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// searchMixed esegue search locale e (se q != "") OFF, deduplica per barcode
-// e ritorna la lista unita. warn != "" se OFF e' fallito (degradiamo).
-func (a *App) searchMixed(ctx context.Context, q string) ([]ingredientRow, string, error) {
+// includeOFFParam ritorna true se il client ha richiesto esplicitamente
+// l'integrazione con OpenFoodFacts (param off=1). Default false: il DB
+// locale risponde a ogni keystroke, OFF viene chiamato solo a digitazione
+// ferma per evitare query parziali.
+func includeOFFParam(r *http.Request) bool {
+	v := r.URL.Query().Get("off")
+	return v == "1" || v == "true"
+}
+
+// searchMixed esegue search locale e, se includeOFF==true e q != "",
+// integra i risultati OpenFoodFacts deduplicati per barcode.
+// warn != "" se OFF e' fallito (degradiamo).
+func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ingredientRow, string, error) {
 	var (
 		locals []*domain.Ingredient
 		err    error
@@ -218,9 +231,9 @@ func (a *App) searchMixed(ctx context.Context, q string) ([]ingredientRow, strin
 		}
 	}
 
-	// Solo se l'utente ha digitato qualcosa interpelliamo OFF: senza query
-	// non vogliamo bombardare il loro endpoint per la lista vuota.
-	if q == "" {
+	// OFF e' opzionale: il client live-search lo richiede solo a digitazione
+	// ferma. Senza query non interroghiamo OFF (lista vuota = no-op).
+	if !includeOFF || q == "" {
 		return rows, "", nil
 	}
 
