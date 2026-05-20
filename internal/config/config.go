@@ -20,14 +20,15 @@ const (
 )
 
 type Config struct {
-	Addr               string
-	DBPath             string
-	Env                Env
-	SessionKey         []byte
-	OFFBaseURL         string
-	ReconcileInterval  time.Duration
-	ReconcileEnabled   bool
-	AdminToken         string
+	Addr              string
+	DBPath            string
+	Env               Env
+	SessionKey        []byte
+	OFFBaseURL        string
+	OFFSearchBaseURL  string
+	ReconcileInterval time.Duration
+	ReconcileEnabled  bool
+	AdminToken        string
 }
 
 // Load legge la configurazione dalle env var. Valida i vincoli di prod
@@ -53,6 +54,7 @@ func Load() (*Config, error) {
 		DBPath:            getenv("NUTREEK_DB_PATH", "./data/nutreek.db"),
 		Env:               env,
 		OFFBaseURL:        getenv("NUTREEK_OFF_BASE_URL", "https://world.openfoodfacts.org"),
+		OFFSearchBaseURL:  getenv("NUTREEK_OFF_SEARCH_BASE_URL", "https://search.openfoodfacts.org"),
 		ReconcileInterval: reconcileInterval,
 		ReconcileEnabled:  reconcileEnabled,
 		AdminToken:        os.Getenv("NUTREEK_ADMIN_TOKEN"),

@@ -107,6 +107,9 @@ func run(logger *slog.Logger) error {
 
 	ingredientsRepo := db.NewIngredients(store.DB)
 	offClient := off.NewClient(cfg.OFFBaseURL, logger)
+	if cfg.OFFSearchBaseURL != "" {
+		offClient.SearchBaseURL = cfg.OFFSearchBaseURL
+	}
 	reconciler := &off.Reconciler{
 		Ingredients: ingredientsRepo,
 		Client:      offClient,
