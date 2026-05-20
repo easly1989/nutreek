@@ -315,7 +315,7 @@ func (a *App) handleRecipePicker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	rows, warn, err := a.searchMixed(r.Context(), q)
+	rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r))
 	if err != nil {
 		a.serverError(w, r, err)
 		return
