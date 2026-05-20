@@ -11,24 +11,22 @@ import (
 
 func TestClientSearchByName(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/cgi/search.pl" {
+		if r.URL.Path != "/search" {
 			t.Errorf("path inatteso: %s", r.URL.Path)
 		}
-		if got := r.URL.Query().Get("search_terms"); got != "grana padano" {
-			t.Errorf("search_terms = %q", got)
+		if got := r.URL.Query().Get("q"); got != "grana padano" {
+			t.Errorf("q = %q", got)
 		}
 		if !strings.Contains(r.Header.Get("User-Agent"), "Nutreek") {
 			t.Errorf("UA non impostato: %q", r.Header.Get("User-Agent"))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{
-			"count": 2,
-			"page": 1,
-			"products": [
+			"hits": [
 				{
 					"code": "8000000000017",
 					"product_name": "Grana Padano DOP",
-					"brands": "Consorzio Tutela, Generic",
+					"brands": ["Consorzio Tutela", "Generic"],
 					"quantity": "200 g",
 					"nutriments": {
 						"energy-kcal_100g": 384,
@@ -45,19 +43,22 @@ func TestClientSearchByName(t *testing.T) {
 				{
 					"code": "8000000000024",
 					"product_name": "Grana Locale",
-					"brands": "Brand X",
+					"brands": ["Brand X"],
 					"nutriments": {
 						"proteins_100g": "32.5",
 						"carbohydrates_100g": 0.5,
 						"fat_100g": 27
 					}
 				}
-			]
+			],
+			"page": 1,
+			"page_count": 1
 		}`))
 	}))
 	t.Cleanup(srv.Close)
 
-	c := NewClient(srv.URL, nil)
+	c := NewClient("http://product-host-not-used", nil)
+	c.SearchBaseURL = srv.URL
 	got, err := c.SearchByName(context.Background(), "grana padano")
 	if err != nil {
 		t.Fatalf("SearchByName: %v", err)
@@ -150,7 +151,8 @@ func TestClientHTTP500(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c := NewClient(srv.URL, nil)
+	c := NewClient("http://product-host-not-used", nil)
+	c.SearchBaseURL = srv.URL
 	_, err := c.SearchByName(context.Background(), "x")
 	if err == nil || !strings.Contains(err.Error(), "500") {
 		t.Fatalf("atteso errore con 500, got %v", err)
