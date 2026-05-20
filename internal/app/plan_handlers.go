@@ -210,9 +210,14 @@ func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken
 // renderizza tutte e 7 le pillole; #focus-grid solo quelle InFocus.
 func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string) []dayCardData {
 	out := make([]dayCardData, 0, 7)
+	// Settimana tutta passata: l'ultimo giorno (domenica) e' gia' < today.
+	// In quel caso l'utente sta esplorando dati storici: mostriamo TUTTE le
+	// card in focus di default, non solo pillole compatte.
+	allPast := len(days) > 0 && dayState(days[len(days)-1].Date, today) == "past"
 	for _, dv := range days {
 		state := dayState(dv.Date, today)
-		out = append(out, makeDayCard(dv, state, state != "past", weekStartStr, csrfToken))
+		inFocus := allPast || state != "past"
+		out = append(out, makeDayCard(dv, state, inFocus, weekStartStr, csrfToken))
 	}
 	return out
 }
