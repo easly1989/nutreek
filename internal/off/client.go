@@ -23,6 +23,11 @@ const DefaultUserAgent = "Nutreek/0.1 (+https://github.com/amon2126/nutreek)"
 // Volutamente corto: la UI deve degradare gracefully se OFF e' lento.
 const DefaultTimeout = 3 * time.Second
 
+// DefaultSearchBaseURL e' l'host del nuovo servizio di ricerca testuale
+// OFF ("Search-a-licious"). Gli endpoint search legacy
+// (/cgi/search.pl e /api/v2/search) restano 503 in modo permanente.
+const DefaultSearchBaseURL = "https://search.openfoodfacts.org"
+
 // ErrNotFound e' restituito da GetByBarcode quando il prodotto non esiste su OFF.
 var ErrNotFound = errors.New("prodotto OFF non trovato")
 
@@ -32,12 +37,19 @@ var ErrNotFound = errors.New("prodotto OFF non trovato")
 var ErrIncompleteNutrients = errors.New("nutrienti incompleti su OFF")
 
 // Client e' un wrapper minimale sull'API OpenFoodFacts.
+//
+// OFF espone due servizi distinti su host separati:
+//   - BaseURL (es. world.openfoodfacts.org): product lookup per barcode.
+//   - SearchBaseURL (es. search.openfoodfacts.org): ricerca testuale
+//     "Search-a-licious", l'unico endpoint search ancora attivo dopo la
+//     dismissione del legacy /cgi/search.pl.
 type Client struct {
-	BaseURL    string
-	HTTP       *http.Client
-	UserAgent  string
-	Logger     *slog.Logger
-	MaxResults int // limite di risultati per /search
+	BaseURL       string
+	SearchBaseURL string
+	HTTP          *http.Client
+	UserAgent     string
+	Logger        *slog.Logger
+	MaxResults    int // limite di risultati per /search
 }
 
 // NewClient costruisce un client con i default sani.
@@ -49,38 +61,41 @@ func NewClient(baseURL string, logger *slog.Logger) *Client {
 		logger = slog.Default()
 	}
 	return &Client{
-		BaseURL:    strings.TrimRight(baseURL, "/"),
-		HTTP:       &http.Client{Timeout: DefaultTimeout},
-		UserAgent:  DefaultUserAgent,
-		Logger:     logger,
-		MaxResults: 20,
+		BaseURL:       strings.TrimRight(baseURL, "/"),
+		SearchBaseURL: DefaultSearchBaseURL,
+		HTTP:          &http.Client{Timeout: DefaultTimeout},
+		UserAgent:     DefaultUserAgent,
+		Logger:        logger,
+		MaxResults:    20,
 	}
 }
 
-// SearchByName chiama l'endpoint legacy /cgi/search.pl che ancora oggi
-// resta il piu' affidabile per la ricerca testuale. La v2 search e' in
-// beta e ha sintassi diversa per ogni filtro, lasciamola per dopo.
+// SearchByName chiama il nuovo endpoint "Search-a-licious" su
+// search.openfoodfacts.org. Il legacy /cgi/search.pl e /api/v2/search
+// restituiscono 503 permanente dal 2026; questo e' l'unico modo di
+// fare ricerca testuale lato server.
 func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
 		return nil, nil
 	}
+	base := c.SearchBaseURL
+	if base == "" {
+		base = DefaultSearchBaseURL
+	}
 	v := url.Values{}
-	v.Set("search_terms", q)
-	v.Set("search_simple", "1")
-	v.Set("action", "process")
-	v.Set("json", "1")
+	v.Set("q", q)
 	v.Set("page_size", strconv.Itoa(c.MaxResults))
 	v.Set("fields", "code,product_name,brands,quantity,nutriments")
-	endpoint := c.BaseURL + "/cgi/search.pl?" + v.Encode()
+	endpoint := strings.TrimRight(base, "/") + "/search?" + v.Encode()
 
 	var resp searchResponse
 	if err := c.do(ctx, endpoint, &resp); err != nil {
 		return nil, err
 	}
-	out := make([]Product, 0, len(resp.Products))
-	for _, raw := range resp.Products {
-		p := raw.toProduct()
+	out := make([]Product, 0, len(resp.Hits))
+	for _, h := range resp.Hits {
+		p := h.toProduct()
 		if p.Code == "" || p.Name == "" {
 			continue
 		}

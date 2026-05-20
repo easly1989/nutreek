@@ -73,7 +73,8 @@ make sqlc             # solo rigenera sqlc
 | `NUTREEK_DB_PATH` | `./data/nutreek.db` | |
 | `NUTREEK_ENV` | `dev` | `prod` abilita secure cookies |
 | `NUTREEK_SESSION_KEY` | auto in dev | **richiesto in prod** (hex ≥64 chars) |
-| `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | |
+| `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | host product lookup (barcode) |
+| `NUTREEK_OFF_SEARCH_BASE_URL` | `https://search.openfoodfacts.org` | host search testuale (Search-a-licious) — il legacy `/cgi/search.pl` e `/api/v2/search` sono 503 permanenti |
 | `NUTREEK_RECONCILE_INTERVAL` | `24h` | |
 | `NUTREEK_RECONCILE_ENABLED` | `true` | |
 | `NUTREEK_ADMIN_TOKEN` | (nessuno) | token per admin endpoints |
