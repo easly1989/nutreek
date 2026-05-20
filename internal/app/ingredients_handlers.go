@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/justinas/nosurf"
 
@@ -205,6 +206,12 @@ func includeOFFParam(r *http.Request) bool {
 	return v == "1" || v == "true"
 }
 
+// offLiveTimeout limita l'attesa di OFF durante la ricerca live. Tre
+// secondi erano troppi: il server teneva aperta la connessione HTTP per
+// tutto il timeout del client OFF. Con 1.5s si degrada rapidamente
+// mostrando solo i locali, senza bloccare la UI.
+const offLiveTimeout = 1500 * time.Millisecond
+
 // searchMixed esegue search locale e, se includeOFF==true e q != "",
 // integra i risultati OpenFoodFacts deduplicati per barcode.
 // warn != "" se OFF e' fallito (degradiamo).
@@ -237,7 +244,9 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 		return rows, "", nil
 	}
 
-	products, offErr := a.OFF.SearchByName(ctx, q)
+	offCtx, offCancel := context.WithTimeout(ctx, offLiveTimeout)
+	defer offCancel()
+	products, offErr := a.OFF.SearchByName(offCtx, q)
 	if offErr != nil {
 		a.Logger.Warn("OFF search failed", "err", offErr, "q", q)
 		return rows, "OpenFoodFacts non raggiungibile, mostro solo gli ingredienti locali.", nil
