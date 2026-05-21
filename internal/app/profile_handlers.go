@@ -168,6 +168,33 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validazione combinazione macro (controllo fisicamente impossibile).
+	if targetKcal != nil && *targetKcal > 0 {
+		if *targetKcal < 800 {
+			renderErr("Obiettivo Kcal troppo basso (minimo consigliato: 800 kcal).")
+			return
+		}
+		if targetProtein != nil && *targetProtein*4 > *targetKcal {
+			renderErr("Le proteine da sole superano le calorie totali (valore non possibile).")
+			return
+		}
+		if targetFat != nil && *targetFat*9 > *targetKcal {
+			renderErr("I grassi da soli superano le calorie totali (valore non possibile).")
+			return
+		}
+		if targetProtein != nil && targetCarbs != nil && targetFat != nil {
+			macroKcal := *targetProtein*4 + *targetCarbs*4 + *targetFat*9
+			if macroKcal > *targetKcal*1.10 {
+				renderErr("La somma dei macro supera le calorie totali di oltre il 10%.")
+				return
+			}
+		}
+	}
+	if targetProtein != nil && *targetProtein > 400 {
+		renderErr("Obiettivo Proteine non realistico (massimo 400 g).")
+		return
+	}
+
 	// Ricalcola BMI e BMR se tutti i dati fisici sono presenti.
 	var bmiPtr, bmrPtr *float64
 	if profile.CanComputeIndices(weightKg, heightCm, birthYear, sexPtr) {

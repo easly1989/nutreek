@@ -234,7 +234,8 @@
         data-state="{{.State}}"
         data-in-focus="true"
         hx-swap-oob="outerHTML:#pill-{{.DateStr}}"
-        class="shrink-0 px-3 py-2 rounded border text-left transition border-accent bg-accent-soft text-text">
+        class="relative shrink-0 px-3 py-2 rounded border text-left transition border-accent bg-accent-soft text-text">
+  {{if .Progress.AnyExceeds}}<span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger" title="Uno o più macro sforati"></span>{{end}}
   <span class="block text-xs">{{.Day.Label}}{{if eq .State "today"}} · oggi{{end}}</span>
   <span class="block text-sm font-medium">{{.Day.Date.Format "02/01"}}</span>
   <span class="block text-xs">{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
