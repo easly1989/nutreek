@@ -88,6 +88,8 @@ func CanComputeIndices(weightKg, heightCm *float64, birthYear *int, sex *string)
 // MacroBar contiene i dati pre-calcolati per una singola barra di progresso.
 type MacroBar struct {
 	Label    string
+	Actual   float64 // valore effettivo (kcal o grammi)
+	Target   float64 // valore obiettivo (kcal o grammi)
 	Pct      float64 // 0..100, cappato a 100 per la larghezza della barra
 	Raw      float64 // percentuale reale (può superare 100)
 	Overflow bool    // true se supera il target (>100%)
@@ -129,22 +131,24 @@ func BuildMacroProgress(actual macros.Macros, targetKcal, targetProtein, targetC
 		if target <= 0 {
 			// Target non impostato per questo macro: barra non visualizzabile;
 			// la mostriamo come "100%" neutra (non overflow, pct=0).
-			return MacroBar{Label: label}
+			return MacroBar{Label: label, Actual: actual}
 		}
 		raw := (actual / target) * 100
 		pct := math.Min(raw, 100)
 		return MacroBar{
 			Label:    label,
+			Actual:   actual,
+			Target:   target,
 			Pct:      pct,
 			Raw:      raw,
 			Overflow: raw > 100,
 		}
 	}
 
-	kb := bar("Kcal", actual.Kcal, tk)
-	pb := bar("P", actual.Protein, tp)
-	cb := bar("C", actual.Carbs, tc)
-	fb := bar("F", actual.Fat, tf)
+	kb := bar("Calorie", actual.Kcal, tk)
+	pb := bar("Proteine", actual.Protein, tp)
+	cb := bar("Carboidrati", actual.Carbs, tc)
+	fb := bar("Grassi", actual.Fat, tf)
 
 	return MacroProgress{
 		HasTarget:  true,
