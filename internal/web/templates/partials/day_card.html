@@ -33,7 +33,7 @@
       {{/* ---- Compatto: 4 mini-bar sempre visibili (track grigio = giorno vuoto) ---- */}}
       <div data-macro-compact class="flex items-center gap-2">
         {{with .Progress.Kcal}}
-          <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
+          <div class="flex items-center gap-1 flex-1 min-w-0" title="Calorie: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} kcal">
             <span class="text-muted font-medium shrink-0 w-3 text-xs">K</span>
             <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
@@ -41,7 +41,7 @@
           </div>
         {{end}}
         {{with .Progress.Protein}}
-          <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
+          <div class="flex items-center gap-1 flex-1 min-w-0" title="Proteine: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
             <span class="text-muted font-medium shrink-0 w-3 text-xs">P</span>
             <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
@@ -49,7 +49,7 @@
           </div>
         {{end}}
         {{with .Progress.Carbs}}
-          <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
+          <div class="flex items-center gap-1 flex-1 min-w-0" title="Carboidrati: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
             <span class="text-muted font-medium shrink-0 w-3 text-xs">C</span>
             <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
@@ -57,7 +57,7 @@
           </div>
         {{end}}
         {{with .Progress.Fat}}
-          <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
+          <div class="flex items-center gap-1 flex-1 min-w-0" title="Grassi: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
             <span class="text-muted font-medium shrink-0 w-3 text-xs">F</span>
             <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
@@ -67,42 +67,42 @@
         <span data-macro-chevron class="text-muted text-base leading-none shrink-0 transition-transform">⌄</span>
       </div>
 
-      {{/* ---- Espanso: dettaglio 4 righe ---- */}}
-      <div data-macro-detail class="hidden space-y-1 text-xs mt-1">
+      {{/* ---- Espanso: dettaglio 4 righe con bordo visibile ---- */}}
+      <div data-macro-detail class="hidden space-y-1 text-xs mt-2 border border-border rounded p-3">
         {{with .Progress.Kcal}}{{if gt .Raw 0.0}}
-          <div class="flex items-center gap-1.5">
-            <span class="w-10 text-muted">{{.Label}}</span>
+          <div class="flex items-center gap-2" title="Calorie: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} kcal">
+            <span class="w-20 text-muted">{{.Label}}</span>
             <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
             </div>
-            <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+            <span class="w-20 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} kcal</span>
           </div>
         {{end}}{{end}}
         {{with .Progress.Protein}}{{if gt .Raw 0.0}}
-          <div class="flex items-center gap-1.5">
-            <span class="w-10 text-muted">{{.Label}}</span>
+          <div class="flex items-center gap-2" title="Proteine: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
+            <span class="w-20 text-muted">{{.Label}}</span>
             <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
             </div>
-            <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+            <span class="w-20 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} g</span>
           </div>
         {{end}}{{end}}
         {{with .Progress.Carbs}}{{if gt .Raw 0.0}}
-          <div class="flex items-center gap-1.5">
-            <span class="w-10 text-muted">{{.Label}}</span>
+          <div class="flex items-center gap-2" title="Carboidrati: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
+            <span class="w-20 text-muted">{{.Label}}</span>
             <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
             </div>
-            <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+            <span class="w-20 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} g</span>
           </div>
         {{end}}{{end}}
         {{with .Progress.Fat}}{{if gt .Raw 0.0}}
-          <div class="flex items-center gap-1.5">
-            <span class="w-10 text-muted">{{.Label}}</span>
+          <div class="flex items-center gap-2" title="Grassi: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
+            <span class="w-20 text-muted">{{.Label}}</span>
             <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
             </div>
-            <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+            <span class="w-20 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} g</span>
           </div>
         {{end}}{{end}}
       </div>
