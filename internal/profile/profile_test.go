@@ -99,4 +99,28 @@ func TestBuildMacroProgress(t *testing.T) {
 	}
 }
 
+func TestActivityFactor(t *testing.T) {
+	cases := []struct{ code string; want float64 }{
+		{"sedentary", 1.2},
+		{"light", 1.375},
+		{"moderate", 1.55},
+		{"active", 1.725},
+		{"athlete", 1.9},
+		{"", 1.4},
+		{"unknown", 1.4},
+	}
+	for _, tc := range cases {
+		if got := ActivityFactor(tc.code); got != tc.want {
+			t.Errorf("ActivityFactor(%q) = %v, want %v", tc.code, got, tc.want)
+		}
+	}
+}
+
+func TestTDEE(t *testing.T) {
+	got := TDEE(2000, 1.55)
+	if got != 3100 {
+		t.Errorf("TDEE(2000, 1.55) = %.2f, want 3100", got)
+	}
+}
+
 func ptr(v float64) *float64 { return &v }

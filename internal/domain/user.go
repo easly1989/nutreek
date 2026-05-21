@@ -25,4 +25,7 @@ type User struct {
 	// Indici calcolati e salvati al momento dell'aggiornamento del profilo.
 	BMI *float64
 	BMR *float64
+
+	// Livello di attività fisica: 'sedentary'|'light'|'moderate'|'active'|'athlete'
+	ActivityLevel *string
 }
