@@ -53,7 +53,10 @@ func (u *Users) Create(ctx context.Context, email, passwordHash, displayName str
 func (u *Users) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	row := u.db.QueryRowContext(ctx,
-		`SELECT id, email, password_hash, display_name, created_at
+		`SELECT id, email, password_hash, display_name, created_at,
+		        weight_kg, height_cm, birth_year, sex,
+		        target_kcal, target_protein, target_carbs, target_fat,
+		        bmi, bmr
 		 FROM users WHERE email = ?`, email,
 	)
 	return scanUser(row)
@@ -62,15 +65,64 @@ func (u *Users) GetByEmail(ctx context.Context, email string) (*domain.User, err
 // GetByID ritorna l'utente con l'id dato o ErrUserNotFound.
 func (u *Users) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 	row := u.db.QueryRowContext(ctx,
-		`SELECT id, email, password_hash, display_name, created_at
+		`SELECT id, email, password_hash, display_name, created_at,
+		        weight_kg, height_cm, birth_year, sex,
+		        target_kcal, target_protein, target_carbs, target_fat,
+		        bmi, bmr
 		 FROM users WHERE id = ?`, id,
 	)
 	return scanUser(row)
 }
 
+// UserProfileInput raccoglie i campi aggiornabili dalla pagina profilo.
+// I pointer nil significano "non modificare / cancella il valore".
+type UserProfileInput struct {
+	WeightKg      *float64
+	HeightCm      *float64
+	BirthYear     *int
+	Sex           *string
+	TargetKcal    *float64
+	TargetProtein *float64
+	TargetCarbs   *float64
+	TargetFat     *float64
+	BMI           *float64
+	BMR           *float64
+}
+
+// UpdateProfile aggiorna i dati del profilo dell'utente.
+func (u *Users) UpdateProfile(ctx context.Context, id int64, p UserProfileInput) error {
+	_, err := u.db.ExecContext(ctx,
+		`UPDATE users SET
+		   weight_kg      = ?,
+		   height_cm      = ?,
+		   birth_year     = ?,
+		   sex            = ?,
+		   target_kcal    = ?,
+		   target_protein = ?,
+		   target_carbs   = ?,
+		   target_fat     = ?,
+		   bmi            = ?,
+		   bmr            = ?
+		 WHERE id = ?`,
+		p.WeightKg, p.HeightCm, p.BirthYear, p.Sex,
+		p.TargetKcal, p.TargetProtein, p.TargetCarbs, p.TargetFat,
+		p.BMI, p.BMR,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("update user profile: %w", err)
+	}
+	return nil
+}
+
 func scanUser(row *sql.Row) (*domain.User, error) {
 	var user domain.User
-	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName, &user.CreatedAt)
+	err := row.Scan(
+		&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName, &user.CreatedAt,
+		&user.WeightKg, &user.HeightCm, &user.BirthYear, &user.Sex,
+		&user.TargetKcal, &user.TargetProtein, &user.TargetCarbs, &user.TargetFat,
+		&user.BMI, &user.BMR,
+	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
 	}

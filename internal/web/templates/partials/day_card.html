@@ -19,10 +19,52 @@
     </h2>
     <div class="flex items-center gap-2 text-xs text-muted">
       <span>{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
+      {{if .Progress.AnyExceeds}}<span class="text-danger" title="Uno o più macro sforati">⚠</span>{{end}}
       <button type="button" data-unfocus="{{.DateStr}}" title="Rimuovi dal focus"
               class="text-muted hover:text-danger leading-none text-base">&times;</button>
     </div>
   </header>
+
+  {{if .Progress.HasTarget}}
+    <div class="mb-3 space-y-1 text-xs">
+      {{with .Progress.Kcal}}{{if gt .Raw 0.0}}
+        <div class="flex items-center gap-1.5">
+          <span class="w-10 text-muted">{{.Label}}</span>
+          <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+            <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+          </div>
+          <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+        </div>
+      {{end}}{{end}}
+      {{with .Progress.Protein}}{{if gt .Raw 0.0}}
+        <div class="flex items-center gap-1.5">
+          <span class="w-10 text-muted">{{.Label}}</span>
+          <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+            <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+          </div>
+          <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+        </div>
+      {{end}}{{end}}
+      {{with .Progress.Carbs}}{{if gt .Raw 0.0}}
+        <div class="flex items-center gap-1.5">
+          <span class="w-10 text-muted">{{.Label}}</span>
+          <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+            <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+          </div>
+          <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+        </div>
+      {{end}}{{end}}
+      {{with .Progress.Fat}}{{if gt .Raw 0.0}}
+        <div class="flex items-center gap-1.5">
+          <span class="w-10 text-muted">{{.Label}}</span>
+          <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+            <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+          </div>
+          <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+        </div>
+      {{end}}{{end}}
+    </div>
+  {{end}}
 
   {{if .Day.Meals}}
     <ul class="divide-y divide-border" data-sortable="meals" data-sort-url="/meals/reorder?day_of_week={{.Day.Index}}&start={{.WeekStart}}">

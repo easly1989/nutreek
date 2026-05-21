@@ -16,8 +16,9 @@
         data-day="{{.DateStr}}"
         data-state="{{.State}}"
         data-in-focus="{{if .InFocus}}true{{else}}false{{end}}"
-        class="w-full px-2 py-2 rounded border text-center transition
+        class="relative w-full px-2 py-2 rounded border text-center transition
                {{if .InFocus}}border-accent bg-accent-soft text-text{{else if eq .State "past"}}border-border bg-surface-2 text-muted opacity-70 hover:opacity-100{{else}}border-border bg-surface text-text hover:bg-surface-2{{end}}">
+  {{if .Progress.AnyExceeds}}<span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger" title="Uno o più macro sforati"></span>{{end}}
   <span class="block text-xs truncate">{{.Day.Label}}{{if eq .State "today"}} · oggi{{end}}</span>
   <span class="block text-sm font-medium">{{.Day.Date.Format "02/01"}}</span>
   <span class="block text-xs">{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
