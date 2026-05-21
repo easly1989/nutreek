@@ -15,12 +15,14 @@ import (
 
 type profileData struct {
 	authPageData
-	Form        profileForm
-	Error       string
-	BMIValue    float64
-	BMICategory string
-	BMRValue    float64
-	HasIndices  bool // true se BMI/BMR sono calcolati e mostrabili
+	Form          profileForm
+	Error         string
+	BMIValue      float64
+	BMICategory   string
+	BMRValue      float64
+	TDEEValue     float64
+	HasIndices    bool // true se BMI/BMR sono calcolati e mostrabili
+	HasTDEE       bool // true se anche activity_level è impostato
 }
 
 type profileForm struct {
@@ -28,10 +30,19 @@ type profileForm struct {
 	HeightCm      string
 	BirthYear     string
 	Sex           string
+	ActivityLevel string
 	TargetKcal    string
 	TargetProtein string
 	TargetCarbs   string
 	TargetFat     string
+}
+
+var validActivityLevels = map[string]bool{
+	"sedentary": true,
+	"light":     true,
+	"moderate":  true,
+	"active":    true,
+	"athlete":   true,
 }
 
 func profileFormFromUser(u *domain.User) profileForm {
@@ -47,6 +58,9 @@ func profileFormFromUser(u *domain.User) profileForm {
 	}
 	if u.Sex != nil {
 		f.Sex = *u.Sex
+	}
+	if u.ActivityLevel != nil {
+		f.ActivityLevel = *u.ActivityLevel
 	}
 	if u.TargetKcal != nil {
 		f.TargetKcal = formatOptFloat(*u.TargetKcal)
@@ -64,7 +78,6 @@ func profileFormFromUser(u *domain.User) profileForm {
 }
 
 func formatOptFloat(v float64) string {
-	// Se è un intero esatto, mostra senza decimali.
 	if v == float64(int64(v)) {
 		return strconv.FormatInt(int64(v), 10)
 	}
@@ -85,6 +98,10 @@ func (a *App) handleProfilePage(w http.ResponseWriter, r *http.Request) {
 		data.BMICategory = profile.BMICategory(*user.BMI)
 		data.BMRValue = *user.BMR
 		data.HasIndices = true
+		if user.ActivityLevel != nil {
+			data.TDEEValue = profile.TDEE(*user.BMR, profile.ActivityFactor(*user.ActivityLevel))
+			data.HasTDEE = true
+		}
 	}
 	if err := a.Render.Render(w, http.StatusOK, "profile", data); err != nil {
 		a.serverError(w, r, err)
@@ -99,6 +116,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		HeightCm:      strings.TrimSpace(r.PostFormValue("height_cm")),
 		BirthYear:     strings.TrimSpace(r.PostFormValue("birth_year")),
 		Sex:           strings.TrimSpace(r.PostFormValue("sex")),
+		ActivityLevel: strings.TrimSpace(r.PostFormValue("activity_level")),
 		TargetKcal:    strings.TrimSpace(r.PostFormValue("target_kcal")),
 		TargetProtein: strings.TrimSpace(r.PostFormValue("target_protein")),
 		TargetCarbs:   strings.TrimSpace(r.PostFormValue("target_carbs")),
@@ -144,6 +162,16 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 	default:
 		renderErr("Sesso non valido.")
 		return
+	}
+
+	var activityPtr *string
+	if form.ActivityLevel != "" {
+		if !validActivityLevels[form.ActivityLevel] {
+			renderErr("Livello di attività non valido.")
+			return
+		}
+		al := form.ActivityLevel
+		activityPtr = &al
 	}
 
 	// Obiettivi macro — tutti opzionali, non negativi.
@@ -209,6 +237,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		HeightCm:      heightCm,
 		BirthYear:     birthYear,
 		Sex:           sexPtr,
+		ActivityLevel: activityPtr,
 		TargetKcal:    targetKcal,
 		TargetProtein: targetProtein,
 		TargetCarbs:   targetCarbs,
