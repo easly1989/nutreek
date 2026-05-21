@@ -69,15 +69,16 @@
         </svg>
       </div>
 
-      {{/* ---- Espanso: dettaglio 4 righe con bordo visibile + chevron-up in alto a destra ---- */}}
+      {{/* ---- Espanso: dettaglio 4 righe con bordo visibile + header ---- */}}
       <div data-macro-detail class="hidden text-xs mt-2 border border-border rounded p-3">
-        <div class="flex justify-end mb-1">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-muted font-medium uppercase tracking-wide" style="font-size:0.65rem">Progressi giornalieri</span>
           <svg class="w-3 h-3 text-muted" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 7.5l3-3 3 3"/>
           </svg>
         </div>
         <div class="space-y-1">
-        {{with .Progress.Kcal}}{{if gt .Raw 0.0}}
+        {{with .Progress.Kcal}}
           <div class="flex items-center gap-2" title="Calorie: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} kcal">
             <span class="w-20 text-muted">{{.Label}}</span>
             <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
@@ -85,8 +86,8 @@
             </div>
             <span class="w-24 text-right tabular-nums whitespace-nowrap {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} kcal</span>
           </div>
-        {{end}}{{end}}
-        {{with .Progress.Protein}}{{if gt .Raw 0.0}}
+        {{end}}
+        {{with .Progress.Protein}}
           <div class="flex items-center gap-2" title="Proteine: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
             <span class="w-20 text-muted">{{.Label}}</span>
             <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
@@ -94,8 +95,8 @@
             </div>
             <span class="w-24 text-right tabular-nums whitespace-nowrap {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} g</span>
           </div>
-        {{end}}{{end}}
-        {{with .Progress.Carbs}}{{if gt .Raw 0.0}}
+        {{end}}
+        {{with .Progress.Carbs}}
           <div class="flex items-center gap-2" title="Carboidrati: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
             <span class="w-20 text-muted">{{.Label}}</span>
             <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
@@ -103,8 +104,8 @@
             </div>
             <span class="w-24 text-right tabular-nums whitespace-nowrap {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} g</span>
           </div>
-        {{end}}{{end}}
-        {{with .Progress.Fat}}{{if gt .Raw 0.0}}
+        {{end}}
+        {{with .Progress.Fat}}
           <div class="flex items-center gap-2" title="Grassi: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
             <span class="w-20 text-muted">{{.Label}}</span>
             <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
@@ -112,7 +113,7 @@
             </div>
             <span class="w-24 text-right tabular-nums whitespace-nowrap {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} g</span>
           </div>
-        {{end}}{{end}}
+        {{end}}
         </div>
       </div>
 
