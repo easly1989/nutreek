@@ -28,42 +28,42 @@
   {{if .Progress.HasTarget}}
     <button type="button" data-macro-toggle aria-expanded="false"
             aria-label="Mostra dettaglio macro"
-            class="w-full mb-3 text-left focus:outline-none focus:ring-2 focus:ring-accent/40 rounded">
+            class="w-full mb-3 text-left focus:outline-none focus:ring-2 focus:ring-accent rounded">
 
-      {{/* ---- Compatto: 4 mini-bar in una sola riga ---- */}}
-      <div data-macro-compact class="flex items-center gap-2 text-xs">
-        {{with .Progress.Kcal}}{{if gt .Raw 0.0}}
+      {{/* ---- Compatto: 4 mini-bar sempre visibili (track grigio = giorno vuoto) ---- */}}
+      <div data-macro-compact class="flex items-center gap-2">
+        {{with .Progress.Kcal}}
           <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
-            <span class="text-muted font-medium shrink-0 w-3">K</span>
-            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+            <span class="text-muted font-medium shrink-0 w-3 text-xs">K</span>
+            <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
             </div>
           </div>
-        {{end}}{{end}}
-        {{with .Progress.Protein}}{{if gt .Raw 0.0}}
+        {{end}}
+        {{with .Progress.Protein}}
           <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
-            <span class="text-muted font-medium shrink-0 w-3">P</span>
-            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+            <span class="text-muted font-medium shrink-0 w-3 text-xs">P</span>
+            <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
             </div>
           </div>
-        {{end}}{{end}}
-        {{with .Progress.Carbs}}{{if gt .Raw 0.0}}
+        {{end}}
+        {{with .Progress.Carbs}}
           <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
-            <span class="text-muted font-medium shrink-0 w-3">C</span>
-            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+            <span class="text-muted font-medium shrink-0 w-3 text-xs">C</span>
+            <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
             </div>
           </div>
-        {{end}}{{end}}
-        {{with .Progress.Fat}}{{if gt .Raw 0.0}}
+        {{end}}
+        {{with .Progress.Fat}}
           <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
-            <span class="text-muted font-medium shrink-0 w-3">F</span>
-            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+            <span class="text-muted font-medium shrink-0 w-3 text-xs">F</span>
+            <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
               <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
             </div>
           </div>
-        {{end}}{{end}}
+        {{end}}
         <span data-macro-chevron class="text-muted text-base leading-none shrink-0 transition-transform">⌄</span>
       </div>
 
