@@ -26,44 +26,88 @@
   </header>
 
   {{if .Progress.HasTarget}}
-    <div class="mb-3 space-y-1 text-xs">
-      {{with .Progress.Kcal}}{{if gt .Raw 0.0}}
-        <div class="flex items-center gap-1.5">
-          <span class="w-10 text-muted">{{.Label}}</span>
-          <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
-            <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+    <button type="button" data-macro-toggle aria-expanded="false"
+            aria-label="Mostra dettaglio macro"
+            class="w-full mb-3 text-left focus:outline-none focus:ring-2 focus:ring-accent/40 rounded">
+
+      {{/* ---- Compatto: 4 mini-bar in una sola riga ---- */}}
+      <div data-macro-compact class="flex items-center gap-2 text-xs">
+        {{with .Progress.Kcal}}{{if gt .Raw 0.0}}
+          <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
+            <span class="text-muted font-medium shrink-0 w-3">K</span>
+            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+            </div>
           </div>
-          <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
-        </div>
-      {{end}}{{end}}
-      {{with .Progress.Protein}}{{if gt .Raw 0.0}}
-        <div class="flex items-center gap-1.5">
-          <span class="w-10 text-muted">{{.Label}}</span>
-          <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
-            <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+        {{end}}{{end}}
+        {{with .Progress.Protein}}{{if gt .Raw 0.0}}
+          <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
+            <span class="text-muted font-medium shrink-0 w-3">P</span>
+            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+            </div>
           </div>
-          <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
-        </div>
-      {{end}}{{end}}
-      {{with .Progress.Carbs}}{{if gt .Raw 0.0}}
-        <div class="flex items-center gap-1.5">
-          <span class="w-10 text-muted">{{.Label}}</span>
-          <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
-            <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+        {{end}}{{end}}
+        {{with .Progress.Carbs}}{{if gt .Raw 0.0}}
+          <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
+            <span class="text-muted font-medium shrink-0 w-3">C</span>
+            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+            </div>
           </div>
-          <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
-        </div>
-      {{end}}{{end}}
-      {{with .Progress.Fat}}{{if gt .Raw 0.0}}
-        <div class="flex items-center gap-1.5">
-          <span class="w-10 text-muted">{{.Label}}</span>
-          <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
-            <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+        {{end}}{{end}}
+        {{with .Progress.Fat}}{{if gt .Raw 0.0}}
+          <div class="flex items-center gap-1 flex-1 min-w-0" title="{{.Label}}: {{printf "%.0f" .Raw}}%">
+            <span class="text-muted font-medium shrink-0 w-3">F</span>
+            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+            </div>
           </div>
-          <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
-        </div>
-      {{end}}{{end}}
-    </div>
+        {{end}}{{end}}
+        <span data-macro-chevron class="text-muted text-base leading-none shrink-0 transition-transform">⌄</span>
+      </div>
+
+      {{/* ---- Espanso: dettaglio 4 righe ---- */}}
+      <div data-macro-detail class="hidden space-y-1 text-xs mt-1">
+        {{with .Progress.Kcal}}{{if gt .Raw 0.0}}
+          <div class="flex items-center gap-1.5">
+            <span class="w-10 text-muted">{{.Label}}</span>
+            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+            </div>
+            <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+          </div>
+        {{end}}{{end}}
+        {{with .Progress.Protein}}{{if gt .Raw 0.0}}
+          <div class="flex items-center gap-1.5">
+            <span class="w-10 text-muted">{{.Label}}</span>
+            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+            </div>
+            <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+          </div>
+        {{end}}{{end}}
+        {{with .Progress.Carbs}}{{if gt .Raw 0.0}}
+          <div class="flex items-center gap-1.5">
+            <span class="w-10 text-muted">{{.Label}}</span>
+            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+            </div>
+            <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+          </div>
+        {{end}}{{end}}
+        {{with .Progress.Fat}}{{if gt .Raw 0.0}}
+          <div class="flex items-center gap-1.5">
+            <span class="w-10 text-muted">{{.Label}}</span>
+            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
+              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
+            </div>
+            <span class="w-10 text-right tabular-nums {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Raw}}%</span>
+          </div>
+        {{end}}{{end}}
+      </div>
+
+    </button>
   {{end}}
 
   {{if .Day.Meals}}
