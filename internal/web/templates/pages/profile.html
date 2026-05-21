@@ -1,0 +1,114 @@
+{{define "title"}}Profilo — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-2xl">
+  <h1 class="text-3xl font-semibold mb-2">Profilo</h1>
+  <p class="text-sm text-muted mb-6">
+    Imposta i tuoi dati fisici e gli obiettivi macro giornalieri. BMI e BMR vengono
+    calcolati automaticamente quando peso, altezza, anno di nascita e sesso sono
+    tutti compilati.
+  </p>
+
+  {{if .Error}}
+    <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
+  {{end}}
+
+  <form method="post" action="/profile" class="space-y-6 bg-surface border border-border rounded p-6">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+    <fieldset class="space-y-4">
+      <legend class="text-base font-semibold text-text">Dati fisici</legend>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-text mb-1" for="f-weight">Peso (kg)</label>
+          <input id="f-weight" name="weight_kg" inputmode="decimal" value="{{.Form.WeightKg}}"
+                 placeholder="es. 72.5"
+                 class="w-full rounded border border-border bg-surface px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-text mb-1" for="f-height">Altezza (cm)</label>
+          <input id="f-height" name="height_cm" inputmode="decimal" value="{{.Form.HeightCm}}"
+                 placeholder="es. 175"
+                 class="w-full rounded border border-border bg-surface px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-text mb-1" for="f-birth">Anno di nascita</label>
+          <input id="f-birth" name="birth_year" inputmode="numeric" value="{{.Form.BirthYear}}"
+                 placeholder="es. 1990"
+                 class="w-full rounded border border-border bg-surface px-3 py-2">
+        </div>
+        <div>
+          <span class="block text-sm font-medium text-text mb-1">Sesso biologico</span>
+          <div class="flex items-center gap-4 pt-1">
+            <label class="inline-flex items-center gap-1 text-sm">
+              <input type="radio" name="sex" value="M" {{if eq .Form.Sex "M"}}checked{{end}}> M
+            </label>
+            <label class="inline-flex items-center gap-1 text-sm">
+              <input type="radio" name="sex" value="F" {{if eq .Form.Sex "F"}}checked{{end}}> F
+            </label>
+            <label class="inline-flex items-center gap-1 text-sm text-muted">
+              <input type="radio" name="sex" value="" {{if eq .Form.Sex ""}}checked{{end}}> non indicato
+            </label>
+          </div>
+        </div>
+      </div>
+      <p class="text-xs text-muted">Il sesso biologico serve solo per il calcolo del BMR (formula Mifflin-St Jeor).</p>
+    </fieldset>
+
+    <fieldset class="space-y-2">
+      <legend class="text-base font-semibold text-text">Indici calcolati</legend>
+      {{if .HasIndices}}
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div class="rounded border border-border bg-surface-2 px-3 py-2">
+            <div class="text-xs text-muted">BMI</div>
+            <div class="text-lg font-semibold text-text">{{printf "%.1f" .BMIValue}}</div>
+            <div class="text-xs text-muted">{{.BMICategory}}</div>
+          </div>
+          <div class="rounded border border-border bg-surface-2 px-3 py-2">
+            <div class="text-xs text-muted">BMR (kcal/giorno)</div>
+            <div class="text-lg font-semibold text-text">{{printf "%.0f" .BMRValue}}</div>
+            <div class="text-xs text-muted">metabolismo basale a riposo</div>
+          </div>
+        </div>
+      {{else}}
+        <p class="text-sm text-muted italic">Completa peso, altezza, anno di nascita e sesso per calcolare BMI e BMR.</p>
+      {{end}}
+    </fieldset>
+
+    <fieldset class="space-y-4">
+      <legend class="text-base font-semibold text-text">Obiettivi macro giornalieri</legend>
+      <p class="text-xs text-muted">Lascia vuoto un campo per non avere un obiettivo su quel macro. Se almeno un target è impostato, le card dei giorni mostreranno le barre di progresso.</p>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-text mb-1" for="f-tk">Kcal</label>
+          <input id="f-tk" name="target_kcal" inputmode="decimal" value="{{.Form.TargetKcal}}"
+                 placeholder="es. 2000"
+                 class="w-full rounded border border-border bg-surface px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-text mb-1" for="f-tp">Proteine (g)</label>
+          <input id="f-tp" name="target_protein" inputmode="decimal" value="{{.Form.TargetProtein}}"
+                 placeholder="es. 120"
+                 class="w-full rounded border border-border bg-surface px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-text mb-1" for="f-tc">Carboidrati (g)</label>
+          <input id="f-tc" name="target_carbs" inputmode="decimal" value="{{.Form.TargetCarbs}}"
+                 placeholder="es. 250"
+                 class="w-full rounded border border-border bg-surface px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-text mb-1" for="f-tf">Grassi (g)</label>
+          <input id="f-tf" name="target_fat" inputmode="decimal" value="{{.Form.TargetFat}}"
+                 placeholder="es. 70"
+                 class="w-full rounded border border-border bg-surface px-3 py-2">
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="flex items-center justify-between pt-2">
+      <a href="/" class="text-sm text-muted hover:underline">Torna al piano</a>
+      <button class="rounded bg-accent text-accent-fg px-4 py-2 hover:bg-accent/90">Salva profilo</button>
+    </div>
+  </form>
+</div>
+{{end}}

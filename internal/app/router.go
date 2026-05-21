@@ -101,6 +101,10 @@ func (a *App) Router() http.Handler {
 		r.Post("/meal-cheat-items/{cheatID}/delete", a.handleRemoveMealCheat)
 
 		// Lista della spesa.
+		// Profilo utente.
+		r.Get("/profile", a.handleProfilePage)
+		r.Post("/profile", a.handleProfileSave)
+
 		r.Get("/shopping-list", a.handleShoppingList)
 		r.Post("/shopping-list/generate", a.handleShoppingGenerate)
 		r.Post("/shopping-list/items/{id}/toggle", a.handleShoppingToggle)

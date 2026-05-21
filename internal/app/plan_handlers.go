@@ -14,6 +14,7 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/macros"
+	"github.com/amon2126/nutreek/internal/profile"
 )
 
 // ---- view models -----------------------------------------------------------
@@ -58,6 +59,7 @@ type dayCardData struct {
 	InFocus   bool   // true = card piena visibile in #focus-grid
 	WeekStart string // YYYY-MM-DD per nascondere/passare nei form
 	CSRFToken string
+	Progress  profile.MacroProgress
 }
 
 type mealView struct {
@@ -194,7 +196,7 @@ func scaleRecipeItems(it domain.MealItemFull) []scaledIngredient {
 // makeDayCard costruisce dayCardData a partire da una dayView e dal contesto.
 // `state` e' il giorno calendariale; `inFocus` decide se andra' anche nella
 // griglia focus. Default: today/future = true, past = false.
-func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken string) dayCardData {
+func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken string, progress profile.MacroProgress) dayCardData {
 	return dayCardData{
 		Day:       dv,
 		DateStr:   formatDate(dv.Date),
@@ -202,22 +204,24 @@ func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken
 		InFocus:   inFocus,
 		WeekStart: weekStartStr,
 		CSRFToken: csrfToken,
+		Progress:  progress,
 	}
 }
 
 // buildDayCards costruisce le 7 dayCardData con InFocus default-driven dallo
 // stato calendariale: today + future = true, past = false. La timeline
 // renderizza tutte e 7 le pillole; #focus-grid solo quelle InFocus.
-func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string) []dayCardData {
+func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string, user *domain.User) []dayCardData {
 	out := make([]dayCardData, 0, 7)
-	// Settimana tutta passata: l'ultimo giorno (domenica) e' gia' < today.
-	// In quel caso l'utente sta esplorando dati storici: mostriamo TUTTE le
-	// card in focus di default, non solo pillole compatte.
 	allPast := len(days) > 0 && dayState(days[len(days)-1].Date, today) == "past"
 	for _, dv := range days {
 		state := dayState(dv.Date, today)
 		inFocus := allPast || state != "past"
-		out = append(out, makeDayCard(dv, state, inFocus, weekStartStr, csrfToken))
+		var progress profile.MacroProgress
+		if user != nil {
+			progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
+		}
+		out = append(out, makeDayCard(dv, state, inFocus, weekStartStr, csrfToken, progress))
 	}
 	return out
 }
@@ -227,7 +231,12 @@ func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken stri
 // la card in #focus-grid sia la pillola in #timeline-pills (kcal totali,
 // accent state).
 func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, weekStart time.Time, state string) {
-	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r))
+	user := userFromContext(r.Context())
+	var progress profile.MacroProgress
+	if user != nil {
+		progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
+	}
+	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress)
 	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card_with_pill_oob", card); err != nil {
 		a.serverError(w, r, err)
 	}
@@ -337,6 +346,7 @@ func (a *App) renderDashboard(
 	applyErr string,
 	mealForm newMealForm, mealErr string,
 ) {
+	user := userFromContext(r.Context())
 	base := a.baseData(r)
 	days := buildDayViews(full, weekStart)
 	hasMeals := false
@@ -348,7 +358,7 @@ func (a *App) renderDashboard(
 	}
 	today := todayDate()
 	weekStartStr := formatDate(weekStart)
-	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken)
+	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken, user)
 	focusCards := make([]dayCardData, 0, len(allCards))
 	for _, c := range allCards {
 		if c.InFocus {
