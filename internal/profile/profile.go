@@ -44,6 +44,29 @@ func AgeFromBirthYear(birthYear int) int {
 	return time.Now().Year() - birthYear
 }
 
+// activityFactors mappa i codici livello al moltiplicatore Harris-Benedict/Mifflin.
+var activityFactors = map[string]float64{
+	"sedentary": 1.2,
+	"light":     1.375,
+	"moderate":  1.55,
+	"active":    1.725,
+	"athlete":   1.9,
+}
+
+// ActivityFactor ritorna il moltiplicatore per il livello dato.
+// Ritorna 1.4 (stima generica) se il codice non è riconosciuto o è vuoto.
+func ActivityFactor(code string) float64 {
+	if f, ok := activityFactors[code]; ok {
+		return f
+	}
+	return 1.4
+}
+
+// TDEE calcola il fabbisogno calorico giornaliero totale (BMR × fattore attività).
+func TDEE(bmr, factor float64) float64 {
+	return bmr * factor
+}
+
 // CanComputeIndices verifica che tutti i dati fisici siano presenti
 // e plausibili per poter calcolare BMI e BMR.
 func CanComputeIndices(weightKg, heightCm *float64, birthYear *int, sex *string) bool {
