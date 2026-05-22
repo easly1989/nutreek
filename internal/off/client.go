@@ -150,24 +150,26 @@ func buildSearchQuery(q string) string {
 }
 
 // FilterByAllTerms mantiene solo i prodotti in cui ogni termine compare
-// (case-insensitive, substring) in nome o brand. È un filtro strict
-// AND-like usato dalla UI picker per compensare il default OR di
-// Search-a-licious. Il reconciler invece NON lo usa, perché vuole il
+// (case-insensitive, diacritics-folded, substring) in nome o brand. È un
+// filtro strict AND-like usato dalla UI picker per compensare il default OR
+// di Search-a-licious. Il reconciler invece NON lo usa, perché vuole il
 // match fuzzy nome-locale → nome-OFF (gestito da significantWords).
 func FilterByAllTerms(products []Product, q string) []Product {
 	terms := strings.Fields(q)
 	if len(terms) <= 1 {
 		return products
 	}
-	lower := make([]string, len(terms))
+	normalized := make([]string, len(terms))
 	for i, t := range terms {
-		lower[i] = strings.ToLower(t)
+		normalized[i] = foldText(t)
 	}
 	out := make([]Product, 0, len(products))
 	for _, p := range products {
-		combined := strings.ToLower(p.Name) + " " + strings.ToLower(p.Brand)
+		// Confronto su testo normalizzato: "muesli" trova "Müesli",
+		// "avena" trova "all'avena", ecc.
+		combined := foldText(p.Name) + " " + foldText(p.Brand)
 		match := true
-		for _, t := range lower {
+		for _, t := range normalized {
 			if !strings.Contains(combined, t) {
 				match = false
 				break
@@ -178,6 +180,26 @@ func FilterByAllTerms(products []Product, q string) []Product {
 		}
 	}
 	return out
+}
+
+// diacriticFold mappa lettere accentate latine comuni al loro equivalente
+// ASCII. Applicato dopo strings.ToLower, quindi gestisce solo minuscole.
+// Evita la dipendenza da golang.org/x/text solo per questa operazione.
+var diacriticFold = strings.NewReplacer(
+	"à", "a", "á", "a", "â", "a", "ã", "a", "ä", "a", "å", "a",
+	"è", "e", "é", "e", "ê", "e", "ë", "e",
+	"ì", "i", "í", "i", "î", "i", "ï", "i",
+	"ò", "o", "ó", "o", "ô", "o", "õ", "o", "ö", "o", "ø", "o",
+	"ù", "u", "ú", "u", "û", "u", "ü", "u",
+	"ñ", "n", "ç", "c", "ý", "y", "ÿ", "y",
+	"ß", "ss", "æ", "ae", "œ", "oe",
+	"’", "'", "‘", "'", // apostrofi curvi → dritto
+)
+
+// foldText normalizza una stringa per il confronto: minuscolo + diacritici
+// rimossi. "Müesli" → "muesli", "all'avena" → "all'avena" (invariato).
+func foldText(s string) string {
+	return diacriticFold.Replace(strings.ToLower(s))
 }
 
 // do esegue la GET, decodifica JSON nel target. Aggiunge UA, log su errore.
