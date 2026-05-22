@@ -90,7 +90,6 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 	v.Set("q", buildSearchQuery(q))
 	v.Set("page_size", strconv.Itoa(c.MaxResults))
 	v.Set("fields", "code,product_name,brands,quantity,nutriments")
-	v.Set("sort_by", "score")
 	endpoint := strings.TrimRight(base, "/") + "/search?" + v.Encode()
 
 	var resp searchResponse
