@@ -8,205 +8,227 @@
     <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
   {{end}}
 
-  <form id="profile-form" method="post" action="/profile" class="space-y-0 bg-surface border border-border rounded p-6">
+  <form id="profile-form" method="post" action="/profile" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-    {{/* ---- Dati fisici ---- */}}
-    <fieldset class="space-y-4">
-      <legend class="text-base font-semibold text-text pb-2">Dati fisici</legend>
-      <div class="grid grid-cols-2 gap-4">
+    {{/* ====================== Card 1: Dati fisici ====================== */}}
+    <section data-card class="bg-surface border border-border rounded">
+      <button type="button" data-card-toggle aria-expanded="true"
+              class="w-full flex items-center justify-between px-6 py-4 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <h2 class="text-base font-semibold text-text">Dati fisici</h2>
+        <svg data-card-chevron class="w-4 h-4 text-muted shrink-0 transition-transform rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 4.5l3 3 3-3"/>
+        </svg>
+      </button>
+      <div data-card-body class="px-6 pb-6 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
 
-        <div>
-          <label class="block text-sm font-medium text-text mb-1" for="f-weight">Peso</label>
-          <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-            <input id="f-weight" name="weight_kg" inputmode="decimal" value="{{.Form.WeightKg}}"
-                   placeholder="es. 72.5"
-                   class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-            <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">kg</span>
+          <div>
+            <label class="block text-sm font-medium text-text mb-1" for="f-weight">Peso</label>
+            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
+              <input id="f-weight" name="weight_kg" inputmode="decimal" value="{{.Form.WeightKg}}"
+                     placeholder="es. 72.5"
+                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
+              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">kg</span>
+            </div>
           </div>
-        </div>
 
-        <div>
-          <label class="block text-sm font-medium text-text mb-1" for="f-height">Altezza</label>
-          <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-            <input id="f-height" name="height_cm" inputmode="decimal" value="{{.Form.HeightCm}}"
-                   placeholder="es. 175"
-                   class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-            <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">cm</span>
+          <div>
+            <label class="block text-sm font-medium text-text mb-1" for="f-height">Altezza</label>
+            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
+              <input id="f-height" name="height_cm" inputmode="decimal" value="{{.Form.HeightCm}}"
+                     placeholder="es. 175"
+                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
+              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">cm</span>
+            </div>
           </div>
-        </div>
 
-        <div>
-          <label class="block text-sm font-medium text-text mb-1" for="f-birth">Anno di nascita</label>
-          <input id="f-birth" name="birth_year" inputmode="numeric" value="{{.Form.BirthYear}}"
-                 placeholder="es. 1990"
-                 class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-        </div>
-
-        <div>
-          <span class="block text-sm font-medium text-text mb-1">Sesso biologico</span>
-          <div class="flex items-center gap-4 pt-2">
-            <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
-              <input type="radio" name="sex" value="M" {{if eq .Form.Sex "M"}}checked{{end}} class="accent-accent"> Maschio
-            </label>
-            <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
-              <input type="radio" name="sex" value="F" {{if eq .Form.Sex "F"}}checked{{end}} class="accent-accent"> Femmina
-            </label>
-            <label class="inline-flex items-center gap-1.5 text-sm text-muted cursor-pointer">
-              <input type="radio" name="sex" value="" {{if eq .Form.Sex ""}}checked{{end}} class="accent-accent"> —
-            </label>
+          <div>
+            <label class="block text-sm font-medium text-text mb-1" for="f-birth">Anno di nascita</label>
+            <input id="f-birth" name="birth_year" inputmode="numeric" value="{{.Form.BirthYear}}"
+                   placeholder="es. 1990"
+                   class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
           </div>
-          <p class="text-xs text-muted mt-1">Usato per il calcolo del BMR (Mifflin-St Jeor).</p>
-        </div>
 
-        <div class="col-span-2">
-          <label class="block text-sm font-medium text-text mb-1" for="f-activity">Livello di attività fisica</label>
-          <select id="f-activity" name="activity_level"
-                  class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-            <option value=""        {{if eq .Form.ActivityLevel ""}}selected{{end}}>Non specificato (×1.4 di default)</option>
-            <option value="sedentary" {{if eq .Form.ActivityLevel "sedentary"}}selected{{end}}>Sedentario — solo vita quotidiana (×1.2)</option>
-            <option value="light"     {{if eq .Form.ActivityLevel "light"}}selected{{end}}>Leggera — 1–3 allenamenti/settimana (×1.375)</option>
-            <option value="moderate"  {{if eq .Form.ActivityLevel "moderate"}}selected{{end}}>Moderata — 3–5 allenamenti/settimana (×1.55)</option>
-            <option value="active"    {{if eq .Form.ActivityLevel "active"}}selected{{end}}>Intensa — 6–7 allenamenti/settimana (×1.725)</option>
-            <option value="athlete"   {{if eq .Form.ActivityLevel "athlete"}}selected{{end}}>Atleta — allenamento quotidiano intenso o lavoro fisico (×1.9)</option>
-          </select>
-        </div>
+          <div>
+            <span class="block text-sm font-medium text-text mb-1">Sesso biologico</span>
+            <div class="flex items-center gap-4 pt-2">
+              <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+                <input type="radio" name="sex" value="M" {{if eq .Form.Sex "M"}}checked{{end}} class="accent-accent"> Uomo
+              </label>
+              <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+                <input type="radio" name="sex" value="F" {{if eq .Form.Sex "F"}}checked{{end}} class="accent-accent"> Donna
+              </label>
+              <label class="inline-flex items-center gap-1.5 text-sm text-muted cursor-pointer">
+                <input type="radio" name="sex" value="" {{if eq .Form.Sex ""}}checked{{end}} class="accent-accent"> —
+              </label>
+            </div>
+            <p class="text-xs text-muted mt-1">Usato per il calcolo del BMR (Mifflin-St Jeor).</p>
+          </div>
 
-      </div>
-    </fieldset>
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-text mb-1" for="f-activity">Livello di attività fisica</label>
+            <select id="f-activity" name="activity_level"
+                    class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+              <option value=""        {{if eq .Form.ActivityLevel ""}}selected{{end}}>Non specificato (×1.4 di default)</option>
+              <option value="sedentary" {{if eq .Form.ActivityLevel "sedentary"}}selected{{end}}>Sedentario — solo vita quotidiana (×1.2)</option>
+              <option value="light"     {{if eq .Form.ActivityLevel "light"}}selected{{end}}>Leggera — 1–3 allenamenti/settimana (×1.375)</option>
+              <option value="moderate"  {{if eq .Form.ActivityLevel "moderate"}}selected{{end}}>Moderata — 3–5 allenamenti/settimana (×1.55)</option>
+              <option value="active"    {{if eq .Form.ActivityLevel "active"}}selected{{end}}>Intensa — 6–7 allenamenti/settimana (×1.725)</option>
+              <option value="athlete"   {{if eq .Form.ActivityLevel "athlete"}}selected{{end}}>Atleta — allenamento quotidiano intenso o lavoro fisico (×1.9)</option>
+            </select>
+          </div>
 
-    {{/* ---- Indici calcolati ---- */}}
-    <fieldset class="space-y-3 mt-6">
-      <legend class="text-base font-semibold text-text pb-2">Indici calcolati</legend>
-
-      <div id="indices-dynamic" class="grid grid-cols-3 gap-3{{if not .HasIndices}} hidden{{end}}">
-        <div class="rounded border border-border bg-surface-2 px-3 py-3">
-          <div class="text-xs text-muted mb-1">BMI</div>
-          <div id="bmi-value" class="text-xl font-semibold text-text">{{if .HasIndices}}{{printf "%.1f" .BMIValue}}{{end}}</div>
-          <div id="bmi-category" class="text-xs text-muted mt-0.5">{{if .HasIndices}}{{.BMICategory}}{{end}}</div>
-        </div>
-        <div class="rounded border border-border bg-surface-2 px-3 py-3">
-          <div class="text-xs text-muted mb-1">BMR <span class="font-normal">(kcal/g)</span></div>
-          <div id="bmr-value" class="text-xl font-semibold text-text">{{if .HasIndices}}{{printf "%.0f" .BMRValue}}{{end}}</div>
-          <div class="text-xs text-muted mt-0.5">basale a riposo</div>
-        </div>
-        <div class="rounded border border-border bg-surface-2 px-3 py-3">
-          <div class="text-xs text-muted mb-1">TDEE <span class="font-normal">(kcal/g)</span></div>
-          <div id="tdee-value" class="text-xl font-semibold text-text">{{if .HasTDEE}}{{printf "%.0f" .TDEEValue}}{{else}}—{{end}}</div>
-          <div id="tdee-label" class="text-xs text-muted mt-0.5">{{if .HasTDEE}}fabbisogno stimato{{else}}scegli livello attività{{end}}</div>
         </div>
       </div>
+    </section>
 
-      <p id="indices-placeholder" class="text-sm text-muted italic{{if .HasIndices}} hidden{{end}}">
-        Completa peso, altezza, anno di nascita e sesso per calcolare BMI e BMR.
-      </p>
-    </fieldset>
+    {{/* ====================== Card 2: Indici calcolati ====================== */}}
+    <section data-card class="bg-surface border border-border rounded">
+      <button type="button" data-card-toggle aria-expanded="true"
+              class="w-full flex items-center justify-between px-6 py-4 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <h2 class="text-base font-semibold text-text">Indici calcolati</h2>
+        <svg data-card-chevron class="w-4 h-4 text-muted shrink-0 transition-transform rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 4.5l3 3 3-3"/>
+        </svg>
+      </button>
+      <div data-card-body class="px-6 pb-6">
+        <div id="indices-dynamic" class="grid grid-cols-3 gap-3{{if not .HasIndices}} hidden{{end}}">
+          <div class="rounded border border-border bg-surface-2 px-3 py-3">
+            <div class="text-xs text-muted mb-1">BMI</div>
+            <div id="bmi-value" class="text-xl font-semibold text-text">{{if .HasIndices}}{{printf "%.1f" .BMIValue}}{{end}}</div>
+            <div id="bmi-category" class="text-xs text-muted mt-0.5">{{if .HasIndices}}{{.BMICategory}}{{end}}</div>
+          </div>
+          <div class="rounded border border-border bg-surface-2 px-3 py-3">
+            <div class="text-xs text-muted mb-1">BMR <span class="font-normal">(kcal/g)</span></div>
+            <div id="bmr-value" class="text-xl font-semibold text-text">{{if .HasIndices}}{{printf "%.0f" .BMRValue}}{{end}}</div>
+            <div class="text-xs text-muted mt-0.5">basale a riposo</div>
+          </div>
+          <div class="rounded border border-border bg-surface-2 px-3 py-3">
+            <div class="text-xs text-muted mb-1">TDEE <span class="font-normal">(kcal/g)</span></div>
+            <div id="tdee-value" class="text-xl font-semibold text-text">{{if .HasTDEE}}{{printf "%.0f" .TDEEValue}}{{else}}—{{end}}</div>
+            <div id="tdee-label" class="text-xs text-muted mt-0.5">{{if .HasTDEE}}fabbisogno stimato{{else}}scegli livello attività{{end}}</div>
+          </div>
+        </div>
 
-    {{/* ---- Obiettivi macro ---- */}}
-    <fieldset class="mt-6 space-y-4">
-      <legend class="text-base font-semibold text-text pb-2">Obiettivi macro giornalieri</legend>
-      <p class="text-xs text-muted">
-        Lascia vuoto un campo per non impostare un obiettivo su quel macro.
-        Se almeno un target è presente, le card dei giorni mostreranno le barre di avanzamento.
-      </p>
-
-      {{/* Preset + Reset */}}
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs text-muted shrink-0">Suggerisci:</span>
-        <button type="button" id="btn-maintenance"
-                class="preset-btn rounded border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                data-preset="maintenance" disabled title="Calorie di mantenimento: TDEE ×1.0, 1.8 g/kg proteine">
-          Mantenimento
-        </button>
-        <button type="button" id="btn-bulk"
-                class="preset-btn rounded border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                data-preset="bulk" disabled title="Surplus del 10%: TDEE ×1.1, 2.0 g/kg proteine">
-          Massa
-        </button>
-        <button type="button" id="btn-cut"
-                class="preset-btn rounded border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                data-preset="cut" disabled title="Deficit del 20%: TDEE ×0.8, 2.2 g/kg proteine">
-          Dimagrimento
-        </button>
-        <span id="presets-hint" class="text-xs text-muted italic">— inserisci i dati fisici per abilitare</span>
-        <span class="flex-1"></span>
-        <button type="button" id="btn-reset-macros"
-                class="rounded border border-danger/50 text-danger px-3 py-1 text-xs hover:bg-danger/10 transition">
-          Reset macro
-        </button>
+        <p id="indices-placeholder" class="text-sm text-muted italic{{if .HasIndices}} hidden{{end}}">
+          Completa peso, altezza, anno di nascita e sesso per calcolare BMI e BMR.
+        </p>
       </div>
+    </section>
 
-      {{/* Griglia macro */}}
-      <div class="grid grid-cols-2 gap-4">
+    {{/* ====================== Card 3: Obiettivi macro ====================== */}}
+    <section data-card class="bg-surface border border-border rounded">
+      <button type="button" data-card-toggle aria-expanded="true"
+              class="w-full flex items-center justify-between px-6 py-4 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <h2 class="text-base font-semibold text-text">Obiettivi macro giornalieri</h2>
+        <svg data-card-chevron class="w-4 h-4 text-muted shrink-0 transition-transform rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 4.5l3 3 3-3"/>
+        </svg>
+      </button>
+      <div data-card-body class="px-6 pb-6 space-y-4">
+        <p class="text-xs text-muted">
+          Lascia vuoto un campo per non impostare un obiettivo su quel macro.
+          Se almeno un target è presente, le card dei giorni mostreranno le barre di avanzamento.
+        </p>
 
-        <div>
-          <label class="block text-sm font-medium text-text mb-1" for="f-tk">Calorie</label>
-          <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-            <input id="f-tk" name="target_kcal" inputmode="decimal" value="{{.Form.TargetKcal}}"
-                   placeholder="es. 2000"
-                   class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-            <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">kcal</span>
-          </div>
-          <p id="hint-f-tk" class="hidden text-xs text-muted mt-0.5"></p>
-          <p id="err-f-tk"  class="hidden text-xs text-danger mt-0.5"></p>
+        {{/* Preset + Reset */}}
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs text-muted shrink-0">Preset:</span>
+          <button type="button" id="btn-maintenance"
+                  class="preset-btn rounded border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  data-preset="maintenance" disabled title="Mantenimento: TDEE × 1.0 · 1.6 g/kg proteine (peso aggiustato se BMI≥30) · 28% kcal da grassi">
+            Mantenimento
+          </button>
+          <button type="button" id="btn-bulk"
+                  class="preset-btn rounded border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  data-preset="bulk" disabled title="Massa: TDEE × 1.10 · 1.8 g/kg proteine · 25% kcal da grassi">
+            Massa
+          </button>
+          <button type="button" id="btn-cut"
+                  class="preset-btn rounded border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  data-preset="cut" disabled title="Dimagrimento: TDEE × 0.80 · 2.0 g/kg proteine · 25% kcal da grassi">
+            Dimagrimento
+          </button>
+          <span id="presets-hint" class="text-xs text-muted italic">— inserisci i dati fisici per abilitare</span>
+          <span class="flex-1"></span>
+          <button type="button" id="btn-reset-macros"
+                  class="rounded border border-danger/50 text-danger px-3 py-1 text-xs hover:bg-danger/10 transition">
+            Reset macro
+          </button>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-text mb-1" for="f-tp">Proteine</label>
-          <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-            <input id="f-tp" name="target_protein" inputmode="decimal" value="{{.Form.TargetProtein}}"
-                   placeholder="es. 120"
-                   class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-            <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">g</span>
+        {{/* Griglia macro */}}
+        <div class="grid grid-cols-2 gap-4">
+
+          <div>
+            <label class="block text-sm font-medium text-text mb-1" for="f-tk">Calorie</label>
+            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
+              <input id="f-tk" name="target_kcal" inputmode="decimal" value="{{.Form.TargetKcal}}"
+                     placeholder="es. 2000"
+                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
+              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">kcal</span>
+            </div>
+            <p id="hint-f-tk" class="hidden text-xs text-muted mt-0.5"></p>
+            <p id="err-f-tk"  class="hidden text-xs text-danger mt-0.5"></p>
           </div>
-          <p id="hint-f-tp" class="hidden text-xs text-muted mt-0.5"></p>
-          <p id="err-f-tp"  class="hidden text-xs text-danger mt-0.5"></p>
+
+          <div>
+            <label class="block text-sm font-medium text-text mb-1" for="f-tp">Proteine</label>
+            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
+              <input id="f-tp" name="target_protein" inputmode="decimal" value="{{.Form.TargetProtein}}"
+                     placeholder="es. 120"
+                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
+              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">g</span>
+            </div>
+            <p id="hint-f-tp" class="hidden text-xs text-muted mt-0.5"></p>
+            <p id="err-f-tp"  class="hidden text-xs text-danger mt-0.5"></p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-text mb-1" for="f-tc">Carboidrati</label>
+            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
+              <input id="f-tc" name="target_carbs" inputmode="decimal" value="{{.Form.TargetCarbs}}"
+                     placeholder="es. 250"
+                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
+              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">g</span>
+            </div>
+            <p id="hint-f-tc" class="hidden text-xs text-muted mt-0.5"></p>
+            <p id="err-f-tc"  class="hidden text-xs text-danger mt-0.5"></p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-text mb-1" for="f-tf">Grassi</label>
+            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
+              <input id="f-tf" name="target_fat" inputmode="decimal" value="{{.Form.TargetFat}}"
+                     placeholder="es. 70"
+                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
+              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">g</span>
+            </div>
+            <p id="hint-f-tf" class="hidden text-xs text-muted mt-0.5"></p>
+            <p id="err-f-tf"  class="hidden text-xs text-danger mt-0.5"></p>
+          </div>
+
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-text mb-1" for="f-tc">Carboidrati</label>
-          <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-            <input id="f-tc" name="target_carbs" inputmode="decimal" value="{{.Form.TargetCarbs}}"
-                   placeholder="es. 250"
-                   class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-            <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">g</span>
+        {{/* Pannello rebalance */}}
+        <div id="rebalance-panel" class="hidden rounded border border-accent/40 bg-accent-soft/20 px-4 py-3">
+          <p class="text-xs font-semibold text-text mb-1">Ricalcola gli altri macro?</p>
+          <p id="rebalance-text" class="text-xs text-muted mb-2"></p>
+          <div class="flex gap-2">
+            <button type="button" id="rebalance-apply"
+                    class="rounded bg-accent text-accent-fg px-3 py-1 text-xs hover:bg-accent/90">Applica</button>
+            <button type="button" id="rebalance-dismiss"
+                    class="rounded border border-border px-3 py-1 text-xs hover:bg-surface-2">Ignora</button>
           </div>
-          <p id="hint-f-tc" class="hidden text-xs text-muted mt-0.5"></p>
-          <p id="err-f-tc"  class="hidden text-xs text-danger mt-0.5"></p>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-text mb-1" for="f-tf">Grassi</label>
-          <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-            <input id="f-tf" name="target_fat" inputmode="decimal" value="{{.Form.TargetFat}}"
-                   placeholder="es. 70"
-                   class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-            <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">g</span>
-          </div>
-          <p id="hint-f-tf" class="hidden text-xs text-muted mt-0.5"></p>
-          <p id="err-f-tf"  class="hidden text-xs text-danger mt-0.5"></p>
-        </div>
-
+        {{/* Sommario macro */}}
+        <p id="macro-summary" class="hidden text-xs text-muted tabular-nums"></p>
       </div>
+    </section>
 
-      {{/* Pannello rebalance */}}
-      <div id="rebalance-panel" class="hidden rounded border border-accent/40 bg-accent-soft/20 px-4 py-3">
-        <p class="text-xs font-semibold text-text mb-1">Ricalcola gli altri macro?</p>
-        <p id="rebalance-text" class="text-xs text-muted mb-2"></p>
-        <div class="flex gap-2">
-          <button type="button" id="rebalance-apply"
-                  class="rounded bg-accent text-accent-fg px-3 py-1 text-xs hover:bg-accent/90">Applica</button>
-          <button type="button" id="rebalance-dismiss"
-                  class="rounded border border-border px-3 py-1 text-xs hover:bg-surface-2">Ignora</button>
-        </div>
-      </div>
-
-      {{/* Sommario macro */}}
-      <p id="macro-summary" class="hidden text-xs text-muted tabular-nums"></p>
-
-    </fieldset>
-
-    <div class="flex items-center justify-between pt-6 mt-2 border-t border-border">
+    <div class="flex items-center justify-between pt-2">
       <a href="/" class="text-sm text-muted hover:underline">← Torna al piano</a>
       <button id="profile-save-btn"
               class="rounded bg-accent text-accent-fg px-5 py-2 font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition">
