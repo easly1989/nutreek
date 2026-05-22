@@ -74,6 +74,11 @@ func NewClient(baseURL string, logger *slog.Logger) *Client {
 // search.openfoodfacts.org. Il legacy /cgi/search.pl e /api/v2/search
 // restituiscono 503 permanente dal 2026; questo e' l'unico modo di
 // fare ricerca testuale lato server.
+//
+// Per query multi-parola usa la sintassi simple_query_string con prefisso
+// '+' su ogni termine ("+a +b +c" = AND-like). NON applica filtro stretto
+// post-fetch: Search-a-licious può comunque restituire false positives
+// (vedi FilterByAllTerms per uno strato di filtro UI-side).
 func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
@@ -83,10 +88,8 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 	if base == "" {
 		base = DefaultSearchBaseURL
 	}
+
 	v := url.Values{}
-	// Join multi-word queries with AND (Lucene syntax) so tutti i termini
-	// devono essere presenti nel risultato. Riduce drasticamente i falsi
-	// positivi rispetto al default OR di Search-a-licious.
 	v.Set("q", buildSearchQuery(q))
 	v.Set("page_size", strconv.Itoa(c.MaxResults))
 	v.Set("fields", "code,product_name,brands,quantity,nutriments")
@@ -130,15 +133,51 @@ func (c *Client) GetByBarcode(ctx context.Context, code string) (*Product, error
 	return &p, nil
 }
 
-// buildSearchQuery converte una query testuale in sintassi Lucene AND:
-// "Müesli Croccante Avena" → "Müesli AND Croccante AND Avena".
-// Le query a parola singola sono lasciate invariate.
+// buildSearchQuery usa il prefisso '+' (simple_query_string "must") per
+// ogni termine: "Müesli Croccante Avena" → "+Müesli +Croccante +Avena".
+// Search-a-licious usa simple_query_string con default OR; 'AND' letterale
+// non è un operatore booleano in quella sintassi, '+' lo è.
 func buildSearchQuery(q string) string {
 	words := strings.Fields(q)
 	if len(words) <= 1 {
 		return q
 	}
-	return strings.Join(words, " AND ")
+	parts := make([]string, len(words))
+	for i, w := range words {
+		parts[i] = "+" + w
+	}
+	return strings.Join(parts, " ")
+}
+
+// FilterByAllTerms mantiene solo i prodotti in cui ogni termine compare
+// (case-insensitive, substring) in nome o brand. È un filtro strict
+// AND-like usato dalla UI picker per compensare il default OR di
+// Search-a-licious. Il reconciler invece NON lo usa, perché vuole il
+// match fuzzy nome-locale → nome-OFF (gestito da significantWords).
+func FilterByAllTerms(products []Product, q string) []Product {
+	terms := strings.Fields(q)
+	if len(terms) <= 1 {
+		return products
+	}
+	lower := make([]string, len(terms))
+	for i, t := range terms {
+		lower[i] = strings.ToLower(t)
+	}
+	out := make([]Product, 0, len(products))
+	for _, p := range products {
+		combined := strings.ToLower(p.Name) + " " + strings.ToLower(p.Brand)
+		match := true
+		for _, t := range lower {
+			if !strings.Contains(combined, t) {
+				match = false
+				break
+			}
+		}
+		if match {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // do esegue la GET, decodifica JSON nel target. Aggiunge UA, log su errore.

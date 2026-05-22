@@ -251,6 +251,11 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 		a.Logger.Warn("OFF search failed", "err", offErr, "q", q)
 		return rows, "OpenFoodFacts non raggiungibile, mostro solo gli ingredienti locali.", nil
 	}
+	// Filtro strict AND lato UI: ogni termine deve comparire in nome/brand
+	// del prodotto. Compensa il default OR di Search-a-licious che
+	// altrimenti restituisce troppi falsi positivi (es. "avena conad"
+	// matcherebbe ogni prodotto col brand "Avena" o "Conad" separati).
+	products = off.FilterByAllTerms(products, q)
 	for i := range products {
 		p := products[i]
 		if knownBarcodes[p.Code] {

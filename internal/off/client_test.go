@@ -14,7 +14,7 @@ func TestClientSearchByName(t *testing.T) {
 		if r.URL.Path != "/search" {
 			t.Errorf("path inatteso: %s", r.URL.Path)
 		}
-		if got := r.URL.Query().Get("q"); got != "grana AND padano" {
+		if got := r.URL.Query().Get("q"); got != "+grana +padano" {
 			t.Errorf("q = %q", got)
 		}
 		if !strings.Contains(r.Header.Get("User-Agent"), "Nutreek") {
@@ -86,6 +86,27 @@ func TestClientSearchByName(t *testing.T) {
 	}
 	if second.Protein != 32.5 {
 		t.Errorf("protein da stringa non parsato: %v", second.Protein)
+	}
+}
+
+func TestFilterByAllTerms(t *testing.T) {
+	products := []Product{
+		{Code: "1", Name: "Müesli croccante all'avena", Brand: "Conad"},
+		{Code: "2", Name: "Steel Cut Oats", Brand: "Avena"},
+		{Code: "3", Name: "Conad mix croccante", Brand: ""},
+		{Code: "4", Name: "Müesli ai frutti", Brand: ""},
+	}
+	got := FilterByAllTerms(products, "müesli croccante avena conad")
+	if len(got) != 1 {
+		t.Fatalf("atteso 1 risultato (solo il Conad müesli), got %d: %+v", len(got), got)
+	}
+	if got[0].Code != "1" {
+		t.Errorf("prodotto sbagliato: %+v", got[0])
+	}
+	// Single-word query: nessun filtro applicato.
+	all := FilterByAllTerms(products, "avena")
+	if len(all) != len(products) {
+		t.Errorf("single-word non deve filtrare, got %d", len(all))
 	}
 }
 
