@@ -14,7 +14,7 @@ func TestClientSearchByName(t *testing.T) {
 		if r.URL.Path != "/search" {
 			t.Errorf("path inatteso: %s", r.URL.Path)
 		}
-		if got := r.URL.Query().Get("q"); got != "grana padano" {
+		if got := r.URL.Query().Get("q"); got != "grana AND padano" {
 			t.Errorf("q = %q", got)
 		}
 		if !strings.Contains(r.Header.Get("User-Agent"), "Nutreek") {
