@@ -14,8 +14,8 @@ func TestClientSearchByName(t *testing.T) {
 		if r.URL.Path != "/search" {
 			t.Errorf("path inatteso: %s", r.URL.Path)
 		}
-		if got := r.URL.Query().Get("q"); got != "+grana +padano" {
-			t.Errorf("q = %q", got)
+		if got := r.URL.Query().Get("q"); got != "grana padano" {
+			t.Errorf("q = %q (la query va inviata as-is, senza operatori)", got)
 		}
 		if !strings.Contains(r.Header.Get("User-Agent"), "Nutreek") {
 			t.Errorf("UA non impostato: %q", r.Header.Get("User-Agent"))
@@ -113,6 +113,13 @@ func TestFilterByAllTerms(t *testing.T) {
 	got3 := FilterByAllTerms(products, "muesli avena")
 	if len(got3) != 1 || got3[0].Code != "1" {
 		t.Errorf("substring all'avena: atteso [code=1], got %+v", got3)
+	}
+
+	// Query con apostrofo: "all'avena" tokenizza in ["all","avena"],
+	// entrambi presenti per substring nel prodotto Conad.
+	got4 := FilterByAllTerms(products, "Müesli croccante all'avena")
+	if len(got4) != 1 || got4[0].Code != "1" {
+		t.Errorf("con apostrofo: atteso [code=1], got %+v", got4)
 	}
 
 	// Single-word query: nessun filtro applicato.
