@@ -59,7 +59,12 @@
            Click su una riga importa OFF (se serve) e aggiunge l'item.
            La quantita' e' parametro del form della riga selezionata. */}}
       <div class="mt-4 bg-surface border border-border rounded p-4">
-        <label class="block text-sm font-medium text-text mb-2" for="i-search">Aggiungi ingrediente</label>
+        <div class="flex items-center justify-between mb-2">
+          <label class="block text-sm font-medium text-text" for="i-search">Aggiungi ingrediente</label>
+          <button type="button"
+                  hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML"
+                  class="text-xs text-accent hover:underline">+ Nuovo ingrediente</button>
+        </div>
         <input id="i-search" type="search" name="q"
                placeholder="Cerca per nome (locale + OpenFoodFacts)..."
                class="w-full rounded border border-border px-3 py-2 mb-2"
@@ -77,6 +82,21 @@
           Inserisci la quantita' (g per cibi solidi, ml per liquidi) e clicca <span class="text-accent font-medium">Aggiungi</span>. Gli ingredienti OpenFoodFacts vengono importati automaticamente al primo utilizzo.
         </p>
       </div>
+
+      <script>
+      // Dopo creazione modale, il picker si aggiorna con la query corrente.
+      (function () {
+        var recipeID = '{{.Recipe.ID}}';
+        window.addEventListener('ingredient-created', function () {
+          var search = document.getElementById('i-search');
+          var q = encodeURIComponent((search && search.value) || '');
+          htmx.ajax('GET', '/recipes/' + recipeID + '/picker?q=' + q, {
+            target: '#picker-results',
+            swap: 'innerHTML',
+          });
+        });
+      })();
+      </script>
     {{end}}
   </section>
 

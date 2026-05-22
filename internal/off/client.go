@@ -84,9 +84,13 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 		base = DefaultSearchBaseURL
 	}
 	v := url.Values{}
-	v.Set("q", q)
+	// Join multi-word queries with AND (Lucene syntax) so tutti i termini
+	// devono essere presenti nel risultato. Riduce drasticamente i falsi
+	// positivi rispetto al default OR di Search-a-licious.
+	v.Set("q", buildSearchQuery(q))
 	v.Set("page_size", strconv.Itoa(c.MaxResults))
 	v.Set("fields", "code,product_name,brands,quantity,nutriments")
+	v.Set("sort_by", "score")
 	endpoint := strings.TrimRight(base, "/") + "/search?" + v.Encode()
 
 	var resp searchResponse
@@ -125,6 +129,17 @@ func (c *Client) GetByBarcode(ctx context.Context, code string) (*Product, error
 		p.Code = code
 	}
 	return &p, nil
+}
+
+// buildSearchQuery converte una query testuale in sintassi Lucene AND:
+// "Müesli Croccante Avena" → "Müesli AND Croccante AND Avena".
+// Le query a parola singola sono lasciate invariate.
+func buildSearchQuery(q string) string {
+	words := strings.Fields(q)
+	if len(words) <= 1 {
+		return q
+	}
+	return strings.Join(words, " AND ")
 }
 
 // do esegue la GET, decodifica JSON nel target. Aggiunge UA, log su errore.
