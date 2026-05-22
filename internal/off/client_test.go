@@ -20,6 +20,9 @@ func TestClientSearchByName(t *testing.T) {
 		if !strings.Contains(r.Header.Get("User-Agent"), "Nutreek") {
 			t.Errorf("UA non impostato: %q", r.Header.Get("User-Agent"))
 		}
+		if got := r.URL.Query().Get("langs"); got != "it,en" {
+			t.Errorf("langs non impostato correttamente: %q", got)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{
 			"hits": [
