@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/amon2126/nutreek/internal/domain"
@@ -20,6 +21,15 @@ var ErrRecipeForbidden = errors.New("operazione non consentita su questa ricetta
 // ErrRecipeItemNotFound = item recipe_ingredients inesistente / non appartiene.
 var ErrRecipeItemNotFound = errors.New("voce ricetta non trovata")
 
+// ErrRecipeNameTaken segnala che esiste già una ricetta dello stesso utente
+// con lo stesso nome (case-insensitive). Vincolo applicato sia a livello DB
+// (UNIQUE INDEX) sia in handler per messaggi leggibili.
+var ErrRecipeNameTaken = errors.New("esiste già una ricetta con questo nome")
+
+// ErrRecipeIdenticalContent segnala che il contenuto della ricetta (set di
+// ingredienti+quantità) coincide con un'altra ricetta dell'utente.
+var ErrRecipeIdenticalContent = errors.New("esiste già una ricetta con gli stessi ingredienti e quantità")
+
 // Recipes e' il repository delle ricette.
 type Recipes struct {
 	db *sql.DB
@@ -30,7 +40,8 @@ func NewRecipes(db *sql.DB) *Recipes {
 }
 
 // Create inserisce una nuova ricetta vuota (gli items si aggiungono dopo).
-// Ritorna l'id assegnato.
+// Ritorna l'id assegnato. Errore ErrRecipeNameTaken se esiste già una ricetta
+// con lo stesso nome (case-insensitive) per lo stesso utente.
 func (r *Recipes) Create(
 	ctx context.Context,
 	userID int64,
@@ -45,6 +56,9 @@ func (r *Recipes) Create(
 		VALUES (?, ?, ?, ?, ?)
 	`, userID, strings.TrimSpace(name), description, servings, boolToInt(isPublic))
 	if err != nil {
+		if isUniqueRecipeNameErr(err) {
+			return 0, ErrRecipeNameTaken
+		}
 		return 0, fmt.Errorf("insert recipe: %w", err)
 	}
 	id, err := res.LastInsertId()
@@ -71,6 +85,9 @@ func (r *Recipes) Update(
 		WHERE id = ? AND user_id = ?
 	`, strings.TrimSpace(name), description, servings, boolToInt(isPublic), id, userID)
 	if err != nil {
+		if isUniqueRecipeNameErr(err) {
+			return ErrRecipeNameTaken
+		}
 		return fmt.Errorf("update recipe: %w", err)
 	}
 	n, _ := res.RowsAffected()
@@ -285,4 +302,229 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+// NameExists ritorna true se l'utente ha già una ricetta con questo nome
+// (case-insensitive). excludeID = id da ignorare nel check (utile in update).
+func (r *Recipes) NameExists(ctx context.Context, userID int64, name string, excludeID int64) (bool, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM recipes
+		WHERE user_id = ? AND name = ? COLLATE NOCASE AND id != ?
+	`, userID, strings.TrimSpace(name), excludeID).Scan(&n)
+	if err != nil {
+		return false, fmt.Errorf("name exists: %w", err)
+	}
+	return n > 0, nil
+}
+
+// CountMealUsages ritorna il numero di meal_items che referenziano questa
+// ricetta. Usato per mostrare warning prima dell'eliminazione.
+func (r *Recipes) CountMealUsages(ctx context.Context, recipeID int64) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM meal_items WHERE recipe_id = ?`, recipeID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count meal usages: %w", err)
+	}
+	return n, nil
+}
+
+// IdenticalContentRecipe verifica se esiste un'altra ricetta dello stesso
+// utente con lo stesso identico set (ingredient_id, quantity) di ingredienti.
+// Ritorna il nome di quella ricetta (o "") e nil se non c'è. excludeID = id
+// da ignorare (utile per duplicate/update).
+//
+// Implementazione: due ricette sono "identiche" sse hanno lo stesso numero
+// di item e tutti gli (ingredient_id, quantity) coincidono. Confrontiamo
+// firma serializzata "id:qty;id:qty;..." su tuple ordinate.
+func (r *Recipes) IdenticalContentRecipe(
+	ctx context.Context,
+	userID int64,
+	items []domain.RecipeItem,
+	excludeID int64,
+) (string, error) {
+	target := contentSignature(items)
+	if target == "" {
+		// Ricetta senza ingredienti: non consideriamo identica nessuna altra.
+		return "", nil
+	}
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, name FROM recipes WHERE user_id = ? AND id != ?
+	`, userID, excludeID)
+	if err != nil {
+		return "", fmt.Errorf("list recipes for identity: %w", err)
+	}
+	defer rows.Close()
+	type pair struct {
+		id   int64
+		name string
+	}
+	var candidates []pair
+	for rows.Next() {
+		var p pair
+		if err := rows.Scan(&p.id, &p.name); err != nil {
+			return "", fmt.Errorf("scan candidate: %w", err)
+		}
+		candidates = append(candidates, p)
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	for _, c := range candidates {
+		sig, err := r.signatureForRecipe(ctx, c.id)
+		if err != nil {
+			return "", err
+		}
+		if sig == target {
+			return c.name, nil
+		}
+	}
+	return "", nil
+}
+
+// signatureForRecipe legge gli item della ricetta e ritorna la firma normalizzata.
+func (r *Recipes) signatureForRecipe(ctx context.Context, recipeID int64) (string, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT ingredient_id, quantity FROM recipe_ingredients WHERE recipe_id = ?
+	`, recipeID)
+	if err != nil {
+		return "", fmt.Errorf("load items for signature: %w", err)
+	}
+	defer rows.Close()
+	var items []domain.RecipeItem
+	for rows.Next() {
+		var it domain.RecipeItem
+		if err := rows.Scan(&it.IngredientID, &it.Quantity); err != nil {
+			return "", fmt.Errorf("scan item: %w", err)
+		}
+		items = append(items, it)
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	return contentSignature(items), nil
+}
+
+// contentSignature produce una firma normalizzata di una lista di item:
+// tuple (ingredient_id, quantità arrotondata a 3 decimali) ordinate, concatenate.
+// Due liste con stesso set di tuple → stessa firma (indipendentemente da sort_order).
+func contentSignature(items []domain.RecipeItem) string {
+	if len(items) == 0 {
+		return ""
+	}
+	pairs := make([]string, 0, len(items))
+	for _, it := range items {
+		pairs = append(pairs, fmt.Sprintf("%d:%.3f", it.IngredientID, it.Quantity))
+	}
+	sort.Strings(pairs)
+	return strings.Join(pairs, ";")
+}
+
+// Duplicate crea una copia profonda di una ricetta (meta + tutti i recipe_ingredients)
+// con il nuovo nome specificato. Transazionale.
+//
+// Errori:
+//   - ErrRecipeNotFound: source non esiste
+//   - ErrRecipeForbidden: source non appartiene a userID e non è pubblica
+//   - ErrRecipeNameTaken: nome già esistente per l'utente
+func (r *Recipes) Duplicate(ctx context.Context, srcID, userID int64, newName string) (int64, error) {
+	newName = strings.TrimSpace(newName)
+	if newName == "" {
+		return 0, errors.New("nome ricetta vuoto")
+	}
+	src, err := r.GetWithItems(ctx, srcID, userID)
+	if err != nil {
+		return 0, err
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var descPtr *string
+	if src.Description != nil {
+		s := *src.Description
+		descPtr = &s
+	}
+	res, err := tx.ExecContext(ctx, `
+		INSERT INTO recipes (user_id, name, description, servings, is_public)
+		VALUES (?, ?, ?, ?, ?)
+	`, userID, newName, descPtr, src.Servings, boolToInt(src.IsPublic))
+	if err != nil {
+		if isUniqueRecipeNameErr(err) {
+			return 0, ErrRecipeNameTaken
+		}
+		return 0, fmt.Errorf("insert duplicate: %w", err)
+	}
+	newID, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("last insert id: %w", err)
+	}
+	for _, it := range src.Items {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, sort_order)
+			VALUES (?, ?, ?, ?)
+		`, newID, it.IngredientID, it.Quantity, it.SortOrder); err != nil {
+			return 0, fmt.Errorf("copy item: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit duplicate: %w", err)
+	}
+	return newID, nil
+}
+
+// BulkDelete cancella più ricette dell'utente. Ritorna il numero di ricette
+// effettivamente cancellate (le altre erano forbidden / inesistenti, ignorate).
+// I meal_items collegati alle ricette cancellate vengono rimossi a cascata
+// (FK ON DELETE CASCADE, vedi migrazione 0008).
+func (r *Recipes) BulkDelete(ctx context.Context, ids []int64, userID int64) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(ids)), ",")
+	args := make([]any, 0, len(ids)+1)
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	args = append(args, userID)
+	q := `DELETE FROM recipes WHERE id IN (` + placeholders + `) AND user_id = ?`
+	res, err := r.db.ExecContext(ctx, q, args...)
+	if err != nil {
+		return 0, fmt.Errorf("bulk delete recipes: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
+}
+
+// CountMealUsagesMulti somma le occorrenze meal_items su più ricette.
+func (r *Recipes) CountMealUsagesMulti(ctx context.Context, recipeIDs []int64) (int, error) {
+	if len(recipeIDs) == 0 {
+		return 0, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(recipeIDs)), ",")
+	args := make([]any, 0, len(recipeIDs))
+	for _, id := range recipeIDs {
+		args = append(args, id)
+	}
+	var n int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM meal_items WHERE recipe_id IN (`+placeholders+`)`, args...).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count meal usages multi: %w", err)
+	}
+	return n, nil
+}
+
+// isUniqueRecipeNameErr rileva la violazione del vincolo uniq_recipes_user_name.
+// modernc.org/sqlite ritorna l'errore come testo contenente il nome dell'indice.
+func isUniqueRecipeNameErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "uniq_recipes_user_name") ||
+		(strings.Contains(s, "UNIQUE constraint failed") && strings.Contains(s, "recipes"))
 }
