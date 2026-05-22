@@ -102,6 +102,10 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 	v.Set("q", q)
 	v.Set("page_size", strconv.Itoa(pageSize))
 	v.Set("fields", "code,product_name,brands,quantity,nutriments")
+	// langs=it,en: cerca nei campi lingua-specifica italiano E inglese.
+	// Senza questo parametro il default è langs=en, che esclude i prodotti
+	// italiani indicizzati in product_name_it (es. prodotti Conad, Barilla).
+	v.Set("langs", "it,en")
 	endpoint := strings.TrimRight(base, "/") + "/search?" + v.Encode()
 
 	var resp searchResponse
