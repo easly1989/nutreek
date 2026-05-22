@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // DefaultUserAgent identifica le chiamate verso OpenFoodFacts. OFF chiede
@@ -70,15 +71,18 @@ func NewClient(baseURL string, logger *slog.Logger) *Client {
 	}
 }
 
-// SearchByName chiama il nuovo endpoint "Search-a-licious" su
-// search.openfoodfacts.org. Il legacy /cgi/search.pl e /api/v2/search
-// restituiscono 503 permanente dal 2026; questo e' l'unico modo di
-// fare ricerca testuale lato server.
+// SearchByName chiama Search-a-licious su search.openfoodfacts.org.
 //
-// Per query multi-parola usa la sintassi simple_query_string con prefisso
-// '+' su ogni termine ("+a +b +c" = AND-like). NON applica filtro stretto
-// post-fetch: Search-a-licious può comunque restituire false positives
-// (vedi FilterByAllTerms per uno strato di filtro UI-side).
+// Invia la query as-is, senza operatori booleani: il parser di
+// Search-a-licious NON interpreta in modo affidabile né AND né il
+// prefisso '+' (osservato empiricamente: con "+muesli +croccante" il
+// servizio restituisce 0 hit perché tratta "+muesli" come token letterale).
+// La restrizione AND-tra-termini è applicata lato chiamante via
+// FilterByAllTerms — più robusta e indipendente dalla sintassi server.
+//
+// page_size è aumentato (3×) perché il filtro client-side può scartare
+// molti risultati: serviamo abbastanza candidati al filtro per averne
+// di buoni dopo.
 func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
@@ -89,9 +93,14 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 		base = DefaultSearchBaseURL
 	}
 
+	pageSize := c.MaxResults * 3
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
 	v := url.Values{}
-	v.Set("q", buildSearchQuery(q))
-	v.Set("page_size", strconv.Itoa(c.MaxResults))
+	v.Set("q", q)
+	v.Set("page_size", strconv.Itoa(pageSize))
 	v.Set("fields", "code,product_name,brands,quantity,nutriments")
 	endpoint := strings.TrimRight(base, "/") + "/search?" + v.Encode()
 
@@ -133,20 +142,16 @@ func (c *Client) GetByBarcode(ctx context.Context, code string) (*Product, error
 	return &p, nil
 }
 
-// buildSearchQuery usa il prefisso '+' (simple_query_string "must") per
-// ogni termine: "Müesli Croccante Avena" → "+Müesli +Croccante +Avena".
-// Search-a-licious usa simple_query_string con default OR; 'AND' letterale
-// non è un operatore booleano in quella sintassi, '+' lo è.
-func buildSearchQuery(q string) string {
-	words := strings.Fields(q)
-	if len(words) <= 1 {
-		return q
-	}
-	parts := make([]string, len(words))
-	for i, w := range words {
-		parts[i] = "+" + w
-	}
-	return strings.Join(parts, " ")
+// tokenizeWords spezza una query in parole "vere": separa su qualunque
+// carattere non-alfanumerico (whitespace, apostrofi, trattini, ecc.).
+// "Müesli croccante all'avena" → ["Müesli", "croccante", "all", "avena"].
+// strings.Fields da solo non basterebbe: lascerebbe "all'avena" attaccato
+// come un unico token, che poi non matcha l'indice di Search-a-licious né
+// si trova come substring del prodotto.
+func tokenizeWords(q string) []string {
+	return strings.FieldsFunc(q, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
 }
 
 // FilterByAllTerms mantiene solo i prodotti in cui ogni termine compare
@@ -155,7 +160,7 @@ func buildSearchQuery(q string) string {
 // di Search-a-licious. Il reconciler invece NON lo usa, perché vuole il
 // match fuzzy nome-locale → nome-OFF (gestito da significantWords).
 func FilterByAllTerms(products []Product, q string) []Product {
-	terms := strings.Fields(q)
+	terms := tokenizeWords(q)
 	if len(terms) <= 1 {
 		return products
 	}
