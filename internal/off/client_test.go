@@ -96,13 +96,25 @@ func TestFilterByAllTerms(t *testing.T) {
 		{Code: "3", Name: "Conad mix croccante", Brand: ""},
 		{Code: "4", Name: "Müesli ai frutti", Brand: ""},
 	}
+
+	// Query con umlaut — deve matchare tramite diacritics fold.
 	got := FilterByAllTerms(products, "müesli croccante avena conad")
-	if len(got) != 1 {
-		t.Fatalf("atteso 1 risultato (solo il Conad müesli), got %d: %+v", len(got), got)
+	if len(got) != 1 || got[0].Code != "1" {
+		t.Errorf("con umlaut: atteso [code=1], got %+v", got)
 	}
-	if got[0].Code != "1" {
-		t.Errorf("prodotto sbagliato: %+v", got[0])
+
+	// Query SENZA umlaut (caso utente reale) — "muesli" deve trovare "Müesli".
+	got2 := FilterByAllTerms(products, "muesli croccante avena conad")
+	if len(got2) != 1 || got2[0].Code != "1" {
+		t.Errorf("senza umlaut: atteso [code=1], got %+v", got2)
 	}
+
+	// "avena" trova "all'avena" per substring.
+	got3 := FilterByAllTerms(products, "muesli avena")
+	if len(got3) != 1 || got3[0].Code != "1" {
+		t.Errorf("substring all'avena: atteso [code=1], got %+v", got3)
+	}
+
 	// Single-word query: nessun filtro applicato.
 	all := FilterByAllTerms(products, "avena")
 	if len(all) != len(products) {
