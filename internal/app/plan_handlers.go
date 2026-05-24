@@ -175,10 +175,29 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 }
 
 // scaleRecipeItems espande gli ingredienti di una ricetta scalando le
-// quantita' per il numero di porzioni richieste. Ritorna nil se l'item
-// non e' una ricetta o se non ha RecipeItems caricati.
+// quantita' per il numero di porzioni richieste. Se l'item ha variazioni
+// personalizzate, le usa al posto degli ingredienti base (quantita' gia'
+// assolute, nessuno scaling aggiuntivo). Ritorna nil se l'item non e'
+// una ricetta o se non ha ingredienti caricati.
 func scaleRecipeItems(it domain.MealItemFull) []scaledIngredient {
-	if it.Recipe == nil || it.Recipe.Servings <= 0 || len(it.RecipeItems) == 0 {
+	if it.Recipe == nil {
+		return nil
+	}
+	if it.IsCustomized() {
+		out := make([]scaledIngredient, 0, len(it.Customizations))
+		for _, c := range it.Customizations {
+			if c.Ingredient == nil {
+				continue
+			}
+			out = append(out, scaledIngredient{
+				Name:     c.Ingredient.Name,
+				Quantity: c.Quantity,
+				Unit:     string(c.Ingredient.Unit),
+			})
+		}
+		return out
+	}
+	if it.Recipe.Servings <= 0 || len(it.RecipeItems) == 0 {
 		return nil
 	}
 	scale := it.Quantity / float64(it.Recipe.Servings)

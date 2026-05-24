@@ -97,6 +97,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/meals/{mealID}/items", a.handleAddMealItem)
 		r.Post("/meals/{mealID}/items/reorder", a.handleReorderMealItems)
 		r.Post("/meal-items/{itemID}/delete", a.handleRemoveMealItem)
+		r.Get("/meal-items/{itemID}/customize", a.handleMealItemCustomizeForm)
+		r.Post("/meal-items/{itemID}/customize", a.handleMealItemCustomizeSave)
+		r.Post("/meal-items/{itemID}/customize/reset", a.handleMealItemCustomizeReset)
 
 		// Sgarri (meal_cheat_items).
 		r.Post("/meals/{mealID}/cheat/items", a.handleAddMealCheat)

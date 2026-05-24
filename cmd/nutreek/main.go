@@ -120,19 +120,20 @@ func run(logger *slog.Logger) error {
 
 	weeklyPlansRepo := db.NewWeeklyPlans(store.DB)
 	a := &app.App{
-		Cfg:           cfg,
-		Store:         store,
-		Users:         db.NewUsers(store.DB),
-		Ingredients:   ingredientsRepo,
-		Recipes:       db.NewRecipes(store.DB),
-		MealTemplates: db.NewMealTemplates(store.DB),
-		WeeklyPlans:   weeklyPlansRepo,
-		ShoppingLists: db.NewShoppingLists(store.DB, weeklyPlansRepo),
-		OFF:           offClient,
-		Reconciler:    reconciler,
-		Sessions:      sessions,
-		Render:        renderer,
-		Logger:        logger,
+		Cfg:                    cfg,
+		Store:                  store,
+		Users:                  db.NewUsers(store.DB),
+		Ingredients:            ingredientsRepo,
+		Recipes:                db.NewRecipes(store.DB),
+		MealTemplates:          db.NewMealTemplates(store.DB),
+		WeeklyPlans:            weeklyPlansRepo,
+		MealItemCustomizations: db.NewMealItemCustomizations(store.DB),
+		ShoppingLists:          db.NewShoppingLists(store.DB, weeklyPlansRepo),
+		OFF:                    offClient,
+		Reconciler:             reconciler,
+		Sessions:               sessions,
+		Render:                 renderer,
+		Logger:                 logger,
 	}
 
 	srv := &http.Server{
