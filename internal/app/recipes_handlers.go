@@ -265,19 +265,6 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 	if form.Description != "" {
 		descPtr = &form.Description
 	}
-	// Identity check: prima di salvare, verifica che la ricetta non abbia già
-	// gli stessi ingredienti di un'altra ricetta dell'utente.
-	if rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID); err == nil {
-		simulated := make([]domain.RecipeItem, 0, len(rec.Items))
-		for _, it := range rec.Items {
-			simulated = append(simulated, it.RecipeItem)
-		}
-		if other, identErr := a.Recipes.IdenticalContentRecipe(r.Context(), user.ID, simulated, id); identErr == nil && other != "" {
-			a.reRenderEdit(w, r, id, "Questa ricetta ha gli stessi ingredienti di \""+other+"\". Modifica gli ingredienti prima di salvare.", "")
-			return
-		}
-	}
-
 	if err := a.Recipes.Update(r.Context(), id, user.ID, form.Name, descPtr, servings, form.IsPublic); err != nil {
 		if errors.Is(err, db.ErrRecipeNameTaken) {
 			a.reRenderEdit(w, r, id, "Esiste già una tua ricetta con questo nome.", "")
@@ -548,12 +535,21 @@ func (a *App) handleRecipeDuplicate(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
+	// Carichiamo src prima di tutto così renderErr può passare SrcName
+	// e il testo "Stai duplicando X" rimane visibile anche in caso di errore.
+	src, err := a.Recipes.GetWithItems(r.Context(), srcID, user.ID)
+	if err != nil {
+		a.handleRecipeError(w, r, err)
+		return
+	}
+
 	newName := strings.TrimSpace(r.PostFormValue("new_name"))
 
 	renderErr := func(msg string) {
 		a.renderRecipeDuplicateFormOnly(w, r, recipeDuplicateData{
 			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
 			SrcID:        srcID,
+			SrcName:      src.Name,
 			NewName:      newName,
 			Error:        msg,
 		})
@@ -565,13 +561,6 @@ func (a *App) handleRecipeDuplicate(w http.ResponseWriter, r *http.Request) {
 	}
 	if !withinLen(newName, MaxNameLen) {
 		renderErr("Nome troppo lungo (max 200 caratteri).")
-		return
-	}
-	// Verifica esplicita: nome uguale all'originale è bloccato a prescindere
-	// dal vincolo UNIQUE — messaggio dedicato.
-	src, err := a.Recipes.GetWithItems(r.Context(), srcID, user.ID)
-	if err != nil {
-		a.handleRecipeError(w, r, err)
 		return
 	}
 	if strings.EqualFold(newName, src.Name) {
