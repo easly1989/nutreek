@@ -161,6 +161,7 @@
                         <span class="text-muted text-xs whitespace-nowrap">
                           {{printf "%.1f" .Item.Quantity}} di {{.Item.Recipe.Servings}} porz.
                         </span>
+                        {{if .Item.IsCustomized}}<span class="text-xs text-accent" title="Ingredienti personalizzati">✎</span>{{end}}
                       </span>
                       {{with .Item.Recipe.Description}}
                         <span class="block ml-5 italic text-muted/80 text-xs">{{.}}</span>
@@ -183,6 +184,12 @@
                   </span>
                   <span class="flex items-baseline gap-2 shrink-0">
                     <span class="text-muted {{if $hc}}line-through{{end}}">{{printf "%.0f" .Macros.Kcal}}</span>
+                    {{if and .Item.Recipe (not $hc)}}
+                      <button type="button"
+                              hx-get="/meal-items/{{.Item.ID}}/customize?start={{$.WeekStart}}"
+                              hx-target="#modal-host" hx-swap="innerHTML"
+                              class="text-muted hover:text-accent" title="Personalizza ingredienti">✎</button>
+                    {{end}}
                     <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
                           hx-post="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
                           hx-target="closest section[data-day]"

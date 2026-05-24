@@ -131,13 +131,18 @@
       </form>
     </section>
 
-    <!-- Delete -->
-    <form method="post" action="/recipes/{{.Recipe.ID}}/delete"
-          onsubmit="return confirm('Eliminare la ricetta? Operazione non reversibile.');"
-          class="text-right">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button class="text-xs text-danger hover:underline">Elimina ricetta</button>
-    </form>
+    <!-- Azioni: Duplica + Elimina -->
+    <div class="flex items-center justify-end gap-4">
+      <button type="button"
+              hx-get="/recipes/{{.Recipe.ID}}/duplicate"
+              hx-target="#modal-host" hx-swap="innerHTML"
+              class="text-xs text-muted hover:text-accent hover:underline">Duplica ricetta</button>
+      <form method="post" action="/recipes/{{.Recipe.ID}}/delete"
+            onsubmit="return confirm('Eliminare la ricetta? Se è usata nei piani settimanali, sarà rimossa anche da lì. Operazione non reversibile.');">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button class="text-xs text-danger hover:underline">Elimina ricetta</button>
+      </form>
+    </div>
   {{end}}
 </div>
 {{end}}

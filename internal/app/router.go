@@ -63,8 +63,11 @@ func (a *App) Router() http.Handler {
 		r.Get("/recipes", a.handleRecipesList)
 		r.Get("/recipes/new", a.handleRecipeNewForm)
 		r.Post("/recipes", a.handleRecipeCreate)
+		r.Post("/recipes/bulk-delete", a.handleRecipesBulkDelete)
 		r.Get("/recipes/{id}", a.handleRecipeEdit)
 		r.Get("/recipes/{id}/picker", a.handleRecipePicker)
+		r.Get("/recipes/{id}/duplicate", a.handleRecipeDuplicateForm)
+		r.Post("/recipes/{id}/duplicate", a.handleRecipeDuplicate)
 		r.Post("/recipes/{id}", a.handleRecipeUpdate)
 		r.Post("/recipes/{id}/delete", a.handleRecipeDelete)
 		r.Post("/recipes/{id}/items", a.handleRecipeAddItem)
@@ -94,6 +97,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/meals/{mealID}/items", a.handleAddMealItem)
 		r.Post("/meals/{mealID}/items/reorder", a.handleReorderMealItems)
 		r.Post("/meal-items/{itemID}/delete", a.handleRemoveMealItem)
+		r.Get("/meal-items/{itemID}/customize", a.handleMealItemCustomizeForm)
+		r.Post("/meal-items/{itemID}/customize", a.handleMealItemCustomizeSave)
+		r.Post("/meal-items/{itemID}/customize/reset", a.handleMealItemCustomizeReset)
 
 		// Sgarri (meal_cheat_items).
 		r.Post("/meals/{mealID}/cheat/items", a.handleAddMealCheat)
