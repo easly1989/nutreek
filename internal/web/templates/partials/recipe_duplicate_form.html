@@ -1,0 +1,35 @@
+{{define "recipe_duplicate_form"}}
+{{- /*
+  recipe_duplicate_form.html — view-model: recipeDuplicateData
+  Modal di duplicazione ricetta. Chiede il nuovo nome (obbligatorio).
+  POST a /recipes/{SrcID}/duplicate. Server risponde con HX-Redirect alla
+  edit della nuova ricetta su success.
+*/ -}}
+<form method="post" action="/recipes/{{.SrcID}}/duplicate"
+      hx-post="/recipes/{{.SrcID}}/duplicate"
+      hx-target="this"
+      hx-swap="outerHTML"
+      class="space-y-3 text-sm">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+  {{if .Error}}
+    <p class="rounded border border-danger/30 bg-danger/10 text-danger px-3 py-2 text-xs">{{.Error}}</p>
+  {{end}}
+
+  {{if .SrcName}}
+    <p class="text-xs text-muted">Stai duplicando <strong>{{.SrcName}}</strong>. Tutti gli ingredienti verranno copiati. Cambia il nome per salvare.</p>
+  {{end}}
+
+  <div>
+    <label class="block text-xs text-muted mb-1" for="rd-name">Nuovo nome</label>
+    <input id="rd-name" name="new_name" required value="{{.NewName}}" autofocus
+           class="w-full rounded border border-border bg-surface px-2 py-1">
+  </div>
+
+  <div class="flex items-center justify-end gap-2 pt-2">
+    <button type="button" data-modal-close
+            class="text-xs text-muted hover:underline px-3 py-1">Annulla</button>
+    <button class="bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90 text-sm">Duplica</button>
+  </div>
+</form>
+{{end}}

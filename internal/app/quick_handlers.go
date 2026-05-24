@@ -1,12 +1,14 @@
 package app
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/justinas/nosurf"
 
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
@@ -185,6 +187,10 @@ func (a *App) handleQuickRecipeCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := a.Recipes.Create(r.Context(), user.ID, form.Name, nil, servings, false)
 	if err != nil {
+		if errors.Is(err, db.ErrRecipeNameTaken) {
+			a.renderQuickRecipeFormOnly(w, r, form, "Esiste già una tua ricetta con questo nome.")
+			return
+		}
 		a.serverError(w, r, err)
 		return
 	}
