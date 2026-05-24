@@ -318,6 +318,28 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		ingID = parsed
 	}
 
+	// Identity check: verifica che lo stato risultante non sia identico a
+	// un'altra ricetta dell'utente. Carica items correnti + simula l'aggiunta.
+	rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID)
+	if err != nil {
+		a.handleRecipeError(w, r, err)
+		return
+	}
+	simulated := make([]domain.RecipeItem, 0, len(rec.Items)+1)
+	for _, it := range rec.Items {
+		simulated = append(simulated, it.RecipeItem)
+	}
+	simulated = append(simulated, domain.RecipeItem{IngredientID: ingID, Quantity: qty})
+	if other, err := a.Recipes.IdenticalContentRecipe(r.Context(), user.ID, simulated, id); err != nil {
+		a.serverError(w, r, err)
+		return
+	} else if other != "" {
+		a.reRenderEditItem(w, r, id,
+			"Aggiungendo questo ingrediente la ricetta diventerebbe identica a \""+other+"\". Modifica le quantità o cambia ingrediente.",
+			qtyStr, strconv.FormatInt(ingID, 10))
+		return
+	}
+
 	if _, err := a.Recipes.AddItem(r.Context(), id, user.ID, ingID, qty); err != nil {
 		a.handleRecipeError(w, r, err)
 		return
@@ -378,6 +400,30 @@ func (a *App) handleRecipeRemoveItem(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
+
+	// Identity check: simula la rimozione e verifica che lo stato risultante
+	// non sia identico a un'altra ricetta dell'utente.
+	rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID)
+	if err != nil {
+		a.handleRecipeError(w, r, err)
+		return
+	}
+	simulated := make([]domain.RecipeItem, 0, len(rec.Items))
+	for _, it := range rec.Items {
+		if it.ID == itemID {
+			continue
+		}
+		simulated = append(simulated, it.RecipeItem)
+	}
+	if other, err := a.Recipes.IdenticalContentRecipe(r.Context(), user.ID, simulated, id); err != nil {
+		a.serverError(w, r, err)
+		return
+	} else if other != "" {
+		a.reRenderEdit(w, r, id, "",
+			"Rimuovendo questo ingrediente la ricetta diventerebbe identica a \""+other+"\". Mantieni la voce o modifica altre quantità.")
+		return
+	}
+
 	if err := a.Recipes.RemoveItem(r.Context(), itemID, user.ID); err != nil {
 		if errors.Is(err, db.ErrRecipeItemNotFound) {
 			http.Error(w, "voce non trovata", http.StatusNotFound)
