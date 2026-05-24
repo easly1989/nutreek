@@ -499,6 +499,36 @@ func (r *Recipes) BulkDelete(ctx context.Context, ids []int64, userID int64) (in
 	return int(n), nil
 }
 
+// UsagesByRecipe ritorna una mappa recipe_id → numero di meal_items che la
+// referenziano, limitata alle ricette dell'utente. Recipe senza usi non sono
+// presenti nella mappa (chiamante può assumere 0).
+func (r *Recipes) UsagesByRecipe(ctx context.Context, userID int64) (map[int64]int, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT mi.recipe_id, COUNT(*) AS n
+		FROM meal_items mi
+		JOIN recipes r ON r.id = mi.recipe_id
+		WHERE r.user_id = ? AND mi.recipe_id IS NOT NULL
+		GROUP BY mi.recipe_id
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("usages by recipe: %w", err)
+	}
+	defer rows.Close()
+	out := make(map[int64]int, 8)
+	for rows.Next() {
+		var id int64
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, fmt.Errorf("scan usage: %w", err)
+		}
+		out[id] = n
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CountMealUsagesMulti somma le occorrenze meal_items su più ricette.
 func (r *Recipes) CountMealUsagesMulti(ctx context.Context, recipeIDs []int64) (int, error) {
 	if len(recipeIDs) == 0 {
