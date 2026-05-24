@@ -11,6 +11,10 @@
     · {{.Recipe.Servings}} porzion{{if eq .Recipe.Servings 1}}e{{else}}i{{end}}
   </p>
 
+  {{if .Error}}
+    <div class="mb-6 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-4 py-3 text-sm">{{.Error}}</div>
+  {{end}}
+
   <!-- Macro card -->
   <div class="grid grid-cols-2 gap-4 mb-8">
     <div class="rounded border border-border bg-surface p-4">
@@ -112,9 +116,6 @@
     <!-- Edit meta -->
     <section class="mb-8">
       <h2 class="text-lg font-medium mb-3">Impostazioni</h2>
-      {{if .Error}}
-        <div class="mb-3 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
-      {{end}}
       <form method="post" action="/recipes/{{.Recipe.ID}}" class="space-y-4 bg-surface border border-border rounded p-6">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <div>
@@ -135,7 +136,7 @@
             <span class="text-sm text-text">Pubblica</span>
           </label>
         </div>
-        <button class="bg-surface-2 text-white rounded px-4 py-2 hover:bg-surface-2">Salva</button>
+        <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Salva</button>
       </form>
     </section>
 
