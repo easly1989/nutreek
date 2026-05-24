@@ -1,19 +1,20 @@
 {{define "meal_item_customize_form"}}
 {{- /*
   meal_item_customize_form.html — view-model: customizeFormData
-  Modal di personalizzazione di un item ricetta in un pasto.
-  Mostra gli ingredienti con le quantità pre-compilate (dalla ricetta scalata
-  o dalle personalizzazioni esistenti) e permette di modificarle.
-  POST a /meal-items/{ID}/customize → HX-Redirect alla settimana.
+  NOTA: il pulsante "Ripristina" NON usa un <form> annidato (HTML invalido:
+  il parser chiuderebbe il form esterno al primo </form>, lasciando "Salva"
+  fuori da qualsiasi form e rendendo il submit impossibile). Usa invece
+  hx-post + hx-include per portare il csrf_token.
 */ -}}
 <form method="post" action="/meal-items/{{.MealItemID}}/customize?start={{.WeekStart}}"
       hx-post="/meal-items/{{.MealItemID}}/customize?start={{.WeekStart}}"
       hx-target="this" hx-swap="outerHTML"
+      novalidate
       class="space-y-3 text-sm">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
   {{if .Error}}
-    <p class="rounded border border-danger/30 bg-danger/10 text-danger px-3 py-2 text-xs">{{.Error}}</p>
+    <p class="rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-xs">{{.Error}}</p>
   {{end}}
 
   {{if .RecipeName}}
@@ -44,17 +45,16 @@
   {{end}}
 
   <div class="flex items-center justify-between gap-2 pt-2">
-    <form method="post" action="/meal-items/{{.MealItemID}}/customize/reset?start={{.WeekStart}}"
-          hx-post="/meal-items/{{.MealItemID}}/customize/reset?start={{.WeekStart}}"
-          hx-target="#modal-host" hx-swap="innerHTML"
-          class="inline">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button type="submit" class="text-xs text-muted hover:text-danger hover:underline">Ripristina ricetta</button>
-    </form>
+    {{/* Ripristina: usa hx-post + hx-include invece di un <form> annidato. */}}
+    <button type="button"
+            hx-post="/meal-items/{{.MealItemID}}/customize/reset?start={{.WeekStart}}"
+            hx-include="[name=csrf_token]"
+            hx-target="#modal-host" hx-swap="innerHTML"
+            class="text-xs text-muted hover:text-danger hover:underline">Ripristina ricetta</button>
     <div class="flex items-center gap-2">
       <button type="button" data-modal-close
               class="text-xs text-muted hover:underline px-3 py-1">Annulla</button>
-      <button class="bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90 text-sm">Salva</button>
+      <button type="submit" class="bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90 text-sm">Salva</button>
     </div>
   </div>
 </form>
