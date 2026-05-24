@@ -11,6 +11,12 @@
     · {{.Recipe.Servings}} porzion{{if eq .Recipe.Servings 1}}e{{else}}i{{end}}
   </p>
 
+  {{if .Recipe.IsDraft}}
+    <div class="mb-6 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-4 py-3 text-sm">
+      <p><strong>Bozza non confermata.</strong> Questa ricetta è una copia non ancora salvata. Modifica almeno un ingrediente (aggiungi, rimuovi o cambia quantità) per confermarla. Finché resta una bozza non è visibile nelle liste né selezionabile nei piani settimanali.</p>
+    </div>
+  {{end}}
+
   {{if .Error}}
     <div class="mb-6 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-4 py-3 text-sm">{{.Error}}</div>
   {{end}}
