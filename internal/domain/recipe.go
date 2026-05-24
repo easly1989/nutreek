@@ -10,8 +10,13 @@ type Recipe struct {
 	Description *string
 	Servings    int
 	IsPublic    bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// IsDraft = true per bozze create da Duplicate non ancora modificate.
+	// I draft sono nascosti dalle liste e dai piani, e il salva metadati è
+	// bloccato finché restano draft. Vengono promossi al primo cambio di
+	// contenuto (add/remove ingrediente) che li rende diversi dalle altre.
+	IsDraft   bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // RecipeItem e' un ingrediente che compone una ricetta.
