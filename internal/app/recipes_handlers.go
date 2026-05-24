@@ -265,6 +265,19 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 	if form.Description != "" {
 		descPtr = &form.Description
 	}
+	// Identity check: prima di salvare, verifica che la ricetta non abbia già
+	// gli stessi ingredienti di un'altra ricetta dell'utente.
+	if rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID); err == nil {
+		simulated := make([]domain.RecipeItem, 0, len(rec.Items))
+		for _, it := range rec.Items {
+			simulated = append(simulated, it.RecipeItem)
+		}
+		if other, identErr := a.Recipes.IdenticalContentRecipe(r.Context(), user.ID, simulated, id); identErr == nil && other != "" {
+			a.reRenderEdit(w, r, id, "Questa ricetta ha gli stessi ingredienti di \""+other+"\". Modifica gli ingredienti prima di salvare.", "")
+			return
+		}
+	}
+
 	if err := a.Recipes.Update(r.Context(), id, user.ID, form.Name, descPtr, servings, form.IsPublic); err != nil {
 		if errors.Is(err, db.ErrRecipeNameTaken) {
 			a.reRenderEdit(w, r, id, "Esiste già una tua ricetta con questo nome.", "")
