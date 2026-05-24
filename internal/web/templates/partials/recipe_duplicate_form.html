@@ -13,12 +13,12 @@
       class="space-y-3 text-sm">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-  {{if .Error}}
-    <p class="rounded border border-danger/30 bg-danger/10 text-danger px-3 py-2 text-xs">{{.Error}}</p>
-  {{end}}
-
   {{if .SrcName}}
     <p class="text-xs text-muted">Stai duplicando <strong>{{.SrcName}}</strong>. Tutti gli ingredienti verranno copiati. Cambia il nome per salvare.</p>
+  {{end}}
+
+  {{if .Error}}
+    <p class="rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-xs">{{.Error}}</p>
   {{end}}
 
   <div>
