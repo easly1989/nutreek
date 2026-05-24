@@ -18,10 +18,11 @@ type App struct {
 	Cfg           *config.Config
 	Store         *db.Store
 	Users         *db.Users
-	Ingredients   *db.Ingredients
-	Recipes       *db.Recipes
-	MealTemplates *db.MealTemplates
-	WeeklyPlans   *db.WeeklyPlans
+	Ingredients           *db.Ingredients
+	Recipes               *db.Recipes
+	MealTemplates         *db.MealTemplates
+	WeeklyPlans           *db.WeeklyPlans
+	MealItemCustomizations *db.MealItemCustomizations
 	ShoppingLists *db.ShoppingLists
 	OFF           *off.Client
 	Reconciler    *off.Reconciler

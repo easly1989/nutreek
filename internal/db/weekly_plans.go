@@ -303,13 +303,14 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 		}
 		ph := strings.Repeat("?,", len(srcIDs)-1) + "?"
 		itemRows, err := tx.QueryContext(ctx,
-			`SELECT meal_id, recipe_id, ingredient_id, quantity, sort_order
+			`SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order
 			 FROM meal_items WHERE meal_id IN (`+ph+`)
 			 ORDER BY meal_id, sort_order, id`, srcIDs...)
 		if err != nil {
 			return fmt.Errorf("load src items: %w", err)
 		}
 		type srcItem struct {
+			ID        int64
 			MealID    int64
 			RecipeID  *int64
 			IngID     *int64
@@ -319,7 +320,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 		var items []srcItem
 		for itemRows.Next() {
 			var it srcItem
-			if err := itemRows.Scan(&it.MealID, &it.RecipeID, &it.IngID, &it.Quantity, &it.SortOrder); err != nil {
+			if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngID, &it.Quantity, &it.SortOrder); err != nil {
 				itemRows.Close()
 				return fmt.Errorf("scan src item: %w", err)
 			}
@@ -329,13 +330,74 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 		if err := itemRows.Err(); err != nil {
 			return err
 		}
-		for _, it := range items {
-			dstMealID, ok := idMap[it.MealID]
+		// Mappa srcItemID → dstItemID per copiare le personalizzazioni.
+		itemIDMap := make(map[int64]int64, len(items))
+		for _, srcIt := range items {
+			dstMealID, ok := idMap[srcIt.MealID]
 			if !ok {
-				continue // sicurezza, non dovrebbe succedere
+				continue
 			}
-			if _, err := insItem.ExecContext(ctx, dstMealID, it.RecipeID, it.IngID, it.Quantity, it.SortOrder); err != nil {
+			res, err := insItem.ExecContext(ctx, dstMealID, srcIt.RecipeID, srcIt.IngID, srcIt.Quantity, srcIt.SortOrder)
+			if err != nil {
 				return fmt.Errorf("insert dst item: %w", err)
+			}
+			newItemID, err := res.LastInsertId()
+			if err != nil {
+				return fmt.Errorf("lastinsertid item: %w", err)
+			}
+			itemIDMap[srcIt.ID] = newItemID
+		}
+
+		// Copia le personalizzazioni seguendo la mappa srcItemID → dstItemID.
+		if len(itemIDMap) > 0 {
+			srcItemIDs := make([]any, 0, len(itemIDMap))
+			for srcID := range itemIDMap {
+				srcItemIDs = append(srcItemIDs, srcID)
+			}
+			ph := strings.Repeat("?,", len(srcItemIDs)-1) + "?"
+			custRows, err := tx.QueryContext(ctx,
+				`SELECT meal_item_id, ingredient_id, quantity, sort_order
+				 FROM meal_item_customizations WHERE meal_item_id IN (`+ph+`)
+				 ORDER BY meal_item_id, sort_order, id`, srcItemIDs...)
+			if err != nil {
+				return fmt.Errorf("load src customizations: %w", err)
+			}
+			type custRow struct {
+				SrcItemID    int64
+				IngredientID int64
+				Quantity     float64
+				SortOrder    int
+			}
+			var custs []custRow
+			for custRows.Next() {
+				var c custRow
+				if err := custRows.Scan(&c.SrcItemID, &c.IngredientID, &c.Quantity, &c.SortOrder); err != nil {
+					custRows.Close()
+					return fmt.Errorf("scan src customization: %w", err)
+				}
+				custs = append(custs, c)
+			}
+			custRows.Close()
+			if err := custRows.Err(); err != nil {
+				return err
+			}
+			if len(custs) > 0 {
+				insCust, err := tx.PrepareContext(ctx,
+					`INSERT INTO meal_item_customizations (meal_item_id, ingredient_id, quantity, sort_order)
+					 VALUES (?, ?, ?, ?)`)
+				if err != nil {
+					return fmt.Errorf("prepare insert customization: %w", err)
+				}
+				defer insCust.Close()
+				for _, c := range custs {
+					dstItemID, ok := itemIDMap[c.SrcItemID]
+					if !ok {
+						continue
+					}
+					if _, err := insCust.ExecContext(ctx, dstItemID, c.IngredientID, c.Quantity, c.SortOrder); err != nil {
+						return fmt.Errorf("insert dst customization: %w", err)
+					}
+				}
 			}
 		}
 	}
@@ -567,6 +629,64 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	}
 	cheatRows.Close()
 
+	// 2c. personalizzazioni per gli item ricetta (non per i cheat).
+	// Raccoglie tutti i meal_item_id che puntano a una ricetta, poi carica
+	// le eventuali righe meal_item_customizations con JOIN a ingredients.
+	customMap := make(map[int64][]domain.MealItemCustomization)
+	{
+		var recipeItemIDs []int64
+		for _, items := range itemsByMeal {
+			for _, it := range items {
+				if it.RecipeID != nil {
+					recipeItemIDs = append(recipeItemIDs, it.ID)
+				}
+			}
+		}
+		if len(recipeItemIDs) > 0 {
+			ph2c := strings.Repeat("?,", len(recipeItemIDs)-1) + "?"
+			ca := make([]any, len(recipeItemIDs))
+			for i, id := range recipeItemIDs {
+				ca[i] = id
+			}
+			custRows, err := r.db.QueryContext(ctx, `
+				SELECT mic.id, mic.meal_item_id, mic.ingredient_id, mic.quantity, mic.sort_order,
+				       i.id, i.source, i.off_barcode, i.name, i.brand, i.unit,
+				       i.kcal_per_100, i.protein_per_100, i.carbs_per_100, i.fat_per_100,
+				       i.created_by, i.created_at, i.last_verified_at, i.superseded_by
+				FROM meal_item_customizations mic
+				JOIN ingredients i ON i.id = mic.ingredient_id
+				WHERE mic.meal_item_id IN (`+ph2c+`)
+				ORDER BY mic.meal_item_id, mic.sort_order, mic.id
+			`, ca...)
+			if err != nil {
+				return nil, fmt.Errorf("load customizations: %w", err)
+			}
+			for custRows.Next() {
+				var c domain.MealItemCustomization
+				var ing domain.Ingredient
+				var src, unit string
+				err := custRows.Scan(
+					&c.ID, &c.MealItemID, &c.IngredientID, &c.Quantity, &c.SortOrder,
+					&ing.ID, &src, &ing.OFFBarcode, &ing.Name, &ing.Brand, &unit,
+					&ing.KcalPer100, &ing.ProteinPer100, &ing.CarbsPer100, &ing.FatPer100,
+					&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy,
+				)
+				if err != nil {
+					custRows.Close()
+					return nil, fmt.Errorf("scan customization: %w", err)
+				}
+				ing.Source = domain.IngredientSource(src)
+				ing.Unit = domain.IngredientUnit(unit)
+				c.Ingredient = &ing
+				customMap[c.MealItemID] = append(customMap[c.MealItemID], c)
+			}
+			custRows.Close()
+			if err := custRows.Err(); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// 3. ingredients in batch.
 	ingMap := make(map[int64]*domain.Ingredient)
 	if len(ingredientIDs) > 0 {
@@ -682,6 +802,9 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		if it.RecipeID != nil {
 			it.Recipe = recipeMap[*it.RecipeID]
 			it.RecipeItems = recipeItemsMap[*it.RecipeID]
+			if c, ok := customMap[it.ID]; ok {
+				it.Customizations = c
+			}
 		}
 		if it.IngredientID != nil {
 			it.Ingredient = ingMap[*it.IngredientID]

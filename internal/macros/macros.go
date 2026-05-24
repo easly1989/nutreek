@@ -84,14 +84,24 @@ func PerServing(total Macros, servings int) Macros {
 // ForMealItem calcola i macro di una singola voce di pasto. La quantita'
 // in MealItem e' interpretata diversamente a seconda del tipo:
 //   - se e' un ingrediente: g/ml -> FromIngredient.
-//   - se e' una ricetta: numero di porzioni -> PerServing(totale ricetta) *
-//     quantita'. Quindi quantity=2 = 2 porzioni della ricetta.
+//   - se e' una ricetta senza variazioni: porzioni × PerServing(totale).
+//   - se e' una ricetta con variazioni (Customizations non vuote): somma diretta
+//     delle quantita' assolute nelle variazioni (gia' rappresentano il consumo
+//     reale, senza ulteriore scaling per porzioni).
 func ForMealItem(item domain.MealItemFull) Macros {
 	if item.Ingredient != nil {
 		return FromIngredient(*item.Ingredient, item.Quantity)
 	}
 	if item.Recipe != nil {
-		// Calcola macro totale della ricetta dai suoi RecipeItems.
+		if len(item.Customizations) > 0 {
+			var out Macros
+			for _, c := range item.Customizations {
+				if c.Ingredient != nil {
+					out = out.Add(FromIngredient(*c.Ingredient, c.Quantity))
+				}
+			}
+			return out
+		}
 		ingredients := make([]IngredientItem, 0, len(item.RecipeItems))
 		for _, ri := range item.RecipeItems {
 			ingredients = append(ingredients, IngredientItem{
