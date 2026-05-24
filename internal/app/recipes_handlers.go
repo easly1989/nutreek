@@ -606,7 +606,9 @@ func (a *App) renderRecipeDuplicateModal(w http.ResponseWriter, r *http.Request,
 }
 
 func (a *App) renderRecipeDuplicateFormOnly(w http.ResponseWriter, r *http.Request, data recipeDuplicateData) {
-	if err := a.Render.RenderPartial(w, http.StatusUnprocessableEntity, "recipes_list", "recipe_duplicate_form", data); err != nil {
+	// 200 (non 422) perché HTMX 1.x di default fa swap solo su 2xx: con 422
+	// la risposta verrebbe ignorata e l'utente non vedrebbe il warning inline.
+	if err := a.Render.RenderPartial(w, http.StatusOK, "recipes_list", "recipe_duplicate_form", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
