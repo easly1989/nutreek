@@ -9,6 +9,7 @@
       hx-post="/recipes/{{.SrcID}}/duplicate"
       hx-target="this"
       hx-swap="outerHTML"
+      novalidate
       class="space-y-3 text-sm">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
@@ -22,7 +23,7 @@
 
   <div>
     <label class="block text-xs text-muted mb-1" for="rd-name">Nuovo nome</label>
-    <input id="rd-name" name="new_name" required value="{{.NewName}}" autofocus
+    <input id="rd-name" name="new_name" value="{{.NewName}}" autofocus
            class="w-full rounded border border-border bg-surface px-2 py-1">
   </div>
 
