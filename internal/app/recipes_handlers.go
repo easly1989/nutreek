@@ -261,6 +261,23 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 		a.reRenderEdit(w, r, id, "Porzioni: serve un intero > 0.", "")
 		return
 	}
+	// Bozza: il salva metadati è bloccato finché l'utente non modifica gli
+	// ingredienti (add/remove) rendendo il contenuto diverso dalle altre
+	// ricette. Il messaggio cita la ricetta a cui è ancora identica per
+	// guidare l'utente.
+	if rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID); err == nil && rec.IsDraft {
+		simulated := make([]domain.RecipeItem, 0, len(rec.Items))
+		for _, it := range rec.Items {
+			simulated = append(simulated, it.RecipeItem)
+		}
+		other, _ := a.Recipes.IdenticalContentRecipe(r.Context(), user.ID, simulated, id)
+		msg := "Questa ricetta è una bozza. Modifica almeno un ingrediente (aggiungi, rimuovi o cambia quantità) prima di salvare."
+		if other != "" {
+			msg = "Questa bozza ha gli stessi ingredienti di \"" + other + "\". Modifica almeno un ingrediente prima di salvare."
+		}
+		a.reRenderEdit(w, r, id, msg, "")
+		return
+	}
 	var descPtr *string
 	if form.Description != "" {
 		descPtr = &form.Description
@@ -343,6 +360,14 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 	if _, err := a.Recipes.AddItem(r.Context(), id, user.ID, ingID, qty); err != nil {
 		a.handleRecipeError(w, r, err)
 		return
+	}
+	// L'identity check sopra garantisce che il contenuto risultante è diverso
+	// da tutte le altre ricette. Se era una bozza, è il momento di promuoverla.
+	if rec.IsDraft {
+		if err := a.Recipes.PromoteDraft(r.Context(), id, user.ID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 	}
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }
@@ -431,6 +456,13 @@ func (a *App) handleRecipeRemoveItem(w http.ResponseWriter, r *http.Request) {
 		}
 		a.serverError(w, r, err)
 		return
+	}
+	// Promozione bozza analoga ad handleRecipeAddItem.
+	if rec.IsDraft {
+		if err := a.Recipes.PromoteDraft(r.Context(), id, user.ID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 	}
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }

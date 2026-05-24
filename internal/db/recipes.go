@@ -133,17 +133,17 @@ func (r *Recipes) notFoundOrForbidden(ctx context.Context, id, userID int64) err
 func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain.RecipeWithItems, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT r.id, r.user_id, r.name, r.description, r.servings, r.is_public,
-		       r.created_at, r.updated_at, u.display_name
+		       r.is_draft, r.created_at, r.updated_at, u.display_name
 		FROM recipes r
 		JOIN users u ON u.id = r.user_id
 		WHERE r.id = ?`, id)
 	var (
-		out      domain.RecipeWithItems
-		isPubInt int
+		out                 domain.RecipeWithItems
+		isPubInt, draftInt  int
 	)
 	err := row.Scan(
 		&out.ID, &out.UserID, &out.Name, &out.Description, &out.Servings, &isPubInt,
-		&out.CreatedAt, &out.UpdatedAt, &out.AuthorName,
+		&draftInt, &out.CreatedAt, &out.UpdatedAt, &out.AuthorName,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrRecipeNotFound
@@ -152,6 +152,7 @@ func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain
 		return nil, fmt.Errorf("scan recipe: %w", err)
 	}
 	out.IsPublic = isPubInt == 1
+	out.IsDraft = draftInt == 1
 	if out.UserID != viewerID && !out.IsPublic {
 		return nil, ErrRecipeForbidden
 	}
@@ -196,12 +197,12 @@ func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain
 }
 
 // ListVisible ritorna ricette visibili a viewerID: tutte le sue + le pubbliche
-// di altri. Ordinate alfabetico per nome.
+// di altri. Esclude i draft (bozze non confermate). Ordinate alfabetico per nome.
 func (r *Recipes) ListVisible(ctx context.Context, viewerID int64) ([]*domain.Recipe, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, user_id, name, description, servings, is_public, created_at, updated_at
+		SELECT id, user_id, name, description, servings, is_public, is_draft, created_at, updated_at
 		FROM recipes
-		WHERE user_id = ? OR is_public = 1
+		WHERE is_draft = 0 AND (user_id = ? OR is_public = 1)
 		ORDER BY name COLLATE NOCASE
 	`, viewerID)
 	if err != nil {
@@ -211,13 +212,14 @@ func (r *Recipes) ListVisible(ctx context.Context, viewerID int64) ([]*domain.Re
 	out := make([]*domain.Recipe, 0, 16)
 	for rows.Next() {
 		var rec domain.Recipe
-		var pubInt int
+		var pubInt, draftInt int
 		err := rows.Scan(&rec.ID, &rec.UserID, &rec.Name, &rec.Description,
-			&rec.Servings, &pubInt, &rec.CreatedAt, &rec.UpdatedAt)
+			&rec.Servings, &pubInt, &draftInt, &rec.CreatedAt, &rec.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("scan recipe: %w", err)
 		}
 		rec.IsPublic = pubInt == 1
+		rec.IsDraft = draftInt == 1
 		out = append(out, &rec)
 	}
 	if err := rows.Err(); err != nil {
@@ -448,9 +450,11 @@ func (r *Recipes) Duplicate(ctx context.Context, srcID, userID int64, newName st
 		s := *src.Description
 		descPtr = &s
 	}
+	// is_draft = 1: la copia parte come bozza non confermata. Verrà promossa
+	// al primo add/remove ingrediente che la rende diversa dalle altre ricette.
 	res, err := tx.ExecContext(ctx, `
-		INSERT INTO recipes (user_id, name, description, servings, is_public)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO recipes (user_id, name, description, servings, is_public, is_draft)
+		VALUES (?, ?, ?, ?, ?, 1)
 	`, userID, newName, descPtr, src.Servings, boolToInt(src.IsPublic))
 	if err != nil {
 		if isUniqueRecipeNameErr(err) {
@@ -546,6 +550,20 @@ func (r *Recipes) CountMealUsagesMulti(ctx context.Context, recipeIDs []int64) (
 		return 0, fmt.Errorf("count meal usages multi: %w", err)
 	}
 	return n, nil
+}
+
+// PromoteDraft toglie il flag is_draft. Idempotente: chiamarla su una ricetta
+// già non-draft non ha effetto. Verifica l'ownership.
+func (r *Recipes) PromoteDraft(ctx context.Context, id, userID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE recipes SET is_draft = 0, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND user_id = ? AND is_draft = 1
+	`, id, userID)
+	if err != nil {
+		return fmt.Errorf("promote draft: %w", err)
+	}
+	_ = res
+	return nil
 }
 
 // isUniqueRecipeNameErr rileva la violazione del vincolo uniq_recipes_user_name.

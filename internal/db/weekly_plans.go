@@ -733,7 +733,7 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 			ra[i] = id
 		}
 		recRows, err := r.db.QueryContext(ctx, `
-			SELECT id, user_id, name, description, servings, is_public, created_at, updated_at
+			SELECT id, user_id, name, description, servings, is_public, is_draft, created_at, updated_at
 			FROM recipes WHERE id IN (`+ph+`)
 		`, ra...)
 		if err != nil {
@@ -741,14 +741,15 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		}
 		for recRows.Next() {
 			var rec domain.Recipe
-			var pub int
+			var pub, draft int
 			err := recRows.Scan(&rec.ID, &rec.UserID, &rec.Name, &rec.Description,
-				&rec.Servings, &pub, &rec.CreatedAt, &rec.UpdatedAt)
+				&rec.Servings, &pub, &draft, &rec.CreatedAt, &rec.UpdatedAt)
 			if err != nil {
 				recRows.Close()
 				return nil, fmt.Errorf("scan recipe: %w", err)
 			}
 			rec.IsPublic = pub == 1
+			rec.IsDraft = draft == 1
 			recipeMap[rec.ID] = &rec
 		}
 		recRows.Close()
