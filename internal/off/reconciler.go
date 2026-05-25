@@ -100,14 +100,25 @@ func (r *Reconciler) RunOnce(ctx context.Context) (Stats, error) {
 // col nome del local. Brand match obbligatorio se entrambi i lati lo hanno.
 // Per MVP volutamente piu' tollerante di un substring stretto: "Grana
 // Padano locale" deve agganciarsi a "Grana Padano DOP".
+//
+// Usa solo le prime 2 parole significative come seed: con FTS5 AND prefix
+// (semantica di SearchByName) usare il nome intero filtrerebbe via parole
+// come "locale"/"casereccio" che non esistono nel prodotto OFF target.
 func (r *Reconciler) findBestMatch(ctx context.Context, local *domain.Ingredient) (*Product, error) {
-	products, err := r.Client.SearchByName(ctx, local.Name)
-	if err != nil {
-		return nil, err
-	}
 	localWords := significantWords(local.Name)
 	if len(localWords) == 0 {
 		return nil, nil
+	}
+	seed := local.Name
+	switch {
+	case len(localWords) >= 2:
+		seed = localWords[0] + " " + localWords[1]
+	case len(localWords) == 1:
+		seed = localWords[0]
+	}
+	products, err := r.Client.SearchByName(ctx, seed)
+	if err != nil {
+		return nil, err
 	}
 	for i := range products {
 		p := &products[i]

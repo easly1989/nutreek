@@ -73,11 +73,39 @@ make sqlc             # solo rigenera sqlc
 | `NUTREEK_DB_PATH` | `./data/nutreek.db` | |
 | `NUTREEK_ENV` | `dev` | `prod` abilita secure cookies |
 | `NUTREEK_SESSION_KEY` | auto in dev | **richiesto in prod** (hex ≥64 chars) |
-| `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | host product lookup (barcode) |
-| `NUTREEK_OFF_SEARCH_BASE_URL` | `https://search.openfoodfacts.org` | host search testuale (Search-a-licious) — il legacy `/cgi/search.pl` e `/api/v2/search` sono 503 permanenti |
+| `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | host product lookup (barcode) live |
+| `NUTREEK_OFF_DUMP_URL` | `https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz` | URL del dump JSONL.gz scaricato dal Syncer |
+| `NUTREEK_OFF_SYNC_INTERVAL` | `168h` (7 giorni) | frequenza minima del sync automatico |
+| `NUTREEK_OFF_SYNC_ENABLED` | `true` | abilita lo scheduler del sync |
 | `NUTREEK_RECONCILE_INTERVAL` | `24h` | |
 | `NUTREEK_RECONCILE_ENABLED` | `true` | |
 | `NUTREEK_ADMIN_TOKEN` | (nessuno) | token per admin endpoints |
+
+## Strategia OpenFoodFacts (OFF)
+
+Tutta la ricerca testuale OFF e' **locale** via SQLite FTS5. Il `Syncer`
+(`internal/off/dump.go`) scarica settimanalmente il dump pubblico OFF
+(~0.9GB compressi), lo stream-parsa filtrando i prodotti italiani
+(`countries_tags` contiene `en:italy`, ~250k prodotti) e popola la
+tabella `off_products` + indice FTS5 `off_products_fts`. Risultato:
+ricerche <50ms, zero chiamate HTTP in search-path, mai piu' 503.
+
+Motivazione: gli endpoint pubblici OFF non sono affidabili per
+search-as-you-type. `cgi/search.pl` ha rate limit ufficiale 10 req/min
++ latenza 3-12s + ~20% 503. Search-a-licious ha gap d'indicizzazione.
+L'unica via 100% affidabile e' eliminare la dipendenza runtime dalla
+ricerca OFF.
+
+Lookup per barcode (`OFF.GetByBarcode`) resta live verso
+`world.openfoodfacts.org/api/v2/product/{code}.json`: endpoint
+puntuale, affidabile, usato solo al primo import di un prodotto nuovo.
+
+Trigger manuale: `POST /admin/refresh-off-dump` (richiede
+`X-Admin-Token`). Stato corrente: `GET /admin/off-status`.
+
+**Bootstrap**: al primo avvio `off_products` e' vuota; lo scheduler
+lancia un sync iniziale in background. Le ricerche restano vuote
+finche' il sync non completa (~10 min, ~0.9GB di banda).
 
 ---
 

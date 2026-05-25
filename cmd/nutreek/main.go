@@ -106,10 +106,8 @@ func run(logger *slog.Logger) error {
 	}
 
 	ingredientsRepo := db.NewIngredients(store.DB)
-	offClient := off.NewClient(cfg.OFFBaseURL, logger)
-	if cfg.OFFSearchBaseURL != "" {
-		offClient.SearchBaseURL = cfg.OFFSearchBaseURL
-	}
+	offClient := off.NewClient(store.DB, cfg.OFFBaseURL, logger)
+	offSyncer := off.NewSyncer(store.DB, cfg.OFFDumpURL, logger)
 	reconciler := &off.Reconciler{
 		Ingredients: ingredientsRepo,
 		Client:      offClient,
@@ -130,6 +128,7 @@ func run(logger *slog.Logger) error {
 		MealItemCustomizations: db.NewMealItemCustomizations(store.DB),
 		ShoppingLists:          db.NewShoppingLists(store.DB, weeklyPlansRepo),
 		OFF:                    offClient,
+		OFFSyncer:              offSyncer,
 		Reconciler:             reconciler,
 		Sessions:               sessions,
 		Render:                 renderer,
@@ -154,6 +153,17 @@ func run(logger *slog.Logger) error {
 		go reconciler.Run(ctx, cfg.ReconcileInterval)
 	} else {
 		logger.Info("reconciler disabilitato (NUTREEK_RECONCILE_ENABLED=false)")
+	}
+
+	if cfg.OFFSyncEnabled {
+		scheduler := &off.SyncScheduler{
+			Syncer:   offSyncer,
+			Interval: cfg.OFFSyncInterval,
+			Logger:   logger,
+		}
+		go scheduler.Run(ctx)
+	} else {
+		logger.Info("OFF sync scheduler disabilitato (NUTREEK_OFF_SYNC_ENABLED=false)")
 	}
 
 	<-ctx.Done()
