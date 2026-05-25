@@ -245,39 +245,51 @@ func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken stri
 	return out
 }
 
+// dayMutationResponse e' il view-model per day_card_with_pill_oob: card +
+// pillola OOB + totali settimanali OOB. Serve per aggiornare in unica risposta
+// tutti gli elementi che dipendono dai macro dopo una mutazione (add, remove,
+// reorder), in modo che il client non debba ricaricare la pagina.
+type dayMutationResponse struct {
+	Card      dayCardData
+	WeekTotal macros.Macros
+}
+
 // renderDayCard scrive il partial day_card piu' la pillola corrispondente
 // con HX-OOB swap, in un unico response. Cosi' una mutation aggiorna sia
 // la card in #focus-grid sia la pillola in #timeline-pills (kcal totali,
 // accent state).
-func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, weekStart time.Time, state string) {
+func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, weekTotal macros.Macros, weekStart time.Time, state string) {
 	user := userFromContext(r.Context())
 	var progress profile.MacroProgress
 	if user != nil {
 		progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
 	}
 	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress)
-	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card_with_pill_oob", card); err != nil {
+	resp := dayMutationResponse{Card: card, WeekTotal: weekTotal}
+	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card_with_pill_oob", resp); err != nil {
 		a.serverError(w, r, err)
 	}
 }
 
 // loadDayCard carica il piano dell'utente per la settimana data, costruisce
-// la dayView del giorno richiesto e ritorna nil se il giorno e' fuori range.
-func (a *App) loadDayCard(r *http.Request, userID int64, weekStart time.Time, dayIndex int) (*dayView, error) {
+// la dayView del giorno richiesto e ritorna anche il totale settimanale per
+// permettere l'aggiornamento OOB del riquadro macro in alto.
+func (a *App) loadDayCard(r *http.Request, userID int64, weekStart time.Time, dayIndex int) (*dayView, macros.Macros, error) {
 	if dayIndex < 0 || dayIndex > 6 {
-		return nil, fmt.Errorf("day_index fuori range")
+		return nil, macros.Macros{}, fmt.Errorf("day_index fuori range")
 	}
 	plan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), userID, weekStart)
 	if err != nil {
-		return nil, err
+		return nil, macros.Macros{}, err
 	}
 	full, err := a.WeeklyPlans.LoadFull(r.Context(), plan)
 	if err != nil {
-		return nil, err
+		return nil, macros.Macros{}, err
 	}
 	days := buildDayViews(full, weekStart)
 	dv := days[dayIndex]
-	return &dv, nil
+	weekTotal := macros.ForWeek(full.Days)
+	return &dv, weekTotal, nil
 }
 
 // nosurfTokenOrEmpty e' un thin wrapper per leggere il CSRF token; usato dai
@@ -295,13 +307,13 @@ func (a *App) respondMutationOrRedirect(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	user := userFromContext(r.Context())
-	dv, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
+	dv, weekTotal, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	state := dayState(dv.Date, todayDate())
-	a.renderDayCard(w, r, *dv, weekStart, state)
+	a.renderDayCard(w, r, *dv, weekTotal, weekStart, state)
 }
 
 // dayIndexFromMealID risolve il day_of_week di un meal a partire dal suo id.
@@ -878,13 +890,13 @@ func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	dv, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
+	dv, weekTotal, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	state := dayState(dv.Date, todayDate())
-	a.renderDayCard(w, r, *dv, weekStart, state)
+	a.renderDayCard(w, r, *dv, weekTotal, weekStart, state)
 }
 
 // handleAddItemForm GET /meals/{mealID}/items/new — shell del picker live
