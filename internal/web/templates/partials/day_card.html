@@ -286,19 +286,48 @@
 </section>
 {{end}}
 
+{{define "week_totals_card"}}
+{{- /* Box "Macro settimana" con id stabile per consentire OOB swap dopo
+       mutazioni (add/remove/reorder) sui meal_items. View-model: macros.Macros. */ -}}
+<div id="week-totals" class="mt-4 mb-6 rounded border border-border bg-surface p-4 grid grid-cols-4 gap-4 text-center">
+  <div>
+    <p class="text-xs text-muted uppercase">Kcal sett.</p>
+    <p class="text-2xl font-semibold">{{printf "%.0f" .Kcal}}</p>
+  </div>
+  <div>
+    <p class="text-xs text-muted uppercase">Proteine</p>
+    <p class="text-2xl font-semibold">{{printf "%.0f" .Protein}}<span class="text-sm font-normal text-muted">g</span></p>
+  </div>
+  <div>
+    <p class="text-xs text-muted uppercase">Carbo</p>
+    <p class="text-2xl font-semibold">{{printf "%.0f" .Carbs}}<span class="text-sm font-normal text-muted">g</span></p>
+  </div>
+  <div>
+    <p class="text-xs text-muted uppercase">Grassi</p>
+    <p class="text-2xl font-semibold">{{printf "%.0f" .Fat}}<span class="text-sm font-normal text-muted">g</span></p>
+  </div>
+</div>
+{{end}}
+
 {{define "day_card_with_pill_oob"}}
-{{- /* Wrapper: card normale + pillola con OOB swap per aggiornare la timeline. */ -}}
-{{template "day_card" .}}
+{{- /* Wrapper per la risposta a mutation HTMX: card piena (target principale)
+       + pillola del giorno (OOB swap in #timeline-pills) + box totali settimanali
+       (OOB swap in #week-totals). View-model: dayMutationResponse. */ -}}
+{{template "day_card" .Card}}
 <button type="button"
-        id="pill-{{.DateStr}}"
-        data-day="{{.DateStr}}"
-        data-state="{{.State}}"
+        id="pill-{{.Card.DateStr}}"
+        data-day="{{.Card.DateStr}}"
+        data-state="{{.Card.State}}"
         data-in-focus="true"
-        hx-swap-oob="outerHTML:#pill-{{.DateStr}}"
+        hx-swap-oob="outerHTML:#pill-{{.Card.DateStr}}"
         class="relative shrink-0 px-3 py-2 rounded border text-left transition border-accent bg-accent-soft text-text">
-  {{if .Progress.AnyExceeds}}<span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger" title="Uno o più macro sforati"></span>{{end}}
-  <span class="block text-xs">{{.Day.Label}}{{if eq .State "today"}} · oggi{{end}}</span>
-  <span class="block text-sm font-medium">{{.Day.Date.Format "02/01"}}</span>
-  <span class="block text-xs">{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
+  {{if .Card.Progress.AnyExceeds}}<span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger" title="Uno o più macro sforati"></span>{{end}}
+  <span class="block text-xs">{{.Card.Day.Label}}{{if eq .Card.State "today"}} · oggi{{end}}</span>
+  <span class="block text-sm font-medium">{{.Card.Day.Date.Format "02/01"}}</span>
+  <span class="block text-xs">{{printf "%.0f" .Card.Day.DayTotal.Kcal}} kcal</span>
 </button>
+{{/* OOB: ricalcola e sostituisce il box "Macro settimana" in alto. */}}
+<div hx-swap-oob="outerHTML:#week-totals">
+  {{template "week_totals_card" .WeekTotal}}
+</div>
 {{end}}
