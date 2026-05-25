@@ -143,6 +143,74 @@ func TestForMealItemRecipe(t *testing.T) {
 	}
 }
 
+func TestForMealItemRecipeCustomized(t *testing.T) {
+	muesli := domain.Ingredient{KcalPer100: 480, ProteinPer100: 10, CarbsPer100: 60, FatPer100: 14, Unit: domain.UnitGram}
+	latte := domain.Ingredient{KcalPer100: 48, ProteinPer100: 3.5, CarbsPer100: 5, FatPer100: 1.6, Unit: domain.UnitMilliliter}
+	recipe := domain.Recipe{Servings: 1}
+	// Ricetta base: 100g muesli (480 kcal) + 300ml latte (144 kcal) = 624 kcal.
+	rItems := []domain.RecipeItemFull{
+		{RecipeItem: domain.RecipeItem{IngredientID: 1, Quantity: 100}, Ingredient: muesli},
+		{RecipeItem: domain.RecipeItem{IngredientID: 2, Quantity: 300}, Ingredient: latte},
+	}
+
+	// Senza variazioni: usa la ricetta base → 624 kcal.
+	itemNoCustom := domain.MealItemFull{
+		MealItem:    domain.MealItem{Quantity: 1},
+		Recipe:      &recipe,
+		RecipeItems: rItems,
+	}
+	got := ForMealItem(itemNoCustom)
+	if !almostEqual(got.Kcal, 624) {
+		t.Errorf("senza variazioni: got %.2f want 624", got.Kcal)
+	}
+
+	// Con variazioni 45g+300ml: usa customizations → 45*4.8 + 300*0.48 = 216+144 = 360 kcal.
+	custom45 := domain.MealItemFull{
+		MealItem:    domain.MealItem{Quantity: 1},
+		Recipe:      &recipe,
+		RecipeItems: rItems,
+		Customizations: []domain.MealItemCustomization{
+			{IngredientID: 1, Quantity: 45, Ingredient: &muesli},
+			{IngredientID: 2, Quantity: 300, Ingredient: &latte},
+		},
+	}
+	got45 := ForMealItem(custom45)
+	if !almostEqual(got45.Kcal, 360) {
+		t.Errorf("variazioni 45g+300ml: got %.2f want 360", got45.Kcal)
+	}
+	if almostEqual(got45.Kcal, got.Kcal) {
+		t.Errorf("variazione deve cambiare kcal rispetto alla ricetta base")
+	}
+
+	// Con variazioni 50g+250ml: 50*4.8 + 250*0.48 = 240+120 = 360 kcal (coincidenza matematica M=10L).
+	custom50 := domain.MealItemFull{
+		MealItem:    domain.MealItem{Quantity: 1},
+		Recipe:      &recipe,
+		RecipeItems: rItems,
+		Customizations: []domain.MealItemCustomization{
+			{IngredientID: 1, Quantity: 50, Ingredient: &muesli},
+			{IngredientID: 2, Quantity: 250, Ingredient: &latte},
+		},
+	}
+	got50 := ForMealItem(custom50)
+	if !almostEqual(got50.Kcal, 360) {
+		t.Errorf("variazioni 50g+250ml: got %.2f want 360", got50.Kcal)
+	}
+
+	// Cambiando le proteine si vede che i valori effettivamente cambiano.
+	// 45g muesli (10g prot/100g) + 300ml latte (3.5g/100ml) = 4.5 + 10.5 = 15g protein.
+	// 50g muesli + 250ml latte = 5 + 8.75 = 13.75g protein.
+	if !almostEqual(got45.Protein, 45*0.1+300*0.035) {
+		t.Errorf("proteine 45g+300ml: got %.4f want %.4f", got45.Protein, 45*0.1+300*0.035)
+	}
+	if !almostEqual(got50.Protein, 50*0.1+250*0.035) {
+		t.Errorf("proteine 50g+250ml: got %.4f want %.4f", got50.Protein, 50*0.1+250*0.035)
+	}
+	if almostEqual(got45.Protein, got50.Protein) {
+		t.Errorf("le proteine devono essere diverse per i due set di variazioni")
+	}
+}
+
 func TestForDayAndWeek(t *testing.T) {
 	pane := domain.Ingredient{KcalPer100: 240, ProteinPer100: 8, CarbsPer100: 44, FatPer100: 2}
 	makeMeal := func(name string, qty float64) domain.MealWithItems {
