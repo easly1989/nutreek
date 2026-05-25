@@ -33,16 +33,55 @@ type rawProduct struct {
 	Nutriments  map[string]json.RawMessage `json:"nutriments"`
 }
 
-// cgiSearchResponse e' la risposta di it.openfoodfacts.org/cgi/search.pl.
-// Usa lo stesso schema di rawProduct: brands come stringa CSV, nutriments identici.
-type cgiSearchResponse struct {
-	Products []rawProduct `json:"products"`
+// searchHit e' la forma JSON degli "hit" del nuovo endpoint
+// search.openfoodfacts.org/search (Search-a-licious). Differenze chiave
+// rispetto al legacy /cgi/search.pl (dismesso a inizio 2026, restituisce 503):
+//   - "brands" e' un array di stringhe, non un CSV
+//   - la root ha "hits" invece di "products"
+//   - i nutrienti hanno le stesse chiavi (energy-kcal_100g, proteins_100g, ...)
+type searchHit struct {
+	Code        string                     `json:"code"`
+	ProductName string                     `json:"product_name"`
+	Brands      []string                   `json:"brands"`
+	Quantity    string                     `json:"quantity"`
+	Nutriments  map[string]json.RawMessage `json:"nutriments"`
+}
+
+type searchResponse struct {
+	Hits      []searchHit `json:"hits"`
+	PageCount int         `json:"page_count"`
 }
 
 type productResponse struct {
 	Status  int        `json:"status"` // 1 ok, 0 not found
 	Code    string     `json:"code"`
 	Product rawProduct `json:"product"`
+}
+
+func (h searchHit) toProduct() Product {
+	brand := ""
+	if len(h.Brands) > 0 {
+		brand = trimSpace(h.Brands[0])
+	}
+	p := Product{
+		Code:     h.Code,
+		Name:     h.ProductName,
+		Brand:    brand,
+		Quantity: h.Quantity,
+	}
+	kcal, kOK := lookupNutrient(h.Nutriments, "energy-kcal_100g")
+	if !kOK {
+		if kj, ok := lookupNutrient(h.Nutriments, "energy_100g"); ok {
+			kcal = kj / 4.184
+			kOK = true
+		}
+	}
+	prot, pOK := lookupNutrient(h.Nutriments, "proteins_100g")
+	carbs, cOK := lookupNutrient(h.Nutriments, "carbohydrates_100g")
+	fat, fOK := lookupNutrient(h.Nutriments, "fat_100g")
+	p.Kcal, p.Protein, p.Carbs, p.Fat = kcal, prot, carbs, fat
+	p.HasFullNutrients = kOK && pOK && cOK && fOK
+	return p
 }
 
 func (r rawProduct) toProduct() Product {
