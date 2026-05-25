@@ -693,10 +693,9 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 
 	switch kind {
 	case "ingredient":
-		// Ricerca locale sempre sincrona e veloce; OFF caricato in modo
-		// asincrono via lazy placeholder HTMX quando off=1 e' presente.
-		includeOFF := includeOFFParam(r)
-		rows, warn, err := a.searchMixed(r.Context(), q, false)
+		// Search OFF e' ora locale via FTS5: una sola chiamata sincrona
+		// veloce (<50ms) restituisce locali + OFF unificati.
+		rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r))
 		if err != nil {
 			a.serverError(w, r, err)
 			return
@@ -706,14 +705,13 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			pkind = "meal_cheat"
 		}
 		data := ingredientsListData{
-			authPageData:  authPageData{CSRFToken: nosurf.Token(r)},
-			Rows:          rows,
-			Query:         q,
-			OFFWarning:    warn,
-			ShowOFFLoader: includeOFF && q != "",
-			PickerKind:    pkind,
-			MealID:        mealID,
-			WeekStart:     weekStartStr,
+			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+			Rows:         rows,
+			Query:        q,
+			OFFWarning:   warn,
+			PickerKind:   pkind,
+			MealID:       mealID,
+			WeekStart:    weekStartStr,
 		}
 		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 			a.serverError(w, r, err)

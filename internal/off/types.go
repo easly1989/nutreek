@@ -22,7 +22,8 @@ type Product struct {
 }
 
 // rawProduct riflette la forma JSON degli endpoint OFF "product"
-// (api/v2/product/{code}.json). I nutriments arrivano in una mappa
+// (api/v2/product/{code}.json) e di una riga del dump JSONL pubblico
+// (riusato da dumpProduct.toProduct). I nutriments arrivano in una mappa
 // free-form con chiavi tipo "energy-kcal_100g" che possono essere
 // number o stringa a seconda del prodotto. Lo parsiamo a mano in toProduct.
 type rawProduct struct {
@@ -31,12 +32,6 @@ type rawProduct struct {
 	Brands      string                     `json:"brands"`
 	Quantity    string                     `json:"quantity"`
 	Nutriments  map[string]json.RawMessage `json:"nutriments"`
-}
-
-// cgiSearchResponse e' la risposta di it.openfoodfacts.org/cgi/search.pl.
-// Usa lo stesso schema di rawProduct (brands come stringa CSV, nutriments identici).
-type cgiSearchResponse struct {
-	Products []rawProduct `json:"products"`
 }
 
 type productResponse struct {

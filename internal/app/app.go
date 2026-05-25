@@ -25,6 +25,7 @@ type App struct {
 	MealItemCustomizations *db.MealItemCustomizations
 	ShoppingLists *db.ShoppingLists
 	OFF           *off.Client
+	OFFSyncer     *off.Syncer
 	Reconciler    *off.Reconciler
 	Sessions      *scs.SessionManager
 	Render        *web.Renderer

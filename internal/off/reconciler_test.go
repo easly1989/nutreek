@@ -2,10 +2,7 @@ package off
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -13,49 +10,16 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// newReconcilerFixture monta un fake OFF + DB sqlite temporaneo + repo, e
-// ritorna il Reconciler pronto + handle al DB.
+// fixture monta DB sqlite temporaneo con off_products seedata + repo +
+// Reconciler. SearchByName ora interroga FTS5 locale, niente piu' mock HTTP.
 type fixture struct {
-	srv  *httptest.Server
 	store *db.Store
-	ings *db.Ingredients
-	rec  *Reconciler
+	ings  *db.Ingredients
+	rec   *Reconciler
 }
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		q := strings.ToLower(r.URL.Query().Get("search_terms"))
-		switch {
-		case strings.Contains(q, "grana"):
-			_, _ = w.Write([]byte(`{
-				"products": [{
-					"code": "8000000000017",
-					"product_name": "Grana Padano DOP",
-					"brands": "Consorzio Test",
-					"nutriments": {
-						"energy-kcal_100g": 384, "proteins_100g": 33,
-						"carbohydrates_100g": 0, "fat_100g": 28
-					}
-				}]
-			}`))
-		case strings.Contains(q, "pane"):
-			// Match con macro INCOMPLETE → deve essere scartato.
-			_, _ = w.Write([]byte(`{
-				"products": [{
-					"code": "BARCODE_PANE",
-					"product_name": "Pane integrale",
-					"brands": "",
-					"nutriments": { "proteins_100g": 8 }
-				}]
-			}`))
-		default:
-			_, _ = w.Write([]byte(`{"products": []}`))
-		}
-	}))
-	t.Cleanup(srv.Close)
-
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	store, err := db.Open(dbPath)
 	if err != nil {
@@ -65,17 +29,24 @@ func newFixture(t *testing.T) *fixture {
 	if err := store.Migrate(context.Background()); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
+
+	// Seed: prodotti OFF "locali" disponibili al reconciler via FTS5.
+	// - Grana Padano con macro completi → match per il local "Grana Padano locale".
+	// - Pane integrale con macro INCOMPLETI → reconciler lo scarta.
+	seedOFFProducts(t, store.DB, []Product{
+		{Code: "8000000000017", Name: "Grana Padano DOP", Brand: "Consorzio Test", Kcal: 384, Protein: 33, Carbs: 0, Fat: 28, HasFullNutrients: true},
+		{Code: "BARCODE_PANE", Name: "Pane integrale", Brand: "", Kcal: 0, Protein: 8, Carbs: 0, Fat: 0, HasFullNutrients: false},
+	})
+
 	ings := db.NewIngredients(store.DB)
-	client := NewClient(srv.URL, nil)
-	// Il server fittizio fa anche da search backend.
-	client.SearchBaseURL = srv.URL
+	client := NewClient(store.DB, "", nil)
 	rec := &Reconciler{
 		Ingredients: ings,
 		Client:      client,
 		MaxBatch:    20,
 		MinAge:      1 * time.Hour, // basso per il test
 	}
-	return &fixture{srv: srv, store: store, ings: ings, rec: rec}
+	return &fixture{store: store, ings: ings, rec: rec}
 }
 
 func TestReconcilerMatchAndNoMatch(t *testing.T) {
@@ -83,7 +54,7 @@ func TestReconcilerMatchAndNoMatch(t *testing.T) {
 	ctx := context.Background()
 
 	// 3 locals: "Grana" → match, "Banana" → no result OFF, "Pane" → result
-	// con macro incompleti (deve restare no-match), "Latte" → no result.
+	// con macro incompleti (deve restare no-match).
 	idGrana, _ := f.ings.CreateLocal(ctx, "Grana Padano locale", nil, domain.UnitGram, 380, 32, 0, 28, nil)
 	idBanana, _ := f.ings.CreateLocal(ctx, "Banana", nil, domain.UnitGram, 89, 1.1, 23, 0.3, nil)
 	idPane, _ := f.ings.CreateLocal(ctx, "Pane casereccio", nil, domain.UnitGram, 250, 8, 50, 1, nil)
