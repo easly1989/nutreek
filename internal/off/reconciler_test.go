@@ -38,8 +38,7 @@ func newFixture(t *testing.T) *fixture {
 						"energy-kcal_100g": 384, "proteins_100g": 33,
 						"carbohydrates_100g": 0, "fat_100g": 28
 					}
-				}],
-				"count": 1, "page": 1, "page_count": 1
+				}]
 			}`))
 		case strings.Contains(q, "pane"):
 			// Match con macro INCOMPLETE → deve essere scartato.
@@ -49,11 +48,10 @@ func newFixture(t *testing.T) *fixture {
 					"product_name": "Pane integrale",
 					"brands": "",
 					"nutriments": { "proteins_100g": 8 }
-				}],
-				"count": 1, "page": 1, "page_count": 1
+				}]
 			}`))
 		default:
-			_, _ = w.Write([]byte(`{"products": [], "count": 0, "page": 1, "page_count": 0}`))
+			_, _ = w.Write([]byte(`{"products": []}`))
 		}
 	}))
 	t.Cleanup(srv.Close)
