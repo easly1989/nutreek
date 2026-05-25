@@ -94,6 +94,7 @@ func (a *App) Router() http.Handler {
 		r.Post("/meals/{mealID}/delete", a.handleRemoveMeal)
 		r.Get("/meals/{mealID}/items/new", a.handleAddItemForm)
 		r.Get("/meals/{mealID}/picker", a.handleMealPicker)
+		r.Get("/meals/{mealID}/picker/off", a.handleMealPickerOFF)
 		r.Post("/meals/{mealID}/items", a.handleAddMealItem)
 		r.Post("/meals/{mealID}/items/reorder", a.handleReorderMealItems)
 		r.Post("/meal-items/{itemID}/delete", a.handleRemoveMealItem)

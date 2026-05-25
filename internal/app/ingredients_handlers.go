@@ -120,9 +120,10 @@ func (r ingredientRow) Importable() bool {
 
 type ingredientsListData struct {
 	authPageData
-	Rows       []ingredientRow
-	Query      string
-	OFFWarning string // riempito se la search OFF e' fallita
+	Rows         []ingredientRow
+	Query        string
+	OFFWarning   string // riempito se la search OFF e' fallita
+	ShowOFFLoader bool  // true = mostra placeholder lazy-load per risultati OFF asincroni
 
 	// Campi di context del picker. Quando il partial e' renderizzato in
 	// modalita' "picker" (es. dentro la pagina recipe-edit o nella card
@@ -483,3 +484,81 @@ var (
 type simpleErr string
 
 func (e simpleErr) Error() string { return string(e) }
+
+// offPickerTimeout e' il timeout per il fetch OFF asincrono nel picker.
+// Generoso per permettere i retry su 503: worst-case ~4s overhead piu'
+// fino a 12s di risposta = ~16s, con 20s abbiamo margine.
+const offPickerTimeout = 20 * time.Second
+
+// handleMealPickerOFF GET /meals/{mealID}/picker/off?q=...&start=...&as=cheat
+// Endpoint asincrono richiamato via HTMX hx-trigger="load" dal placeholder
+// lazy nel partial picker_results. Ritorna solo le righe OFF (senza locali)
+// che rimpiazzano il placeholder via hx-swap="outerHTML". Timeout lungo per
+// permettere i retry del CGI it.openfoodfacts.org.
+func (a *App) handleMealPickerOFF(w http.ResponseWriter, r *http.Request) {
+	mealID, err := parseID(r, "mealID")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q == "" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	weekStart := parseWeekStart(r)
+	weekStartStr := formatDate(weekStart)
+	asCheat := r.URL.Query().Get("as") == "cheat"
+
+	// Carica barcodes locali per deduplica: evita di mostrare OFF che
+	// l'utente ha gia' nel DB.
+	locals, err := a.Ingredients.SearchActive(r.Context(), q, 50)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	knownBarcodes := make(map[string]bool, len(locals))
+	for _, l := range locals {
+		if l.OFFBarcode != nil {
+			knownBarcodes[*l.OFFBarcode] = true
+		}
+	}
+
+	offCtx, offCancel := context.WithTimeout(r.Context(), offPickerTimeout)
+	defer offCancel()
+
+	products, err := a.OFF.SearchByName(offCtx, q)
+	if err != nil {
+		a.Logger.Warn("OFF picker search failed", "err", err, "q", q)
+		// Il placeholder scompare silenziosamente: i locali sono gia' visibili.
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	products = off.FilterByAllTerms(products, q)
+
+	pkind := "meal_item"
+	if asCheat {
+		pkind = "meal_cheat"
+	}
+
+	rows := make([]ingredientRow, 0, len(products))
+	for i := range products {
+		p := products[i]
+		if knownBarcodes[p.Code] {
+			continue
+		}
+		rows = append(rows, ingredientRow{OFF: &p})
+	}
+
+	data := ingredientsListData{
+		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+		Rows:         rows,
+		Query:        q,
+		PickerKind:   pkind,
+		MealID:       mealID,
+		WeekStart:    weekStartStr,
+	}
+	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_off_results", data); err != nil {
+		a.serverError(w, r, err)
+	}
+}
