@@ -1,0 +1,39 @@
+{{define "picker_off_results"}}
+{{/* Righe OFF-only che rimpiazzano il placeholder lazy #off-loader via
+     hx-swap="outerHTML". Se .Rows e' vuoto il placeholder scompare
+     silenziosamente (nessun elemento viene inserito). */}}
+{{range .Rows}}
+<li class="px-4 py-3 flex items-baseline justify-between gap-4">
+  <div class="min-w-0">
+    <p class="font-medium text-text truncate">
+      {{.Name}}{{with .Brand}} <span class="text-muted font-normal">— {{.}}</span>{{end}}
+    </p>
+    <p class="text-xs text-muted">
+      <span class="text-accent">{{.SourceLabel}}</span>
+      · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
+    </p>
+  </div>
+  {{if .Importable}}
+    {{if eq $.PickerKind "meal_item"}}
+      <form method="post" action="/meals/{{$.MealID}}/items?start={{$.WeekStart}}" class="shrink-0 flex items-center gap-2">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <input type="hidden" name="kind" value="ingredient">
+        <input type="hidden" name="barcode" value="{{.Barcode}}">
+        <input name="quantity" required inputmode="decimal" placeholder="g" class="w-20 rounded border border-border px-2 py-1 text-xs">
+        <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
+      </form>
+    {{else if eq $.PickerKind "meal_cheat"}}
+      <form method="post" action="/meals/{{$.MealID}}/cheat/items?start={{$.WeekStart}}" class="shrink-0 flex items-center gap-2">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <input type="hidden" name="kind" value="ingredient">
+        <input type="hidden" name="barcode" value="{{.Barcode}}">
+        <input name="quantity" required inputmode="decimal" placeholder="g" class="w-20 rounded border border-border px-2 py-1 text-xs">
+        <button class="text-xs bg-danger text-white rounded px-3 py-1 hover:bg-danger/90">Sgarro</button>
+      </form>
+    {{end}}
+  {{else}}
+    <span class="text-xs text-muted shrink-0">macro incompleti</span>
+  {{end}}
+</li>
+{{end}}
+{{end}}

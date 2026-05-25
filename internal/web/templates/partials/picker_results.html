@@ -4,11 +4,15 @@
      (display-only sulla pagina /ingredients), qui ogni riga ha un form
      "Aggiungi" che POSTa direttamente. Per gli OFF non importati,
      passiamo il barcode al posto di ingredient_id e il server fa
-     l'auto-import in modo idempotente. */}}
+     l'auto-import in modo idempotente.
+
+     ShowOFFLoader: quando true aggiunge un <li> placeholder alla fine
+     della lista che si auto-attiva via hx-trigger="load" per caricare
+     i risultati OFF in modo asincrono (non blocca la UI locale). */}}
 {{if .OFFWarning}}
   <div class="mb-3 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-xs">{{.OFFWarning}}</div>
 {{end}}
-{{if .Rows}}
+{{if or .Rows .ShowOFFLoader}}
   <ul class="divide-y divide-border rounded border border-border bg-surface">
     {{range .Rows}}
       <li class="px-4 py-3 flex items-baseline justify-between gap-4">
@@ -63,6 +67,18 @@
         {{else}}
           <span class="text-xs text-muted shrink-0">macro incompleti</span>
         {{end}}
+      </li>
+    {{end}}
+    {{if .ShowOFFLoader}}
+      <li id="off-loader"
+          hx-get="/meals/{{$.MealID}}/picker/off?start={{$.WeekStart}}{{if eq $.PickerKind "meal_cheat"}}&as=cheat{{end}}"
+          hx-trigger="load"
+          hx-swap="outerHTML"
+          hx-include="#picker-search">
+        <div class="px-4 py-2 text-xs text-muted flex items-center gap-2">
+          <span class="inline-block h-3 w-3 rounded-full border-2 border-muted border-t-transparent animate-spin" aria-hidden="true"></span>
+          Cerco su OpenFoodFacts…
+        </div>
       </li>
     {{end}}
   </ul>
