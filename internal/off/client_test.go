@@ -11,25 +11,31 @@ import (
 
 func TestClientSearchByName(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/search" {
+		if r.URL.Path != "/cgi/search.pl" {
 			t.Errorf("path inatteso: %s", r.URL.Path)
 		}
-		if got := r.URL.Query().Get("q"); got != "grana padano" {
-			t.Errorf("q = %q (la query va inviata as-is, senza operatori)", got)
+		if got := r.URL.Query().Get("search_terms"); got != "grana padano" {
+			t.Errorf("search_terms = %q (la query va inviata as-is)", got)
+		}
+		if got := r.URL.Query().Get("search_simple"); got != "1" {
+			t.Errorf("search_simple mancante: %q", got)
+		}
+		if got := r.URL.Query().Get("action"); got != "process" {
+			t.Errorf("action mancante: %q", got)
+		}
+		if got := r.URL.Query().Get("json"); got != "1" {
+			t.Errorf("json mancante: %q", got)
 		}
 		if !strings.Contains(r.Header.Get("User-Agent"), "Nutreek") {
 			t.Errorf("UA non impostato: %q", r.Header.Get("User-Agent"))
 		}
-		if got := r.URL.Query().Get("langs"); got != "it,en" {
-			t.Errorf("langs non impostato correttamente: %q", got)
-		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{
-			"hits": [
+			"products": [
 				{
 					"code": "8000000000017",
 					"product_name": "Grana Padano DOP",
-					"brands": ["Consorzio Tutela", "Generic"],
+					"brands": "Consorzio Tutela",
 					"quantity": "200 g",
 					"nutriments": {
 						"energy-kcal_100g": 384,
@@ -46,7 +52,7 @@ func TestClientSearchByName(t *testing.T) {
 				{
 					"code": "8000000000024",
 					"product_name": "Grana Locale",
-					"brands": ["Brand X"],
+					"brands": "Brand X",
 					"nutriments": {
 						"proteins_100g": "32.5",
 						"carbohydrates_100g": 0.5,
@@ -54,6 +60,7 @@ func TestClientSearchByName(t *testing.T) {
 					}
 				}
 			],
+			"count": 3,
 			"page": 1,
 			"page_count": 1
 		}`))

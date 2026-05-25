@@ -26,34 +26,34 @@ func newFixture(t *testing.T) *fixture {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		q := strings.ToLower(r.URL.Query().Get("q"))
+		q := strings.ToLower(r.URL.Query().Get("search_terms"))
 		switch {
 		case strings.Contains(q, "grana"):
 			_, _ = w.Write([]byte(`{
-				"hits": [{
+				"products": [{
 					"code": "8000000000017",
 					"product_name": "Grana Padano DOP",
-					"brands": ["Consorzio Test"],
+					"brands": "Consorzio Test",
 					"nutriments": {
 						"energy-kcal_100g": 384, "proteins_100g": 33,
 						"carbohydrates_100g": 0, "fat_100g": 28
 					}
 				}],
-				"page": 1, "page_count": 1
+				"count": 1, "page": 1, "page_count": 1
 			}`))
 		case strings.Contains(q, "pane"):
 			// Match con macro INCOMPLETE → deve essere scartato.
 			_, _ = w.Write([]byte(`{
-				"hits": [{
+				"products": [{
 					"code": "BARCODE_PANE",
 					"product_name": "Pane integrale",
-					"brands": [],
+					"brands": "",
 					"nutriments": { "proteins_100g": 8 }
 				}],
-				"page": 1, "page_count": 1
+				"count": 1, "page": 1, "page_count": 1
 			}`))
 		default:
-			_, _ = w.Write([]byte(`{"hits": [], "page": 1, "page_count": 0}`))
+			_, _ = w.Write([]byte(`{"products": [], "count": 0, "page": 1, "page_count": 0}`))
 		}
 	}))
 	t.Cleanup(srv.Close)
