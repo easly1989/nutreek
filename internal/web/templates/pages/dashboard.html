@@ -38,25 +38,8 @@
     </div>
   </div>
 
-  <!-- Macro settimana -->
-  <div class="mt-4 mb-6 rounded border border-border bg-surface p-4 grid grid-cols-4 gap-4 text-center">
-    <div>
-      <p class="text-xs text-muted uppercase">Kcal sett.</p>
-      <p class="text-2xl font-semibold">{{printf "%.0f" .WeekTotal.Kcal}}</p>
-    </div>
-    <div>
-      <p class="text-xs text-muted uppercase">Proteine</p>
-      <p class="text-2xl font-semibold">{{printf "%.0f" .WeekTotal.Protein}}<span class="text-sm font-normal text-muted">g</span></p>
-    </div>
-    <div>
-      <p class="text-xs text-muted uppercase">Carbo</p>
-      <p class="text-2xl font-semibold">{{printf "%.0f" .WeekTotal.Carbs}}<span class="text-sm font-normal text-muted">g</span></p>
-    </div>
-    <div>
-      <p class="text-xs text-muted uppercase">Grassi</p>
-      <p class="text-2xl font-semibold">{{printf "%.0f" .WeekTotal.Fat}}<span class="text-sm font-normal text-muted">g</span></p>
-    </div>
-  </div>
+  <!-- Macro settimana: id usato per OOB swap dopo mutazioni. -->
+  {{template "week_totals_card" .WeekTotal}}
 
   {{/* Setup settimana: il bottone "Copia da scorsa" e' ora iconcina inline
        accanto al titolo. Resta solo il box "Applica template" se ce ne sono. */}}
