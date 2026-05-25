@@ -21,8 +21,10 @@ import (
 const DefaultUserAgent = "Nutreek/0.1 (+https://github.com/amon2126/nutreek)"
 
 // DefaultTimeout e' il timeout per singola request HTTP verso OFF.
-// Volutamente corto: la UI deve degradare gracefully se OFF e' lento.
-const DefaultTimeout = 3 * time.Second
+// 8s per dare margine al CGI it.openfoodfacts.org (più lento di Search-a-licious
+// ma con copertura completa). offLiveTimeout nel layer app lo sovrascrive
+// per le chiamate live dalla UI.
+const DefaultTimeout = 8 * time.Second
 
 // DefaultSearchBaseURL e' l'host del CGI di ricerca OFF italiano.
 // it.openfoodfacts.org/cgi/search.pl cerca nel DB principale di OFF
