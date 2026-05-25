@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestClientSearchByName(t *testing.T) {
@@ -15,19 +16,20 @@ func TestClientSearchByName(t *testing.T) {
 			t.Errorf("path inatteso: %s", r.URL.Path)
 		}
 		if got := r.URL.Query().Get("search_terms"); got != "grana padano" {
-			t.Errorf("search_terms = %q (la query va inviata as-is)", got)
+			t.Errorf("search_terms = %q", got)
 		}
 		if got := r.URL.Query().Get("search_simple"); got != "1" {
-			t.Errorf("search_simple mancante: %q", got)
+			t.Errorf("search_simple = %q", got)
 		}
 		if got := r.URL.Query().Get("action"); got != "process" {
-			t.Errorf("action mancante: %q", got)
+			t.Errorf("action = %q", got)
 		}
 		if got := r.URL.Query().Get("json"); got != "1" {
-			t.Errorf("json mancante: %q", got)
+			t.Errorf("json = %q", got)
 		}
-		if !strings.Contains(r.Header.Get("User-Agent"), "Nutreek") {
-			t.Errorf("UA non impostato: %q", r.Header.Get("User-Agent"))
+		// Il CGI usa UA browser-like (searchBrowserUA), non il Nutreek UA.
+		if !strings.Contains(r.Header.Get("User-Agent"), "Mozilla") {
+			t.Errorf("UA non browser-like: %q", r.Header.Get("User-Agent"))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{
@@ -35,7 +37,7 @@ func TestClientSearchByName(t *testing.T) {
 				{
 					"code": "8000000000017",
 					"product_name": "Grana Padano DOP",
-					"brands": "Consorzio Tutela",
+					"brands": "Consorzio Tutela,Generic",
 					"quantity": "200 g",
 					"nutriments": {
 						"energy-kcal_100g": 384,
@@ -59,10 +61,7 @@ func TestClientSearchByName(t *testing.T) {
 						"fat_100g": 27
 					}
 				}
-			],
-			"count": 3,
-			"page": 1,
-			"page_count": 1
+			]
 		}`))
 	}))
 	t.Cleanup(srv.Close)
@@ -96,6 +95,41 @@ func TestClientSearchByName(t *testing.T) {
 	}
 	if second.Protein != 32.5 {
 		t.Errorf("protein da stringa non parsato: %v", second.Protein)
+	}
+}
+
+// TestClientSearchByNameRetry503 verifica che SearchByName ritenti fino a
+// searchMaxRetries volte su 503 prima di arrendersi, e che abbia successo
+// se il server risponde ok al terzo tentativo.
+func TestClientSearchByNameRetry503(t *testing.T) {
+	attempts := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts <= searchMaxRetries {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"products": [{"code": "1234", "product_name": "Prodotto Test", "brands": "Brand", "nutriments": {"energy-kcal_100g": 100, "proteins_100g": 5, "carbohydrates_100g": 10, "fat_100g": 2}}]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c := NewClient("http://product-host-not-used", nil)
+	c.SearchBaseURL = srv.URL
+	// Timeout generoso per permettere i retry (backoff di 1s + 2s).
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	got, err := c.SearchByName(ctx, "test")
+	if err != nil {
+		t.Fatalf("SearchByName con retry: %v", err)
+	}
+	if len(got) != 1 || got[0].Code != "1234" {
+		t.Errorf("risultato inatteso: %+v", got)
+	}
+	wantAttempts := searchMaxRetries + 1
+	if attempts != wantAttempts {
+		t.Errorf("tentativi: got %d want %d", attempts, wantAttempts)
 	}
 }
 

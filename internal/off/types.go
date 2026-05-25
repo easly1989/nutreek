@@ -34,7 +34,7 @@ type rawProduct struct {
 }
 
 // cgiSearchResponse e' la risposta di it.openfoodfacts.org/cgi/search.pl.
-// Usa lo stesso schema di rawProduct: brands come stringa CSV, nutriments identici.
+// Usa lo stesso schema di rawProduct (brands come stringa CSV, nutriments identici).
 type cgiSearchResponse struct {
 	Products []rawProduct `json:"products"`
 }
