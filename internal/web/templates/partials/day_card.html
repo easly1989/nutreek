@@ -183,7 +183,7 @@
                     {{end}}
                   </span>
                   <span class="flex items-baseline gap-2 shrink-0">
-                    <span class="text-muted {{if $hc}}line-through{{end}}">{{printf "%.0f" .Macros.Kcal}}</span>
+                    <span class="text-muted {{if $hc}}line-through{{end}}" title="P {{printf "%.1f" .Macros.Protein}}g · C {{printf "%.1f" .Macros.Carbs}}g · F {{printf "%.1f" .Macros.Fat}}g">{{printf "%.0f" .Macros.Kcal}} kcal</span>
                     {{if and .Item.Recipe (not $hc)}}
                       <button type="button"
                               hx-get="/meal-items/{{.Item.ID}}/customize?start={{$.WeekStart}}"
