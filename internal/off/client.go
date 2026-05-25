@@ -21,17 +21,13 @@ import (
 const DefaultUserAgent = "Nutreek/0.1 (+https://github.com/amon2126/nutreek)"
 
 // DefaultTimeout e' il timeout per singola request HTTP verso OFF.
-// 8s per dare margine al CGI it.openfoodfacts.org (più lento di Search-a-licious
-// ma con copertura completa). offLiveTimeout nel layer app lo sovrascrive
-// per le chiamate live dalla UI.
-const DefaultTimeout = 8 * time.Second
+// Volutamente corto: la UI deve degradare gracefully se OFF e' lento.
+const DefaultTimeout = 3 * time.Second
 
-// DefaultSearchBaseURL e' l'host del CGI di ricerca OFF italiano.
-// it.openfoodfacts.org/cgi/search.pl cerca nel DB principale di OFF
-// (stessa sorgente del sito web italiano), con copertura completa.
-// world.openfoodfacts.org/cgi/search.pl e' 503; search.openfoodfacts.org
-// (Search-a-licious) ha lacune di indicizzazione per alcuni prodotti italiani.
-const DefaultSearchBaseURL = "https://it.openfoodfacts.org"
+// DefaultSearchBaseURL e' l'host del nuovo servizio di ricerca testuale
+// OFF ("Search-a-licious"). Gli endpoint search legacy
+// (/cgi/search.pl e /api/v2/search) restano 503 in modo permanente.
+const DefaultSearchBaseURL = "https://search.openfoodfacts.org"
 
 // ErrNotFound e' restituito da GetByBarcode quando il prodotto non esiste su OFF.
 var ErrNotFound = errors.New("prodotto OFF non trovato")
@@ -43,10 +39,11 @@ var ErrIncompleteNutrients = errors.New("nutrienti incompleti su OFF")
 
 // Client e' un wrapper minimale sull'API OpenFoodFacts.
 //
-// OFF espone due servizi distinti:
-//   - BaseURL (world.openfoodfacts.org): product lookup per barcode.
-//   - SearchBaseURL (it.openfoodfacts.org): ricerca testuale via CGI,
-//     che usa il DB principale OFF con copertura completa.
+// OFF espone due servizi distinti su host separati:
+//   - BaseURL (es. world.openfoodfacts.org): product lookup per barcode.
+//   - SearchBaseURL (es. search.openfoodfacts.org): ricerca testuale
+//     "Search-a-licious", l'unico endpoint search ancora attivo dopo la
+//     dismissione del legacy /cgi/search.pl.
 type Client struct {
 	BaseURL       string
 	SearchBaseURL string
@@ -74,14 +71,18 @@ func NewClient(baseURL string, logger *slog.Logger) *Client {
 	}
 }
 
-// SearchByName chiama it.openfoodfacts.org/cgi/search.pl, che usa il DB
-// principale di OFF (stessa sorgente del sito web italiano). Search-a-licious
-// (search.openfoodfacts.org) aveva lacune di indicizzazione che escludevano
-// alcuni prodotti italiani presenti nel DB OFF; il CGI italiano non ha questo
-// problema. world.openfoodfacts.org/cgi/search.pl e' 503; it. e' up.
+// SearchByName chiama Search-a-licious su search.openfoodfacts.org.
 //
-// Il page_size e' aumentato (3×) perché FilterByAllTerms può scartare
-// risultati: serviamo abbastanza candidati al filtro per averne di buoni.
+// Invia la query as-is, senza operatori booleani: il parser di
+// Search-a-licious NON interpreta in modo affidabile né AND né il
+// prefisso '+' (osservato empiricamente: con "+muesli +croccante" il
+// servizio restituisce 0 hit perché tratta "+muesli" come token letterale).
+// La restrizione AND-tra-termini è applicata lato chiamante via
+// FilterByAllTerms — più robusta e indipendente dalla sintassi server.
+//
+// page_size è aumentato (3×) perché il filtro client-side può scartare
+// molti risultati: serviamo abbastanza candidati al filtro per averne
+// di buoni dopo.
 func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
@@ -98,25 +99,26 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 	}
 
 	v := url.Values{}
-	v.Set("search_terms", q)
-	v.Set("search_simple", "1")
-	v.Set("action", "process")
-	v.Set("json", "1")
+	v.Set("q", q)
 	v.Set("page_size", strconv.Itoa(pageSize))
 	v.Set("fields", "code,product_name,brands,quantity,nutriments")
-	endpoint := strings.TrimRight(base, "/") + "/cgi/search.pl?" + v.Encode()
+	// langs=it,en: cerca nei campi lingua-specifica italiano E inglese.
+	// Senza questo parametro il default è langs=en, che esclude i prodotti
+	// italiani indicizzati in product_name_it (es. prodotti Conad, Barilla).
+	v.Set("langs", "it,en")
+	endpoint := strings.TrimRight(base, "/") + "/search?" + v.Encode()
 
-	var resp cgiSearchResponse
+	var resp searchResponse
 	if err := c.do(ctx, endpoint, &resp); err != nil {
 		return nil, err
 	}
-	out := make([]Product, 0, len(resp.Products))
-	for _, p := range resp.Products {
-		prod := p.toProduct()
-		if prod.Code == "" || prod.Name == "" {
+	out := make([]Product, 0, len(resp.Hits))
+	for _, h := range resp.Hits {
+		p := h.toProduct()
+		if p.Code == "" || p.Name == "" {
 			continue
 		}
-		out = append(out, prod)
+		out = append(out, p)
 	}
 	return out, nil
 }

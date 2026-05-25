@@ -206,10 +206,11 @@ func includeOFFParam(r *http.Request) bool {
 	return v == "1" || v == "true"
 }
 
-// offLiveTimeout limita l'attesa di OFF durante la ricerca live.
-// Il CGI it.openfoodfacts.org/cgi/search.pl è più lento di Search-a-licious
-// ma ha copertura completa del DB OFF. 5s bilancia completezza e UX.
-const offLiveTimeout = 5000 * time.Millisecond
+// offLiveTimeout limita l'attesa di OFF durante la ricerca live. Tre
+// secondi erano troppi: il server teneva aperta la connessione HTTP per
+// tutto il timeout del client OFF. Con 1.5s si degrada rapidamente
+// mostrando solo i locali, senza bloccare la UI.
+const offLiveTimeout = 1500 * time.Millisecond
 
 // searchMixed esegue search locale e, se includeOFF==true e q != "",
 // integra i risultati OpenFoodFacts deduplicati per barcode.
