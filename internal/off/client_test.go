@@ -2,174 +2,133 @@ package off
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/amon2126/nutreek/internal/db"
 )
 
-func TestClientSearchByName(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/cgi/search.pl" {
-			t.Errorf("path inatteso: %s", r.URL.Path)
-		}
-		if got := r.URL.Query().Get("search_terms"); got != "grana padano" {
-			t.Errorf("search_terms = %q", got)
-		}
-		if got := r.URL.Query().Get("search_simple"); got != "1" {
-			t.Errorf("search_simple = %q", got)
-		}
-		if got := r.URL.Query().Get("action"); got != "process" {
-			t.Errorf("action = %q", got)
-		}
-		if got := r.URL.Query().Get("json"); got != "1" {
-			t.Errorf("json = %q", got)
-		}
-		// Il CGI usa UA browser-like (searchBrowserUA), non il Nutreek UA.
-		if !strings.Contains(r.Header.Get("User-Agent"), "Mozilla") {
-			t.Errorf("UA non browser-like: %q", r.Header.Get("User-Agent"))
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
-			"products": [
-				{
-					"code": "8000000000017",
-					"product_name": "Grana Padano DOP",
-					"brands": "Consorzio Tutela,Generic",
-					"quantity": "200 g",
-					"nutriments": {
-						"energy-kcal_100g": 384,
-						"proteins_100g": 33,
-						"carbohydrates_100g": 0,
-						"fat_100g": 28
-					}
-				},
-				{
-					"code": "",
-					"product_name": "skip me — codice vuoto",
-					"nutriments": {}
-				},
-				{
-					"code": "8000000000024",
-					"product_name": "Grana Locale",
-					"brands": "Brand X",
-					"nutriments": {
-						"proteins_100g": "32.5",
-						"carbohydrates_100g": 0.5,
-						"fat_100g": 27
-					}
-				}
-			]
-		}`))
-	}))
-	t.Cleanup(srv.Close)
-
-	c := NewClient("http://product-host-not-used", nil)
-	c.SearchBaseURL = srv.URL
-	got, err := c.SearchByName(context.Background(), "grana padano")
+// openTestDB monta un DB SQLite temporaneo con tutte le migrazioni applicate.
+// Usato da tutti i test che interrogano off_products / FTS5.
+func openTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	store, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
-		t.Fatalf("SearchByName: %v", err)
+		t.Fatalf("db.Open: %v", err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("attesi 2 prodotti (uno scartato per code vuoto), got %d", len(got))
+	t.Cleanup(func() { _ = store.Close() })
+	if err := store.Migrate(context.Background()); err != nil {
+		t.Fatalf("Migrate: %v", err)
 	}
-	first := got[0]
-	if first.Code != "8000000000017" || first.Name != "Grana Padano DOP" {
-		t.Errorf("first prodotto wrong: %+v", first)
-	}
-	if first.Brand != "Consorzio Tutela" {
-		t.Errorf("brand: vogliamo solo il primo del CSV, got %q", first.Brand)
-	}
-	if !first.HasFullNutrients {
-		t.Errorf("nutrienti dovrebbero essere completi")
-	}
-	if first.Kcal != 384 {
-		t.Errorf("kcal: %v", first.Kcal)
-	}
-	// Secondo: stringa "32.5" deve parsare; manca kcal -> incompleto.
-	second := got[1]
-	if second.HasFullNutrients {
-		t.Errorf("secondo prodotto manca kcal -> non dovrebbe essere completo")
-	}
-	if second.Protein != 32.5 {
-		t.Errorf("protein da stringa non parsato: %v", second.Protein)
+	return store.DB
+}
+
+// seedOFFProducts inserisce direttamente nella tabella off_products. I
+// trigger AFTER INSERT si occupano di popolare l'indice FTS5.
+func seedOFFProducts(t *testing.T, sqldb *sql.DB, products []Product) {
+	t.Helper()
+	for _, p := range products {
+		hasFull := 0
+		if p.HasFullNutrients {
+			hasFull = 1
+		}
+		_, err := sqldb.Exec(`
+			INSERT INTO off_products (
+				barcode, product_name, brands, quantity,
+				kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
+				has_full_nutrients, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+			p.Code, p.Name, p.Brand, p.Quantity,
+			p.Kcal, p.Protein, p.Carbs, p.Fat, hasFull)
+		if err != nil {
+			t.Fatalf("seed %s: %v", p.Code, err)
+		}
 	}
 }
 
-// TestClientSearchByNameRetry503 verifica che SearchByName ritenti fino a
-// searchMaxRetries volte su 503 prima di arrendersi, e che abbia successo
-// se il server risponde ok al terzo tentativo.
-func TestClientSearchByNameRetry503(t *testing.T) {
-	attempts := 0
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts++
-		if attempts <= searchMaxRetries {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"products": [{"code": "1234", "product_name": "Prodotto Test", "brands": "Brand", "nutriments": {"energy-kcal_100g": 100, "proteins_100g": 5, "carbohydrates_100g": 10, "fat_100g": 2}}]}`))
-	}))
-	t.Cleanup(srv.Close)
+func TestSearchByNameFTS5(t *testing.T) {
+	sqldb := openTestDB(t)
+	seedOFFProducts(t, sqldb, []Product{
+		{Code: "8000000000017", Name: "Grana Padano DOP", Brand: "Consorzio", Kcal: 384, Protein: 33, Carbs: 0, Fat: 28, HasFullNutrients: true},
+		{Code: "8000000000024", Name: "Parmigiano Reggiano", Brand: "Consorzio", Kcal: 392, Protein: 32, Carbs: 0, Fat: 30, HasFullNutrients: true},
+		{Code: "8000080002057", Name: "Barrette Hero Light al Cioccolato", Brand: "Hero", Kcal: 350, Protein: 7, Carbs: 60, Fat: 7, HasFullNutrients: true},
+		{Code: "8000000000048", Name: "Müesli croccante all'avena", Brand: "Conad", Kcal: 420, Protein: 10, Carbs: 65, Fat: 12, HasFullNutrients: true},
+		{Code: "9999999999999", Name: "Pasta integrale", Brand: "GenericoX", Kcal: 0, Protein: 0, Carbs: 0, Fat: 0, HasFullNutrients: false},
+	})
 
-	c := NewClient("http://product-host-not-used", nil)
-	c.SearchBaseURL = srv.URL
-	// Timeout generoso per permettere i retry (backoff di 1s + 2s).
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	c := NewClient(sqldb, "", nil)
 
-	got, err := c.SearchByName(ctx, "test")
-	if err != nil {
-		t.Fatalf("SearchByName con retry: %v", err)
+	cases := []struct {
+		name      string
+		query     string
+		wantCode  string // primo risultato atteso
+		wantCount int
+	}{
+		{"prefix match", "grana", "8000000000017", 1},
+		{"due token AND", "grana padano", "8000000000017", 1},
+		{"prefix sull'ultimo termine", "grana pad", "8000000000017", 1},
+		{"barcode-target Hero Light", "barrette hero light cioccolato", "8000080002057", 1},
+		{"diacritici - muesli trova Müesli", "muesli croccante avena", "8000000000048", 1},
+		{"apostrofo - all'avena tokenizza ok", "muesli all'avena", "8000000000048", 1},
+		{"no match", "nessuncibo", "", 0},
 	}
-	if len(got) != 1 || got[0].Code != "1234" {
-		t.Errorf("risultato inatteso: %+v", got)
-	}
-	wantAttempts := searchMaxRetries + 1
-	if attempts != wantAttempts {
-		t.Errorf("tentativi: got %d want %d", attempts, wantAttempts)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := c.SearchByName(context.Background(), tc.query)
+			if err != nil {
+				t.Fatalf("SearchByName: %v", err)
+			}
+			if len(got) != tc.wantCount {
+				t.Errorf("count: got %d want %d (results=%+v)", len(got), tc.wantCount, got)
+				return
+			}
+			if tc.wantCount > 0 && got[0].Code != tc.wantCode {
+				t.Errorf("first.Code: got %s want %s", got[0].Code, tc.wantCode)
+			}
+		})
 	}
 }
 
-func TestFilterByAllTerms(t *testing.T) {
-	products := []Product{
-		{Code: "1", Name: "Müesli croccante all'avena", Brand: "Conad"},
-		{Code: "2", Name: "Steel Cut Oats", Brand: "Avena"},
-		{Code: "3", Name: "Conad mix croccante", Brand: ""},
-		{Code: "4", Name: "Müesli ai frutti", Brand: ""},
+func TestSearchByNameEmpty(t *testing.T) {
+	sqldb := openTestDB(t)
+	c := NewClient(sqldb, "", nil)
+	got, err := c.SearchByName(context.Background(), "  ")
+	if err != nil {
+		t.Fatalf("SearchByName empty: %v", err)
 	}
-
-	// Query con umlaut — deve matchare tramite diacritics fold.
-	got := FilterByAllTerms(products, "müesli croccante avena conad")
-	if len(got) != 1 || got[0].Code != "1" {
-		t.Errorf("con umlaut: atteso [code=1], got %+v", got)
+	if got != nil {
+		t.Errorf("query vuota deve ritornare nil, got %+v", got)
 	}
+}
 
-	// Query SENZA umlaut (caso utente reale) — "muesli" deve trovare "Müesli".
-	got2 := FilterByAllTerms(products, "muesli croccante avena conad")
-	if len(got2) != 1 || got2[0].Code != "1" {
-		t.Errorf("senza umlaut: atteso [code=1], got %+v", got2)
+func TestSearchByNameNoDB(t *testing.T) {
+	c := NewClient(nil, "", nil)
+	_, err := c.SearchByName(context.Background(), "grana")
+	if err == nil {
+		t.Fatal("atteso errore con DB nil")
 	}
+}
 
-	// "avena" trova "all'avena" per substring.
-	got3 := FilterByAllTerms(products, "muesli avena")
-	if len(got3) != 1 || got3[0].Code != "1" {
-		t.Errorf("substring all'avena: atteso [code=1], got %+v", got3)
+func TestBuildFTSMatch(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"grana padano", `"grana"* "padano"*`},
+		{"grana pad", `"grana"* "pad"*`},
+		{"all'avena", `"all"* "avena"*`},
+		{`prodotto "speciale"`, `"prodotto"* "speciale"*`},
+		{"", ""},
+		{"   ", ""},
 	}
-
-	// Query con apostrofo: "all'avena" tokenizza in ["all","avena"],
-	// entrambi presenti per substring nel prodotto Conad.
-	got4 := FilterByAllTerms(products, "Müesli croccante all'avena")
-	if len(got4) != 1 || got4[0].Code != "1" {
-		t.Errorf("con apostrofo: atteso [code=1], got %+v", got4)
-	}
-
-	// Single-word query: nessun filtro applicato.
-	all := FilterByAllTerms(products, "avena")
-	if len(all) != len(products) {
-		t.Errorf("single-word non deve filtrare, got %d", len(all))
+	for _, tc := range cases {
+		if got := buildFTSMatch(tc.in); got != tc.want {
+			t.Errorf("buildFTSMatch(%q): got %q want %q", tc.in, got, tc.want)
+		}
 	}
 }
 
@@ -179,7 +138,6 @@ func TestClientGetByBarcode(t *testing.T) {
 			t.Errorf("path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		// energy_100g in kJ: il client dovrebbe convertire a kcal.
 		_, _ = w.Write([]byte(`{
 			"status": 1,
 			"code": "1234567890",
@@ -198,7 +156,7 @@ func TestClientGetByBarcode(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c := NewClient(srv.URL, nil)
+	c := NewClient(nil, srv.URL, nil)
 	p, err := c.GetByBarcode(context.Background(), "1234567890")
 	if err != nil {
 		t.Fatalf("GetByBarcode: %v", err)
@@ -222,23 +180,9 @@ func TestClientGetByBarcodeNotFound(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c := NewClient(srv.URL, nil)
+	c := NewClient(nil, srv.URL, nil)
 	_, err := c.GetByBarcode(context.Background(), "9999")
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("atteso ErrNotFound, got %v", err)
-	}
-}
-
-func TestClientHTTP500(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	}))
-	t.Cleanup(srv.Close)
-
-	c := NewClient("http://product-host-not-used", nil)
-	c.SearchBaseURL = srv.URL
-	_, err := c.SearchByName(context.Background(), "x")
-	if err == nil || !strings.Contains(err.Error(), "500") {
-		t.Fatalf("atteso errore con 500, got %v", err)
 	}
 }

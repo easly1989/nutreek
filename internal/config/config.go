@@ -25,7 +25,9 @@ type Config struct {
 	Env               Env
 	SessionKey        []byte
 	OFFBaseURL        string
-	OFFSearchBaseURL  string
+	OFFDumpURL        string
+	OFFSyncInterval   time.Duration
+	OFFSyncEnabled    bool
 	ReconcileInterval time.Duration
 	ReconcileEnabled  bool
 	AdminToken        string
@@ -49,12 +51,24 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("NUTREEK_RECONCILE_ENABLED: %w", err)
 	}
 
+	offSyncInterval, err := time.ParseDuration(getenv("NUTREEK_OFF_SYNC_INTERVAL", "168h"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_OFF_SYNC_INTERVAL: %w", err)
+	}
+
+	offSyncEnabled, err := strconv.ParseBool(getenv("NUTREEK_OFF_SYNC_ENABLED", "true"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_OFF_SYNC_ENABLED: %w", err)
+	}
+
 	cfg := &Config{
 		Addr:              getenv("NUTREEK_ADDR", ":8080"),
 		DBPath:            getenv("NUTREEK_DB_PATH", "./data/nutreek.db"),
 		Env:               env,
 		OFFBaseURL:        getenv("NUTREEK_OFF_BASE_URL", "https://world.openfoodfacts.org"),
-		OFFSearchBaseURL:  getenv("NUTREEK_OFF_SEARCH_BASE_URL", "https://it.openfoodfacts.org"),
+		OFFDumpURL:        getenv("NUTREEK_OFF_DUMP_URL", "https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz"),
+		OFFSyncInterval:   offSyncInterval,
+		OFFSyncEnabled:    offSyncEnabled,
 		ReconcileInterval: reconcileInterval,
 		ReconcileEnabled:  reconcileEnabled,
 		AdminToken:        os.Getenv("NUTREEK_ADMIN_TOKEN"),
