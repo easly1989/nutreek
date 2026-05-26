@@ -21,11 +21,16 @@
           </p>
           <p class="text-xs text-muted">
             <span class="{{if .IsOFF}}text-accent{{else}}text-muted{{end}}">{{.SourceLabel}}</span>
-            · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
+            {{if .HasFullNutrients}}
+              · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
+            {{else}}
+              · <span class="italic">macro recuperati all'aggiunta da OpenFoodFacts</span>
+            {{end}}
           </p>
         </div>
-        {{/* Form "Aggiungi": comparso solo se la riga e' utilizzabile.
-             Locali → sempre OK. OFF → solo se ha tutti i nutrienti. */}}
+        {{/* Form "Aggiungi": locali sempre OK; OFF tentano l'auto-import
+             via GetByBarcode (live API) — fallisce solo se anche l'API non
+             ha i macro, in quel caso l'utente vede l'errore inline. */}}
         {{if or (not .IsOFF) .Importable}}
           {{if eq $.PickerKind "recipe_item"}}
             <form method="post" action="/recipes/{{$.RecipeID}}/items" class="shrink-0 flex items-center gap-2">
