@@ -227,6 +227,27 @@ func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken
 	}
 }
 
+// reorderFocusCards porta la card "today" in prima posizione; le restanti
+// mantengono l'ordine Lun-Dom originale (skipping today). Le pillole nella
+// timeline rimangono sempre in ordine calendariale fisso.
+func reorderFocusCards(cards []dayCardData) []dayCardData {
+	idx := -1
+	for i, c := range cards {
+		if c.State == "today" {
+			idx = i
+			break
+		}
+	}
+	if idx <= 0 {
+		return cards // today già prima o assente
+	}
+	out := make([]dayCardData, 0, len(cards))
+	out = append(out, cards[idx])
+	out = append(out, cards[:idx]...)
+	out = append(out, cards[idx+1:]...)
+	return out
+}
+
 // buildDayCards costruisce le 7 dayCardData con InFocus default-driven dallo
 // stato calendariale: today + future = true, past = false. La timeline
 // renderizza tutte e 7 le pillole; #focus-grid solo quelle InFocus.
@@ -396,6 +417,7 @@ func (a *App) renderDashboard(
 			focusCards = append(focusCards, c)
 		}
 	}
+	focusCards = reorderFocusCards(focusCards)
 	weekTotal := macros.ForWeek(full.Days)
 
 	data := dashboardData{
