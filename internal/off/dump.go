@@ -263,8 +263,8 @@ func (s *Syncer) flushBatch(ctx context.Context, batch []Product, ts int64) erro
 		INSERT INTO off_products (
 			barcode, product_name, brands, quantity,
 			kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-			has_full_nutrients, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			has_full_nutrients, image_url, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(barcode) DO UPDATE SET
 			product_name = excluded.product_name,
 			brands = excluded.brands,
@@ -274,6 +274,7 @@ func (s *Syncer) flushBatch(ctx context.Context, batch []Product, ts int64) erro
 			carbs_per_100 = excluded.carbs_per_100,
 			fat_per_100 = excluded.fat_per_100,
 			has_full_nutrients = excluded.has_full_nutrients,
+			image_url = excluded.image_url,
 			updated_at = excluded.updated_at`)
 	if err != nil {
 		return fmt.Errorf("prepare insert: %w", err)
@@ -288,7 +289,7 @@ func (s *Syncer) flushBatch(ctx context.Context, batch []Product, ts int64) erro
 		if _, err := stmt.ExecContext(ctx,
 			p.Code, p.Name, p.Brand, p.Quantity,
 			p.Kcal, p.Protein, p.Carbs, p.Fat,
-			hasFull, ts,
+			hasFull, p.ImageURL, ts,
 		); err != nil {
 			return fmt.Errorf("insert %s: %w", p.Code, err)
 		}
@@ -299,12 +300,14 @@ func (s *Syncer) flushBatch(ctx context.Context, batch []Product, ts int64) erro
 // dumpProduct e' il subset di campi del dump OFF che ci interessa. Stesso
 // schema di rawProduct piu' countries_tags per il filtro paese.
 type dumpProduct struct {
-	Code          string                     `json:"code"`
-	ProductName   string                     `json:"product_name"`
-	Brands        string                     `json:"brands"`
-	Quantity      string                     `json:"quantity"`
-	CountriesTags []string                   `json:"countries_tags"`
-	Nutriments    map[string]json.RawMessage `json:"nutriments"`
+	Code               string                     `json:"code"`
+	ProductName        string                     `json:"product_name"`
+	Brands             string                     `json:"brands"`
+	Quantity           string                     `json:"quantity"`
+	CountriesTags      []string                   `json:"countries_tags"`
+	Nutriments         map[string]json.RawMessage `json:"nutriments"`
+	ImageFrontSmallURL string                     `json:"image_front_small_url"`
+	ImageURL           string                     `json:"image_url"`
 }
 
 // toProduct riusa la logica di rawProduct.toProduct() costruendo un
@@ -312,11 +315,13 @@ type dumpProduct struct {
 // e' identico sia per il dump sia per la response API live.
 func (d dumpProduct) toProduct() Product {
 	raw := rawProduct{
-		Code:        d.Code,
-		ProductName: d.ProductName,
-		Brands:      d.Brands,
-		Quantity:    d.Quantity,
-		Nutriments:  d.Nutriments,
+		Code:               d.Code,
+		ProductName:        d.ProductName,
+		Brands:             d.Brands,
+		Quantity:           d.Quantity,
+		Nutriments:         d.Nutriments,
+		ImageFrontSmallURL: d.ImageFrontSmallURL,
+		ImageURL:           d.ImageURL,
 	}
 	return raw.toProduct()
 }
