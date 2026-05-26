@@ -25,11 +25,11 @@ func TestMealItemCustomizationsPipeline(t *testing.T) {
 	uid, _ := users.Create(ctx, "test@ex.com", "h", "Test")
 
 	// Müesli: 480 kcal/100g, Latte: 48 kcal/100ml (ratio 10:1).
-	muesliID, err := ings.CreateLocal(ctx, "Müesli test", nil, domain.UnitGram, 480, 10, 60, 14, &uid)
+	muesliID, err := ings.CreateLocal(ctx, "Müesli test", nil, domain.UnitGram, 480, 10, 60, 14, &uid, nil)
 	if err != nil {
 		t.Fatalf("CreateLocal muesli: %v", err)
 	}
-	latteID, err := ings.CreateLocal(ctx, "Latte test", nil, domain.UnitMilliliter, 48, 3.5, 5, 1.6, &uid)
+	latteID, err := ings.CreateLocal(ctx, "Latte test", nil, domain.UnitMilliliter, 48, 3.5, 5, 1.6, &uid, nil)
 	if err != nil {
 		t.Fatalf("CreateLocal latte: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestMealItemCustomizationsPipeline(t *testing.T) {
 	monday, _ := time.Parse("2006-01-02", "2026-05-26")
 	plan, _ := plans.GetOrCreateForWeek(ctx, uid, monday)
 	mealID, _ := plans.AddMeal(ctx, plan.ID, uid, 0, "Colazione")
-	itemID, err := plans.AddItem(ctx, mealID, uid, &recID, nil, 1)
+	itemID, err := plans.AddItem(ctx, mealID, uid, &recID, nil, 1, "g")
 	if err != nil {
 		t.Fatalf("AddItem piano: %v", err)
 	}

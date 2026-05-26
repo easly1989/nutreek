@@ -11,7 +11,7 @@
          data-state="{{.State}}"
          class="bg-surface border rounded p-4 transition-all duration-200
                 {{if eq .State "today"}}border-accent ring-2 ring-accent/40{{else}}border-border{{end}}">
-  <header class="flex items-baseline justify-between mb-3 gap-2">
+  <header class="flex items-center justify-between mb-3 gap-2">
     <h2 class="font-medium text-text">
       {{.Day.Label}}
       <span class="text-xs text-muted font-normal">{{.Day.Date.Format "02/01"}}</span>
@@ -179,7 +179,11 @@
                       {{end}}
                     {{else if .Item.Ingredient}}
                       <span class="font-medium {{if not $hc}}text-text{{end}}">{{.Item.Ingredient.Name}}</span>
-                      <span>{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
+                      {{if and (eq .Item.QuantityUnit "pz") .Item.Ingredient.UnitWeightG}}
+                        <span>{{printf "%.0f" .Item.Quantity}} pz <span class="text-muted/70">({{printf "%.0f" .EffectiveGrams}}g)</span></span>
+                      {{else}}
+                        <span>{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
+                      {{end}}
                     {{end}}
                   </span>
                   <span class="flex items-baseline gap-2 shrink-0">
@@ -189,6 +193,8 @@
                               hx-get="/meal-items/{{.Item.ID}}/customize?start={{$.WeekStart}}"
                               hx-target="#modal-host" hx-swap="innerHTML"
                               class="text-muted hover:text-accent" title="Personalizza ingredienti">✎</button>
+                      <a href="/recipes/{{.Item.Recipe.ID}}/edit"
+                         class="text-muted hover:text-accent text-xs" title="Modifica ricetta">✏</a>
                     {{end}}
                     <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
                           hx-post="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"

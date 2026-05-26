@@ -82,6 +82,7 @@
   /* Smooth transition fra temi senza flash */
   html {
     transition: background-color 200ms ease, color 200ms ease;
+    scrollbar-gutter: stable;
   }
 }
 

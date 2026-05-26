@@ -72,7 +72,7 @@
   <!-- Lista focus: card piene impilate verticalmente, riordinabili via
        drag-and-drop client-side (ordine non persistito: e' solo l'ordine
        di visualizzazione nella sessione corrente). -->
-  <div id="focus-grid" class="flex flex-col gap-4" data-sortable="focus" data-sortable-handle="header">
+  <div id="focus-grid" class="flex flex-col gap-4" data-sortable="focus" data-sortable-handle="header" data-week-start="{{.WeekStartStr}}">
     {{range .FocusCards}}
       {{template "day_card" .}}
     {{end}}

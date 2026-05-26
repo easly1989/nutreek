@@ -86,6 +86,20 @@ type mealItemView struct {
 	// quantita' scalata = recipeItem.Quantity * (item.Quantity /
 	// recipe.Servings). Vuoto per gli item ingrediente puro.
 	ScaledRecipeItems []scaledIngredient
+	// EffectiveGrams: grammi/ml effettivi quando QuantityUnit=="pz"
+	// (quantity * UnitWeightG). Pre-calcolato perche' i template Go
+	// non possono moltiplicare due valori.
+	EffectiveGrams float64
+}
+
+// effectiveGramsFor restituisce i grammi/ml effettivi di un meal item:
+// quantity * unit_weight_g se QuantityUnit=="pz" e l'ingrediente ha un
+// peso per unita' noto, altrimenti la quantity grezza.
+func effectiveGramsFor(it domain.MealItemFull) float64 {
+	if it.QuantityUnit == "pz" && it.Ingredient != nil && it.Ingredient.UnitWeightG != nil {
+		return it.Quantity * (*it.Ingredient.UnitWeightG)
+	}
+	return it.Quantity
 }
 
 type newMealForm struct {
@@ -153,6 +167,7 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 					Item:              it,
 					Macros:            macroIt,
 					ScaledRecipeItems: scaleRecipeItems(it),
+					EffectiveGrams:    effectiveGramsFor(it),
 				})
 			}
 			// Cheat views popolati se ci sono sgarri.
@@ -162,6 +177,7 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 					Item:              ch,
 					Macros:            macroIt,
 					ScaledRecipeItems: scaleRecipeItems(ch),
+					EffectiveGrams:    effectiveGramsFor(ch),
 				})
 			}
 			// Totale effettivo: cheats sostituiscono items se presenti.
@@ -225,6 +241,27 @@ func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken
 		CSRFToken: csrfToken,
 		Progress:  progress,
 	}
+}
+
+// reorderFocusCards porta la card "today" in prima posizione; le restanti
+// mantengono l'ordine Lun-Dom originale (skipping today). Le pillole nella
+// timeline rimangono sempre in ordine calendariale fisso.
+func reorderFocusCards(cards []dayCardData) []dayCardData {
+	idx := -1
+	for i, c := range cards {
+		if c.State == "today" {
+			idx = i
+			break
+		}
+	}
+	if idx <= 0 {
+		return cards // today già prima o assente
+	}
+	out := make([]dayCardData, 0, len(cards))
+	out = append(out, cards[idx])
+	out = append(out, cards[:idx]...)
+	out = append(out, cards[idx+1:]...)
+	return out
 }
 
 // buildDayCards costruisce le 7 dayCardData con InFocus default-driven dallo
@@ -396,6 +433,7 @@ func (a *App) renderDashboard(
 			focusCards = append(focusCards, c)
 		}
 	}
+	focusCards = reorderFocusCards(focusCards)
 	weekTotal := macros.ForWeek(full.Days)
 
 	data := dashboardData{
@@ -659,7 +697,13 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, rPtr, iPtr, qty); err != nil {
+	// qty_unit: 'g', 'ml', o 'pz'; ignorato per le ricette.
+	qtyUnit := strings.TrimSpace(r.PostFormValue("qty_unit"))
+	if qtyUnit != "g" && qtyUnit != "ml" && qtyUnit != "pz" {
+		qtyUnit = "g"
+	}
+
+	if _, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, rPtr, iPtr, qty, qtyUnit); err != nil {
 		a.flashAndBack(w, r, weekStart, "Impossibile aggiungere la voce: "+err.Error())
 		return
 	}

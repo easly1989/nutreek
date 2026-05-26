@@ -2,7 +2,9 @@ package off
 
 import (
 	"encoding/json"
+	"regexp"
 	"strconv"
+	"strings"
 )
 
 // Product e' la rappresentazione "pulita" che esponiamo all'app: solo i
@@ -19,6 +21,12 @@ type Product struct {
 	// HasFullNutrients e' true sse tutti e 4 i macro sono presenti su OFF.
 	// Lo usiamo per decidere se permettere l'import o suggerire un local.
 	HasFullNutrients bool
+	// ImageURL e' la URL del thumbnail fronte prodotto (image_front_small_url
+	// di OFF). Puo' essere vuota per prodotti senza foto.
+	ImageURL string
+	// UnitWeightG e' il peso in grammi per singola unita', estratto da
+	// product_quantity (es. "150 g" → 150). nil se non parsabile.
+	UnitWeightG *float64
 }
 
 // rawProduct riflette la forma JSON degli endpoint OFF "product"
@@ -27,11 +35,13 @@ type Product struct {
 // free-form con chiavi tipo "energy-kcal_100g" che possono essere
 // number o stringa a seconda del prodotto. Lo parsiamo a mano in toProduct.
 type rawProduct struct {
-	Code        string                     `json:"code"`
-	ProductName string                     `json:"product_name"`
-	Brands      string                     `json:"brands"`
-	Quantity    string                     `json:"quantity"`
-	Nutriments  map[string]json.RawMessage `json:"nutriments"`
+	Code               string                     `json:"code"`
+	ProductName        string                     `json:"product_name"`
+	Brands             string                     `json:"brands"`
+	Quantity           string                     `json:"quantity"`
+	Nutriments         map[string]json.RawMessage `json:"nutriments"`
+	ImageFrontSmallURL string                     `json:"image_front_small_url"`
+	ImageURL           string                     `json:"image_url"`
 }
 
 type productResponse struct {
@@ -41,11 +51,17 @@ type productResponse struct {
 }
 
 func (r rawProduct) toProduct() Product {
+	imgURL := r.ImageFrontSmallURL
+	if imgURL == "" {
+		imgURL = r.ImageURL
+	}
 	p := Product{
-		Code:     r.Code,
-		Name:     r.ProductName,
-		Brand:    firstBrand(r.Brands),
-		Quantity: r.Quantity,
+		Code:        r.Code,
+		Name:        r.ProductName,
+		Brand:       firstBrand(r.Brands),
+		Quantity:    r.Quantity,
+		ImageURL:    imgURL,
+		UnitWeightG: ParseUnitWeightG(r.Quantity),
 	}
 	// Il dump JSONL usa chiavi bare ("proteins") mentre l'API usa "_100g"
 	// ("proteins_100g"). Proviamo entrambe per supportare le due sorgenti.
@@ -95,6 +111,31 @@ func lookupNutrient(m map[string]json.RawMessage, key string) (float64, bool) {
 		}
 	}
 	return 0, false
+}
+
+// reSingleGrams matcha stringhe tipo "150 g" o "200g" (singola quantità in grammi).
+var reSingleGrams = regexp.MustCompile(`(?i)^\s*(\d+(?:[.,]\d+)?)\s*g\s*$`)
+
+// reMultiGrams matcha "6 × 25 g" o "6x 30g" (N pezzi da M grammi ciascuno).
+var reMultiGrams = regexp.MustCompile(`(?i)^\s*\d+\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*g\s*$`)
+
+// ParseUnitWeightG prova a estrarre il peso per pezzo in grammi da product_quantity
+// di OFF (es. "150 g" → 150.0, "6 × 25 g" → 25.0). Ritorna nil se non parsabile.
+func ParseUnitWeightG(productQuantity string) *float64 {
+	q := strings.TrimSpace(productQuantity)
+	if q == "" {
+		return nil
+	}
+	for _, re := range []*regexp.Regexp{reMultiGrams, reSingleGrams} {
+		if m := re.FindStringSubmatch(q); m != nil {
+			s := strings.ReplaceAll(m[1], ",", ".")
+			v, err := strconv.ParseFloat(s, 64)
+			if err == nil && v > 0 {
+				return &v
+			}
+		}
+	}
+	return nil
 }
 
 func firstBrand(csv string) string {
