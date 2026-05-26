@@ -112,8 +112,24 @@ func (r ingredientRow) Barcode() string {
 	return ""
 }
 
-// Importable indica se la riga OFF puo' essere importata (nutrienti completi).
+// Importable indica se la riga OFF puo' essere proposta per l'import. Sempre
+// true per gli OFF risultanti dalla FTS locale: il dump esportato da OFF ha
+// nutrienti incompleti per quasi tutti i prodotti italiani (volontari che
+// inseriscono solo nome/barcode), ma l'import vero passa per GetByBarcode
+// sulla live API, che invece ha i dati aggiornati. La validazione finale
+// "ha macro completi?" avviene quindi nell'handler di import, non qui.
 func (r ingredientRow) Importable() bool {
+	return r.OFF != nil
+}
+
+// HasFullNutrients indica al template se mostrare i macro o un placeholder.
+// I locali hanno sempre macro completi (validati al create). Gli OFF derivati
+// dal dump spesso no (per i prodotti italiani il dump e' quasi sempre vuoto);
+// in quel caso il template mostra un hint invece dei valori 0/0/0/0 fuorvianti.
+func (r ingredientRow) HasFullNutrients() bool {
+	if r.Local != nil {
+		return true
+	}
 	return r.OFF != nil && r.OFF.HasFullNutrients
 }
 
@@ -361,7 +377,12 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if !product.HasFullNutrients {
-		http.Error(w, "Il prodotto OFF non ha tutti i macro: crea un ingrediente locale.", http.StatusUnprocessableEntity)
+		// Anche la live API non ha i 4 macro per questo barcode (dato di OFF
+		// genuinamente incompleto). Redirige con flash invece di errore raw:
+		// l'utente puo' creare un ingrediente locale manualmente.
+		a.Sessions.Put(r.Context(), "flash",
+			"OpenFoodFacts non ha i macro completi per questo prodotto. Creane uno locale.")
+		http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 		return
 	}
 
