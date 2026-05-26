@@ -111,6 +111,11 @@ func (a *App) Router() http.Handler {
 		r.Get("/profile", a.handleProfilePage)
 		r.Post("/profile", a.handleProfileSave)
 
+		// Owner-only: sync OFF manuale dal pannello profilo (vedi isOwner).
+		// Non in /admin/* perche' va via sessione, non X-Admin-Token.
+		r.Get("/profile/off-status", a.requireOwner(a.handleOwnerOFFStatus))
+		r.Post("/profile/off-sync", a.requireOwner(a.handleOwnerOFFRefresh))
+
 		r.Get("/shopping-list", a.handleShoppingList)
 		r.Post("/shopping-list/generate", a.handleShoppingGenerate)
 		r.Post("/shopping-list/items/{id}/toggle", a.handleShoppingToggle)
