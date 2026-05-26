@@ -16,13 +16,19 @@
             {{.Name}}{{with .Brand}} <span class="text-muted font-normal">— {{.}}</span>{{end}}
           </p>
           <p class="text-xs text-muted">
-            <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle {{if .HasFullNutrients}}bg-accent{{else}}bg-warn-fg{{end}}"></span>
+            {{if .HasFullNutrients}}
+              <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>
+            {{else if .IsOFF}}
+              <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent/40"></span>
+            {{else}}
+              <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>
+            {{end}}
             <span class="{{if .IsOFF}}text-accent{{else}}text-muted{{end}}">{{.SourceLabel}}</span>
             {{if .IsOFF}}<span class="text-muted/70"> · {{.Barcode}}</span>{{end}}
             {{if .HasFullNutrients}}
               · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
-            {{else}}
-              · <span class="italic">macro recuperati all'import da OpenFoodFacts</span>
+            {{else if not .IsOFF}}
+              · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
             {{end}}
           </p>
         </div>

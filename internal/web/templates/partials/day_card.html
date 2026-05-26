@@ -124,7 +124,7 @@
     <ul class="divide-y divide-border" data-sortable="meals" data-sort-url="/meals/reorder?day_of_week={{.Day.Index}}&start={{.WeekStart}}">
       {{range .Day.Meals}}
         <li class="py-2" data-id="{{.Meal.ID}}">
-          <div class="flex items-baseline justify-between gap-2 mb-1">
+          <div class="flex items-center justify-between gap-2 mb-1">
             <p class="text-sm font-medium {{if .HasCheats}}text-danger{{else}}text-text{{end}}">
               <span class="cursor-grab text-muted/60 select-none mr-1" aria-hidden="true">⠿</span>
               {{.Meal.Name}}
@@ -193,8 +193,6 @@
                               hx-get="/meal-items/{{.Item.ID}}/customize?start={{$.WeekStart}}"
                               hx-target="#modal-host" hx-swap="innerHTML"
                               class="text-muted hover:text-accent" title="Personalizza ingredienti">✎</button>
-                      <a href="/recipes/{{.Item.Recipe.ID}}/edit"
-                         class="text-muted hover:text-accent text-xs" title="Modifica ricetta">✏</a>
                     {{end}}
                     <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
                           hx-post="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"

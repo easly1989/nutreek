@@ -112,6 +112,7 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 			return nil, fmt.Errorf("fts scan: %w", err)
 		}
 		p.HasFullNutrients = hasFull == 1
+		p.UnitWeightG = ParseUnitWeightG(p.Quantity)
 		out = append(out, p)
 	}
 	if err := rows.Err(); err != nil {
