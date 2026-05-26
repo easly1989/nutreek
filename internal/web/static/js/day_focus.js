@@ -10,7 +10,7 @@
 //       fetch /days/{date} via HTMX -> il server ritorna la card +
 //       una pillola OOB (data-in-focus="true") che HTMX swappa al posto
 //       della pillola cliccata. Lo script appende la card a #focus-grid
-//       e la sposta nella sua ultima posizione conosciuta (se memorizzata).
+//       e la sposta nella sua posizione corretta (memoria o ordine logico).
 //   - Click su pillola data-in-focus="true":
 //       UI-only: rimuove la card corrispondente dal DOM e flippa la
 //       pillola a "false" senza chiamare il server. La posizione attuale
@@ -21,6 +21,8 @@
 // Persistenza:
 //   Lo stato (quali giorni sono in focus) viene salvato in localStorage
 //   con chiave "nutreek_focus_{weekStart}" e ripristinato al page load.
+//   Le card presenti in localStorage ma assenti dal DOM (es. giorni passati
+//   non in focus di default) vengono fetched automaticamente all'init.
 (function () {
   "use strict";
 
@@ -28,10 +30,8 @@
   // data del predecessore nel #focus-grid al momento della rimozione (o
   // null se la card era la prima). Quando la card viene riselezionata,
   // proviamo a riposizionarla subito DOPO il predecessore se ancora
-  // presente. Se non lo e' (es. anche lui rimosso), default = in fondo.
-  // La memoria viene "consumata" al ripristino (mappa Map -> delete) cosi'
-  // un secondo focus successivo a una posizione cambiata via DnD parte da
-  // quella nuova posizione.
+  // presente. Se non lo e' (es. anche lui rimosso), usiamo il posizionamento
+  // logico (oggi prima, poi lun-dom saltando oggi).
   var positionMemory = new Map();
 
   // ---- localStorage helpers ------------------------------------------------
@@ -73,6 +73,8 @@
     if (!Array.isArray(saved)) return;
     var set = new Set(saved);
     var grid = focusGridEl();
+
+    // Rimuovi card che non sono nel set salvato.
     if (grid) {
       grid.querySelectorAll("section[data-day]").forEach(function (s) {
         if (!set.has(s.dataset.day)) {
@@ -80,11 +82,120 @@
         }
       });
     }
+
+    // Aggiorna pillole.
     document
       .querySelectorAll("#timeline-pills button[data-day]")
       .forEach(function (pill) {
         setPillFocus(pill, set.has(pill.dataset.day));
       });
+
+    // Fetcha le card che sono nel set ma non nel DOM (es. giorni passati
+    // non renderizzati di default). HTMX le aggiunge in fondo a #focus-grid
+    // e onAfterSwap le riposiziona nell'ordine corretto.
+    if (typeof htmx === "undefined") return;
+    set.forEach(function (date) {
+      if (!grid) return;
+      var existing = grid.querySelector('section[data-day="' + date + '"]');
+      if (!existing) {
+        htmx.ajax("GET", "/days/" + date, {
+          target: "#focus-grid",
+          swap: "beforeend",
+        });
+      }
+    });
+  }
+
+  // ---- ordinamento logico --------------------------------------------------
+
+  // computeWeekOrder ritorna l'array di 7 date YYYY-MM-DD nell'ordine
+  // "oggi prima, poi lun-dom saltando oggi". Se oggi non appartiene alla
+  // settimana visualizzata, ritorna l'ordine lun-dom canonico.
+  function computeWeekOrder() {
+    var grid = focusGridEl();
+    if (!grid) return [];
+    var weekStart = grid.dataset.weekStart;
+    if (!weekStart) return [];
+
+    // Costruisce i 7 giorni della settimana in ordine lun-dom.
+    var week = [];
+    var base = new Date(weekStart + "T00:00:00");
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(base);
+      d.setDate(base.getDate() + i);
+      week.push(d.toISOString().slice(0, 10));
+    }
+
+    // Trova la data di "oggi" dalla card con data-state="today" (se presente).
+    var todaySection = grid.querySelector("section[data-state='today']");
+    // Oppure dalla pillola.
+    if (!todaySection) {
+      var todayPill = document.querySelector(
+        "#timeline-pills button[data-state='today']"
+      );
+      if (todayPill) {
+        var fakeTodayDate = todayPill.dataset.day;
+        var tidx = week.indexOf(fakeTodayDate);
+        if (tidx > 0) {
+          var ordered = [fakeTodayDate];
+          for (var j = 0; j < week.length; j++) {
+            if (week[j] !== fakeTodayDate) ordered.push(week[j]);
+          }
+          return ordered;
+        }
+      }
+      return week;
+    }
+
+    var todayDate = todaySection.dataset.day;
+    var todayIdx = week.indexOf(todayDate);
+    if (todayIdx <= 0) return week; // e' gia' lunedi' o non trovato
+
+    var result = [todayDate];
+    for (var k = 0; k < week.length; k++) {
+      if (week[k] !== todayDate) result.push(week[k]);
+    }
+    return result;
+  }
+
+  // placeCardInOrder inserisce `card` nella posizione corretta del
+  // focus-grid secondo l'ordinamento "oggi prima, poi lun-dom".
+  function placeCardInOrder(card) {
+    var grid = focusGridEl();
+    if (!grid) {
+      saveState();
+      return;
+    }
+    var date = card.dataset.day;
+    var order = computeWeekOrder();
+    var pos = order.indexOf(date);
+    if (pos < 0) {
+      saveState();
+      return; // data fuori settimana, lascia dove HTMX l'ha messa
+    }
+
+    // Trova la prima card gia' presente nel grid la cui posizione
+    // nell'ordine logico e' SUCCESSIVA a quella della card da inserire.
+    var existing = Array.from(
+      grid.querySelectorAll("section[data-day]")
+    ).filter(function (c) {
+      return c !== card;
+    });
+
+    var insertBefore = null;
+    for (var i = 0; i < existing.length; i++) {
+      var otherPos = order.indexOf(existing[i].dataset.day);
+      if (otherPos > pos) {
+        insertBefore = existing[i];
+        break;
+      }
+    }
+
+    if (insertBefore) {
+      grid.insertBefore(card, insertBefore);
+    }
+    // Se insertBefore e' null, la card e' gia' nell'ultima posizione corretta.
+    saveState();
   }
 
   // ---- focus helpers -------------------------------------------------------
@@ -92,9 +203,8 @@
   function setPillFocus(pill, inFocus) {
     pill.dataset.inFocus = inFocus ? "true" : "false";
     var state = pill.dataset.state;
-    // Riapplica le classi semantiche (mirror del template day_pill.html).
     pill.className =
-      "w-full px-2 py-2 rounded border text-center transition " +
+      "relative w-full px-2 py-2 rounded border text-center transition " +
       (inFocus
         ? "border-accent bg-accent-soft text-text"
         : state === "past"
@@ -105,7 +215,6 @@
   function removeCard(date) {
     var card = document.querySelector('section[data-day="' + date + '"]');
     if (!card) return;
-    // Memorizza la posizione (predecessore) prima di rimuovere.
     var prev = card.previousElementSibling;
     var prevDate = prev && prev.dataset ? prev.dataset.day || null : null;
     positionMemory.set(date, { prevDate: prevDate });
@@ -118,13 +227,15 @@
     if (!grid) return;
     var date = card.dataset.day;
     var memo = positionMemory.get(date);
+
     if (!memo) {
-      saveState();
-      return; // niente memoria -> resta dove HTMX l'ha messo (in fondo)
+      // Nessuna memoria di posizione → usa l'ordine logico (oggi prima).
+      placeCardInOrder(card);
+      return;
     }
+
     positionMemory.delete(date);
     if (memo.prevDate === null) {
-      // Era la prima card -> rimettila in cima.
       grid.insertBefore(card, grid.firstChild);
       saveState();
       return;
@@ -132,8 +243,11 @@
     var prev = grid.querySelector('section[data-day="' + memo.prevDate + '"]');
     if (prev && prev.parentElement === grid) {
       grid.insertBefore(card, prev.nextSibling);
+    } else {
+      // Predecessore non piu' in focus → posizionamento logico.
+      placeCardInOrder(card);
+      return;
     }
-    // else: predecessore non piu' in focus -> lascia in fondo (default).
     saveState();
   }
 
@@ -143,14 +257,12 @@
     var pill = evt.target.closest("[data-day]");
     if (!pill || pill.tagName !== "BUTTON") return;
     if (pill.dataset.inFocus === "true") {
-      // Rimuovi dal focus, UI-only.
       evt.preventDefault();
       evt.stopPropagation();
       removeCard(pill.dataset.day);
       setPillFocus(pill, false);
       return;
     }
-    // Non in focus -> richiede la card al server.
     evt.preventDefault();
     evt.stopPropagation();
     if (typeof htmx === "undefined") return;
@@ -171,9 +283,6 @@
   }
 
   function onAfterSwap(evt) {
-    // Quando il server ritorna una card-giorno (via /days/{date}) e
-    // HTMX la appende a #focus-grid, controlla se abbiamo memoria della
-    // sua posizione e ripristinala.
     var t = evt.detail && evt.detail.target;
     if (!t || t.id !== "focus-grid") return;
     var grid = t;
