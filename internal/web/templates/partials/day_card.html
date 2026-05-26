@@ -189,6 +189,8 @@
                               hx-get="/meal-items/{{.Item.ID}}/customize?start={{$.WeekStart}}"
                               hx-target="#modal-host" hx-swap="innerHTML"
                               class="text-muted hover:text-accent" title="Personalizza ingredienti">✎</button>
+                      <a href="/recipes/{{.Item.Recipe.ID}}/edit"
+                         class="text-muted hover:text-accent text-xs" title="Modifica ricetta">✏</a>
                     {{end}}
                     <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
                           hx-post="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
