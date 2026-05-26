@@ -179,7 +179,11 @@
                       {{end}}
                     {{else if .Item.Ingredient}}
                       <span class="font-medium {{if not $hc}}text-text{{end}}">{{.Item.Ingredient.Name}}</span>
-                      <span>{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
+                      {{if and (eq .Item.QuantityUnit "pz") .Item.Ingredient.UnitWeightG}}
+                        <span>{{printf "%.0f" .Item.Quantity}} pz <span class="text-muted/70">({{printf "%.0f" .EffectiveGrams}}g)</span></span>
+                      {{else}}
+                        <span>{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
+                      {{end}}
                     {{end}}
                   </span>
                   <span class="flex items-baseline gap-2 shrink-0">

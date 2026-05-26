@@ -335,6 +335,16 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		ingID = parsed
 	}
 
+	// I recipe_ingredients sono memorizzati in grammi/ml: se l'utente ha
+	// scelto "pz" nel picker, converti subito moltiplicando per il peso
+	// medio dell'unita' (UnitWeightG).
+	if strings.TrimSpace(r.PostFormValue("qty_unit")) == "pz" {
+		ing, gerr := a.Ingredients.GetByID(r.Context(), ingID)
+		if gerr == nil && ing.UnitWeightG != nil && *ing.UnitWeightG > 0 {
+			qty = qty * (*ing.UnitWeightG)
+		}
+	}
+
 	// Identity check: verifica che lo stato risultante non sia identico a
 	// un'altra ricetta dell'utente. Carica items correnti + simula l'aggiunta.
 	rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID)

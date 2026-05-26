@@ -55,9 +55,9 @@ func TestReconcilerMatchAndNoMatch(t *testing.T) {
 
 	// 3 locals: "Grana" → match, "Banana" → no result OFF, "Pane" → result
 	// con macro incompleti (deve restare no-match).
-	idGrana, _ := f.ings.CreateLocal(ctx, "Grana Padano locale", nil, domain.UnitGram, 380, 32, 0, 28, nil)
-	idBanana, _ := f.ings.CreateLocal(ctx, "Banana", nil, domain.UnitGram, 89, 1.1, 23, 0.3, nil)
-	idPane, _ := f.ings.CreateLocal(ctx, "Pane casereccio", nil, domain.UnitGram, 250, 8, 50, 1, nil)
+	idGrana, _ := f.ings.CreateLocal(ctx, "Grana Padano locale", nil, domain.UnitGram, 380, 32, 0, 28, nil, nil)
+	idBanana, _ := f.ings.CreateLocal(ctx, "Banana", nil, domain.UnitGram, 89, 1.1, 23, 0.3, nil, nil)
+	idPane, _ := f.ings.CreateLocal(ctx, "Pane casereccio", nil, domain.UnitGram, 250, 8, 50, 1, nil, nil)
 
 	stats, err := f.rec.RunOnce(ctx)
 	if err != nil {
@@ -121,8 +121,8 @@ func TestReconcilerIdempotentTwoLocalsSameOFF(t *testing.T) {
 
 	// Due locals con lo stesso nome → devono entrambi finire superseded
 	// allo stesso OFF (idempotente sul barcode).
-	id1, _ := f.ings.CreateLocal(ctx, "Grana Padano A", nil, domain.UnitGram, 380, 32, 0, 28, nil)
-	id2, _ := f.ings.CreateLocal(ctx, "Grana Padano B", nil, domain.UnitGram, 380, 32, 0, 28, nil)
+	id1, _ := f.ings.CreateLocal(ctx, "Grana Padano A", nil, domain.UnitGram, 380, 32, 0, 28, nil, nil)
+	id2, _ := f.ings.CreateLocal(ctx, "Grana Padano B", nil, domain.UnitGram, 380, 32, 0, 28, nil, nil)
 
 	stats, err := f.rec.RunOnce(ctx)
 	if err != nil {

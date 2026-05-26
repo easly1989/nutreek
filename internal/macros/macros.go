@@ -90,7 +90,11 @@ func PerServing(total Macros, servings int) Macros {
 //     reale, senza ulteriore scaling per porzioni).
 func ForMealItem(item domain.MealItemFull) Macros {
 	if item.Ingredient != nil {
-		return FromIngredient(*item.Ingredient, item.Quantity)
+		grams := item.Quantity
+		if item.QuantityUnit == "pz" && item.Ingredient.UnitWeightG != nil {
+			grams = item.Quantity * *item.Ingredient.UnitWeightG
+		}
+		return FromIngredient(*item.Ingredient, grams)
 	}
 	if item.Recipe != nil {
 		if len(item.Customizations) > 0 {

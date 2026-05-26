@@ -291,7 +291,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 	// 2. Copia i meal_items per ogni meal sorgente.
 	if len(meals) > 0 {
 		insItem, err := tx.PrepareContext(ctx,
-			`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, sort_order) VALUES (?, ?, ?, ?, ?)`)
+			`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`)
 		if err != nil {
 			return fmt.Errorf("prepare insert item: %w", err)
 		}
@@ -303,24 +303,25 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 		}
 		ph := strings.Repeat("?,", len(srcIDs)-1) + "?"
 		itemRows, err := tx.QueryContext(ctx,
-			`SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order
+			`SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order, quantity_unit
 			 FROM meal_items WHERE meal_id IN (`+ph+`)
 			 ORDER BY meal_id, sort_order, id`, srcIDs...)
 		if err != nil {
 			return fmt.Errorf("load src items: %w", err)
 		}
 		type srcItem struct {
-			ID        int64
-			MealID    int64
-			RecipeID  *int64
-			IngID     *int64
-			Quantity  float64
-			SortOrder int
+			ID           int64
+			MealID       int64
+			RecipeID     *int64
+			IngID        *int64
+			Quantity     float64
+			SortOrder    int
+			QuantityUnit string
 		}
 		var items []srcItem
 		for itemRows.Next() {
 			var it srcItem
-			if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngID, &it.Quantity, &it.SortOrder); err != nil {
+			if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngID, &it.Quantity, &it.SortOrder, &it.QuantityUnit); err != nil {
 				itemRows.Close()
 				return fmt.Errorf("scan src item: %w", err)
 			}
@@ -337,7 +338,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 			if !ok {
 				continue
 			}
-			res, err := insItem.ExecContext(ctx, dstMealID, srcIt.RecipeID, srcIt.IngID, srcIt.Quantity, srcIt.SortOrder)
+			res, err := insItem.ExecContext(ctx, dstMealID, srcIt.RecipeID, srcIt.IngID, srcIt.Quantity, srcIt.QuantityUnit, srcIt.SortOrder)
 			if err != nil {
 				return fmt.Errorf("insert dst item: %w", err)
 			}
@@ -469,11 +470,13 @@ func (r *WeeklyPlans) RemoveMeal(ctx context.Context, mealID, userID int64) erro
 
 // AddItem aggiunge una voce a un pasto. Esattamente uno fra recipeID e
 // ingredientID dev'essere != 0 (= nil pointer). Quantity > 0.
+// quantityUnit: 'g', 'ml', o 'pz' (ignorato per le ricette, usa sempre porzioni).
 func (r *WeeklyPlans) AddItem(
 	ctx context.Context,
 	mealID, userID int64,
 	recipeID, ingredientID *int64,
 	quantity float64,
+	quantityUnit string,
 ) (int64, error) {
 	// Verifica che il pasto appartenga a un piano dell'utente.
 	var planUser int64
@@ -504,9 +507,13 @@ func (r *WeeklyPlans) AddItem(
 	).Scan(&nextOrder); err != nil {
 		return 0, fmt.Errorf("compute item sort_order: %w", err)
 	}
+	unit := quantityUnit
+	if unit == "" || recipeID != nil {
+		unit = "g" // ricette usano sempre porzioni (non pz), default g per ingredienti
+	}
 	res, err := r.db.ExecContext(ctx,
-		`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, sort_order) VALUES (?, ?, ?, ?, ?)`,
-		mealID, recipeID, ingredientID, quantity, nextOrder,
+		`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
+		mealID, recipeID, ingredientID, quantity, unit, nextOrder,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("insert meal_item: %w", err)
@@ -576,7 +583,7 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		args[i] = id
 	}
 	itemRows, err := r.db.QueryContext(ctx, `
-		SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order
+		SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order, quantity_unit
 		FROM meal_items WHERE meal_id IN (`+placeholders+`)
 		ORDER BY meal_id, sort_order, id
 	`, args...)
@@ -587,7 +594,7 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	var recipeIDs, ingredientIDs []int64
 	for itemRows.Next() {
 		var it domain.MealItem
-		if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder); err != nil {
+		if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder, &it.QuantityUnit); err != nil {
 			itemRows.Close()
 			return nil, fmt.Errorf("scan item: %w", err)
 		}
