@@ -64,6 +64,15 @@ func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// I cheat sono memorizzati sempre in grammi/ml: se l'utente sceglie "pz"
+	// nel picker, converti subito moltiplicando per il peso medio dell'unita'.
+	if iPtr != nil && strings.TrimSpace(r.PostFormValue("qty_unit")) == "pz" {
+		ing, gerr := a.Ingredients.GetByID(r.Context(), *iPtr)
+		if gerr == nil && ing.UnitWeightG != nil && *ing.UnitWeightG > 0 {
+			qty = qty * (*ing.UnitWeightG)
+		}
+	}
+
 	if _, err := a.WeeklyPlans.AddCheat(r.Context(), mealID, user.ID, rPtr, iPtr, qty); err != nil {
 		a.flashAndBack(w, r, weekStart, "Impossibile aggiungere lo sgarro: "+err.Error())
 		return

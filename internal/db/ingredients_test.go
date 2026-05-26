@@ -21,7 +21,7 @@ func TestIngredientsCreateAndGet(t *testing.T) {
 	}
 
 	brand := "Molino X"
-	id, err := ings.CreateLocal(ctx, "Farina di ceci", &brand, domain.UnitGram, 380, 22, 50, 6, &uid)
+	id, err := ings.CreateLocal(ctx, "Farina di ceci", &brand, domain.UnitGram, 380, 22, 50, 6, &uid, nil)
 	if err != nil {
 		t.Fatalf("CreateLocal: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestIngredientsSearchAndList(t *testing.T) {
 	ctx := context.Background()
 
 	mk := func(name string) int64 {
-		id, err := ings.CreateLocal(ctx, name, nil, domain.UnitGram, 100, 5, 20, 1, nil)
+		id, err := ings.CreateLocal(ctx, name, nil, domain.UnitGram, 100, 5, 20, 1, nil, nil)
 		if err != nil {
 			t.Fatalf("CreateLocal %q: %v", name, err)
 		}
@@ -118,7 +118,7 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	ctx := context.Background()
 
 	brand := "Consorzio"
-	id, err := ings.CreateOFF(ctx, "8000000000017", "Grana Padano", &brand, domain.UnitGram, 384, 33, 0, 28)
+	id, err := ings.CreateOFF(ctx, "8000000000017", "Grana Padano", &brand, domain.UnitGram, 384, 33, 0, 28, nil)
 	if err != nil {
 		t.Fatalf("CreateOFF: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	}
 
 	// Duplicate barcode -> ErrBarcodeAlreadyUsed
-	_, err = ings.CreateOFF(ctx, "8000000000017", "Altro", nil, domain.UnitGram, 1, 1, 1, 1)
+	_, err = ings.CreateOFF(ctx, "8000000000017", "Altro", nil, domain.UnitGram, 1, 1, 1, 1, nil)
 	if !errors.Is(err, ErrBarcodeAlreadyUsed) {
 		t.Fatalf("atteso ErrBarcodeAlreadyUsed, got %v", err)
 	}
@@ -155,11 +155,11 @@ func TestIngredientsReconcileHelpers(t *testing.T) {
 	ctx := context.Background()
 
 	// 3 locals: A, B, C. Tutti senza last_verified_at.
-	idA, _ := ings.CreateLocal(ctx, "A", nil, "g", 100, 5, 10, 1, nil)
-	idB, _ := ings.CreateLocal(ctx, "B", nil, "g", 100, 5, 10, 1, nil)
-	idC, _ := ings.CreateLocal(ctx, "C", nil, "g", 100, 5, 10, 1, nil)
+	idA, _ := ings.CreateLocal(ctx, "A", nil, "g", 100, 5, 10, 1, nil, nil)
+	idB, _ := ings.CreateLocal(ctx, "B", nil, "g", 100, 5, 10, 1, nil, nil)
+	idC, _ := ings.CreateLocal(ctx, "C", nil, "g", 100, 5, 10, 1, nil, nil)
 	// Un OFF (non deve apparire fra i candidati).
-	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1)
+	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
