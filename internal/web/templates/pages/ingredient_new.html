@@ -52,6 +52,19 @@
       </div>
     </fieldset>
 
+    <div>
+      <label class="block text-sm font-medium text-text mb-1" for="f-unit-weight">
+        Peso per unita' <span class="text-muted font-normal">(opzionale, g)</span>
+      </label>
+      <input id="f-unit-weight" name="unit_weight_g" inputmode="decimal"
+             value="{{.Form.UnitWeightG}}"
+             placeholder="es. 150 per una banana da 150g"
+             class="w-full rounded border border-border px-3 py-2">
+      <p class="text-xs text-muted mt-1">
+        Se valorizzato, potrai inserire la quantita' in <em>pezzi</em> (es. "1 banana") invece che in grammi.
+      </p>
+    </div>
+
     <div class="flex items-center justify-between pt-2">
       <a href="/ingredients" class="text-sm text-muted hover:underline">Annulla</a>
       <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Salva</button>

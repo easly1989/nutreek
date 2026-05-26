@@ -133,6 +133,28 @@ func (r ingredientRow) HasFullNutrients() bool {
 	return r.OFF != nil && r.OFF.HasFullNutrients
 }
 
+// ImageURL espone la URL del thumbnail OFF (vuota per ingredienti locali o
+// per OFF senza foto nel dump). Il template mostra l'img solo se non vuota.
+func (r ingredientRow) ImageURL() string {
+	if r.OFF != nil {
+		return r.OFF.ImageURL
+	}
+	return ""
+}
+
+// UnitWeightG espone il peso medio per unita' se disponibile (parsing OFF o
+// override manuale). Restituisce 0 se non noto: il template usa questo per
+// decidere se mostrare il selettore g/pz nel picker.
+func (r ingredientRow) UnitWeightG() float64 {
+	if r.Local != nil && r.Local.UnitWeightG != nil {
+		return *r.Local.UnitWeightG
+	}
+	if r.OFF != nil && r.OFF.UnitWeightG != nil {
+		return *r.OFF.UnitWeightG
+	}
+	return 0
+}
+
 type ingredientsListData struct {
 	authPageData
 	Rows       []ingredientRow
@@ -159,13 +181,14 @@ type ingredientsNewData struct {
 // ingredientForm cattura i campi del form "nuovo ingrediente" per poter
 // rifare il render in caso di errore senza perdere i valori inseriti.
 type ingredientForm struct {
-	Name    string
-	Brand   string
-	Unit    string
-	Kcal    string
-	Protein string
-	Carbs   string
-	Fat     string
+	Name        string
+	Brand       string
+	Unit        string
+	Kcal        string
+	Protein     string
+	Carbs       string
+	Fat         string
+	UnitWeightG string // opzionale: peso per unita' in g (es. "150")
 }
 
 // ---- handlers --------------------------------------------------------------
@@ -282,13 +305,14 @@ func (a *App) handleIngredientNewForm(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 	form := ingredientForm{
-		Name:    strings.TrimSpace(r.PostFormValue("name")),
-		Brand:   strings.TrimSpace(r.PostFormValue("brand")),
-		Unit:    strings.TrimSpace(r.PostFormValue("unit")),
-		Kcal:    strings.TrimSpace(r.PostFormValue("kcal")),
-		Protein: strings.TrimSpace(r.PostFormValue("protein")),
-		Carbs:   strings.TrimSpace(r.PostFormValue("carbs")),
-		Fat:     strings.TrimSpace(r.PostFormValue("fat")),
+		Name:        strings.TrimSpace(r.PostFormValue("name")),
+		Brand:       strings.TrimSpace(r.PostFormValue("brand")),
+		Unit:        strings.TrimSpace(r.PostFormValue("unit")),
+		Kcal:        strings.TrimSpace(r.PostFormValue("kcal")),
+		Protein:     strings.TrimSpace(r.PostFormValue("protein")),
+		Carbs:       strings.TrimSpace(r.PostFormValue("carbs")),
+		Fat:         strings.TrimSpace(r.PostFormValue("fat")),
+		UnitWeightG: strings.TrimSpace(r.PostFormValue("unit_weight_g")),
 	}
 
 	if form.Name == "" {
@@ -337,7 +361,15 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		creatorID = &id
 	}
 
-	if _, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, creatorID); err != nil {
+	// unit_weight_g opzionale: peso per unità (es. 150 per una banana da 150g).
+	var unitWeightG *float64
+	if s := strings.TrimSpace(r.PostFormValue("unit_weight_g")); s != "" {
+		if v, err2 := parseNonNegFloat(s); err2 == nil && v > 0 {
+			unitWeightG = &v
+		}
+	}
+
+	if _, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, creatorID, unitWeightG); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -393,8 +425,9 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 	if _, err := a.Ingredients.CreateOFF(
 		r.Context(),
 		product.Code, product.Name, brandPtr,
-		domain.UnitGram, // OFF e' sempre per 100g (per liquidi spesso aggiungono 100ml in ratio fra loro, lasciamo g per MVP)
+		domain.UnitGram,
 		product.Kcal, product.Protein, product.Carbs, product.Fat,
+		product.UnitWeightG,
 	); err != nil && !errors.Is(err, db.ErrBarcodeAlreadyUsed) {
 		a.serverError(w, r, err)
 		return
@@ -440,6 +473,7 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 		product.Code, product.Name, brandPtr,
 		domain.UnitGram,
 		product.Kcal, product.Protein, product.Carbs, product.Fat,
+		product.UnitWeightG,
 	)
 	if err == nil {
 		return id, nil

@@ -38,4 +38,7 @@ type Ingredient struct {
 	CreatedAt      time.Time
 	LastVerifiedAt *time.Time
 	SupersededBy   *int64
+	// UnitWeightG e' il peso in grammi di una singola unita' (es. 150 per una
+	// banana da 150g). NULL = ingrediente senza supporto "pezzi".
+	UnitWeightG *float64
 }

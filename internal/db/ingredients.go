@@ -28,7 +28,7 @@ func NewIngredients(db *sql.DB) *Ingredients {
 }
 
 // CreateLocal inserisce un nuovo ingrediente con source='local'. brand/createdBy
-// possono essere nil. Ritorna l'id assegnato dal DB.
+// e unitWeightG possono essere nil. Ritorna l'id assegnato dal DB.
 func (r *Ingredients) CreateLocal(
 	ctx context.Context,
 	name string,
@@ -36,14 +36,15 @@ func (r *Ingredients) CreateLocal(
 	unit domain.IngredientUnit,
 	kcal, protein, carbs, fat float64,
 	createdBy *int64,
+	unitWeightG *float64,
 ) (int64, error) {
 	res, err := r.db.ExecContext(ctx, `
 		INSERT INTO ingredients (
 			source, name, brand, unit,
 			kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-			created_by
-		) VALUES ('local', ?, ?, ?, ?, ?, ?, ?, ?)
-	`, strings.TrimSpace(name), brand, string(unit), kcal, protein, carbs, fat, createdBy)
+			created_by, unit_weight_g
+		) VALUES ('local', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, strings.TrimSpace(name), brand, string(unit), kcal, protein, carbs, fat, createdBy, unitWeightG)
 	if err != nil {
 		return 0, fmt.Errorf("insert ingredient: %w", err)
 	}
@@ -78,16 +79,17 @@ func (r *Ingredients) CreateOFF(
 	brand *string,
 	unit domain.IngredientUnit,
 	kcal, protein, carbs, fat float64,
+	unitWeightG *float64,
 ) (int64, error) {
 	res, err := r.db.ExecContext(ctx, `
 		INSERT INTO ingredients (
 			source, off_barcode, name, brand, unit,
 			kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-			last_verified_at
-		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+			unit_weight_g, last_verified_at
+		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 	`,
 		strings.TrimSpace(barcode), strings.TrimSpace(name), brand, string(unit),
-		kcal, protein, carbs, fat,
+		kcal, protein, carbs, fat, unitWeightG,
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -103,7 +105,7 @@ func (r *Ingredients) CreateOFF(
 }
 
 // SearchActive cerca ingredienti non superseded che hanno q come substring
-// nel nome (case-insensitive). Limit hard-coded a 20 per HTMX search-as-you-type.
+// nel nome o nel brand (case-insensitive). Limit hard-coded a 20 per HTMX.
 func (r *Ingredients) SearchActive(ctx context.Context, q string, limit int) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
@@ -112,10 +114,11 @@ func (r *Ingredients) SearchActive(ctx context.Context, q string, limit int) ([]
 	pattern := "%" + strings.ToLower(q) + "%"
 	rows, err := r.db.QueryContext(ctx, selectIngredientCols+`
 		FROM ingredients
-		WHERE superseded_by IS NULL AND lower(name) LIKE ?
+		WHERE superseded_by IS NULL
+		  AND (lower(name) LIKE ? OR lower(coalesce(brand, '')) LIKE ?)
 		ORDER BY (source = 'openfoodfacts') DESC, name COLLATE NOCASE
 		LIMIT ?`,
-		pattern, limit,
+		pattern, pattern, limit,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("search ingredients: %w", err)
@@ -216,7 +219,8 @@ func (r *Ingredients) TouchVerified(ctx context.Context, id int64) error {
 const selectIngredientCols = `SELECT
 	id, source, off_barcode, name, brand, unit,
 	kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-	created_by, created_at, last_verified_at, superseded_by`
+	created_by, created_at, last_verified_at, superseded_by,
+	unit_weight_g`
 
 func collectIngredients(rows *sql.Rows) ([]*domain.Ingredient, error) {
 	out := make([]*domain.Ingredient, 0, 16)
@@ -243,6 +247,7 @@ func scanIngredient(scan scanFn) (*domain.Ingredient, error) {
 		&ing.ID, &srcStr, &ing.OFFBarcode, &ing.Name, &ing.Brand, &unitStr,
 		&ing.KcalPer100, &ing.ProteinPer100, &ing.CarbsPer100, &ing.FatPer100,
 		&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy,
+		&ing.UnitWeightG,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrIngredientNotFound

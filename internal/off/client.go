@@ -89,7 +89,7 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 	rows, err := c.DB.QueryContext(ctx, `
 		SELECT p.barcode, p.product_name, p.brands, p.quantity,
 		       p.kcal_per_100, p.protein_per_100, p.carbs_per_100, p.fat_per_100,
-		       p.has_full_nutrients
+		       p.has_full_nutrients, p.image_url
 		FROM off_products p
 		JOIN off_products_fts fts ON fts.rowid = p.rowid
 		WHERE off_products_fts MATCH ?
@@ -107,7 +107,7 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 		if err := rows.Scan(
 			&p.Code, &p.Name, &p.Brand, &p.Quantity,
 			&p.Kcal, &p.Protein, &p.Carbs, &p.Fat,
-			&hasFull,
+			&hasFull, &p.ImageURL,
 		); err != nil {
 			return nil, fmt.Errorf("fts scan: %w", err)
 		}

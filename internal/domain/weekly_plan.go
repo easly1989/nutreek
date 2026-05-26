@@ -22,7 +22,7 @@ type Meal struct {
 }
 
 // MealItem e' una riga di pasto: o una ricetta (Quantity = porzioni) o un
-// ingrediente puro (Quantity = g/ml). Lo schema impone XOR via CHECK.
+// ingrediente puro (Quantity = g/ml/pz). Lo schema impone XOR via CHECK.
 type MealItem struct {
 	ID           int64
 	MealID       int64
@@ -30,6 +30,9 @@ type MealItem struct {
 	IngredientID *int64
 	Quantity     float64
 	SortOrder    int
+	// QuantityUnit e' l'unita' scelta dall'utente: 'g', 'ml', o 'pz'.
+	// 'pz' richiede ingredient.UnitWeightG per il calcolo macro.
+	QuantityUnit string
 }
 
 // IsRecipe ritorna true se l'item punta a una ricetta.
