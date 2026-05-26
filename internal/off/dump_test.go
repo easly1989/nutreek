@@ -34,10 +34,12 @@ func TestSyncerImport(t *testing.T) {
 	//   - 3 italiani (uno con macro completi, uno incompleti, uno con codice vuoto)
 	//   - 2 stranieri (devono essere skippati)
 	//   - 1 riga malformata (deve essere skippata silenziosamente)
+	// Il dump JSONL reale usa chiavi bare (senza _100g): "proteins", non
+	// "proteins_100g". Usiamo questo formato nei test per rispecchiare la realtà.
 	dump := makeDumpGzip(t, []string{
-		`{"code":"8000000000017","product_name":"Grana Padano DOP","brands":"Consorzio","countries_tags":["en:italy"],"nutriments":{"energy-kcal_100g":384,"proteins_100g":33,"carbohydrates_100g":0,"fat_100g":28}}`,
+		`{"code":"8000000000017","product_name":"Grana Padano DOP","brands":"Consorzio","countries_tags":["en:italy"],"nutriments":{"energy-kcal":384,"proteins":33,"carbohydrates":0,"fat":28}}`,
 		`{"code":"FR_PRODUCT","product_name":"Camembert","countries_tags":["en:france"]}`,
-		`{"code":"8000080002057","product_name":"Barrette Hero Light","brands":"Hero","countries_tags":["en:italy","en:germany"],"nutriments":{"proteins_100g":7,"carbohydrates_100g":60}}`,
+		`{"code":"8000080002057","product_name":"Barrette Hero Light","brands":"Hero","countries_tags":["en:italy","en:germany"],"nutriments":{"proteins":7,"carbohydrates":60}}`,
 		`{"code":"","product_name":"Senza codice","countries_tags":["en:italy"]}`,
 		`{"code":"DE_PRODUCT","product_name":"Wurst","countries_tags":["en:germany"]}`,
 		`{not valid json`,
@@ -124,7 +126,7 @@ func TestSyncerImport(t *testing.T) {
 func TestSyncerFTSPopulated(t *testing.T) {
 	sqldb := openTestDB(t)
 	dump := makeDumpGzip(t, []string{
-		`{"code":"8000000000017","product_name":"Grana Padano DOP","brands":"Consorzio","countries_tags":["en:italy"],"nutriments":{"energy-kcal_100g":384,"proteins_100g":33,"carbohydrates_100g":0,"fat_100g":28}}`,
+		`{"code":"8000000000017","product_name":"Grana Padano DOP","brands":"Consorzio","countries_tags":["en:italy"],"nutriments":{"energy-kcal":384,"proteins":33,"carbohydrates":0,"fat":28}}`,
 	})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(dump)

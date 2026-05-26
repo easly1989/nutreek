@@ -147,7 +147,22 @@ func (s *Syncer) doSync(ctx context.Context) (SyncStats, error) {
 		return SyncStats{}, fmt.Errorf("dump status %d: %s", res.StatusCode, strings.TrimSpace(string(body)))
 	}
 
-	gz, err := gzip.NewReader(res.Body)
+	contentLen := res.ContentLength
+	s.Logger.Info("off sync: response received, starting decompress+ingest",
+		"content_length_bytes", contentLen, "etag", res.Header.Get("ETag"))
+
+	// Wrappa il body in un progressReader cosi' loggiamo i MB scaricati ogni
+	// 50MB. Senza questo l'utente non vede attivita' durante il download dei
+	// ~900MB compressi (5-30 min a seconda della banda).
+	body := &progressReader{
+		R:         res.Body,
+		Total:     contentLen,
+		Logger:    s.Logger,
+		LogEvery:  50 * 1024 * 1024,
+		LogPrefix: "off sync: download",
+	}
+
+	gz, err := gzip.NewReader(body)
 	if err != nil {
 		return SyncStats{}, fmt.Errorf("gzip reader: %w", err)
 	}
@@ -178,11 +193,21 @@ func (s *Syncer) ingest(ctx context.Context, r io.Reader, newETag string) (SyncS
 	batch := make([]Product, 0, dumpBatchSize)
 	now := time.Now().Unix()
 
+	lastLogScanned := 0
 	for scanner.Scan() {
 		if err := ctx.Err(); err != nil {
 			return stats, err
 		}
 		stats.ScannedTotal++
+
+		// Log progresso ogni 100k righe scannate (anche se non sono italiane):
+		// l'utente vede che il parser sta lavorando anche prima di importare
+		// abbastanza prodotti IT per triggerare il log su Imported.
+		if stats.ScannedTotal-lastLogScanned >= 100000 {
+			s.Logger.Info("off sync: parsing",
+				"scanned", stats.ScannedTotal, "imported_it", stats.Imported)
+			lastLogScanned = stats.ScannedTotal
+		}
 
 		line := scanner.Bytes()
 		if len(line) == 0 {
@@ -209,9 +234,6 @@ func (s *Syncer) ingest(ctx context.Context, r io.Reader, newETag string) (SyncS
 			}
 			stats.Imported += len(batch)
 			batch = batch[:0]
-			if stats.Imported%50000 == 0 {
-				s.Logger.Info("off sync: progress", "imported", stats.Imported, "scanned", stats.ScannedTotal)
-			}
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -306,6 +328,42 @@ func containsTag(tags []string, target string) bool {
 		}
 	}
 	return false
+}
+
+// progressReader logga ogni LogEvery byte letti dallo stream sottostante.
+// Usato per dare feedback durante il download del dump compresso (5-30 min
+// di solo Read senza eventi visibili). Total = ContentLength se noto, 0
+// se sconosciuto (chunked transfer).
+type progressReader struct {
+	R         io.Reader
+	Total     int64
+	Logger    *slog.Logger
+	LogEvery  int64
+	LogPrefix string
+
+	read     int64
+	nextLog  int64
+}
+
+func (p *progressReader) Read(buf []byte) (int, error) {
+	n, err := p.R.Read(buf)
+	p.read += int64(n)
+	if p.nextLog == 0 {
+		p.nextLog = p.LogEvery
+	}
+	if p.read >= p.nextLog {
+		if p.Total > 0 {
+			pct := float64(p.read) / float64(p.Total) * 100
+			p.Logger.Info(p.LogPrefix,
+				"read_mb", p.read/(1024*1024),
+				"total_mb", p.Total/(1024*1024),
+				"pct", fmt.Sprintf("%.1f", pct))
+		} else {
+			p.Logger.Info(p.LogPrefix, "read_mb", p.read/(1024*1024))
+		}
+		p.nextLog += p.LogEvery
+	}
+	return n, err
 }
 
 // ---- stato sync persistito --------------------------------------------------

@@ -47,20 +47,32 @@ func (r rawProduct) toProduct() Product {
 		Brand:    firstBrand(r.Brands),
 		Quantity: r.Quantity,
 	}
-	kcal, kOK := lookupNutrient(r.Nutriments, "energy-kcal_100g")
+	// Il dump JSONL usa chiavi bare ("proteins") mentre l'API usa "_100g"
+	// ("proteins_100g"). Proviamo entrambe per supportare le due sorgenti.
+	kcal, kOK := lookupNutrientAny(r.Nutriments, "energy-kcal_100g", "energy-kcal")
 	if !kOK {
-		// fallback: alcuni prodotti hanno solo "energy_100g" (kJ).
-		if kj, ok := lookupNutrient(r.Nutriments, "energy_100g"); ok {
+		if kj, ok := lookupNutrientAny(r.Nutriments, "energy_100g", "energy"); ok {
 			kcal = kj / 4.184
 			kOK = true
 		}
 	}
-	prot, pOK := lookupNutrient(r.Nutriments, "proteins_100g")
-	carbs, cOK := lookupNutrient(r.Nutriments, "carbohydrates_100g")
-	fat, fOK := lookupNutrient(r.Nutriments, "fat_100g")
+	prot, pOK := lookupNutrientAny(r.Nutriments, "proteins_100g", "proteins")
+	carbs, cOK := lookupNutrientAny(r.Nutriments, "carbohydrates_100g", "carbohydrates")
+	fat, fOK := lookupNutrientAny(r.Nutriments, "fat_100g", "fat")
 	p.Kcal, p.Protein, p.Carbs, p.Fat = kcal, prot, carbs, fat
 	p.HasFullNutrients = kOK && pOK && cOK && fOK
 	return p
+}
+
+// lookupNutrientAny prova le chiavi in ordine e ritorna il primo match.
+// Usato per gestire sia il formato API (_100g) sia il dump JSONL (bare).
+func lookupNutrientAny(m map[string]json.RawMessage, keys ...string) (float64, bool) {
+	for _, k := range keys {
+		if v, ok := lookupNutrient(m, k); ok {
+			return v, ok
+		}
+	}
+	return 0, false
 }
 
 // lookupNutrient legge un campo che OFF puo' restituire come numero o stringa.
