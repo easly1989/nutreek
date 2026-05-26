@@ -103,7 +103,7 @@ func (r *Ingredients) CreateOFF(
 }
 
 // SearchActive cerca ingredienti non superseded che hanno q come substring
-// nel nome (case-insensitive). Limit hard-coded a 20 per HTMX search-as-you-type.
+// nel nome o nel brand (case-insensitive). Limit hard-coded a 20 per HTMX.
 func (r *Ingredients) SearchActive(ctx context.Context, q string, limit int) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
@@ -112,10 +112,11 @@ func (r *Ingredients) SearchActive(ctx context.Context, q string, limit int) ([]
 	pattern := "%" + strings.ToLower(q) + "%"
 	rows, err := r.db.QueryContext(ctx, selectIngredientCols+`
 		FROM ingredients
-		WHERE superseded_by IS NULL AND lower(name) LIKE ?
+		WHERE superseded_by IS NULL
+		  AND (lower(name) LIKE ? OR lower(coalesce(brand, '')) LIKE ?)
 		ORDER BY (source = 'openfoodfacts') DESC, name COLLATE NOCASE
 		LIMIT ?`,
-		pattern, limit,
+		pattern, pattern, limit,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("search ingredients: %w", err)
