@@ -12,19 +12,19 @@
           </p>
           <p class="text-xs text-muted">
             <span class="{{if .IsOFF}}text-accent{{else}}text-muted{{end}}">{{.SourceLabel}}</span>
-            · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
+            {{if .HasFullNutrients}}
+              · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
+            {{else}}
+              · <span class="italic">macro recuperati all'import da OpenFoodFacts</span>
+            {{end}}
           </p>
         </div>
         {{if .IsOFF}}
-          {{if .Importable}}
-            <form method="post" action="/ingredients/off-import" class="shrink-0">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="barcode" value="{{.Barcode}}">
-              <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Importa</button>
-            </form>
-          {{else}}
-            <span class="text-xs text-muted shrink-0">macro incompleti</span>
-          {{end}}
+          <form method="post" action="/ingredients/off-import" class="shrink-0">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="barcode" value="{{.Barcode}}">
+            <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Importa</button>
+          </form>
         {{end}}
       </li>
     {{end}}
