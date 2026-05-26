@@ -41,7 +41,7 @@ func (a *App) requireOwner(next http.HandlerFunc) http.HandlerFunc {
 
 // handleOwnerOFFStatus GET /profile/off-status — stato corrente del sync OFF.
 // Equivalente owner di /admin/off-status, accessibile via sessione invece
-// che X-Admin-Token.
+// che X-Admin-Token. Include anche un campione diagnostico dei prodotti in DB.
 func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
 		http.Error(w, "OFF syncer non configurato", http.StatusServiceUnavailable)
@@ -52,8 +52,43 @@ func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+
+	out := offStatusJSON(state)
+
+	// Diagnostic: conteggio prodotti con/senza nutrienti completi.
+	var full, partial int
+	_ = a.Store.DB.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM off_products WHERE has_full_nutrients = 1`).Scan(&full)
+	_ = a.Store.DB.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM off_products WHERE has_full_nutrients = 0`).Scan(&partial)
+	out["diag_full_nutrients"] = full
+	out["diag_partial_nutrients"] = partial
+
+	// Campione: 3 prodotti con nutrienti completi (se esistono).
+	type sampleRow struct {
+		Barcode  string  `json:"barcode"`
+		Name     string  `json:"name"`
+		Kcal     float64 `json:"kcal"`
+		Protein  float64 `json:"protein"`
+		Carbs    float64 `json:"carbs"`
+		Fat      float64 `json:"fat"`
+	}
+	var sample []sampleRow
+	rows, _ := a.Store.DB.QueryContext(r.Context(), `
+		SELECT barcode, product_name, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100
+		FROM off_products WHERE has_full_nutrients = 1 LIMIT 3`)
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var s sampleRow
+			_ = rows.Scan(&s.Barcode, &s.Name, &s.Kcal, &s.Protein, &s.Carbs, &s.Fat)
+			sample = append(sample, s)
+		}
+	}
+	out["diag_sample_full"] = sample
+
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(offStatusJSON(state))
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 // handleOwnerOFFRefresh POST /profile/off-sync — triggera sync OFF in
