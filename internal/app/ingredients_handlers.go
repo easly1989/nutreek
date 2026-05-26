@@ -133,6 +133,15 @@ func (r ingredientRow) HasFullNutrients() bool {
 	return r.OFF != nil && r.OFF.HasFullNutrients
 }
 
+// ImageURL espone la URL del thumbnail OFF (vuota per ingredienti locali o
+// per OFF senza foto nel dump). Il template mostra l'img solo se non vuota.
+func (r ingredientRow) ImageURL() string {
+	if r.OFF != nil {
+		return r.OFF.ImageURL
+	}
+	return ""
+}
+
 type ingredientsListData struct {
 	authPageData
 	Rows       []ingredientRow

@@ -19,6 +19,9 @@ type Product struct {
 	// HasFullNutrients e' true sse tutti e 4 i macro sono presenti su OFF.
 	// Lo usiamo per decidere se permettere l'import o suggerire un local.
 	HasFullNutrients bool
+	// ImageURL e' la URL del thumbnail fronte prodotto (image_front_small_url
+	// di OFF). Puo' essere vuota per prodotti senza foto.
+	ImageURL string
 }
 
 // rawProduct riflette la forma JSON degli endpoint OFF "product"
@@ -27,11 +30,13 @@ type Product struct {
 // free-form con chiavi tipo "energy-kcal_100g" che possono essere
 // number o stringa a seconda del prodotto. Lo parsiamo a mano in toProduct.
 type rawProduct struct {
-	Code        string                     `json:"code"`
-	ProductName string                     `json:"product_name"`
-	Brands      string                     `json:"brands"`
-	Quantity    string                     `json:"quantity"`
-	Nutriments  map[string]json.RawMessage `json:"nutriments"`
+	Code               string                     `json:"code"`
+	ProductName        string                     `json:"product_name"`
+	Brands             string                     `json:"brands"`
+	Quantity           string                     `json:"quantity"`
+	Nutriments         map[string]json.RawMessage `json:"nutriments"`
+	ImageFrontSmallURL string                     `json:"image_front_small_url"`
+	ImageURL           string                     `json:"image_url"`
 }
 
 type productResponse struct {
@@ -41,11 +46,16 @@ type productResponse struct {
 }
 
 func (r rawProduct) toProduct() Product {
+	imgURL := r.ImageFrontSmallURL
+	if imgURL == "" {
+		imgURL = r.ImageURL
+	}
 	p := Product{
 		Code:     r.Code,
 		Name:     r.ProductName,
 		Brand:    firstBrand(r.Brands),
 		Quantity: r.Quantity,
+		ImageURL: imgURL,
 	}
 	// Il dump JSONL usa chiavi bare ("proteins") mentre l'API usa "_100g"
 	// ("proteins_100g"). Proviamo entrambe per supportare le due sorgenti.
