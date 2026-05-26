@@ -264,12 +264,24 @@
           <div class="text-xs text-muted mb-0.5">Ultimo sync</div>
           <div id="off-last-synced" class="font-semibold">—</div>
         </div>
+        <div class="rounded border border-border bg-surface-2 px-3 py-2">
+          <div class="text-xs text-muted mb-0.5">Macro completi</div>
+          <div id="off-full-count" class="font-semibold text-accent">—</div>
+        </div>
+        <div class="rounded border border-border bg-surface-2 px-3 py-2">
+          <div class="text-xs text-muted mb-0.5">Macro incompleti</div>
+          <div id="off-partial-count" class="font-semibold text-muted">—</div>
+        </div>
         <div class="rounded border border-border bg-surface-2 px-3 py-2 col-span-2">
           <div class="text-xs text-muted mb-0.5">Stato</div>
           <div id="off-state" class="font-semibold">—</div>
         </div>
         <div id="off-error-row" class="hidden rounded border border-danger/30 bg-danger/10 text-danger px-3 py-2 col-span-2 text-xs">
           <span class="font-semibold">Ultimo errore:</span> <span id="off-error-msg"></span>
+        </div>
+        <div id="off-sample-row" class="hidden col-span-2">
+          <div class="text-xs text-muted mb-1">Campione (prodotti con macro completi):</div>
+          <ul id="off-sample-list" class="text-xs space-y-0.5 text-muted font-mono"></ul>
         </div>
       </div>
 
