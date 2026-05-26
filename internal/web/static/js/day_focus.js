@@ -17,6 +17,10 @@
 //       della card viene memorizzata per il ripristino successivo.
 //   - Click su [data-unfocus] dentro la card: equivalente a click sulla
 //       pillola "true" -> nasconde la card senza round-trip.
+//
+// Persistenza:
+//   Lo stato (quali giorni sono in focus) viene salvato in localStorage
+//   con chiave "nutreek_focus_{weekStart}" e ripristinato al page load.
 (function () {
   "use strict";
 
@@ -29,6 +33,61 @@
   // un secondo focus successivo a una posizione cambiata via DnD parte da
   // quella nuova posizione.
   var positionMemory = new Map();
+
+  // ---- localStorage helpers ------------------------------------------------
+
+  function focusGridEl() {
+    return document.getElementById("focus-grid");
+  }
+
+  function storageKey() {
+    var grid = focusGridEl();
+    var ws = grid ? grid.dataset.weekStart || "" : "";
+    return ws ? "nutreek_focus_" + ws : "";
+  }
+
+  function saveState() {
+    var key = storageKey();
+    if (!key) return;
+    var dates = [];
+    var grid = focusGridEl();
+    if (grid) {
+      grid.querySelectorAll("section[data-day]").forEach(function (s) {
+        dates.push(s.dataset.day);
+      });
+    }
+    try {
+      localStorage.setItem(key, JSON.stringify(dates));
+    } catch (_) {}
+  }
+
+  function loadState() {
+    var key = storageKey();
+    if (!key) return;
+    var saved;
+    try {
+      saved = JSON.parse(localStorage.getItem(key));
+    } catch (_) {
+      return;
+    }
+    if (!Array.isArray(saved)) return;
+    var set = new Set(saved);
+    var grid = focusGridEl();
+    if (grid) {
+      grid.querySelectorAll("section[data-day]").forEach(function (s) {
+        if (!set.has(s.dataset.day)) {
+          s.remove();
+        }
+      });
+    }
+    document
+      .querySelectorAll("#timeline-pills button[data-day]")
+      .forEach(function (pill) {
+        setPillFocus(pill, set.has(pill.dataset.day));
+      });
+  }
+
+  // ---- focus helpers -------------------------------------------------------
 
   function setPillFocus(pill, inFocus) {
     pill.dataset.inFocus = inFocus ? "true" : "false";
@@ -51,18 +110,23 @@
     var prevDate = prev && prev.dataset ? prev.dataset.day || null : null;
     positionMemory.set(date, { prevDate: prevDate });
     card.remove();
+    saveState();
   }
 
   function placeCardAtRemembered(card) {
-    var grid = document.getElementById("focus-grid");
+    var grid = focusGridEl();
     if (!grid) return;
     var date = card.dataset.day;
     var memo = positionMemory.get(date);
-    if (!memo) return; // niente memoria -> resta dove HTMX l'ha messo (in fondo)
+    if (!memo) {
+      saveState();
+      return; // niente memoria -> resta dove HTMX l'ha messo (in fondo)
+    }
     positionMemory.delete(date);
     if (memo.prevDate === null) {
       // Era la prima card -> rimettila in cima.
       grid.insertBefore(card, grid.firstChild);
+      saveState();
       return;
     }
     var prev = grid.querySelector('section[data-day="' + memo.prevDate + '"]');
@@ -70,7 +134,10 @@
       grid.insertBefore(card, prev.nextSibling);
     }
     // else: predecessore non piu' in focus -> lascia in fondo (default).
+    saveState();
   }
+
+  // ---- event handlers ------------------------------------------------------
 
   function onPillClick(evt) {
     var pill = evt.target.closest("[data-day]");
@@ -118,6 +185,7 @@
   }
 
   function init() {
+    loadState();
     document.body.addEventListener("click", onPillClick, true);
     document.body.addEventListener("click", onUnfocusClick);
     document.body.addEventListener("htmx:afterSwap", onAfterSwap);
