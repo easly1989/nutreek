@@ -6,31 +6,33 @@
   <ul class="divide-y divide-border rounded border border-border bg-surface">
     {{range .Rows}}
       <li class="px-4 py-3 flex items-center justify-between gap-3">
-        {{if .ImageURL}}
-          <img src="{{.ImageURL}}" alt="" loading="lazy" class="w-10 h-10 object-contain rounded shrink-0 bg-surface-2">
-        {{else if .IsOFF}}
-          <div class="w-10 h-10 rounded shrink-0 bg-surface-2"></div>
+        {{if .IsOFF}}
+          {{/* Sempre un contenitore 40×40 per OFF: immagine sovrapposta al grigio se disponibile. */}}
+          <div class="w-10 h-10 rounded shrink-0 bg-surface-2 overflow-hidden">
+            {{if .ImageURL}}<img src="{{.ImageURL}}" alt="" loading="lazy" onerror="this.style.display='none'" class="w-full h-full object-contain">{{end}}
+          </div>
         {{end}}
         <div class="min-w-0 flex-1">
           <p class="font-medium text-text truncate">
             {{.Name}}{{with .Brand}} <span class="text-muted font-normal">— {{.}}</span>{{end}}
           </p>
-          <p class="text-xs text-muted">
-            {{if .HasFullNutrients}}
+          {{if .IsOFF}}
+            {{/* Verifica macro via barcode: mostra placeholder animato, poi sostituisce con dati reali. */}}
+            <p class="text-xs text-muted"
+               hx-get="/off/check/{{.Barcode}}"
+               hx-trigger="load delay:600ms"
+               hx-swap="outerHTML">
+              <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent/30 animate-pulse"></span>
+              <span class="text-accent/60">verifica macro…</span>
+              <span class="text-muted/50"> · {{.Barcode}}</span>
+            </p>
+          {{else}}
+            <p class="text-xs text-muted">
               <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>
-            {{else if .IsOFF}}
-              <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent/40"></span>
-            {{else}}
-              <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>
-            {{end}}
-            <span class="{{if .IsOFF}}text-accent{{else}}text-muted{{end}}">{{.SourceLabel}}</span>
-            {{if .IsOFF}}<span class="text-muted/70"> · {{.Barcode}}</span>{{end}}
-            {{if .HasFullNutrients}}
+              <span class="text-muted">{{.SourceLabel}}</span>
               · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
-            {{else if not .IsOFF}}
-              · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
-            {{end}}
-          </p>
+            </p>
+          {{end}}
         </div>
         {{if .IsOFF}}
           <form method="post" action="/ingredients/off-import" class="shrink-0">
