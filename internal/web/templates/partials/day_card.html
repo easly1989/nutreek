@@ -324,9 +324,9 @@
         data-state="{{.Card.State}}"
         data-in-focus="true"
         hx-swap-oob="outerHTML:#pill-{{.Card.DateStr}}"
-        class="relative shrink-0 px-3 py-2 rounded border text-left transition border-accent bg-accent-soft text-text">
+        class="relative w-full px-2 py-2 rounded border text-center transition border-accent bg-accent-soft text-text">
   {{if .Card.Progress.AnyExceeds}}<span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger" title="Uno o più macro sforati"></span>{{end}}
-  <span class="block text-xs">{{.Card.Day.Label}}{{if eq .Card.State "today"}} · oggi{{end}}</span>
+  <span class="block text-xs truncate">{{.Card.Day.Label}}{{if eq .Card.State "today"}} · oggi{{end}}</span>
   <span class="block text-sm font-medium">{{.Card.Day.Date.Format "02/01"}}</span>
   <span class="block text-xs">{{printf "%.0f" .Card.Day.DayTotal.Kcal}} kcal</span>
 </button>
