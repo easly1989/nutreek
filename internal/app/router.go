@@ -53,6 +53,7 @@ func (a *App) Router() http.Handler {
 		r.Get("/ingredients/new", a.handleIngredientNewForm)
 		r.Post("/ingredients", a.handleIngredientCreate)
 		r.Post("/ingredients/off-import", a.handleIngredientOFFImport)
+		r.Get("/off/check/{barcode}", a.handleOFFMacroCheck)
 
 		// Quick-create modali (creazione al volo da picker / liste).
 		r.Get("/quick/ingredient", a.handleQuickIngredientForm)
