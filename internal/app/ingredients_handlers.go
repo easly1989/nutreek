@@ -3,10 +3,12 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/db"
@@ -133,11 +135,15 @@ func (r ingredientRow) HasFullNutrients() bool {
 	return r.OFF != nil && r.OFF.HasFullNutrients
 }
 
-// ImageURL espone la URL del thumbnail OFF (vuota per ingredienti locali o
-// per OFF senza foto nel dump). Il template mostra l'img solo se non vuota.
+// ImageURL espone la URL del thumbnail OFF. Se il dump non ha image_url
+// (prodotti importati prima della migrazione 0012), costruisce una URL CDN
+// best-effort dal barcode — gestire con onerror nel template.
 func (r ingredientRow) ImageURL() string {
 	if r.OFF != nil {
-		return r.OFF.ImageURL
+		if r.OFF.ImageURL != "" {
+			return r.OFF.ImageURL
+		}
+		return off.OFFCDNImageURL(r.OFF.Code)
 	}
 	return ""
 }
@@ -487,6 +493,57 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 		return got.ID, nil
 	}
 	return 0, err
+}
+
+// handleOFFMacroCheck verifica i macro di un singolo prodotto OFF tramite
+// barcode lookup. Prima controlla off_products locale (nessuna chiamata HTTP),
+// poi cade su GetByBarcode live se il record locale manca o e' incompleto.
+// Ritorna un fragment HTML con lo stato macro: green dot + valori, oppure
+// dot rosso + "macro non disponibili". Usato da ingredient_results.html
+// via HTMX lazy load (hx-trigger="load delay:500ms").
+func (a *App) handleOFFMacroCheck(w http.ResponseWriter, r *http.Request) {
+	barcode := chi.URLParam(r, "barcode")
+	if barcode == "" {
+		http.Error(w, "", http.StatusBadRequest)
+		return
+	}
+
+	// 1. Cerca nel DB locale (off_products) per evitare chiamate HTTP inutili.
+	var name, brand string
+	var kcal, protein, carbs, fat float64
+	var hasFull int
+	err := a.Store.DB.QueryRowContext(r.Context(), `
+		SELECT product_name, brands, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, has_full_nutrients
+		FROM off_products WHERE barcode = ?`, barcode).Scan(
+		&name, &brand, &kcal, &protein, &carbs, &fat, &hasFull)
+	if err == nil && hasFull == 1 {
+		writeMacroFragment(w, true, kcal, protein, carbs, fat)
+		return
+	}
+
+	// 2. Live API check.
+	product, err := a.OFF.GetByBarcode(r.Context(), barcode)
+	if err != nil || !product.HasFullNutrients {
+		writeMacroFragment(w, false, 0, 0, 0, 0)
+		return
+	}
+	writeMacroFragment(w, true, product.Kcal, product.Protein, product.Carbs, product.Fat)
+}
+
+func writeMacroFragment(w http.ResponseWriter, full bool, kcal, protein, carbs, fat float64) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if full {
+		fmt.Fprintf(w,
+			`<span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>`+
+				`<span class="text-accent">OpenFoodFacts</span>`+
+				` · %.0f kcal · P %.1fg · C %.1fg · F %.1fg (per 100g)`,
+			kcal, protein, carbs, fat)
+	} else {
+		fmt.Fprintf(w,
+			`<span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-danger/60"></span>`+
+				`<span class="text-muted">OpenFoodFacts</span>`+
+				`<span class="text-danger/80 italic"> · macro non disponibili su OFF</span>`)
+	}
 }
 
 func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form ingredientForm, msg string) {

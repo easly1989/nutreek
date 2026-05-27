@@ -138,6 +138,25 @@ func ParseUnitWeightG(productQuantity string) *float64 {
 	return nil
 }
 
+// OFFCDNImageURL costruisce la URL best-effort del thumbnail fronte di un
+// prodotto OFF dal barcode. Usata come fallback quando image_url e' vuota nel
+// dump locale (prodotti importati prima della migrazione 0012). Non garantisce
+// che l'immagine esista: gestire con onerror nel template HTML.
+//
+// Pattern CDN OFF (EAN-13):  NNN/NNN/NNN/NNNN/front_fr.200.jpg
+// Pattern CDN OFF (altri):   {barcode}/front_fr.200.jpg
+func OFFCDNImageURL(barcode string) string {
+	barcode = strings.TrimSpace(barcode)
+	if barcode == "" {
+		return ""
+	}
+	base := "https://images.openfoodfacts.org/images/products/"
+	if len(barcode) == 13 {
+		return base + barcode[:3] + "/" + barcode[3:6] + "/" + barcode[6:9] + "/" + barcode[9:] + "/front_fr.200.jpg"
+	}
+	return base + barcode + "/front_fr.200.jpg"
+}
+
 func firstBrand(csv string) string {
 	for i := 0; i < len(csv); i++ {
 		if csv[i] == ',' {
