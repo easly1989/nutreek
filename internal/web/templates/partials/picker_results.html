@@ -15,10 +15,10 @@
   <ul class="divide-y divide-border rounded border border-border bg-surface">
     {{range .Rows}}
       <li class="px-4 py-3 flex items-center justify-between gap-3">
-        {{if .ImageURL}}
-          <img src="{{.ImageURL}}" alt="" loading="lazy" class="w-10 h-10 object-contain rounded shrink-0 bg-surface-2">
-        {{else if .IsOFF}}
-          <div class="w-10 h-10 rounded shrink-0 bg-surface-2"></div>
+        {{if .IsOFF}}
+          <div class="w-10 h-10 rounded shrink-0 bg-surface-2 overflow-hidden">
+            {{if .ImageURL}}<img src="{{.ImageURL}}" alt="" loading="lazy" onerror="this.style.display='none'" class="w-full h-full object-contain">{{end}}
+          </div>
         {{end}}
         <div class="min-w-0 flex-1">
           <p class="font-medium text-text truncate">
