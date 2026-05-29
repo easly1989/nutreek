@@ -11,6 +11,33 @@
 {{if .OFFWarning}}
   <div class="mb-3 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-xs">{{.OFFWarning}}</div>
 {{end}}
+{{if .NutritionistItems}}
+  <p class="text-xs text-muted px-2 mb-1 font-medium">Suggeriti dal nutrizionista</p>
+  <ul class="divide-y divide-border rounded border border-accent/30 bg-surface mb-3">
+    {{range .NutritionistItems}}
+    <li class="px-4 py-3 flex items-center justify-between gap-3">
+      <div class="min-w-0 flex-1">
+        <p class="font-medium text-text truncate">{{.Name}}</p>
+        <p class="text-xs text-muted">
+          <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>
+          <span class="text-muted">{{.SourceLabel}}</span>
+          · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
+        </p>
+      </div>
+      {{if eq $.PickerKind "meal_item"}}
+        <form method="post" action="/meals/{{$.MealID}}/items?start={{$.WeekStart}}" class="shrink-0 flex items-center gap-2">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <input type="hidden" name="kind" value="ingredient">
+          <input type="hidden" name="ref_id" value="{{.Local.ID}}">
+          <input name="quantity" required inputmode="decimal" placeholder="{{.Unit}}" class="w-16 rounded border border-border px-2 py-1 text-xs">
+          <input type="hidden" name="qty_unit" value="{{.Unit}}">
+          <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
+        </form>
+      {{end}}
+    </li>
+    {{end}}
+  </ul>
+{{end}}
 {{if .Rows}}
   <ul class="divide-y divide-border rounded border border-border bg-surface">
     {{range .Rows}}

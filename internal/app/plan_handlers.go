@@ -53,13 +53,14 @@ type dayView struct {
 // se il giorno e' attualmente nella griglia focus. Default iniziale:
 // today + future = InFocus=true; past = InFocus=false.
 type dayCardData struct {
-	Day       dayView
-	DateStr   string // YYYY-MM-DD per data-day attribute
-	State     string // "past" | "today" | "future"
-	InFocus   bool   // true = card piena visibile in #focus-grid
-	WeekStart string // YYYY-MM-DD per nascondere/passare nei form
-	CSRFToken string
-	Progress  profile.MacroProgress
+	Day         dayView
+	DateStr     string // YYYY-MM-DD per data-day attribute
+	State       string // "past" | "today" | "future"
+	InFocus     bool   // true = card piena visibile in #focus-grid
+	WeekStart   string // YYYY-MM-DD per nascondere/passare nei form
+	CSRFToken   string
+	Progress    profile.MacroProgress
+	WorkoutKcal float64 // kcal bruciate con allenamenti in quel giorno
 }
 
 type mealView struct {
@@ -231,15 +232,16 @@ func scaleRecipeItems(it domain.MealItemFull) []scaledIngredient {
 // makeDayCard costruisce dayCardData a partire da una dayView e dal contesto.
 // `state` e' il giorno calendariale; `inFocus` decide se andra' anche nella
 // griglia focus. Default: today/future = true, past = false.
-func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken string, progress profile.MacroProgress) dayCardData {
+func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken string, progress profile.MacroProgress, workoutKcal float64) dayCardData {
 	return dayCardData{
-		Day:       dv,
-		DateStr:   formatDate(dv.Date),
-		State:     state,
-		InFocus:   inFocus,
-		WeekStart: weekStartStr,
-		CSRFToken: csrfToken,
-		Progress:  progress,
+		Day:         dv,
+		DateStr:     formatDate(dv.Date),
+		State:       state,
+		InFocus:     inFocus,
+		WeekStart:   weekStartStr,
+		CSRFToken:   csrfToken,
+		Progress:    progress,
+		WorkoutKcal: workoutKcal,
 	}
 }
 
@@ -267,17 +269,17 @@ func reorderFocusCards(cards []dayCardData) []dayCardData {
 // buildDayCards costruisce le 7 dayCardData con InFocus default-driven dallo
 // stato calendariale: today + future = true, past = false. La timeline
 // renderizza tutte e 7 le pillole; #focus-grid solo quelle InFocus.
-func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string, user *domain.User) []dayCardData {
+func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string, user *domain.User, workoutKcals [7]float64) []dayCardData {
 	out := make([]dayCardData, 0, 7)
 	allPast := len(days) > 0 && dayState(days[len(days)-1].Date, today) == "past"
-	for _, dv := range days {
+	for i, dv := range days {
 		state := dayState(dv.Date, today)
 		inFocus := allPast || state != "past"
 		var progress profile.MacroProgress
 		if user != nil {
 			progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
 		}
-		out = append(out, makeDayCard(dv, state, inFocus, weekStartStr, csrfToken, progress))
+		out = append(out, makeDayCard(dv, state, inFocus, weekStartStr, csrfToken, progress, workoutKcals[i]))
 	}
 	return out
 }
@@ -301,7 +303,7 @@ func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, 
 	if user != nil {
 		progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
 	}
-	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress)
+	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress, 0)
 	resp := dayMutationResponse{Card: card, WeekTotal: weekTotal}
 	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card_with_pill_oob", resp); err != nil {
 		a.serverError(w, r, err)
@@ -426,7 +428,14 @@ func (a *App) renderDashboard(
 	}
 	today := todayDate()
 	weekStartStr := formatDate(weekStart)
-	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken, user)
+	var workoutKcals [7]float64
+	if a.WorkoutLogs != nil && user != nil {
+		for i := 0; i < 7; i++ {
+			d := weekStart.AddDate(0, 0, i)
+			workoutKcals[i], _ = a.WorkoutLogs.WorkoutKcalForDay(r.Context(), user.ID, d)
+		}
+	}
+	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken, user, workoutKcals)
 	focusCards := make([]dayCardData, 0, len(allCards))
 	for _, c := range allCards {
 		if c.InFocus {
@@ -748,14 +757,26 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 		if asCheat {
 			pkind = "meal_cheat"
 		}
+
+		// Suggeriti dal piano nutrizionista: attivi solo se meal_name e' fornito
+		// e il picker non e' in modalita' cheat (sgarri non hanno suggerimenti).
+		var nutrRows []ingredientRow
+		if mealName := strings.TrimSpace(r.URL.Query().Get("meal_name")); mealName != "" && !asCheat {
+			suggested, _ := a.NutritionistPlans.SearchSuggestedIngredients(r.Context(), user.ID, mealName)
+			for _, ing := range suggested {
+				nutrRows = append(nutrRows, ingredientRow{Local: ing})
+			}
+		}
+
 		data := ingredientsListData{
-			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
-			Rows:         rows,
-			Query:        q,
-			OFFWarning:   warn,
-			PickerKind:   pkind,
-			MealID:       mealID,
-			WeekStart:    weekStartStr,
+			authPageData:      authPageData{CSRFToken: nosurf.Token(r)},
+			Rows:              rows,
+			Query:             q,
+			OFFWarning:        warn,
+			PickerKind:        pkind,
+			MealID:            mealID,
+			WeekStart:         weekStartStr,
+			NutritionistItems: nutrRows,
 		}
 		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 			a.serverError(w, r, err)
@@ -950,6 +971,7 @@ func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 type addItemFormData struct {
 	authPageData
 	MealID    int64
+	MealName  string
 	WeekStart string
 	Cheat     bool // true = aggiungi come sgarro (POSTa a /meals/{id}/cheat/items)
 	Error     string
@@ -962,9 +984,11 @@ func (a *App) handleAddItemForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	weekStart := parseWeekStart(r)
+	mealName := strings.TrimSpace(r.URL.Query().Get("meal_name"))
 	data := addItemFormData{
 		authPageData: a.baseData(r),
 		MealID:       mealID,
+		MealName:     mealName,
 		WeekStart:    formatDate(weekStart),
 		Cheat:        r.URL.Query().Get("cheat") == "1",
 	}

@@ -65,6 +65,35 @@
       </p>
     </div>
 
+    {{if .Categories}}
+    <div>
+      <label class="block text-sm font-medium text-text mb-1" for="f-category">
+        Categoria <span class="text-muted font-normal">(opzionale)</span>
+      </label>
+      <select id="f-category" name="category_id"
+              class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+        <option value="">Nessuna categoria</option>
+        {{range .Categories}}
+        <option value="{{.ID}}" {{if eq $.Form.CategoryID (printf "%d" .ID)}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+    </div>
+    {{end}}
+
+    {{if .Allergens}}
+    <div>
+      <span class="block text-sm font-medium text-text mb-2">Allergeni contenuti <span class="text-muted font-normal">(opzionale)</span></span>
+      <div class="grid grid-cols-2 gap-1">
+        {{range .Allergens}}
+        <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" name="allergen_ids" value="{{.ID}}" class="accent-accent">
+          {{.Name}}
+        </label>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
     <div class="flex items-center justify-between pt-2">
       <a href="/ingredients" class="text-sm text-muted hover:underline">Annulla</a>
       <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Salva</button>

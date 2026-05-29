@@ -1,6 +1,7 @@
 {{define "title"}}{{if .Cheat}}Sgarro — Nutreek{{else}}Aggiungi al pasto — Nutreek{{end}}{{end}}
 {{define "content"}}
 {{- $asParam := "" -}}{{- if .Cheat -}}{{- $asParam = "&as=cheat" -}}{{- end -}}
+{{- $mealNameParam := "" -}}{{- if .MealName -}}{{- $mealNameParam = print "&meal_name=" .MealName -}}{{- end -}}
 <div class="max-w-2xl">
   <h1 class="text-3xl font-semibold mb-2">{{if .Cheat}}Aggiungi sgarro al pasto{{else}}Aggiungi al pasto{{end}}</h1>
   <p class="text-sm text-muted mb-6">
@@ -31,7 +32,7 @@
            class="w-full rounded border border-border bg-surface px-3 py-2 mb-2"
            data-ingredient-search
            data-search-url="/meals/{{.MealID}}/picker"
-           data-search-extra="kind=ingredient&start={{.WeekStart}}{{$asParam}}"
+           data-search-extra="kind=ingredient&start={{.WeekStart}}{{$asParam}}{{$mealNameParam}}"
            data-search-target="#picker-results"
            data-search-spinner="#meal-picker-spinner">
 
@@ -41,7 +42,7 @@
     </div>
 
     <div id="picker-results"
-         hx-get="/meals/{{.MealID}}/picker?kind=ingredient&q=&start={{.WeekStart}}{{$asParam}}"
+         hx-get="/meals/{{.MealID}}/picker?kind=ingredient&q=&start={{.WeekStart}}{{$asParam}}{{$mealNameParam}}"
          hx-trigger="load"
          hx-target="this"
          hx-swap="innerHTML">
@@ -61,6 +62,7 @@
   var mealID = '{{.MealID}}';
   var weekStart = '{{.WeekStart}}';
   var asParam = {{if .Cheat}}'&as=cheat'{{else}}''{{end}};
+  var mealNameParam = {{if .MealName}}'&meal_name=' + encodeURIComponent('{{.MealName}}'){{else}}''{{end}};
   var currentKind = 'ingredient';
 
   function setTab(kind) {
@@ -78,13 +80,14 @@
     });
     // Aggiorna i data-attrs letti dall'helper di ingredient_search.js.
     // kind=recipe disabilita la chiamata OFF (solo DB locale).
-    search.dataset.searchExtra = 'kind=' + kind + '&start=' + weekStart + asParam;
+    search.dataset.searchExtra = 'kind=' + kind + '&start=' + weekStart + asParam + (kind === 'ingredient' ? mealNameParam : '');
     search.dataset.searchNoOff = kind === 'recipe' ? '1' : '0';
     // Nascondi spinner OFF se siamo passati a ricette.
     var spinner = document.getElementById('meal-picker-spinner');
     if (spinner && kind === 'recipe') spinner.classList.add('hidden');
     // Refresh immediato della lista col nuovo kind, senza aspettare typing.
-    var url = '/meals/' + mealID + '/picker?kind=' + kind + '&start=' + weekStart + asParam + '&q=' + encodeURIComponent(search.value || '');
+    var nameP = kind === 'ingredient' ? mealNameParam : '';
+    var url = '/meals/' + mealID + '/picker?kind=' + kind + '&start=' + weekStart + asParam + nameP + '&q=' + encodeURIComponent(search.value || '');
     htmx.ajax('GET', url, { target: '#picker-results', swap: 'innerHTML' });
   }
 
@@ -94,7 +97,8 @@
 
   ['ingredient-created', 'recipe-created'].forEach(function (ev) {
     window.addEventListener(ev, function () {
-      var url = '/meals/' + mealID + '/picker?kind=' + currentKind + '&start=' + weekStart + asParam + '&q=' + encodeURIComponent(search.value || '');
+      var nameP2 = currentKind === 'ingredient' ? mealNameParam : '';
+      var url = '/meals/' + mealID + '/picker?kind=' + currentKind + '&start=' + weekStart + asParam + nameP2 + '&q=' + encodeURIComponent(search.value || '');
       htmx.ajax('GET', url, { target: '#picker-results', swap: 'innerHTML' });
     });
   });
