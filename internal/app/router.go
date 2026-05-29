@@ -122,8 +122,7 @@ func (a *App) Router() http.Handler {
 		r.Post("/profile/peso", a.handleWeightLog)
 		r.Post("/profile/peso/{id}/delete", a.handleWeightLogDelete)
 
-		// Log allenamento.
-		r.Get("/allenamento", a.handleWorkoutPage)
+		// Log allenamento (inserimento dalla day card della dashboard).
 		r.Post("/allenamento", a.handleWorkoutLog)
 		r.Post("/allenamento/{id}/delete", a.handleWorkoutLogDelete)
 

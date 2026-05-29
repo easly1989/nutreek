@@ -288,6 +288,51 @@
            class="grow rounded border border-border bg-surface px-2 py-1 text-sm placeholder:text-muted">
     <button class="rounded bg-accent text-accent-fg px-3 py-1 text-sm hover:bg-accent/90">+</button>
   </form>
+
+  {{/* Sezione allenamenti */}}
+  <div class="mt-3 pt-3 border-t border-border">
+    {{if gt .WorkoutKcal 0.0}}
+    <p class="text-xs text-muted font-medium mb-1">Allenamenti (−{{printf "%.0f" .WorkoutKcal}} kcal)</p>
+    {{range .Workouts}}
+    <div class="flex items-center justify-between text-xs text-muted mb-0.5">
+      <span>{{.ActivityName}} · {{.DurationMinutes}} min</span>
+      <form method="post" action="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}"
+            hx-post="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}"
+            hx-target="closest section[data-day]"
+            hx-swap="outerHTML"
+            class="inline">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" class="text-danger hover:underline ml-2">×</button>
+      </form>
+    </div>
+    {{end}}
+    {{end}}
+    {{if .Activities}}
+    <details class="text-sm mt-1">
+      <summary class="cursor-pointer text-accent hover:underline text-xs select-none">+ Allenamento</summary>
+      <form method="post" action="/allenamento?start={{$.WeekStart}}"
+            hx-post="/allenamento?start={{$.WeekStart}}"
+            hx-target="closest section[data-day]"
+            hx-swap="outerHTML"
+            class="mt-2 flex flex-wrap gap-2 items-end">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <input type="hidden" name="logged_at" value="{{.DateStr}}">
+        <select name="activity_id"
+                class="rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
+          {{range .Activities}}
+          <option value="{{.ID}}">{{.Name}} ({{printf "%.0f" .KcalPerHour}} kcal/h)</option>
+          {{end}}
+        </select>
+        <input name="duration_minutes" type="number" min="1" max="720" placeholder="min"
+               class="w-16 rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
+        <button type="submit"
+                class="rounded bg-accent text-accent-fg px-3 py-1 text-xs font-medium hover:bg-accent/90 transition">
+          OK
+        </button>
+      </form>
+    </details>
+    {{end}}
+  </div>
 </section>
 {{end}}
 
