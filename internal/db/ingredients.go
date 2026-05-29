@@ -37,14 +37,15 @@ func (r *Ingredients) CreateLocal(
 	kcal, protein, carbs, fat float64,
 	createdBy *int64,
 	unitWeightG *float64,
+	defaultQuantity *float64,
 ) (int64, error) {
 	res, err := r.db.ExecContext(ctx, `
 		INSERT INTO ingredients (
 			source, name, brand, unit,
 			kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-			created_by, unit_weight_g
-		) VALUES ('local', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, strings.TrimSpace(name), brand, string(unit), kcal, protein, carbs, fat, createdBy, unitWeightG)
+			created_by, unit_weight_g, default_quantity
+		) VALUES ('local', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, strings.TrimSpace(name), brand, string(unit), kcal, protein, carbs, fat, createdBy, unitWeightG, defaultQuantity)
 	if err != nil {
 		return 0, fmt.Errorf("insert ingredient: %w", err)
 	}
@@ -53,6 +54,34 @@ func (r *Ingredients) CreateLocal(
 		return 0, fmt.Errorf("last insert id: %w", err)
 	}
 	return id, nil
+}
+
+// Update aggiorna tutti i campi modificabili di un ingrediente.
+// Valido sia per ingredienti locali che per ingredienti OFF importati.
+func (r *Ingredients) Update(
+	ctx context.Context,
+	id int64,
+	name string,
+	brand *string,
+	unit domain.IngredientUnit,
+	kcal, protein, carbs, fat float64,
+	unitWeightG, defaultQuantity *float64,
+) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE ingredients SET
+			name=?, brand=?, unit=?,
+			kcal_per_100=?, protein_per_100=?, carbs_per_100=?, fat_per_100=?,
+			unit_weight_g=?, default_quantity=?
+		WHERE id=?`,
+		strings.TrimSpace(name), brand, string(unit),
+		kcal, protein, carbs, fat,
+		unitWeightG, defaultQuantity,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("update ingredient: %w", err)
+	}
+	return nil
 }
 
 // GetByID ritorna un ingrediente o ErrIngredientNotFound.
@@ -220,7 +249,7 @@ const selectIngredientCols = `SELECT
 	id, source, off_barcode, name, brand, unit,
 	kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
 	created_by, created_at, last_verified_at, superseded_by,
-	unit_weight_g`
+	unit_weight_g, default_quantity`
 
 func collectIngredients(rows *sql.Rows) ([]*domain.Ingredient, error) {
 	out := make([]*domain.Ingredient, 0, 16)
@@ -247,7 +276,7 @@ func scanIngredient(scan scanFn) (*domain.Ingredient, error) {
 		&ing.ID, &srcStr, &ing.OFFBarcode, &ing.Name, &ing.Brand, &unitStr,
 		&ing.KcalPer100, &ing.ProteinPer100, &ing.CarbsPer100, &ing.FatPer100,
 		&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy,
-		&ing.UnitWeightG,
+		&ing.UnitWeightG, &ing.DefaultQuantity,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrIngredientNotFound

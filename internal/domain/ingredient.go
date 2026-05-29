@@ -41,4 +41,6 @@ type Ingredient struct {
 	// UnitWeightG e' il peso in grammi di una singola unita' (es. 150 per una
 	// banana da 150g). NULL = ingrediente senza supporto "pezzi".
 	UnitWeightG *float64
+	// DefaultQuantity e' la quantita' predefinita da pre-compilare nel picker.
+	DefaultQuantity *float64
 }

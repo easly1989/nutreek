@@ -21,7 +21,7 @@ func TestIngredientsCreateAndGet(t *testing.T) {
 	}
 
 	brand := "Molino X"
-	id, err := ings.CreateLocal(ctx, "Farina di ceci", &brand, domain.UnitGram, 380, 22, 50, 6, &uid, nil)
+	id, err := ings.CreateLocal(ctx, "Farina di ceci", &brand, domain.UnitGram, 380, 22, 50, 6, &uid, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateLocal: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestIngredientsSearchAndList(t *testing.T) {
 	ctx := context.Background()
 
 	mk := func(name string) int64 {
-		id, err := ings.CreateLocal(ctx, name, nil, domain.UnitGram, 100, 5, 20, 1, nil, nil)
+		id, err := ings.CreateLocal(ctx, name, nil, domain.UnitGram, 100, 5, 20, 1, nil, nil, nil)
 		if err != nil {
 			t.Fatalf("CreateLocal %q: %v", name, err)
 		}
@@ -155,9 +155,9 @@ func TestIngredientsReconcileHelpers(t *testing.T) {
 	ctx := context.Background()
 
 	// 3 locals: A, B, C. Tutti senza last_verified_at.
-	idA, _ := ings.CreateLocal(ctx, "A", nil, "g", 100, 5, 10, 1, nil, nil)
-	idB, _ := ings.CreateLocal(ctx, "B", nil, "g", 100, 5, 10, 1, nil, nil)
-	idC, _ := ings.CreateLocal(ctx, "C", nil, "g", 100, 5, 10, 1, nil, nil)
+	idA, _ := ings.CreateLocal(ctx, "A", nil, "g", 100, 5, 10, 1, nil, nil, nil)
+	idB, _ := ings.CreateLocal(ctx, "B", nil, "g", 100, 5, 10, 1, nil, nil, nil)
+	idC, _ := ings.CreateLocal(ctx, "C", nil, "g", 100, 5, 10, 1, nil, nil, nil)
 	// Un OFF (non deve apparire fra i candidati).
 	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1, nil)
 	if err != nil {

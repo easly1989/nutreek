@@ -52,6 +52,8 @@ func (a *App) Router() http.Handler {
 		r.Get("/ingredients/search", a.handleIngredientsSearchPartial)
 		r.Get("/ingredients/new", a.handleIngredientNewForm)
 		r.Post("/ingredients", a.handleIngredientCreate)
+		r.Get("/ingredients/{id}/edit", a.handleIngredientEditForm)
+		r.Post("/ingredients/{id}", a.handleIngredientUpdate)
 		r.Post("/ingredients/off-import", a.handleIngredientOFFImport)
 		r.Get("/off/check/{barcode}", a.handleOFFMacroCheck)
 		r.Post("/ingredients/categories", a.handleCategoryCreate)

@@ -106,6 +106,14 @@ func (r ingredientRow) Unit() string {
 	return "g"
 }
 
+// LocalID ritorna l'ID DB dell'ingrediente locale (0 se la riga e' solo OFF).
+func (r ingredientRow) LocalID() int64 {
+	if r.Local != nil {
+		return r.Local.ID
+	}
+	return 0
+}
+
 // Barcode espone l'identificatore OFF per la form di import.
 func (r ingredientRow) Barcode() string {
 	if r.OFF != nil {
@@ -148,6 +156,14 @@ func (r ingredientRow) ImageURL() string {
 	return ""
 }
 
+// DefaultQuantity ritorna la quantita' predefinita per il picker (0 = non impostata).
+func (r ingredientRow) DefaultQuantity() float64 {
+	if r.Local != nil && r.Local.DefaultQuantity != nil {
+		return *r.Local.DefaultQuantity
+	}
+	return 0
+}
+
 // UnitWeightG espone il peso medio per unita' se disponibile (parsing OFF o
 // override manuale). Restituisce 0 se non noto: il template usa questo per
 // decidere se mostrare il selettore g/pz nel picker.
@@ -187,19 +203,20 @@ type ingredientsNewData struct {
 	Allergens  []domain.AllergenTag
 }
 
-// ingredientForm cattura i campi del form "nuovo ingrediente" per poter
+// ingredientForm cattura i campi del form "nuovo/modifica ingrediente" per poter
 // rifare il render in caso di errore senza perdere i valori inseriti.
 type ingredientForm struct {
-	Name        string
-	Brand       string
-	Unit        string
-	Kcal        string
-	Protein     string
-	Carbs       string
-	Fat         string
-	UnitWeightG string  // opzionale: peso per unita' in g (es. "150")
-	CategoryID  string  // opzionale: ID categoria
-	AllergenIDs []int64 // opzionale: ID allergeni selezionati
+	Name            string
+	Brand           string
+	Unit            string
+	Kcal            string
+	Protein         string
+	Carbs           string
+	Fat             string
+	UnitWeightG     string  // opzionale: peso per unita' in g (es. "150")
+	DefaultQuantity string  // opzionale: quantita' predefinita nel picker
+	CategoryID      string  // opzionale: ID categoria
+	AllergenIDs     []int64 // opzionale: ID allergeni selezionati
 }
 
 // ---- handlers --------------------------------------------------------------
@@ -394,7 +411,15 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ingID, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, creatorID, unitWeightG)
+	// default_quantity opzionale: quantità predefinita nel picker.
+	var defaultQuantity *float64
+	if s := strings.TrimSpace(r.PostFormValue("default_quantity")); s != "" {
+		if v, err2 := parseNonNegFloat(s); err2 == nil && v > 0 {
+			defaultQuantity = &v
+		}
+	}
+
+	ingID, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, creatorID, unitWeightG, defaultQuantity)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -576,6 +601,175 @@ func writeMacroFragment(w http.ResponseWriter, full bool, kcal, protein, carbs, 
 				`<span class="text-muted">OpenFoodFacts</span>`+
 				`<span class="text-danger/80 italic"> · macro non disponibili su OFF</span>`)
 	}
+}
+
+type ingredientEditData struct {
+	authPageData
+	Form         ingredientForm
+	Error        string
+	IngredientID int64
+	IsOFF        bool
+	Categories   []domain.IngredientCategory
+	Allergens    []domain.AllergenTag
+}
+
+func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	ing, err := a.Ingredients.GetByID(r.Context(), id)
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	user := userFromContext(r.Context())
+	cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
+	allergens, _ := a.Categories.ListAllergens(r.Context())
+
+	form := ingredientForm{
+		Name:    ing.Name,
+		Unit:    string(ing.Unit),
+		Kcal:    strconv.FormatFloat(ing.KcalPer100, 'f', -1, 64),
+		Protein: strconv.FormatFloat(ing.ProteinPer100, 'f', -1, 64),
+		Carbs:   strconv.FormatFloat(ing.CarbsPer100, 'f', -1, 64),
+		Fat:     strconv.FormatFloat(ing.FatPer100, 'f', -1, 64),
+	}
+	if ing.Brand != nil {
+		form.Brand = *ing.Brand
+	}
+	if ing.UnitWeightG != nil {
+		form.UnitWeightG = strconv.FormatFloat(*ing.UnitWeightG, 'f', -1, 64)
+	}
+	if ing.DefaultQuantity != nil {
+		form.DefaultQuantity = strconv.FormatFloat(*ing.DefaultQuantity, 'f', -1, 64)
+	}
+
+	data := ingredientEditData{
+		authPageData: a.baseData(r),
+		Form:         form,
+		IngredientID: id,
+		IsOFF:        ing.Source == domain.IngredientSourceOFF,
+		Categories:   cats,
+		Allergens:    allergens,
+	}
+	if err := a.Render.Render(w, http.StatusOK, "ingredient_edit", data); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
+func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	// Verifica che esista.
+	ing, err := a.Ingredients.GetByID(r.Context(), id)
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+
+	form := ingredientForm{
+		Name:            strings.TrimSpace(r.PostFormValue("name")),
+		Brand:           strings.TrimSpace(r.PostFormValue("brand")),
+		Unit:            strings.TrimSpace(r.PostFormValue("unit")),
+		Kcal:            strings.TrimSpace(r.PostFormValue("kcal")),
+		Protein:         strings.TrimSpace(r.PostFormValue("protein")),
+		Carbs:           strings.TrimSpace(r.PostFormValue("carbs")),
+		Fat:             strings.TrimSpace(r.PostFormValue("fat")),
+		UnitWeightG:     strings.TrimSpace(r.PostFormValue("unit_weight_g")),
+		DefaultQuantity: strings.TrimSpace(r.PostFormValue("default_quantity")),
+		CategoryID:      strings.TrimSpace(r.PostFormValue("category_id")),
+	}
+
+	renderEditErr := func(msg string) {
+		user := userFromContext(r.Context())
+		cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
+		allergens, _ := a.Categories.ListAllergens(r.Context())
+		data := ingredientEditData{
+			authPageData: a.baseData(r),
+			Form:         form,
+			Error:        msg,
+			IngredientID: id,
+			IsOFF:        ing.Source == domain.IngredientSourceOFF,
+			Categories:   cats,
+			Allergens:    allergens,
+		}
+		_ = a.Render.Render(w, http.StatusUnprocessableEntity, "ingredient_edit", data)
+	}
+
+	if form.Name == "" {
+		renderEditErr("Il nome è obbligatorio.")
+		return
+	}
+	if len(form.Name) > 200 {
+		renderEditErr("Nome troppo lungo (max 200 caratteri).")
+		return
+	}
+	unit := domain.IngredientUnit(form.Unit)
+	if unit != domain.UnitGram && unit != domain.UnitMilliliter {
+		renderEditErr("Unità non valida (usare g o ml).")
+		return
+	}
+
+	kcal, err := parseNonNegFloat(form.Kcal)
+	if err != nil {
+		renderEditErr("Kcal/100 non valida: " + err.Error())
+		return
+	}
+	protein, err := parseNonNegFloat(form.Protein)
+	if err != nil {
+		renderEditErr("Proteine/100 non valide: " + err.Error())
+		return
+	}
+	carbs, err := parseNonNegFloat(form.Carbs)
+	if err != nil {
+		renderEditErr("Carbo/100 non validi: " + err.Error())
+		return
+	}
+	fat, err := parseNonNegFloat(form.Fat)
+	if err != nil {
+		renderEditErr("Grassi/100 non validi: " + err.Error())
+		return
+	}
+
+	var brandPtr *string
+	if form.Brand != "" {
+		brandPtr = &form.Brand
+	}
+
+	var unitWeightG *float64
+	if s := form.UnitWeightG; s != "" {
+		if v, err2 := parseNonNegFloat(s); err2 == nil && v > 0 {
+			unitWeightG = &v
+		}
+	}
+	var defaultQuantity *float64
+	if s := form.DefaultQuantity; s != "" {
+		if v, err2 := parseNonNegFloat(s); err2 == nil && v > 0 {
+			defaultQuantity = &v
+		}
+	}
+
+	if err := a.Ingredients.Update(r.Context(), id, form.Name, brandPtr, unit, kcal, protein, carbs, fat, unitWeightG, defaultQuantity); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+
+	// Aggiorna categoria.
+	if form.CategoryID != "" {
+		if catID, err2 := strconv.ParseInt(form.CategoryID, 10, 64); err2 == nil && catID > 0 {
+			_ = a.Categories.SetIngredientCategory(r.Context(), id, &catID)
+		}
+	} else {
+		_ = a.Categories.SetIngredientCategory(r.Context(), id, nil)
+	}
+
+	a.Sessions.Put(r.Context(), "flash", "Ingrediente aggiornato.")
+	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 
 func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form ingredientForm, msg string) {
