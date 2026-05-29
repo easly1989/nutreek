@@ -11,8 +11,8 @@
   </div>
   {{else}}
 
-  {{/* Media settimanale */}}
-  <section class="grid grid-cols-4 gap-3 mb-6">
+  {{/* Media settimanale — 6 card */}}
+  <section class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
     <div class="bg-surface border border-border rounded px-4 py-3">
       <div class="text-xs text-muted mb-1">Media kcal/sett.</div>
       <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Kcal}}</div>
@@ -29,10 +29,53 @@
       <div class="text-xs text-muted mb-1">Media grassi (g)</div>
       <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Fat}}</div>
     </div>
+    <div class="bg-surface border border-border rounded px-4 py-3">
+      <div class="text-xs text-muted mb-1">Media allenamenti/sett.</div>
+      <div class="text-xl font-semibold tabular-nums">{{printf "%.1f" .AvgWorkouts}}</div>
+    </div>
+    <div class="bg-surface border border-border rounded px-4 py-3">
+      <div class="text-xs text-muted mb-1">Media sgarri/sett.</div>
+      <div class="text-xl font-semibold tabular-nums">{{printf "%.1f" .AvgCheats}}</div>
+    </div>
   </section>
 
-  {{/* Tabella storico */}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-8">
+  {{/* ===== Grafici ===== */}}
+
+  {{if .HasWeightData}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">Andamento peso (kg)</h2>
+    </div>
+    <div class="px-4 py-4">
+      <canvas id="chart-weight" height="120"></canvas>
+    </div>
+  </section>
+  {{end}}
+
+  {{if .HasWorkoutData}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">Kcal bruciate per settimana</h2>
+    </div>
+    <div class="px-4 py-4">
+      <canvas id="chart-workout" height="120"></canvas>
+    </div>
+  </section>
+  {{end}}
+
+  {{if .HasCheatData}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">Sgarri per settimana (n. pasti)</h2>
+    </div>
+    <div class="px-4 py-4">
+      <canvas id="chart-cheats" height="120"></canvas>
+    </div>
+  </section>
+  {{end}}
+
+  {{/* Tabella storico — in fondo */}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
     <div class="px-4 py-3 border-b border-border bg-surface-2">
       <h2 class="text-sm font-semibold text-muted">Dettaglio per settimana</h2>
     </div>
@@ -80,41 +123,6 @@
     </table>
   </section>
 
-  {{/* ===== Grafici ===== */}}
-
-  {{if .HasWeightData}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">Andamento peso (kg)</h2>
-    </div>
-    <div class="px-4 py-4">
-      <canvas id="chart-weight" height="120"></canvas>
-    </div>
-  </section>
-  {{end}}
-
-  {{if .HasWorkoutData}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">Kcal bruciate per settimana</h2>
-    </div>
-    <div class="px-4 py-4">
-      <canvas id="chart-workout" height="120"></canvas>
-    </div>
-  </section>
-  {{end}}
-
-  {{if .HasCheatData}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">Sgarri per settimana (n. pasti)</h2>
-    </div>
-    <div class="px-4 py-4">
-      <canvas id="chart-cheats" height="120"></canvas>
-    </div>
-  </section>
-  {{end}}
-
   {{end}}
 </div>
 {{end}}
@@ -132,6 +140,12 @@
   Chart.defaults.borderColor = 'rgba(128,128,128,0.15)';
   Chart.defaults.font.size = 11;
 
+  var lineOpts = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: false } },
+  };
+
   {{if .HasWeightData}}
   var weightLabels = [{{range .WeightPoints}}"{{.Date}}",{{end}}];
   var weightValues = [{{range .WeightPoints}}{{.Weight}},{{end}}];
@@ -146,16 +160,11 @@
         backgroundColor: accent + '22',
         tension: 0.3,
         fill: true,
-        pointRadius: 3,
+        pointRadius: 4,
+        pointHoverRadius: 6,
       }]
     },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: false }
-      }
-    }
+    options: lineOpts,
   });
   {{end}}
 
@@ -163,21 +172,21 @@
   var workoutLabels = [{{range .WorkoutWeeks}}"{{.WeekLabel}}",{{end}}];
   var workoutValues = [{{range .WorkoutWeeks}}{{printf "%.0f" .KcalBurned}},{{end}}];
   new Chart(document.getElementById('chart-workout'), {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: workoutLabels,
       datasets: [{
         label: 'Kcal bruciate',
         data: workoutValues,
-        backgroundColor: accent + 'bb',
-        borderRadius: 4,
+        borderColor: accent,
+        backgroundColor: accent + '22',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6,
       }]
     },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true } }
-    }
+    options: Object.assign({}, lineOpts, { scales: { y: { beginAtZero: true } } }),
   });
   {{end}}
 
@@ -185,21 +194,23 @@
   var cheatLabels = [{{range .CheatWeeks}}"{{.WeekLabel}}",{{end}}];
   var cheatValues = [{{range .CheatWeeks}}{{.Count}},{{end}}];
   new Chart(document.getElementById('chart-cheats'), {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: cheatLabels,
       datasets: [{
         label: 'Sgarri',
         data: cheatValues,
-        backgroundColor: danger + 'bb',
-        borderRadius: 4,
+        borderColor: danger,
+        backgroundColor: danger + '22',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6,
       }]
     },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-    }
+    options: Object.assign({}, lineOpts, {
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+    }),
   });
   {{end}}
 })();
