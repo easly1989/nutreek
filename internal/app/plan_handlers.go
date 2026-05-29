@@ -60,7 +60,9 @@ type dayCardData struct {
 	WeekStart   string // YYYY-MM-DD per nascondere/passare nei form
 	CSRFToken   string
 	Progress    profile.MacroProgress
-	WorkoutKcal float64 // kcal bruciate con allenamenti in quel giorno
+	WorkoutKcal float64              // kcal bruciate con allenamenti in quel giorno
+	Workouts    []domain.WorkoutLog  // allenamenti del giorno
+	Activities  []domain.WorkoutActivity // per il select nel form di aggiunta
 }
 
 type mealView struct {
@@ -232,7 +234,7 @@ func scaleRecipeItems(it domain.MealItemFull) []scaledIngredient {
 // makeDayCard costruisce dayCardData a partire da una dayView e dal contesto.
 // `state` e' il giorno calendariale; `inFocus` decide se andra' anche nella
 // griglia focus. Default: today/future = true, past = false.
-func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken string, progress profile.MacroProgress, workoutKcal float64) dayCardData {
+func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken string, progress profile.MacroProgress, workoutKcal float64, workouts []domain.WorkoutLog, activities []domain.WorkoutActivity) dayCardData {
 	return dayCardData{
 		Day:         dv,
 		DateStr:     formatDate(dv.Date),
@@ -242,6 +244,8 @@ func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken
 		CSRFToken:   csrfToken,
 		Progress:    progress,
 		WorkoutKcal: workoutKcal,
+		Workouts:    workouts,
+		Activities:  activities,
 	}
 }
 
@@ -269,7 +273,7 @@ func reorderFocusCards(cards []dayCardData) []dayCardData {
 // buildDayCards costruisce le 7 dayCardData con InFocus default-driven dallo
 // stato calendariale: today + future = true, past = false. La timeline
 // renderizza tutte e 7 le pillole; #focus-grid solo quelle InFocus.
-func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string, user *domain.User, workoutKcals [7]float64) []dayCardData {
+func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string, user *domain.User, workoutKcals [7]float64, workoutLogs [7][]domain.WorkoutLog, activities []domain.WorkoutActivity) []dayCardData {
 	out := make([]dayCardData, 0, 7)
 	allPast := len(days) > 0 && dayState(days[len(days)-1].Date, today) == "past"
 	for i, dv := range days {
@@ -279,7 +283,7 @@ func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken stri
 		if user != nil {
 			progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
 		}
-		out = append(out, makeDayCard(dv, state, inFocus, weekStartStr, csrfToken, progress, workoutKcals[i]))
+		out = append(out, makeDayCard(dv, state, inFocus, weekStartStr, csrfToken, progress, workoutKcals[i], workoutLogs[i], activities))
 	}
 	return out
 }
@@ -303,7 +307,16 @@ func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, 
 	if user != nil {
 		progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
 	}
-	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress, 0)
+	// Carica workout per il giorno (fix bug: prima era sempre 0 dopo mutation HTMX).
+	var wkcal float64
+	var wlogs []domain.WorkoutLog
+	var acts []domain.WorkoutActivity
+	if a.WorkoutLogs != nil && user != nil {
+		wkcal, _ = a.WorkoutLogs.WorkoutKcalForDay(r.Context(), user.ID, dv.Date)
+		wlogs, _ = a.WorkoutLogs.ListWorkoutLogs(r.Context(), user.ID, dv.Date, dv.Date)
+		acts, _ = a.WorkoutLogs.ListActivities(r.Context())
+	}
+	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress, wkcal, wlogs, acts)
 	resp := dayMutationResponse{Card: card, WeekTotal: weekTotal}
 	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card_with_pill_oob", resp); err != nil {
 		a.serverError(w, r, err)
@@ -429,13 +442,17 @@ func (a *App) renderDashboard(
 	today := todayDate()
 	weekStartStr := formatDate(weekStart)
 	var workoutKcals [7]float64
+	var workoutLogs [7][]domain.WorkoutLog
+	var activities []domain.WorkoutActivity
 	if a.WorkoutLogs != nil && user != nil {
+		activities, _ = a.WorkoutLogs.ListActivities(r.Context())
 		for i := 0; i < 7; i++ {
 			d := weekStart.AddDate(0, 0, i)
 			workoutKcals[i], _ = a.WorkoutLogs.WorkoutKcalForDay(r.Context(), user.ID, d)
+			workoutLogs[i], _ = a.WorkoutLogs.ListWorkoutLogs(r.Context(), user.ID, d, d)
 		}
 	}
-	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken, user, workoutKcals)
+	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken, user, workoutKcals, workoutLogs, activities)
 	focusCards := make([]dayCardData, 0, len(allCards))
 	for _, c := range allCards {
 		if c.InFocus {
