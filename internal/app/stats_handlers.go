@@ -14,25 +14,49 @@ type weekStatsRow struct {
 	KcalBarPct float64 // 0-100, per sparkbar CSS
 }
 
+type weightPoint struct {
+	Date   string
+	Weight float64
+}
+
+type workoutWeekPoint struct {
+	WeekLabel  string
+	KcalBurned float64
+}
+
+type cheatWeekPoint struct {
+	WeekLabel string
+	Count     int
+}
+
 type statsPageData struct {
 	authPageData
 	Weeks    []weekStatsRow
 	Averages macros.Macros
 	HasData  bool
 	MaxKcal  float64 // per la sparkbar CSS
+
+	WeightPoints    []weightPoint
+	WorkoutWeeks    []workoutWeekPoint
+	CheatWeeks      []cheatWeekPoint
+	HasWeightData   bool
+	HasWorkoutData  bool
+	HasCheatData    bool
 }
 
 func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	ctx := r.Context()
 
-	// Calcola le ultime 12 settimane (dalla corrente inclusa).
 	now := time.Now()
 	weekStart := mondayOf(now)
 
 	var rows []weekStatsRow
 	var sumTotal macros.Macros
 	var countNonEmpty int
+	var workoutWeeks []workoutWeekPoint
+	var cheatWeeks []cheatWeekPoint
+	var hasWorkoutData, hasCheatData bool
 
 	for i := 0; i < 12; i++ {
 		ws := weekStart.AddDate(0, 0, -7*i)
@@ -63,6 +87,28 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 			sumTotal = sumTotal.Add(weekTotal)
 			countNonEmpty++
 		}
+
+		// Kcal allenamento per settimana.
+		wkcal, _ := a.WorkoutLogs.SumKcalForWeek(ctx, user.ID, ws, ws.AddDate(0, 0, 6))
+		label := ws.Format("02/01")
+		workoutWeeks = append(workoutWeeks, workoutWeekPoint{WeekLabel: label, KcalBurned: wkcal})
+		if wkcal > 0 {
+			hasWorkoutData = true
+		}
+
+		// Conteggio sgarri per settimana.
+		cheatCount := 0
+		for _, dayMeals := range full.Days {
+			for _, meal := range dayMeals {
+				if meal.HasCheats() {
+					cheatCount++
+				}
+			}
+		}
+		cheatWeeks = append(cheatWeeks, cheatWeekPoint{WeekLabel: label, Count: cheatCount})
+		if cheatCount > 0 {
+			hasCheatData = true
+		}
 	}
 
 	var averages macros.Macros
@@ -87,12 +133,39 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Andamento peso: ultime 90 misurazioni ordinate cronologicamente.
+	weightLogs, _ := a.WeightLogs.ListWeightLogs(ctx, user.ID, 90)
+	var weightPoints []weightPoint
+	for i := len(weightLogs) - 1; i >= 0; i-- {
+		l := weightLogs[i]
+		weightPoints = append(weightPoints, weightPoint{
+			Date:   l.MeasuredAt.Format("02/01"),
+			Weight: l.WeightKg,
+		})
+	}
+
+	// Inverti le settimane (cronologico: dalla più vecchia alla più recente).
+	reverseWorkoutWeeks := make([]workoutWeekPoint, len(workoutWeeks))
+	reverseCheatWeeks := make([]cheatWeekPoint, len(cheatWeeks))
+	for i, v := range workoutWeeks {
+		reverseWorkoutWeeks[len(workoutWeeks)-1-i] = v
+	}
+	for i, v := range cheatWeeks {
+		reverseCheatWeeks[len(cheatWeeks)-1-i] = v
+	}
+
 	data := statsPageData{
-		authPageData: a.baseData(r),
-		Weeks:        rows,
-		Averages:     averages,
-		HasData:      countNonEmpty > 0,
-		MaxKcal:      maxKcal,
+		authPageData:   a.baseData(r),
+		Weeks:          rows,
+		Averages:       averages,
+		HasData:        countNonEmpty > 0,
+		MaxKcal:        maxKcal,
+		WeightPoints:   weightPoints,
+		WorkoutWeeks:   reverseWorkoutWeeks,
+		CheatWeeks:     reverseCheatWeeks,
+		HasWeightData:  len(weightPoints) > 0,
+		HasWorkoutData: hasWorkoutData,
+		HasCheatData:   hasCheatData,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "stats", data); err != nil {
 		a.serverError(w, r, err)

@@ -27,6 +27,7 @@ type authPageData struct {
 	Error     string
 	Form      authFormData
 	Theme     string
+	ActiveNav string // URL path corrente, per evidenziare il link attivo nella sidebar
 }
 
 // validThemes elenca i temi accettati. Tenuto allineato a web/tailwind/input.css
@@ -57,6 +58,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 		CSRFToken: nosurf.Token(r),
 		Flash:     a.Sessions.PopString(r.Context(), "flash"),
 		Theme:     readTheme(r),
+		ActiveNav: r.URL.Path,
 	}
 }
 
