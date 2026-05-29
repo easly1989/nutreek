@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/domain"
 )
@@ -109,7 +110,7 @@ func (a *App) handleNutritionistCreateMealType(w http.ResponseWriter, r *http.Re
 	name := strings.TrimSpace(r.PostFormValue("name"))
 	if name == "" {
 		a.Sessions.Put(r.Context(), "flash", "Il nome del tipo pasto e' obbligatorio.")
-		http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+		http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 		return
 	}
 	plan, err := a.NutritionistPlans.GetOrCreatePlan(r.Context(), user.ID)
@@ -121,7 +122,7 @@ func (a *App) handleNutritionistCreateMealType(w http.ResponseWriter, r *http.Re
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 }
 
 func (a *App) handleNutritionistDeleteMealType(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +141,7 @@ func (a *App) handleNutritionistDeleteMealType(w http.ResponseWriter, r *http.Re
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 }
 
 func (a *App) handleNutritionistCreateVariation(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +151,7 @@ func (a *App) handleNutritionistCreateVariation(w http.ResponseWriter, r *http.R
 	mealTypeID, err := strconv.ParseInt(mealTypeIDStr, 10, 64)
 	if err != nil || mealTypeID <= 0 {
 		a.Sessions.Put(r.Context(), "flash", "Tipo pasto non valido.")
-		http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+		http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 		return
 	}
 
@@ -163,7 +164,7 @@ func (a *App) handleNutritionistCreateVariation(w http.ResponseWriter, r *http.R
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 }
 
 func (a *App) handleNutritionistDeleteVariation(w http.ResponseWriter, r *http.Request) {
@@ -182,20 +183,98 @@ func (a *App) handleNutritionistDeleteVariation(w http.ResponseWriter, r *http.R
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
+}
+
+// handleNutritionistPicker GET /nutrizionista/picker — live search per il picker
+// inline nel tab Piano Pasti. Supporta kind=ingredient|recipe.
+func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	variationIDStr := r.URL.Query().Get("variation_id")
+	variationID, err := strconv.ParseInt(variationIDStr, 10, 64)
+	if err != nil || variationID <= 0 {
+		http.Error(w, "variation_id non valido", http.StatusBadRequest)
+		return
+	}
+	kind := r.URL.Query().Get("kind")
+	if kind == "" {
+		kind = "ingredient"
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	switch kind {
+	case "ingredient":
+		rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r))
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		data := ingredientsListData{
+			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+			Rows:         rows,
+			Query:        q,
+			OFFWarning:   warn,
+			PickerKind:   "nutritionist_item",
+			VariationID:  variationID,
+		}
+		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
+			a.serverError(w, r, err)
+		}
+	case "recipe":
+		recipes, err := a.Recipes.ListVisible(r.Context(), user.ID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		if q != "" {
+			ql := strings.ToLower(q)
+			filtered := make([]*domain.Recipe, 0, len(recipes))
+			for _, rc := range recipes {
+				if strings.Contains(strings.ToLower(rc.Name), ql) {
+					filtered = append(filtered, rc)
+				}
+			}
+			recipes = filtered
+		}
+		data := struct {
+			authPageData
+			Recipes     []*domain.Recipe
+			Query       string
+			VariationID int64
+		}{
+			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+			Recipes:      recipes,
+			Query:        q,
+			VariationID:  variationID,
+		}
+		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "recipe_picker_results", data); err != nil {
+			a.serverError(w, r, err)
+		}
+	default:
+		http.Error(w, "kind non valido", http.StatusBadRequest)
+	}
 }
 
 func (a *App) handleNutritionistAddItem(w http.ResponseWriter, r *http.Request) {
 	variationIDStr := strings.TrimSpace(r.PostFormValue("variation_id"))
 	quantityStr := strings.TrimSpace(r.PostFormValue("quantity"))
-	unit := strings.TrimSpace(r.PostFormValue("unit"))
+	// Accetta sia "unit" (vecchio form) sia "qty_unit" (nuovo picker).
+	unit := strings.TrimSpace(r.PostFormValue("qty_unit"))
+	if unit == "" {
+		unit = strings.TrimSpace(r.PostFormValue("unit"))
+	}
+	// Accetta sia "ingredient_id" sia "ref_id" (pattern picker).
 	ingredientIDStr := strings.TrimSpace(r.PostFormValue("ingredient_id"))
+	if ingredientIDStr == "" {
+		ingredientIDStr = strings.TrimSpace(r.PostFormValue("ref_id"))
+	}
 	recipeIDStr := strings.TrimSpace(r.PostFormValue("recipe_id"))
+	barcode := strings.TrimSpace(r.PostFormValue("barcode"))
 
 	variationID, err := strconv.ParseInt(variationIDStr, 10, 64)
 	if err != nil || variationID <= 0 {
 		a.Sessions.Put(r.Context(), "flash", "Variante non valida.")
-		http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+		http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 		return
 	}
 
@@ -203,7 +282,7 @@ func (a *App) handleNutritionistAddItem(w http.ResponseWriter, r *http.Request) 
 	quantity, err := strconv.ParseFloat(quantityStr, 64)
 	if err != nil || quantity <= 0 {
 		a.Sessions.Put(r.Context(), "flash", "Quantita' non valida.")
-		http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+		http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 		return
 	}
 
@@ -212,7 +291,15 @@ func (a *App) handleNutritionistAddItem(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var ingIDPtr, recipeIDPtr *int64
-	if ingredientIDStr != "" {
+	if barcode != "" {
+		ingID, err := a.resolveOFFBarcode(r.Context(), barcode)
+		if err != nil {
+			a.Sessions.Put(r.Context(), "flash", "Import OFF fallito: "+err.Error())
+			http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
+			return
+		}
+		ingIDPtr = &ingID
+	} else if ingredientIDStr != "" {
 		if id, err2 := strconv.ParseInt(ingredientIDStr, 10, 64); err2 == nil {
 			ingIDPtr = &id
 		}
@@ -225,7 +312,7 @@ func (a *App) handleNutritionistAddItem(w http.ResponseWriter, r *http.Request) 
 
 	if ingIDPtr == nil && recipeIDPtr == nil {
 		a.Sessions.Put(r.Context(), "flash", "Seleziona un ingrediente o una ricetta.")
-		http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+		http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 		return
 	}
 
@@ -233,7 +320,7 @@ func (a *App) handleNutritionistAddItem(w http.ResponseWriter, r *http.Request) 
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 }
 
 func (a *App) handleNutritionistDeleteItem(w http.ResponseWriter, r *http.Request) {
@@ -252,5 +339,5 @@ func (a *App) handleNutritionistDeleteItem(w http.ResponseWriter, r *http.Reques
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/nutrizionista", http.StatusSeeOther)
+	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 }
