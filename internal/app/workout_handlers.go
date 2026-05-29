@@ -10,49 +10,11 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/amon2126/nutreek/internal/db"
-	"github.com/amon2126/nutreek/internal/domain"
 )
 
-type workoutPageData struct {
-	authPageData
-	Activities []domain.WorkoutActivity
-	Logs       []domain.WorkoutLog
-	TodayStr   string
-	TodayKcal  float64
-}
-
-func (a *App) handleWorkoutPage(w http.ResponseWriter, r *http.Request) {
-	user := userFromContext(r.Context())
-	ctx := r.Context()
-
-	activities, err := a.WorkoutLogs.ListActivities(ctx)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-
-	to := time.Now()
-	from := to.AddDate(0, 0, -30)
-	logs, err := a.WorkoutLogs.ListWorkoutLogs(ctx, user.ID, from, to)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-
-	todayKcal, _ := a.WorkoutLogs.WorkoutKcalForDay(ctx, user.ID, to)
-
-	data := workoutPageData{
-		authPageData: a.baseData(r),
-		Activities:   activities,
-		Logs:         logs,
-		TodayStr:     to.Format("2006-01-02"),
-		TodayKcal:    todayKcal,
-	}
-	if err := a.Render.Render(w, http.StatusOK, "workout", data); err != nil {
-		a.serverError(w, r, err)
-	}
-}
-
+// handleWorkoutLog POST /allenamento — aggiunge un allenamento al giorno.
+// Il form proviene dalla day card; dopo la creazione aggiorna la card via
+// HTMX swap o redirect alla settimana.
 func (a *App) handleWorkoutLog(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 
@@ -60,39 +22,26 @@ func (a *App) handleWorkoutLog(w http.ResponseWriter, r *http.Request) {
 	dateStr := strings.TrimSpace(r.PostFormValue("logged_at"))
 	minutesStr := strings.TrimSpace(r.PostFormValue("duration_minutes"))
 	noteStr := strings.TrimSpace(r.PostFormValue("note"))
-
-	renderErr := func(msg string) {
-		activities, _ := a.WorkoutLogs.ListActivities(r.Context())
-		to := time.Now()
-		from := to.AddDate(0, 0, -30)
-		logs, _ := a.WorkoutLogs.ListWorkoutLogs(r.Context(), user.ID, from, to)
-		data := workoutPageData{
-			authPageData: a.baseData(r),
-			Activities:   activities,
-			Logs:         logs,
-			TodayStr:     to.Format("2006-01-02"),
-		}
-		data.Error = msg
-		if err := a.Render.Render(w, http.StatusUnprocessableEntity, "workout", data); err != nil {
-			a.serverError(w, r, err)
-		}
-	}
+	weekStart := parseWeekStart(r)
 
 	activityID, err := strconv.ParseInt(activityIDStr, 10, 64)
 	if err != nil || activityID <= 0 {
-		renderErr("Seleziona un'attività.")
+		a.Sessions.Put(r.Context(), "flash", "Seleziona un'attività valida.")
+		a.redirectToWeek(w, r, weekStart)
 		return
 	}
 
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		renderErr("Data non valida.")
+		a.Sessions.Put(r.Context(), "flash", "Data non valida.")
+		a.redirectToWeek(w, r, weekStart)
 		return
 	}
 
 	minutes, err := strconv.Atoi(minutesStr)
 	if err != nil || minutes <= 0 || minutes > 720 {
-		renderErr("Durata non valida (1–720 minuti).")
+		a.Sessions.Put(r.Context(), "flash", "Durata non valida (1–720 minuti).")
+		a.redirectToWeek(w, r, weekStart)
 		return
 	}
 
@@ -106,18 +55,32 @@ func (a *App) handleWorkoutLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Sessions.Put(r.Context(), "flash", "Allenamento registrato.")
-	http.Redirect(w, r, "/allenamento", http.StatusSeeOther)
+	// Aggiorna la card del giorno in cui è stato loggato l'allenamento.
+	dayIndex := int(date.Sub(db.MondayOf(date)).Hours() / 24)
+	a.respondMutationOrRedirect(w, r, db.MondayOf(date), dayIndex)
 }
 
+// handleWorkoutLogDelete POST /allenamento/{id}/delete — elimina un allenamento.
 func (a *App) handleWorkoutLogDelete(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
+
+	// Legge logged_at prima di cancellare per sapere quale card aggiornare.
+	var dateStr string
+	err = a.Store.DB.QueryRowContext(r.Context(),
+		`SELECT logged_at FROM workout_logs WHERE id = ? AND user_id = ?`, id, user.ID,
+	).Scan(&dateStr)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	date, _ := time.Parse("2006-01-02", dateStr)
+	weekStart := db.MondayOf(date)
+	dayIndex := int(date.Sub(weekStart).Hours() / 24)
 
 	if err := a.WorkoutLogs.DeleteWorkoutLog(r.Context(), id, user.ID); err != nil {
 		if errors.Is(err, db.ErrWorkoutLogNotFound) {
@@ -128,6 +91,5 @@ func (a *App) handleWorkoutLogDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Sessions.Put(r.Context(), "flash", "Allenamento eliminato.")
-	http.Redirect(w, r, "/allenamento", http.StatusSeeOther)
+	a.respondMutationOrRedirect(w, r, weekStart, dayIndex)
 }
