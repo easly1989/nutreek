@@ -172,16 +172,19 @@ type ingredientsListData struct {
 	// di un meal), questi campi guidano il form action e i parametri.
 	// PickerKind = "" -> modalita' display (pagina /ingredients), nessun
 	// bottone "Aggiungi" (solo "Importa" sui soli OFF).
-	PickerKind string // "recipe_item" | "meal_item" | ""
-	RecipeID   int64  // se PickerKind == "recipe_item"
-	MealID     int64  // se PickerKind == "meal_item"
-	WeekStart  string // YYYY-MM-DD, per redirect post-add da meal_item
+	PickerKind        string         // "recipe_item" | "meal_item" | ""
+	RecipeID          int64          // se PickerKind == "recipe_item"
+	MealID            int64          // se PickerKind == "meal_item"
+	WeekStart         string         // YYYY-MM-DD, per redirect post-add da meal_item
+	NutritionistItems []ingredientRow // suggeriti dal piano nutrizionista
 }
 
 type ingredientsNewData struct {
 	authPageData
-	Form  ingredientForm
-	Error string
+	Form       ingredientForm
+	Error      string
+	Categories []domain.IngredientCategory
+	Allergens  []domain.AllergenTag
 }
 
 // ingredientForm cattura i campi del form "nuovo ingrediente" per poter
@@ -194,7 +197,9 @@ type ingredientForm struct {
 	Protein     string
 	Carbs       string
 	Fat         string
-	UnitWeightG string // opzionale: peso per unita' in g (es. "150")
+	UnitWeightG string  // opzionale: peso per unita' in g (es. "150")
+	CategoryID  string  // opzionale: ID categoria
+	AllergenIDs []int64 // opzionale: ID allergeni selezionati
 }
 
 // ---- handlers --------------------------------------------------------------
@@ -300,9 +305,14 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 }
 
 func (a *App) handleIngredientNewForm(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
+	allergens, _ := a.Categories.ListAllergens(r.Context())
 	data := ingredientsNewData{
 		authPageData: a.baseData(r),
 		Form:         ingredientForm{Unit: "g"},
+		Categories:   cats,
+		Allergens:    allergens,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "ingredient_new", data); err != nil {
 		a.serverError(w, r, err)
@@ -310,6 +320,13 @@ func (a *App) handleIngredientNewForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
+	allergenStrs := r.PostForm["allergen_ids"]
+	var parsedAllergenIDs []int64
+	for _, s := range allergenStrs {
+		if id, err := strconv.ParseInt(s, 10, 64); err == nil {
+			parsedAllergenIDs = append(parsedAllergenIDs, id)
+		}
+	}
 	form := ingredientForm{
 		Name:        strings.TrimSpace(r.PostFormValue("name")),
 		Brand:       strings.TrimSpace(r.PostFormValue("brand")),
@@ -319,6 +336,8 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		Carbs:       strings.TrimSpace(r.PostFormValue("carbs")),
 		Fat:         strings.TrimSpace(r.PostFormValue("fat")),
 		UnitWeightG: strings.TrimSpace(r.PostFormValue("unit_weight_g")),
+		CategoryID:  strings.TrimSpace(r.PostFormValue("category_id")),
+		AllergenIDs: parsedAllergenIDs,
 	}
 
 	if form.Name == "" {
@@ -375,10 +394,23 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if _, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, creatorID, unitWeightG); err != nil {
+	ingID, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, creatorID, unitWeightG)
+	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
+
+	// Salva categoria (opzionale).
+	if form.CategoryID != "" {
+		if catID, err2 := strconv.ParseInt(form.CategoryID, 10, 64); err2 == nil && catID > 0 {
+			_ = a.Categories.SetIngredientCategory(r.Context(), ingID, &catID)
+		}
+	}
+	// Salva allergeni (opzionale).
+	if len(form.AllergenIDs) > 0 {
+		_ = a.Categories.SetIngredientAllergens(r.Context(), ingID, form.AllergenIDs)
+	}
+
 	a.Sessions.Put(r.Context(), "flash", "Ingrediente creato.")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
@@ -547,10 +579,15 @@ func writeMacroFragment(w http.ResponseWriter, full bool, kcal, protein, carbs, 
 }
 
 func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form ingredientForm, msg string) {
+	user := userFromContext(r.Context())
+	cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
+	allergens, _ := a.Categories.ListAllergens(r.Context())
 	data := ingredientsNewData{
 		authPageData: a.baseData(r),
 		Form:         form,
 		Error:        msg,
+		Categories:   cats,
+		Allergens:    allergens,
 	}
 	if err := a.Render.Render(w, http.StatusUnprocessableEntity, "ingredient_new", data); err != nil {
 		a.serverError(w, r, err)

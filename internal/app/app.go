@@ -24,6 +24,10 @@ type App struct {
 	WeeklyPlans           *db.WeeklyPlans
 	MealItemCustomizations *db.MealItemCustomizations
 	ShoppingLists *db.ShoppingLists
+	WeightLogs    *db.WeightLogs
+	WorkoutLogs   *db.WorkoutLogs
+	Categories    *db.Categories
+	NutritionistPlans *db.NutritionistPlans
 	OFF           *off.Client
 	OFFSyncer     *off.Syncer
 	Reconciler    *off.Reconciler

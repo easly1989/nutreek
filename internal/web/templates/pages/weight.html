@@ -1,0 +1,97 @@
+{{define "title"}}Storico peso — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-2xl">
+  <div class="flex items-center justify-between mb-1">
+    <h1 class="text-3xl font-semibold">Storico peso</h1>
+    <a href="/profile" class="text-sm text-muted hover:underline">← Profilo</a>
+  </div>
+  <p class="text-sm text-muted mb-6">Registra le misurazioni e segui il tuo andamento nel tempo.</p>
+
+  {{if .Error}}
+    <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
+  {{end}}
+
+  {{/* Form nuova misurazione */}}
+  <section class="bg-surface border border-border rounded p-5 mb-6">
+    <h2 class="text-base font-semibold mb-4">Aggiungi misurazione</h2>
+    <form method="post" action="/profile/peso">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="w-date">Data</label>
+          <input id="w-date" name="measured_at" type="date"
+                 value="{{.TodayStr}}"
+                 class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="w-kg">Peso</label>
+          <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
+            <input id="w-kg" name="weight_kg" inputmode="decimal" placeholder="es. 72.5"
+                   class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
+            <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">kg</span>
+          </div>
+        </div>
+        <div class="col-span-2">
+          <label class="block text-sm font-medium mb-1" for="w-note">Nota (opzionale)</label>
+          <input id="w-note" name="note" type="text" placeholder="es. mattina a digiuno"
+                 class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+        </div>
+      </div>
+      <button type="submit"
+              class="rounded bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:bg-accent/90 transition">
+        Salva misurazione
+      </button>
+    </form>
+  </section>
+
+  {{/* Trend */}}
+  {{if .HasTrend}}
+  <div class="mb-4 rounded border border-border bg-surface-2 px-4 py-3 flex items-center gap-3">
+    <span class="text-sm text-muted">Trend ultimi {{.TrendDays}} giorni:</span>
+    {{if .TrendPositive}}
+      <span class="font-semibold text-warn-fg">+{{printf "%.1f" .TrendKg}} kg</span>
+    {{else}}
+      {{if eq .TrendKg 0.0}}
+        <span class="font-semibold text-muted">= invariato</span>
+      {{else}}
+        <span class="font-semibold text-accent">{{printf "%.1f" .TrendKg}} kg</span>
+      {{end}}
+    {{end}}
+  </div>
+  {{end}}
+
+  {{/* Storico */}}
+  {{if .Logs}}
+  <section class="bg-surface border border-border rounded overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border bg-surface-2">
+          <th class="text-left px-4 py-2 font-medium text-muted">Data</th>
+          <th class="text-right px-4 py-2 font-medium text-muted">Peso</th>
+          <th class="text-left px-4 py-2 font-medium text-muted hidden sm:table-cell">Nota</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-border">
+        {{range .Logs}}
+        <tr class="hover:bg-surface-2 transition">
+          <td class="px-4 py-2 tabular-nums">{{.MeasuredAt.Format "02/01/2006"}}</td>
+          <td class="px-4 py-2 text-right tabular-nums font-semibold">{{printf "%.1f" .WeightKg}} kg</td>
+          <td class="px-4 py-2 text-muted hidden sm:table-cell">{{if .Note}}{{.Note}}{{end}}</td>
+          <td class="px-4 py-2 text-right">
+            <form method="post" action="/profile/peso/{{.ID}}/delete"
+                  onsubmit="return confirm('Eliminare questa misurazione?')">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <button type="submit" class="text-xs text-danger hover:underline">Elimina</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </section>
+  {{else}}
+  <p class="text-sm text-muted italic">Nessuna misurazione registrata. Aggiungi la prima sopra.</p>
+  {{end}}
+</div>
+{{end}}

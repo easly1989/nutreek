@@ -77,6 +77,25 @@
       {{template "day_card" .}}
     {{end}}
   </div>
+
+  <!-- Export / Import CSV -->
+  <div class="mt-6 flex flex-wrap items-center gap-4">
+    <a href="/week/{{.WeekStartStr}}/export"
+       class="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-2 transition">
+      ↓ Esporta CSV
+    </a>
+    <form method="post" action="/week/{{.WeekStartStr}}/import"
+          enctype="multipart/form-data" class="flex items-center gap-2">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <label class="text-sm text-muted">Importa CSV:</label>
+      <input type="file" name="csv_file" accept=".csv"
+             class="text-sm text-muted file:mr-2 file:rounded file:border file:border-border file:bg-surface file:px-2 file:py-1 file:text-xs file:hover:bg-surface-2">
+      <button type="submit"
+              class="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-2 transition">
+        Importa
+      </button>
+    </form>
+  </div>
 </div>
 <script src="/static/js/day_focus.js" defer></script>
 {{end}}
