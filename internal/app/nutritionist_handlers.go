@@ -16,17 +16,40 @@ type nutritionistPageData struct {
 }
 
 func (a *App) handleNutritionistPage(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/piano-nutrizionale", http.StatusFound)
+}
+
+// pianoNutrizionaleData è il view model della pagina unificata /piano-nutrizionale.
+type pianoNutrizionaleData struct {
+	authPageData
+	Plan      *domain.NutritionistPlanFull
+	Templates []*domain.MealTemplate
+	ActiveTab string // "piano" | "template"
+}
+
+func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	plan, err := a.NutritionistPlans.LoadPlanFull(r.Context(), user.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	data := nutritionistPageData{
+	tpls, err := a.MealTemplates.ListByUser(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	tab := r.URL.Query().Get("tab")
+	if tab != "template" {
+		tab = "piano"
+	}
+	data := pianoNutrizionaleData{
 		authPageData: a.baseData(r),
 		Plan:         plan,
+		Templates:    tpls,
+		ActiveTab:    tab,
 	}
-	if err := a.Render.Render(w, http.StatusOK, "nutritionist", data); err != nil {
+	if err := a.Render.Render(w, http.StatusOK, "piano_nutrizionale", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
