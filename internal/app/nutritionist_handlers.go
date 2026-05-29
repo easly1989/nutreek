@@ -241,6 +241,9 @@ func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
 			Recipes     []*domain.Recipe
 			Query       string
 			VariationID int64
+			Cheat       bool
+			MealID      int64
+			WeekStart   string
 		}{
 			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
 			Recipes:      recipes,
