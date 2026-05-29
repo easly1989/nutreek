@@ -103,35 +103,37 @@
         </ul>
         {{end}}
 
-        <details class="text-sm">
+        <details class="text-sm" data-nutr-picker id="nutr-picker-det-{{.ID}}">
           <summary class="cursor-pointer text-accent hover:underline text-xs">+ Aggiungi ingrediente/ricetta</summary>
-          <form method="post" action="/nutrizionista/items" class="mt-2 flex flex-wrap gap-2 items-end">
-            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <input type="hidden" name="variation_id" value="{{.ID}}">
-            <div>
-              <label class="block text-xs text-muted mb-1">ID Ingrediente</label>
-              <input name="ingredient_id" inputmode="numeric" placeholder="ID"
-                     class="w-24 rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
+          <div class="mt-3 p-3 bg-surface-2 rounded border border-border">
+            <div class="flex items-center gap-1 mb-2" role="tablist">
+              <button type="button"
+                      data-nutr-tab="ingredient" data-nutr-var="{{.ID}}"
+                      class="px-3 py-1 text-xs rounded border-b-2 border-accent text-text font-medium">Ingrediente</button>
+              <button type="button"
+                      data-nutr-tab="recipe" data-nutr-var="{{.ID}}"
+                      class="px-3 py-1 text-xs rounded border-b-2 border-transparent text-muted hover:text-text">Ricetta</button>
+              <span class="grow"></span>
+              <button type="button"
+                      data-nutr-quick="ingredient" data-nutr-var="{{.ID}}"
+                      hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML"
+                      class="text-xs text-accent hover:underline">+ Nuovo ingrediente</button>
+              <button type="button"
+                      data-nutr-quick="recipe" data-nutr-var="{{.ID}}"
+                      hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML"
+                      class="text-xs text-accent hover:underline hidden">+ Nuova ricetta</button>
             </div>
-            <div>
-              <label class="block text-xs text-muted mb-1">Quantità</label>
-              <input name="quantity" inputmode="decimal" placeholder="es. 150"
-                     class="w-20 rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
+            <input type="search" placeholder="Cerca per nome..." autocomplete="off"
+                   data-ingredient-search
+                   data-search-url="/nutrizionista/picker"
+                   data-search-extra="variation_id={{.ID}}&kind=ingredient"
+                   data-search-target="#nutr-results-{{.ID}}"
+                   data-nutr-var="{{.ID}}"
+                   class="w-full rounded border border-border bg-surface px-3 py-2 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-accent">
+            <div id="nutr-results-{{.ID}}">
+              <p class="text-xs text-muted px-2 py-4 text-center border border-dashed border-border rounded">Digita per cercare ingredienti o ricette.</p>
             </div>
-            <div>
-              <label class="block text-xs text-muted mb-1">Unità</label>
-              <select name="unit"
-                      class="rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
-                <option value="g">g</option>
-                <option value="ml">ml</option>
-                <option value="pz">pz</option>
-              </select>
-            </div>
-            <button type="submit"
-                    class="rounded bg-accent text-accent-fg px-3 py-1 text-xs font-medium hover:bg-accent/90 transition">
-              Aggiungi
-            </button>
-          </form>
+          </div>
         </details>
       </div>
       {{end}}
@@ -194,4 +196,65 @@
 
   {{end}}
 </div>
+
+<script>
+(function () {
+  // Tab switch per ogni variante del piano.
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-nutr-tab]');
+    if (!btn) return;
+    var kind = btn.dataset.nutrTab;
+    var varID = btn.dataset.nutrVar;
+    document.querySelectorAll('[data-nutr-tab][data-nutr-var="' + varID + '"]').forEach(function (b) {
+      var on = b.dataset.nutrTab === kind;
+      b.classList.toggle('border-accent', on);
+      b.classList.toggle('text-text', on);
+      b.classList.toggle('font-medium', on);
+      b.classList.toggle('border-transparent', !on);
+      b.classList.toggle('text-muted', !on);
+    });
+    document.querySelectorAll('[data-nutr-quick][data-nutr-var="' + varID + '"]').forEach(function (b) {
+      b.classList.toggle('hidden', b.dataset.nutrQuick !== kind);
+    });
+    var input = document.querySelector('input[data-nutr-var="' + varID + '"][data-ingredient-search]');
+    if (input) {
+      input.dataset.searchExtra = 'variation_id=' + varID + '&kind=' + kind;
+      input.dataset.searchNoOff = kind === 'recipe' ? '1' : '0';
+    }
+    var q = input ? (input.value || '') : '';
+    htmx.ajax('GET', '/nutrizionista/picker?variation_id=' + varID + '&kind=' + kind + '&q=' + encodeURIComponent(q), {
+      target: '#nutr-results-' + varID, swap: 'innerHTML'
+    });
+  });
+
+  // Al primo open di un <details> picker, carica la lista vuota (suggerisce gli ingredienti).
+  document.querySelectorAll('details[data-nutr-picker]').forEach(function (det) {
+    det.addEventListener('toggle', function () {
+      if (!det.open || det.dataset.nutrPickerLoaded) return;
+      det.dataset.nutrPickerLoaded = '1';
+      var varID = det.id.replace('nutr-picker-det-', '');
+      htmx.ajax('GET', '/nutrizionista/picker?variation_id=' + varID + '&kind=ingredient&q=', {
+        target: '#nutr-results-' + varID, swap: 'innerHTML'
+      });
+    });
+  });
+
+  // Dopo quick-create modale, aggiorna tutti i picker aperti.
+  ['ingredient-created', 'recipe-created'].forEach(function (ev) {
+    window.addEventListener(ev, function () {
+      document.querySelectorAll('details[data-nutr-picker][open]').forEach(function (det) {
+        var varID = det.id.replace('nutr-picker-det-', '');
+        var input = document.querySelector('input[data-nutr-var="' + varID + '"][data-ingredient-search]');
+        var extra = (input && input.dataset.searchExtra) || ('variation_id=' + varID + '&kind=ingredient');
+        var params = new URLSearchParams(extra);
+        var q = input ? (input.value || '') : '';
+        params.set('q', q);
+        htmx.ajax('GET', '/nutrizionista/picker?' + params.toString(), {
+          target: '#nutr-results-' + varID, swap: 'innerHTML'
+        });
+      });
+    });
+  });
+})();
+</script>
 {{end}}

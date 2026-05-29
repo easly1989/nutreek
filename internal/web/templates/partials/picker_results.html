@@ -33,6 +33,15 @@
           <input type="hidden" name="qty_unit" value="{{.Unit}}">
           <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
         </form>
+      {{else if eq $.PickerKind "nutritionist_item"}}
+        <form method="post" action="/nutrizionista/items" class="shrink-0 flex items-center gap-2">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <input type="hidden" name="variation_id" value="{{$.VariationID}}">
+          <input type="hidden" name="ingredient_id" value="{{.Local.ID}}">
+          <input name="quantity" required inputmode="decimal" placeholder="{{.Unit}}" class="w-16 rounded border border-border px-2 py-1 text-xs">
+          <input type="hidden" name="qty_unit" value="{{.Unit}}">
+          <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
+        </form>
       {{end}}
     </li>
     {{end}}
@@ -130,6 +139,26 @@
                 <input type="hidden" name="qty_unit" value="{{.Unit}}">
               {{end}}
               <button class="text-xs bg-danger text-white rounded px-3 py-1 hover:bg-danger/90">Sgarro</button>
+            </form>
+          {{else if eq $.PickerKind "nutritionist_item"}}
+            <form method="post" action="/nutrizionista/items" class="shrink-0 flex items-center gap-2">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <input type="hidden" name="variation_id" value="{{$.VariationID}}">
+              {{if .IsOFF}}
+                <input type="hidden" name="barcode" value="{{.Barcode}}">
+              {{else}}
+                <input type="hidden" name="ingredient_id" value="{{.Local.ID}}">
+              {{end}}
+              <input name="quantity" required inputmode="decimal" placeholder="{{if gt .UnitWeightG 0.0}}qta{{else}}{{.Unit}}{{end}}" {{if gt .DefaultQuantity 0.0}}value="{{printf "%.4g" .DefaultQuantity}}"{{end}} class="w-16 rounded border border-border px-2 py-1 text-xs">
+              {{if gt .UnitWeightG 0.0}}
+                <select name="qty_unit" class="rounded border border-border px-1 py-1 text-xs" title="Unita': g, ml o pezzi (1 pz ~ {{printf "%.0f" .UnitWeightG}}g)">
+                  <option value="{{.Unit}}">{{.Unit}}</option>
+                  <option value="pz">pz</option>
+                </select>
+              {{else}}
+                <input type="hidden" name="qty_unit" value="{{.Unit}}">
+              {{end}}
+              <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
             </form>
           {{end}}
         {{else}}
