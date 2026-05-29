@@ -343,3 +343,16 @@ func (n *NutritionistPlans) DeleteItem(ctx context.Context, id, planID int64) er
 	}
 	return nil
 }
+
+// EnsureMealType crea un nutritionist_meal_type con il nome dato se non esiste già
+// (confronto case-insensitive). Idempotente.
+func (n *NutritionistPlans) EnsureMealType(ctx context.Context, planID int64, name string) error {
+	_, err := n.db.ExecContext(ctx, `
+		INSERT INTO nutritionist_meal_types (plan_id, name, sort_order)
+		SELECT ?, ?,
+			COALESCE((SELECT MAX(sort_order) FROM nutritionist_meal_types WHERE plan_id=?), 0) + 1
+		WHERE NOT EXISTS (
+			SELECT 1 FROM nutritionist_meal_types WHERE plan_id=? AND lower(name)=lower(?)
+		)`, planID, name, planID, planID, name)
+	return err
+}
