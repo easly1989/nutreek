@@ -103,15 +103,25 @@
         </ul>
         {{end}}
 
-        <details class="text-sm" data-nutr-picker id="nutr-picker-det-{{.ID}}">
+        <details class="text-sm" data-nutr-picker id="nutr-picker-det-{{.ID}}"
+                 hx-get="/nutrizionista/picker?variation_id={{.ID}}&kind=ingredient&q="
+                 hx-target="#nutr-results-{{.ID}}"
+                 hx-swap="innerHTML"
+                 hx-trigger="toggle once">
           <summary class="cursor-pointer text-accent hover:underline text-xs">+ Aggiungi ingrediente/ricetta</summary>
           <div class="mt-3 p-3 bg-surface-2 rounded border border-border">
             <div class="flex items-center gap-1 mb-2" role="tablist">
               <button type="button"
                       data-nutr-tab="ingredient" data-nutr-var="{{.ID}}"
+                      hx-get="/nutrizionista/picker?variation_id={{.ID}}&kind=ingredient&q="
+                      hx-target="#nutr-results-{{.ID}}"
+                      hx-swap="innerHTML"
                       class="px-3 py-1 text-xs rounded border-b-2 border-accent text-text font-medium">Ingrediente</button>
               <button type="button"
                       data-nutr-tab="recipe" data-nutr-var="{{.ID}}"
+                      hx-get="/nutrizionista/picker?variation_id={{.ID}}&kind=recipe&q="
+                      hx-target="#nutr-results-{{.ID}}"
+                      hx-swap="innerHTML"
                       class="px-3 py-1 text-xs rounded border-b-2 border-transparent text-muted hover:text-text">Ricetta</button>
               <span class="grow"></span>
               <button type="button"
@@ -131,7 +141,7 @@
                    data-nutr-var="{{.ID}}"
                    class="w-full rounded border border-border bg-surface px-3 py-2 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-accent">
             <div id="nutr-results-{{.ID}}">
-              <p class="text-xs text-muted px-2 py-4 text-center border border-dashed border-border rounded">Digita per cercare ingredienti o ricette.</p>
+              <p class="text-xs text-muted px-2 py-4 text-center border border-dashed border-border rounded">Caricamento...</p>
             </div>
           </div>
         </details>
@@ -199,7 +209,8 @@
 
 <script>
 (function () {
-  // Tab switch per ogni variante del piano.
+  // Aggiorna stile tab e data-search-extra quando si cambia tab.
+  // Il fetch HTMX è gestito nativamente da hx-get sui bottoni.
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-nutr-tab]');
     if (!btn) return;
@@ -218,25 +229,10 @@
     });
     var input = document.querySelector('input[data-nutr-var="' + varID + '"][data-ingredient-search]');
     if (input) {
+      input.value = '';
       input.dataset.searchExtra = 'variation_id=' + varID + '&kind=' + kind;
       input.dataset.searchNoOff = kind === 'recipe' ? '1' : '0';
     }
-    var q = input ? (input.value || '') : '';
-    htmx.ajax('GET', '/nutrizionista/picker?variation_id=' + varID + '&kind=' + kind + '&q=' + encodeURIComponent(q), {
-      target: '#nutr-results-' + varID, swap: 'innerHTML'
-    });
-  });
-
-  // Al primo open di un <details> picker, carica la lista vuota (suggerisce gli ingredienti).
-  document.querySelectorAll('details[data-nutr-picker]').forEach(function (det) {
-    det.addEventListener('toggle', function () {
-      if (!det.open || det.dataset.nutrPickerLoaded) return;
-      det.dataset.nutrPickerLoaded = '1';
-      var varID = det.id.replace('nutr-picker-det-', '');
-      htmx.ajax('GET', '/nutrizionista/picker?variation_id=' + varID + '&kind=ingredient&q=', {
-        target: '#nutr-results-' + varID, swap: 'innerHTML'
-      });
-    });
   });
 
   // Dopo quick-create modale, aggiorna tutti i picker aperti.
