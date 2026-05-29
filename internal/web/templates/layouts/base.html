@@ -7,19 +7,25 @@
   <style>
     /* Sidebar pin states — gestite da JS via data-sidebar su <body> */
     body[data-sidebar="pinned"] #sidebar { transform:translateX(0); width:15rem; }
-    body[data-sidebar="slim"]   #sidebar { transform:translateX(0); width:4rem; }
+    body[data-sidebar="slim"]   #sidebar { transform:translateX(0); width:4rem; overflow-x:hidden; }
     body[data-sidebar="pinned"] #main-content { margin-left:15rem; }
     body[data-sidebar="slim"]   #main-content { margin-left:4rem; }
     body[data-sidebar="pinned"] #sidebar-backdrop,
     body[data-sidebar="slim"]   #sidebar-backdrop { display:none !important; }
     body[data-sidebar="pinned"] #sidebar-toggle,
     body[data-sidebar="slim"]   #sidebar-toggle { display:none; }
+    /* Slim: icone centrate, etichette nascoste */
     body[data-sidebar="slim"]   .nav-label { display:none; }
-    body[data-sidebar="slim"]   #sidebar nav a { justify-content:center; padding-left:0.5rem; padding-right:0.5rem; }
-    body[data-sidebar="slim"]   #sidebar-footer-link { justify-content:center; padding-left:0.5rem; padding-right:0.5rem; }
+    body[data-sidebar="slim"]   #sidebar nav a { justify-content:center; padding-left:0; padding-right:0; }
+    body[data-sidebar="slim"]   #sidebar-footer-link { justify-content:center; padding-left:0; padding-right:0; }
     body[data-sidebar="slim"]   .nav-footer-label { display:none; }
-    body[data-sidebar="slim"]   #sidebar-state-btns { justify-content:center; }
-    body[data-sidebar="slim"]   .btn-pin-label { display:none; }
+    /* Bottoni stato: slim mostra solo Espandi, gli altri sono nascosti */
+    body[data-sidebar="slim"]   #btn-pin,
+    body[data-sidebar="slim"]   #btn-slim,
+    body[data-sidebar="slim"]   #btn-unpin { display:none; }
+    #btn-expand { display:none; }
+    body[data-sidebar="slim"]   #btn-expand { display:flex; }
+    body[data-sidebar="slim"]   #sidebar-state-btns { justify-content:center; padding-left:0; padding-right:0; }
     #main-content { transition: margin-left 0.2s ease-in-out; }
   </style>
   <link rel="stylesheet" href="/static/css/tailwind.css">
@@ -123,20 +129,26 @@
 
     {{/* Bottoni stato sidebar */}}
     <div id="sidebar-state-btns" class="px-3 py-2 border-t border-border flex items-center gap-1">
+      {{/* Visibili in overlay/pinned: Fissa, Riduci, Chiudi */}}
       <button id="btn-pin" type="button" title="Fissa sidebar"
               class="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted hover:bg-surface-2 hover:text-text transition">
         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
-        <span class="btn-pin-label">Fissa</span>
+        Fissa
       </button>
       <button id="btn-slim" type="button" title="Modalità icone"
               class="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted hover:bg-surface-2 hover:text-text transition">
         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
-        <span class="btn-pin-label">Riduci</span>
+        Riduci
       </button>
       <button id="btn-unpin" type="button" title="Chiudi sidebar"
               class="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted hover:bg-surface-2 hover:text-text transition">
         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        <span class="btn-pin-label">Chiudi</span>
+        Chiudi
+      </button>
+      {{/* Visibile solo in slim: Espandi */}}
+      <button id="btn-expand" type="button" title="Espandi sidebar"
+              class="flex items-center justify-center p-2 rounded text-muted hover:bg-surface-2 hover:text-text transition">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
       </button>
     </div>
 
@@ -218,6 +230,9 @@
       sidebar.classList.add('-translate-x-full');
       backdrop.classList.add('hidden');
       applyState('closed');
+    });
+    document.getElementById('btn-expand').addEventListener('click', function () {
+      applyState('pinned');
     });
   })();
   </script>

@@ -137,6 +137,7 @@ func (a *App) Router() http.Handler {
 
 		// Piano nutrizionista.
 		r.Get("/nutrizionista", a.handleNutritionistPage)
+		r.Get("/nutrizionista/picker", a.handleNutritionistPicker)
 		r.Post("/nutrizionista/meal-types", a.handleNutritionistCreateMealType)
 		r.Post("/nutrizionista/meal-types/{id}/delete", a.handleNutritionistDeleteMealType)
 		r.Post("/nutrizionista/variations", a.handleNutritionistCreateVariation)
