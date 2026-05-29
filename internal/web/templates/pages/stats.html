@@ -32,7 +32,7 @@
   </section>
 
   {{/* Tabella storico */}}
-  <section class="bg-surface border border-border rounded overflow-hidden">
+  <section class="bg-surface border border-border rounded overflow-hidden mb-8">
     <div class="px-4 py-3 border-b border-border bg-surface-2">
       <h2 class="text-sm font-semibold text-muted">Dettaglio per settimana</h2>
     </div>
@@ -79,6 +79,130 @@
       </tbody>
     </table>
   </section>
+
+  {{/* ===== Grafici ===== */}}
+
+  {{if .HasWeightData}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">Andamento peso (kg)</h2>
+    </div>
+    <div class="px-4 py-4">
+      <canvas id="chart-weight" height="120"></canvas>
+    </div>
+  </section>
+  {{end}}
+
+  {{if .HasWorkoutData}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">Kcal bruciate per settimana</h2>
+    </div>
+    <div class="px-4 py-4">
+      <canvas id="chart-workout" height="120"></canvas>
+    </div>
+  </section>
+  {{end}}
+
+  {{if .HasCheatData}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">Sgarri per settimana (n. pasti)</h2>
+    </div>
+    <div class="px-4 py-4">
+      <canvas id="chart-cheats" height="120"></canvas>
+    </div>
+  </section>
+  {{end}}
+
   {{end}}
 </div>
+{{end}}
+
+{{define "scripts"}}
+{{if or .HasWeightData (or .HasWorkoutData .HasCheatData)}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() || '#6366f1';
+  var danger = getComputedStyle(document.documentElement).getPropertyValue('--color-danger').trim() || '#ef4444';
+  var muted  = getComputedStyle(document.documentElement).getPropertyValue('--color-muted').trim()  || '#6b7280';
+
+  Chart.defaults.color = muted;
+  Chart.defaults.borderColor = 'rgba(128,128,128,0.15)';
+  Chart.defaults.font.size = 11;
+
+  {{if .HasWeightData}}
+  var weightLabels = [{{range .WeightPoints}}"{{.Date}}",{{end}}];
+  var weightValues = [{{range .WeightPoints}}{{.Weight}},{{end}}];
+  new Chart(document.getElementById('chart-weight'), {
+    type: 'line',
+    data: {
+      labels: weightLabels,
+      datasets: [{
+        label: 'Peso (kg)',
+        data: weightValues,
+        borderColor: accent,
+        backgroundColor: accent + '22',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: false }
+      }
+    }
+  });
+  {{end}}
+
+  {{if .HasWorkoutData}}
+  var workoutLabels = [{{range .WorkoutWeeks}}"{{.WeekLabel}}",{{end}}];
+  var workoutValues = [{{range .WorkoutWeeks}}{{printf "%.0f" .KcalBurned}},{{end}}];
+  new Chart(document.getElementById('chart-workout'), {
+    type: 'bar',
+    data: {
+      labels: workoutLabels,
+      datasets: [{
+        label: 'Kcal bruciate',
+        data: workoutValues,
+        backgroundColor: accent + 'bb',
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+  {{end}}
+
+  {{if .HasCheatData}}
+  var cheatLabels = [{{range .CheatWeeks}}"{{.WeekLabel}}",{{end}}];
+  var cheatValues = [{{range .CheatWeeks}}{{.Count}},{{end}}];
+  new Chart(document.getElementById('chart-cheats'), {
+    type: 'bar',
+    data: {
+      labels: cheatLabels,
+      datasets: [{
+        label: 'Sgarri',
+        data: cheatValues,
+        backgroundColor: danger + 'bb',
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+  {{end}}
+})();
+</script>
+{{end}}
 {{end}}
