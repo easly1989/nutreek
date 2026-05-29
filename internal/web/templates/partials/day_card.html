@@ -19,6 +19,7 @@
     </h2>
     <div class="flex items-center gap-2 text-xs text-muted">
       <span>{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
+      {{if gt .WorkoutKcal 0.0}}<span class="text-accent" title="Calorie bruciate con allenamento">-{{printf "%.0f" .WorkoutKcal}} bruciati</span>{{end}}
       {{if .Progress.AnyExceeds}}<span class="text-danger" title="Uno o più macro sforati">⚠</span>{{end}}
       <button type="button" data-unfocus="{{.DateStr}}" title="Rimuovi dal focus"
               class="text-muted hover:text-danger leading-none text-base">&times;</button>
@@ -132,7 +133,7 @@
             </p>
             <div class="flex items-center gap-2 text-xs text-muted">
               <span>{{printf "%.0f" .MealTotal.Kcal}} kcal</span>
-              <a href="/meals/{{.Meal.ID}}/items/new?start={{$.WeekStart}}"
+              <a href="/meals/{{.Meal.ID}}/items/new?start={{$.WeekStart}}&meal_name={{.Meal.Name}}"
                  class="text-text hover:underline" title="Aggiungi voce">+</a>
               <a href="/meals/{{.Meal.ID}}/items/new?cheat=1&start={{$.WeekStart}}"
                  class="text-danger hover:underline" title="Aggiungi sgarro">🍔</a>

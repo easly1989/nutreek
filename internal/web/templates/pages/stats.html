@@ -1,0 +1,84 @@
+{{define "title"}}Statistiche — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-3xl">
+  <h1 class="text-3xl font-semibold mb-1">Statistiche</h1>
+  <p class="text-sm text-muted mb-6">Riepilogo settimanale delle ultime 12 settimane.</p>
+
+  {{if not .HasData}}
+  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
+    <p class="text-sm">Nessun dato disponibile. Inizia a pianificare i pasti per vedere le statistiche.</p>
+    <a href="/" class="mt-3 inline-block text-accent hover:underline text-sm">Vai al piano settimanale →</a>
+  </div>
+  {{else}}
+
+  {{/* Media settimanale */}}
+  <section class="grid grid-cols-4 gap-3 mb-6">
+    <div class="bg-surface border border-border rounded px-4 py-3">
+      <div class="text-xs text-muted mb-1">Media kcal/sett.</div>
+      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Kcal}}</div>
+    </div>
+    <div class="bg-surface border border-border rounded px-4 py-3">
+      <div class="text-xs text-muted mb-1">Media prot. (g)</div>
+      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Protein}}</div>
+    </div>
+    <div class="bg-surface border border-border rounded px-4 py-3">
+      <div class="text-xs text-muted mb-1">Media carbs (g)</div>
+      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Carbs}}</div>
+    </div>
+    <div class="bg-surface border border-border rounded px-4 py-3">
+      <div class="text-xs text-muted mb-1">Media grassi (g)</div>
+      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Fat}}</div>
+    </div>
+  </section>
+
+  {{/* Tabella storico */}}
+  <section class="bg-surface border border-border rounded overflow-hidden">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">Dettaglio per settimana</h2>
+    </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border">
+          <th class="text-left px-4 py-2 font-medium text-muted">Settimana</th>
+          <th class="text-right px-4 py-2 font-medium text-muted">Kcal</th>
+          <th class="text-right px-4 py-2 font-medium text-muted hidden sm:table-cell">Prot.</th>
+          <th class="text-right px-4 py-2 font-medium text-muted hidden sm:table-cell">Carbs</th>
+          <th class="text-right px-4 py-2 font-medium text-muted hidden sm:table-cell">Grassi</th>
+          <th class="text-right px-4 py-2 font-medium text-muted">Giorni</th>
+          <th class="px-4 py-2 hidden md:table-cell"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-border">
+        {{range .Weeks}}
+        <tr class="hover:bg-surface-2 transition">
+          <td class="px-4 py-2 tabular-nums">
+            {{.WeekStart.Format "02/01"}} – {{(.WeekStart.AddDate 0 0 6).Format "02/01/2006"}}
+          </td>
+          <td class="px-4 py-2 text-right tabular-nums font-semibold">
+            {{if gt .Total.Kcal 0.0}}{{printf "%.0f" .Total.Kcal}}{{else}}<span class="text-muted">—</span>{{end}}
+          </td>
+          <td class="px-4 py-2 text-right tabular-nums text-muted hidden sm:table-cell">
+            {{if gt .Total.Protein 0.0}}{{printf "%.0f" .Total.Protein}}g{{else}}—{{end}}
+          </td>
+          <td class="px-4 py-2 text-right tabular-nums text-muted hidden sm:table-cell">
+            {{if gt .Total.Carbs 0.0}}{{printf "%.0f" .Total.Carbs}}g{{else}}—{{end}}
+          </td>
+          <td class="px-4 py-2 text-right tabular-nums text-muted hidden sm:table-cell">
+            {{if gt .Total.Fat 0.0}}{{printf "%.0f" .Total.Fat}}g{{else}}—{{end}}
+          </td>
+          <td class="px-4 py-2 text-right tabular-nums text-muted">{{.DaysLogged}}/7</td>
+          <td class="px-4 py-2 hidden md:table-cell">
+            {{if gt .KcalBarPct 0.0}}
+            <div class="h-2 w-24 rounded-full bg-surface-2 overflow-hidden">
+              <div class="h-full rounded-full bg-accent" style="width:{{printf "%.0f" .KcalBarPct}}%"></div>
+            </div>
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </section>
+  {{end}}
+</div>
+{{end}}
