@@ -188,9 +188,10 @@ type ingredientsListData struct {
 	// di un meal), questi campi guidano il form action e i parametri.
 	// PickerKind = "" -> modalita' display (pagina /ingredients), nessun
 	// bottone "Aggiungi" (solo "Importa" sui soli OFF).
-	PickerKind        string         // "recipe_item" | "meal_item" | ""
+	PickerKind        string         // "recipe_item" | "meal_item" | "nutritionist_item" | ""
 	RecipeID          int64          // se PickerKind == "recipe_item"
 	MealID            int64          // se PickerKind == "meal_item"
+	VariationID       int64          // se PickerKind == "nutritionist_item"
 	WeekStart         string         // YYYY-MM-DD, per redirect post-add da meal_item
 	NutritionistItems []ingredientRow // suggeriti dal piano nutrizionista
 }
