@@ -22,48 +22,41 @@
   {{if eq .ActiveTab "piano"}}
 
   <p class="text-sm text-muted mb-4">
-    Definisci i tipi di pasto e le varianti del tuo piano nutrizionale.
     Gli elementi salvati qui compariranno come "Suggeriti" nel picker del piano settimanale.
+    I tipi di pasto rispecchiano gli slot del template attivo.
   </p>
 
-  {{/* Form aggiunta tipo pasto */}}
-  <section class="bg-surface border border-border rounded p-4 mb-6">
-    <form method="post" action="/nutrizionista/meal-types" class="flex items-end gap-3">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <div class="flex-1">
-        <label class="block text-sm font-medium mb-1" for="mt-name">Nuovo tipo pasto</label>
-        <input id="mt-name" name="name" type="text" required
-               placeholder="es. Colazione, Pranzo, Cena, Spuntino…"
-               class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-      </div>
-      <button type="submit"
-              class="rounded bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:bg-accent/90 transition shrink-0">
-        Aggiungi
-      </button>
-    </form>
-  </section>
+  {{if not .HasActiveTemplate}}
+  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
+    <p class="text-sm mb-2">Nessun template attivo. Attiva un template per configurare il piano pasti.</p>
+    <a href="/piano-nutrizionale?tab=template" class="text-accent hover:underline text-sm">
+      Vai ai Template Settimanali →
+    </a>
+  </div>
 
-  {{/* Lista tipi pasto */}}
-  {{if .Plan.MealTypes}}
+  {{else if not .SlotMealTypes}}
+  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
+    <p class="text-sm mb-2">Il template attivo non ha slot definiti.</p>
+    <a href="/piano-nutrizionale?tab=template" class="text-accent hover:underline text-sm">
+      Modifica il template →
+    </a>
+  </div>
+
+  {{else}}
   <div class="space-y-6">
-    {{range .Plan.MealTypes}}
-    {{$mt := .}}
+    {{range .SlotMealTypes}}
+    {{if .MealType}}
+    {{$mt := .MealType}}
     <section class="bg-surface border border-border rounded overflow-hidden">
-      {{/* Header tipo pasto */}}
-      <div class="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-2">
-        <h2 class="font-semibold text-text">{{.Name}}</h2>
-        <form method="post" action="/nutrizionista/meal-types/{{.ID}}/delete"
-              onsubmit="return confirm('Eliminare questo tipo pasto e tutte le sue varianti?')">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" class="text-xs text-danger hover:underline">Elimina</button>
-        </form>
+      <div class="flex items-center px-4 py-3 border-b border-border bg-surface-2">
+        <h2 class="font-semibold text-text">{{.SlotName}}</h2>
       </div>
 
       {{/* Form aggiunta variante */}}
       <div class="px-4 py-3 border-b border-border">
         <form method="post" action="/nutrizionista/variations" class="flex items-end gap-2">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <input type="hidden" name="meal_type_id" value="{{.ID}}">
+          <input type="hidden" name="meal_type_id" value="{{$mt.ID}}">
           <div class="flex-1">
             <label class="block text-xs text-muted mb-1">Nuova variante <span class="font-normal">(lascia vuoto per variante principale)</span></label>
             <input name="name" type="text" placeholder="es. Variante A, con frutta, ecc."
@@ -77,8 +70,7 @@
       </div>
 
       {{/* Varianti */}}
-      {{range .Variations}}
-      {{$v := .}}
+      {{range $mt.Variations}}
       <div class="px-4 py-3 border-b border-border last:border-b-0">
         <div class="flex items-center justify-between mb-2">
           <span class="text-sm font-medium text-muted">
@@ -91,7 +83,6 @@
           </form>
         </div>
 
-        {{/* Items della variante */}}
         {{if .Items}}
         <ul class="mb-3 space-y-1">
           {{range .Items}}
@@ -112,7 +103,6 @@
         </ul>
         {{end}}
 
-        {{/* Form aggiunta item */}}
         <details class="text-sm">
           <summary class="cursor-pointer text-accent hover:underline text-xs">+ Aggiungi ingrediente/ricetta</summary>
           <form method="post" action="/nutrizionista/items" class="mt-2 flex flex-wrap gap-2 items-end">
@@ -146,7 +136,7 @@
       </div>
       {{end}}
 
-      {{if not .Variations}}
+      {{if not $mt.Variations}}
       <div class="px-4 py-3 text-sm text-muted italic">
         Nessuna variante. Aggiungine una sopra.
       </div>
@@ -154,10 +144,7 @@
 
     </section>
     {{end}}
-  </div>
-  {{else}}
-  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
-    <p class="text-sm">Nessun tipo pasto definito. Aggiungine uno sopra.</p>
+    {{end}}
   </div>
   {{end}}
 
@@ -167,7 +154,7 @@
   <div class="flex items-center justify-between mb-4">
     <p class="text-sm text-muted">
       I template definiscono lo schema di pasti settimanale (Colazione, Pranzo, Cena…).
-      Quello "attivo" viene applicato di default alle nuove settimane.
+      Quello "attivo" è usato come base per il tab Piano Pasti.
     </p>
     <a href="/templates/new"
        class="shrink-0 ml-4 inline-block bg-accent text-accent-fg rounded px-4 py-2 text-sm hover:bg-accent/90 transition">
