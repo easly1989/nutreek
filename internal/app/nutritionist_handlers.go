@@ -19,22 +19,32 @@ func (a *App) handleNutritionistPage(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusFound)
 }
 
+// slotMealType abbina uno slot name del template al corrispondente meal type del piano.
+type slotMealType struct {
+	SlotName string
+	MealType *domain.NutritionistMealTypeFull
+}
+
 // pianoNutrizionaleData è il view model della pagina unificata /piano-nutrizionale.
 type pianoNutrizionaleData struct {
 	authPageData
-	Plan      *domain.NutritionistPlanFull
-	Templates []*domain.MealTemplate
-	ActiveTab string // "piano" | "template"
+	Plan              *domain.NutritionistPlanFull
+	Templates         []*domain.MealTemplate
+	ActiveTab         string // "piano" | "template"
+	SlotMealTypes     []slotMealType
+	HasActiveTemplate bool
 }
 
 func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
-	plan, err := a.NutritionistPlans.LoadPlanFull(r.Context(), user.ID)
+	ctx := r.Context()
+
+	plan, err := a.NutritionistPlans.LoadPlanFull(ctx, user.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	tpls, err := a.MealTemplates.ListByUser(r.Context(), user.ID)
+	tpls, err := a.MealTemplates.ListByUser(ctx, user.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -43,11 +53,51 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 	if tab != "template" {
 		tab = "piano"
 	}
+
+	// Costruisce la lista slot→meal-type dal template attivo.
+	var slotMealTypes []slotMealType
+	var hasActiveTemplate bool
+	if len(tpls) > 0 && tpls[0].IsActive {
+		hasActiveTemplate = true
+		activeWithSlots, err := a.MealTemplates.GetWithSlots(ctx, tpls[0].ID, user.ID)
+		if err == nil {
+			// Unique slot names in ordine di prima apparizione.
+			seen := make(map[string]bool)
+			var slotNames []string
+			for _, s := range activeWithSlots.Slots {
+				key := strings.ToLower(s.Name)
+				if !seen[key] {
+					seen[key] = true
+					slotNames = append(slotNames, s.Name)
+				}
+			}
+			// Auto-crea i meal type mancanti.
+			for _, name := range slotNames {
+				_ = a.NutritionistPlans.EnsureMealType(ctx, plan.ID, name)
+			}
+			// Ricarica dopo gli upsert.
+			plan, _ = a.NutritionistPlans.LoadPlanFull(ctx, user.ID)
+			// Indice per nome.
+			mtByName := make(map[string]*domain.NutritionistMealTypeFull)
+			for i := range plan.MealTypes {
+				mtByName[strings.ToLower(plan.MealTypes[i].Name)] = &plan.MealTypes[i]
+			}
+			for _, name := range slotNames {
+				slotMealTypes = append(slotMealTypes, slotMealType{
+					SlotName: name,
+					MealType: mtByName[strings.ToLower(name)],
+				})
+			}
+		}
+	}
+
 	data := pianoNutrizionaleData{
-		authPageData: a.baseData(r),
-		Plan:         plan,
-		Templates:    tpls,
-		ActiveTab:    tab,
+		authPageData:      a.baseData(r),
+		Plan:              plan,
+		Templates:         tpls,
+		ActiveTab:         tab,
+		SlotMealTypes:     slotMealTypes,
+		HasActiveTemplate: hasActiveTemplate,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "piano_nutrizionale", data); err != nil {
 		a.serverError(w, r, err)

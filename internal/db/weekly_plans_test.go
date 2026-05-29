@@ -109,7 +109,7 @@ func TestWeeklyPlansItemsXOR(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ingID, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil)
+	ingID, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil)
 	recID, _ := recipes.Create(ctx, alice, "Bruschetta", nil, 2, false)
 
 	// Item come ingrediente.
@@ -175,9 +175,9 @@ func TestReorderMealItemsAndMeals(t *testing.T) {
 	m3, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "C")
 
 	// 3 items nel meal m1.
-	ing1, _ := ings.CreateLocal(ctx, "X", nil, "g", 100, 1, 1, 1, &alice, nil)
-	ing2, _ := ings.CreateLocal(ctx, "Y", nil, "g", 100, 1, 1, 1, &alice, nil)
-	ing3, _ := ings.CreateLocal(ctx, "Z", nil, "g", 100, 1, 1, 1, &alice, nil)
+	ing1, _ := ings.CreateLocal(ctx, "X", nil, "g", 100, 1, 1, 1, &alice, nil, nil)
+	ing2, _ := ings.CreateLocal(ctx, "Y", nil, "g", 100, 1, 1, 1, &alice, nil, nil)
+	ing3, _ := ings.CreateLocal(ctx, "Z", nil, "g", 100, 1, 1, 1, &alice, nil, nil)
 	i1, _ := plans.AddItem(ctx, m1, alice, nil, &ing1, 10, "g")
 	i2, _ := plans.AddItem(ctx, m1, alice, nil, &ing2, 10, "g")
 	i3, _ := plans.AddItem(ctx, m1, alice, nil, &ing3, 10, "g")
@@ -245,7 +245,7 @@ func TestCopyFrom(t *testing.T) {
 	mA1, _ := plans.AddMeal(ctx, planA.ID, alice, 0, "Colazione")
 	mA2, _ := plans.AddMeal(ctx, planA.ID, alice, 3, "Pranzo")
 
-	ing1, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil)
+	ing1, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil)
 	rec1, _ := recipes.Create(ctx, alice, "Pasta", nil, 2, false)
 	if _, err := plans.AddItem(ctx, mA1, alice, nil, &ing1, 50, "g"); err != nil {
 		t.Fatal(err)
