@@ -4,6 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{block "title" .}}Nutreek{{end}}</title>
+  <style>
+    /* Sidebar pin states — gestite da JS via data-sidebar su <body> */
+    body[data-sidebar="pinned"] #sidebar { transform:translateX(0); width:15rem; }
+    body[data-sidebar="slim"]   #sidebar { transform:translateX(0); width:4rem; }
+    body[data-sidebar="pinned"] #main-content { margin-left:15rem; }
+    body[data-sidebar="slim"]   #main-content { margin-left:4rem; }
+    body[data-sidebar="pinned"] #sidebar-backdrop,
+    body[data-sidebar="slim"]   #sidebar-backdrop { display:none !important; }
+    body[data-sidebar="pinned"] #sidebar-toggle,
+    body[data-sidebar="slim"]   #sidebar-toggle { display:none; }
+    body[data-sidebar="slim"]   .nav-label { display:none; }
+    body[data-sidebar="slim"]   #sidebar nav a { justify-content:center; padding-left:0.5rem; padding-right:0.5rem; }
+    body[data-sidebar="slim"]   #sidebar-footer-link { justify-content:center; padding-left:0.5rem; padding-right:0.5rem; }
+    body[data-sidebar="slim"]   .nav-footer-label { display:none; }
+    body[data-sidebar="slim"]   #sidebar-state-btns { justify-content:center; }
+    body[data-sidebar="slim"]   .btn-pin-label { display:none; }
+    #main-content { transition: margin-left 0.2s ease-in-out; }
+  </style>
   <link rel="stylesheet" href="/static/css/tailwind.css">
   <script src="/static/js/htmx.min.js" defer></script>
   <script src="/static/js/sortable.min.js" defer></script>
@@ -51,7 +69,7 @@
     </div>
   </header>
 
-  <!-- Backdrop sidebar (click fuori chiude) -->
+  <!-- Backdrop sidebar (click fuori chiude, solo in overlay mode) -->
   <div id="sidebar-backdrop" class="hidden fixed inset-0 z-30 bg-black/40" aria-hidden="true"></div>
 
   <!-- Sidebar drawer -->
@@ -61,61 +79,80 @@
     <nav class="flex-1 p-3 flex flex-col gap-0.5">
       {{if .User}}
         {{- $p := .ActiveNav -}}
-        <a href="/"
+        <a href="/" title="Piano Settimanale"
            class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
                   {{if eq $p "/"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          Piano Settimanale
+          <span class="nav-label">Piano Settimanale</span>
         </a>
-        <a href="/ingredients"
+        <a href="/ingredients" title="Ingredienti"
            class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
                   {{if eq $p "/ingredients"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-          Ingredienti
+          <span class="nav-label">Ingredienti</span>
         </a>
-        <a href="/recipes"
+        <a href="/recipes" title="Ricette"
            class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
                   {{if eq $p "/recipes"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-          Ricette
+          <span class="nav-label">Ricette</span>
         </a>
-        <a href="/piano-nutrizionale"
+        <a href="/piano-nutrizionale" title="Piano Nutrizionale"
            class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
                   {{if eq $p "/piano-nutrizionale"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          Piano Nutrizionale
+          <span class="nav-label">Piano Nutrizionale</span>
         </a>
-        <a href="/stats"
+        <a href="/stats" title="Statistiche"
            class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
                   {{if eq $p "/stats"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-          Statistiche
+          <span class="nav-label">Statistiche</span>
         </a>
-        <a href="/profile/peso"
+        <a href="/profile/peso" title="Tracciamento Peso"
            class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
                   {{if eq $p "/profile/peso"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
-          Tracciamento Peso
+          <span class="nav-label">Tracciamento Peso</span>
         </a>
       {{else}}
-        <a href="/login"   class="flex items-center gap-2 px-3 py-2 rounded text-sm text-text hover:bg-surface-2 transition">Accedi</a>
-        <a href="/register" class="flex items-center gap-2 px-3 py-2 rounded text-sm text-text hover:bg-surface-2 transition">Registrati</a>
+        <a href="/login"    class="flex items-center gap-2 px-3 py-2 rounded text-sm text-text hover:bg-surface-2 transition"><span class="nav-label">Accedi</span></a>
+        <a href="/register" class="flex items-center gap-2 px-3 py-2 rounded text-sm text-text hover:bg-surface-2 transition"><span class="nav-label">Registrati</span></a>
       {{end}}
     </nav>
 
+    {{/* Bottoni stato sidebar */}}
+    <div id="sidebar-state-btns" class="px-3 py-2 border-t border-border flex items-center gap-1">
+      <button id="btn-pin" type="button" title="Fissa sidebar"
+              class="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted hover:bg-surface-2 hover:text-text transition">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+        <span class="btn-pin-label">Fissa</span>
+      </button>
+      <button id="btn-slim" type="button" title="Modalità icone"
+              class="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted hover:bg-surface-2 hover:text-text transition">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+        <span class="btn-pin-label">Riduci</span>
+      </button>
+      <button id="btn-unpin" type="button" title="Chiudi sidebar"
+              class="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted hover:bg-surface-2 hover:text-text transition">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <span class="btn-pin-label">Chiudi</span>
+      </button>
+    </div>
+
     {{if .User}}
     <div class="p-3 border-t border-border">
-      <a href="/profile"
+      <a id="sidebar-footer-link" href="/profile" title="Profilo"
          class="flex items-center gap-2 px-3 py-2 rounded text-sm text-muted hover:bg-surface-2 hover:text-text transition">
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-        {{.User.DisplayName}}
+        <span class="nav-footer-label">{{.User.DisplayName}}</span>
       </a>
     </div>
     {{end}}
   </aside>
 
   <!-- Contenuto principale, spazio per la top bar -->
-  <main class="pt-14 min-h-screen">
+  <main id="main-content" class="pt-14 min-h-screen">
     <div class="max-w-5xl mx-auto px-4 py-8">
       {{if .Flash}}
         <div class="mb-4 rounded border border-warn-fg/20 bg-warn-bg text-warn-fg px-4 py-2">{{.Flash}}</div>
@@ -129,15 +166,59 @@
 
   <script>
   (function () {
-    var sidebar = document.getElementById('sidebar');
+    var SKEY = 'nutreek_sidebar';
+    var sidebar  = document.getElementById('sidebar');
     var backdrop = document.getElementById('sidebar-backdrop');
-    function open()  { sidebar.classList.remove('-translate-x-full'); backdrop.classList.remove('hidden'); }
-    function close() { sidebar.classList.add('-translate-x-full');    backdrop.classList.add('hidden'); }
+
+    function applyState(s) {
+      document.body.setAttribute('data-sidebar', s);
+      localStorage.setItem(SKEY, s);
+    }
+
+    // Applica stato salvato subito (prima del primo paint per evitare flash)
+    var saved = localStorage.getItem(SKEY);
+    applyState(saved === 'pinned' || saved === 'slim' ? saved : 'closed');
+
+    // Hamburger — visibile solo in modalità closed
     document.getElementById('sidebar-toggle').addEventListener('click', function () {
-      sidebar.classList.contains('-translate-x-full') ? open() : close();
+      if (document.body.getAttribute('data-sidebar') === 'closed') {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      }
     });
-    backdrop.addEventListener('click', close);
-    sidebar.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', close); });
+
+    // Backdrop — chiude overlay
+    backdrop.addEventListener('click', function () {
+      sidebar.classList.add('-translate-x-full');
+      backdrop.classList.add('hidden');
+    });
+
+    // Chiudi overlay su click link (solo in closed mode)
+    sidebar.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        if (document.body.getAttribute('data-sidebar') === 'closed') {
+          sidebar.classList.add('-translate-x-full');
+          backdrop.classList.add('hidden');
+        }
+      });
+    });
+
+    // Bottoni stato
+    document.getElementById('btn-pin').addEventListener('click', function () {
+      sidebar.classList.remove('-translate-x-full');
+      backdrop.classList.add('hidden');
+      applyState('pinned');
+    });
+    document.getElementById('btn-slim').addEventListener('click', function () {
+      sidebar.classList.remove('-translate-x-full');
+      backdrop.classList.add('hidden');
+      applyState('slim');
+    });
+    document.getElementById('btn-unpin').addEventListener('click', function () {
+      sidebar.classList.add('-translate-x-full');
+      backdrop.classList.add('hidden');
+      applyState('closed');
+    });
   })();
   </script>
 </body>

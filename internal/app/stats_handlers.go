@@ -42,6 +42,8 @@ type statsPageData struct {
 	HasWeightData   bool
 	HasWorkoutData  bool
 	HasCheatData    bool
+	AvgWorkouts     float64
+	AvgCheats       float64
 }
 
 func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +59,7 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	var workoutWeeks []workoutWeekPoint
 	var cheatWeeks []cheatWeekPoint
 	var hasWorkoutData, hasCheatData bool
+	var totalWorkoutSessions, totalCheats int
 
 	for i := 0; i < 12; i++ {
 		ws := weekStart.AddDate(0, 0, -7*i)
@@ -88,13 +91,15 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 			countNonEmpty++
 		}
 
-		// Kcal allenamento per settimana.
+		// Kcal e conteggio allenamenti per settimana.
 		wkcal, _ := a.WorkoutLogs.SumKcalForWeek(ctx, user.ID, ws, ws.AddDate(0, 0, 6))
+		wlogs, _ := a.WorkoutLogs.ListWorkoutLogs(ctx, user.ID, ws, ws.AddDate(0, 0, 6))
 		label := ws.Format("02/01")
 		workoutWeeks = append(workoutWeeks, workoutWeekPoint{WeekLabel: label, KcalBurned: wkcal})
 		if wkcal > 0 {
 			hasWorkoutData = true
 		}
+		totalWorkoutSessions += len(wlogs)
 
 		// Conteggio sgarri per settimana.
 		cheatCount := 0
@@ -109,6 +114,7 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		if cheatCount > 0 {
 			hasCheatData = true
 		}
+		totalCheats += cheatCount
 	}
 
 	var averages macros.Macros
@@ -154,6 +160,12 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		reverseCheatWeeks[len(cheatWeeks)-1-i] = v
 	}
 
+	var avgWorkouts, avgCheats float64
+	if countNonEmpty > 0 {
+		avgWorkouts = float64(totalWorkoutSessions) / float64(countNonEmpty)
+		avgCheats = float64(totalCheats) / float64(countNonEmpty)
+	}
+
 	data := statsPageData{
 		authPageData:   a.baseData(r),
 		Weeks:          rows,
@@ -166,6 +178,8 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		HasWeightData:  len(weightPoints) > 0,
 		HasWorkoutData: hasWorkoutData,
 		HasCheatData:   hasCheatData,
+		AvgWorkouts:    avgWorkouts,
+		AvgCheats:      avgCheats,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "stats", data); err != nil {
 		a.serverError(w, r, err)

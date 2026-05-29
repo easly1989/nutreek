@@ -40,6 +40,9 @@
             <input type="hidden" name="barcode" value="{{.Barcode}}">
             <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Importa</button>
           </form>
+        {{else if gt .LocalID 0}}
+          <a href="/ingredients/{{.LocalID}}/edit"
+             class="shrink-0 text-xs text-muted hover:text-text hover:underline">Modifica</a>
         {{end}}
       </li>
     {{end}}
