@@ -1,0 +1,145 @@
+{{define "title"}}Piano Nutrizionista — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-3xl">
+  <h1 class="text-3xl font-semibold mb-1">Piano Nutrizionista</h1>
+  <p class="text-sm text-muted mb-6">
+    Definisci i tipi di pasto e le varianti del tuo piano nutrizionale.
+    Gli elementi salvati qui compariranno come "Suggeriti" nel picker del piano settimanale.
+  </p>
+
+  {{/* Form aggiunta tipo pasto */}}
+  <section class="bg-surface border border-border rounded p-4 mb-6">
+    <form method="post" action="/nutrizionista/meal-types" class="flex items-end gap-3">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <div class="flex-1">
+        <label class="block text-sm font-medium mb-1" for="mt-name">Nuovo tipo pasto</label>
+        <input id="mt-name" name="name" type="text" required
+               placeholder="es. Colazione, Pranzo, Cena, Spuntino…"
+               class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+      </div>
+      <button type="submit"
+              class="rounded bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:bg-accent/90 transition shrink-0">
+        Aggiungi
+      </button>
+    </form>
+  </section>
+
+  {{/* Lista tipi pasto */}}
+  {{if .Plan.MealTypes}}
+  <div class="space-y-6">
+    {{range .Plan.MealTypes}}
+    {{$mt := .}}
+    <section class="bg-surface border border-border rounded overflow-hidden">
+      {{/* Header tipo pasto */}}
+      <div class="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-2">
+        <h2 class="font-semibold text-text">{{.Name}}</h2>
+        <form method="post" action="/nutrizionista/meal-types/{{.ID}}/delete"
+              onsubmit="return confirm('Eliminare questo tipo pasto e tutte le sue varianti?')">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" class="text-xs text-danger hover:underline">Elimina</button>
+        </form>
+      </div>
+
+      {{/* Form aggiunta variante */}}
+      <div class="px-4 py-3 border-b border-border">
+        <form method="post" action="/nutrizionista/variations" class="flex items-end gap-2">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <input type="hidden" name="meal_type_id" value="{{.ID}}">
+          <div class="flex-1">
+            <label class="block text-xs text-muted mb-1">Nuova variante <span class="font-normal">(lascia vuoto per variante principale)</span></label>
+            <input name="name" type="text" placeholder="es. Variante A, con frutta, ecc."
+                   class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+          </div>
+          <button type="submit"
+                  class="rounded border border-accent text-accent px-3 py-2 text-sm hover:bg-accent/10 transition shrink-0">
+            + Variante
+          </button>
+        </form>
+      </div>
+
+      {{/* Varianti */}}
+      {{range .Variations}}
+      {{$v := .}}
+      <div class="px-4 py-3 border-b border-border last:border-b-0">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-muted">
+            {{if .Name}}{{.Name}}{{else}}<em>Variante principale</em>{{end}}
+          </span>
+          <form method="post" action="/nutrizionista/variations/{{.ID}}/delete"
+                onsubmit="return confirm('Eliminare questa variante?')">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="text-xs text-danger hover:underline">Elimina variante</button>
+          </form>
+        </div>
+
+        {{/* Items della variante */}}
+        {{if .Items}}
+        <ul class="mb-3 space-y-1">
+          {{range .Items}}
+          <li class="flex items-center justify-between text-sm">
+            <span>
+              {{if .Recipe}}
+                {{.Recipe.Name}} <span class="text-muted text-xs">— {{printf "%.1f" .Quantity}} porz.</span>
+              {{else if .Ingredient}}
+                {{.Ingredient.Name}} <span class="text-muted text-xs">— {{printf "%.0f" .Quantity}} {{.QuantityUnit}}</span>
+              {{end}}
+            </span>
+            <form method="post" action="/nutrizionista/items/{{.ID}}/delete">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <button type="submit" class="text-xs text-danger hover:underline ml-2">×</button>
+            </form>
+          </li>
+          {{end}}
+        </ul>
+        {{end}}
+
+        {{/* Form aggiunta item */}}
+        <details class="text-sm">
+          <summary class="cursor-pointer text-accent hover:underline text-xs">+ Aggiungi ingrediente/ricetta</summary>
+          <form method="post" action="/nutrizionista/items" class="mt-2 flex flex-wrap gap-2 items-end">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="variation_id" value="{{.ID}}">
+            <div>
+              <label class="block text-xs text-muted mb-1">ID Ingrediente</label>
+              <input name="ingredient_id" inputmode="numeric" placeholder="ID"
+                     class="w-24 rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
+            </div>
+            <div>
+              <label class="block text-xs text-muted mb-1">Quantità</label>
+              <input name="quantity" inputmode="decimal" placeholder="es. 150"
+                     class="w-20 rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
+            </div>
+            <div>
+              <label class="block text-xs text-muted mb-1">Unità</label>
+              <select name="unit"
+                      class="rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
+                <option value="g">g</option>
+                <option value="ml">ml</option>
+                <option value="pz">pz</option>
+              </select>
+            </div>
+            <button type="submit"
+                    class="rounded bg-accent text-accent-fg px-3 py-1 text-xs font-medium hover:bg-accent/90 transition">
+              Aggiungi
+            </button>
+          </form>
+        </details>
+      </div>
+      {{end}}
+
+      {{if not .Variations}}
+      <div class="px-4 py-3 text-sm text-muted italic">
+        Nessuna variante. Aggiungine una sopra.
+      </div>
+      {{end}}
+
+    </section>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
+    <p class="text-sm">Nessun tipo pasto definito. Aggiungine uno sopra.</p>
+  </div>
+  {{end}}
+</div>
+{{end}}

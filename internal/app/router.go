@@ -54,6 +54,8 @@ func (a *App) Router() http.Handler {
 		r.Post("/ingredients", a.handleIngredientCreate)
 		r.Post("/ingredients/off-import", a.handleIngredientOFFImport)
 		r.Get("/off/check/{barcode}", a.handleOFFMacroCheck)
+		r.Post("/ingredients/categories", a.handleCategoryCreate)
+		r.Post("/ingredients/categories/{id}/delete", a.handleCategoryDelete)
 
 		// Quick-create modali (creazione al volo da picker / liste).
 		r.Get("/quick/ingredient", a.handleQuickIngredientForm)
@@ -111,6 +113,32 @@ func (a *App) Router() http.Handler {
 		// Profilo utente.
 		r.Get("/profile", a.handleProfilePage)
 		r.Post("/profile", a.handleProfileSave)
+
+		// Tracciamento peso.
+		r.Get("/profile/peso", a.handleWeightPage)
+		r.Post("/profile/peso", a.handleWeightLog)
+		r.Post("/profile/peso/{id}/delete", a.handleWeightLogDelete)
+
+		// Log allenamento.
+		r.Get("/allenamento", a.handleWorkoutPage)
+		r.Post("/allenamento", a.handleWorkoutLog)
+		r.Post("/allenamento/{id}/delete", a.handleWorkoutLogDelete)
+
+		// Statistiche.
+		r.Get("/stats", a.handleStats)
+
+		// Export/Import piano settimanale.
+		r.Get("/week/{start}/export", a.handleWeekExport)
+		r.Post("/week/{start}/import", a.handleWeekImport)
+
+		// Piano nutrizionista.
+		r.Get("/nutrizionista", a.handleNutritionistPage)
+		r.Post("/nutrizionista/meal-types", a.handleNutritionistCreateMealType)
+		r.Post("/nutrizionista/meal-types/{id}/delete", a.handleNutritionistDeleteMealType)
+		r.Post("/nutrizionista/variations", a.handleNutritionistCreateVariation)
+		r.Post("/nutrizionista/variations/{id}/delete", a.handleNutritionistDeleteVariation)
+		r.Post("/nutrizionista/items", a.handleNutritionistAddItem)
+		r.Post("/nutrizionista/items/{id}/delete", a.handleNutritionistDeleteItem)
 
 		// Owner-only: sync OFF manuale dal pannello profilo (vedi isOwner).
 		// Non in /admin/* perche' va via sessione, non X-Admin-Token.
