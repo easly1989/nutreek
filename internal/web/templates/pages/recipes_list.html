@@ -13,7 +13,7 @@
            dentro. La toolbar in alto resta visibile e si aggiorna via JS in
            base alla selezione. */}}
       <form id="recipes-bulk-form" method="post" action="/recipes/bulk-delete"
-            onsubmit="return confirmRecipesBulkDelete(this);">
+            onsubmit="return confirmRecipesBulkDelete(this, event);">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
         <div data-recipes-toolbar
@@ -92,9 +92,10 @@
         </form>
       {{end}}
     {{else}}
-      <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
-        Nessuna ricetta ancora. Crea la prima.
-      </p>
+      <div class="rounded border border-dashed border-border bg-surface px-6 py-12 text-center">
+        <p class="text-muted mb-3 text-sm">Non hai ancora nessuna ricetta.</p>
+        <a href="/recipes/new" class="inline-block bg-accent text-accent-fg rounded px-4 py-2 text-sm hover:bg-accent/90 transition">Crea la prima ricetta</a>
+      </div>
     {{end}}
   </section>
 
@@ -165,15 +166,16 @@
              + (usages === 1 ? ' di un piano' : '') + ' che verrà rimossa.';
       }
       msg += '\nOperazione non reversibile.';
-      if (!confirm(msg)) return;
-      var form = document.getElementById('recipe-delete-' + id);
-      if (form) form.submit();
+      window._showConfirm(msg, function () {
+        var form = document.getElementById('recipe-delete-' + id);
+        if (form) form.submit();
+      });
+      return;
     }
   });
 }());
 
-// Confirm per bulk-delete chiamato da onsubmit (così non parte se l'utente annulla).
-function confirmRecipesBulkDelete(form) {
+function confirmRecipesBulkDelete(form, e) {
   var checked = form.querySelectorAll('[data-recipes-checkbox]:checked');
   if (checked.length === 0) return false;
   var totalUsages = 0;
@@ -183,10 +185,15 @@ function confirmRecipesBulkDelete(form) {
   });
   var msg = 'Eliminare ' + checked.length + ' ricette?';
   if (totalUsages > 0) {
-    msg += '\n\nNel totale sono usate in ' + totalUsages + ' voci dei piani settimanali che verranno rimosse.';
+    msg += ' Nel totale sono usate in ' + totalUsages + ' voci dei piani settimanali che verranno rimosse.';
   }
-  msg += '\nOperazione non reversibile.';
-  return confirm(msg);
+  msg += ' Operazione non reversibile.';
+  if (e) e.preventDefault();
+  window._showConfirm(msg, function () {
+    form.removeAttribute('onsubmit');
+    form.requestSubmit ? form.requestSubmit() : form.submit();
+  });
+  return false;
 }
 </script>
 {{end}}

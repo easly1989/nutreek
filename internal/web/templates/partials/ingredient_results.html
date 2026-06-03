@@ -48,8 +48,15 @@
     {{end}}
   </ul>
 {{else}}
-  <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
-    {{if .Query}}Nessun ingrediente trovato per &laquo;{{.Query}}&raquo;.{{else}}Nessun ingrediente ancora. Crea il primo qui sotto.{{end}}
-  </p>
+  {{if .Query}}
+    <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
+      Nessun ingrediente trovato per &laquo;{{.Query}}&raquo;.
+    </p>
+  {{else}}
+    <div class="rounded border border-dashed border-border bg-surface px-6 py-12 text-center">
+      <p class="text-muted mb-3 text-sm">Non hai ancora nessun ingrediente salvato.</p>
+      <a href="/ingredients/new" class="inline-block bg-accent text-accent-fg rounded px-4 py-2 text-sm hover:bg-accent/90 transition">Aggiungi il primo</a>
+    </div>
+  {{end}}
 {{end}}
 {{end}}

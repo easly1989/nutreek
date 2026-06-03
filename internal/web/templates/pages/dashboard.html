@@ -20,7 +20,7 @@
         {{/* Iconcina "reset settimana": cancella tutti i meals.
              Confirma JS perche' azione distruttiva. */}}
         <form method="post" action="/week/reset" class="inline"
-              onsubmit="return confirm('Svuotare la settimana? Tutti i pasti, voci e sgarri verranno cancellati.');">
+              data-confirm="Svuotare la settimana? Tutti i pasti, voci e sgarri verranno cancellati.">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input type="hidden" name="start" value="{{.WeekStartStr}}">
           <button type="submit" title="Svuota la settimana (annulla copia/template)"
@@ -62,11 +62,13 @@
 
   <!-- Timeline: TUTTI i giorni della settimana, sempre visibili. Le pillole
        in focus sono evidenziate (accent). Click sulla pillola toggla il
-       relativo card piena in #focus-grid. -->
-  <div id="timeline-pills" class="mb-4 grid grid-cols-7 gap-2">
-    {{range .AllCards}}
-      {{template "day_pill" .}}
-    {{end}}
+       relativo card piena in #focus-grid. Wrapper scrollabile su mobile. -->
+  <div class="overflow-x-auto -mx-4 px-4 mb-4">
+    <div id="timeline-pills" class="grid grid-cols-7 gap-2 min-w-[480px]">
+      {{range .AllCards}}
+        {{template "day_pill" .}}
+      {{end}}
+    </div>
   </div>
 
   <!-- Lista focus: card piene impilate verticalmente, riordinabili via

@@ -34,7 +34,7 @@
       <div class="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-2">
         <h2 class="font-semibold text-text">{{.Name}}</h2>
         <form method="post" action="/nutrizionista/meal-types/{{.ID}}/delete"
-              onsubmit="return confirm('Eliminare questo tipo pasto e tutte le sue varianti?')">
+              data-confirm="Eliminare questo tipo pasto e tutte le sue varianti?">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
           <button type="submit" class="text-xs text-danger hover:underline">Elimina</button>
         </form>
@@ -66,7 +66,7 @@
             {{if .Name}}{{.Name}}{{else}}<em>Variante principale</em>{{end}}
           </span>
           <form method="post" action="/nutrizionista/variations/{{.ID}}/delete"
-                onsubmit="return confirm('Eliminare questa variante?')">
+                data-confirm="Eliminare questa variante?">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="text-xs text-danger hover:underline">Elimina variante</button>
           </form>
