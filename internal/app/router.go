@@ -78,6 +78,10 @@ func (a *App) Router() http.Handler {
 		r.Post("/recipes/{id}/items", a.handleRecipeAddItem)
 		r.Post("/recipes/{id}/items/{itemID}/delete", a.handleRecipeRemoveItem)
 
+		// Wizard di onboarding (post-registrazione e "Guida rapida" dalla sidebar).
+		r.Get("/onboarding",  a.handleOnboardingPage)
+		r.Post("/onboarding", a.handleOnboardingStep)
+
 		// Piano Nutrizionale (pagina unificata nutrizionista + template).
 		r.Get("/piano-nutrizionale", a.handlePianoNutrizionale)
 
