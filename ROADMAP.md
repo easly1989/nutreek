@@ -62,12 +62,25 @@ Token API read/write per l'ecosistema self-hosted (Home Assistant, n8n, script p
 
 ---
 
+## Monetizzazione — modello "pay per use"
+
+### `#11` Pannello admin + feature flag premium con sottoscrizioni/licenze
+Pannello amministrativo web accessibile solo all'owner (email configurabile via `NUTREEK_OWNER_EMAIL`, oggi hardcoded). Introduce un sistema di **feature flag + entitlement** che permette di marcare le funzionalità ambiziose (#5 micronutrienti, #6 TDEE, #7 auto-plan, #8 coach, #10 API) come premium e veicolarle tramite:
+- **Self-hosted**: licenza firmata Ed25519 verificata offline (zero phone-home), sblocca un piano per l'intera istanza
+- **Multi-tenant/SaaS**: sottoscrizioni per-utente con scadenza, gestite dal pannello
+
+Piani Free / Pro / Coach. Helper centrale `HasFeature(user, key)`, middleware `requireFeature(...)` per le route, `{{if hasFeature "..."}}` nei template. L'owner ha sempre accesso a tutto.
+
+> Issue GitHub: [#66](https://github.com/easly1989/nutreek/issues/66). Si integra con il RBAC di `#8`.
+
+---
+
 ## Matrice impatto / sforzo
 
 ```
 Alto impatto
      │
-  #6 │         #8
+  #6 │         #8   #11
   #4 │    #7       #10
   #2 │  #5   #9
   #1 │        #3
@@ -75,13 +88,32 @@ Alto impatto
       basso         alto
 ```
 
-**Raccomandazione ordine di esecuzione**: `#1` → `#2` → `#3` → `#4` → `#6` → `#5` → `#9` → `#7` → `#8` → `#10`
+**Raccomandazione ordine di esecuzione**: `#1` → `#2` → `#3` → `#4` → `#6` → `#5` → `#9` → `#7` → `#8` → `#11` → `#10`
+
+> Nota: `#11` (monetizzazione) va dopo che esistono feature premium da vendere e dopo il RBAC di `#8`.
 
 ---
 
 ## Note tecniche generali
 
 - Stack bloccato: Go 1.23+, chi, SQLite (modernc), HTMX, Tailwind v3.4.17
-- Nessuna dipendenza cloud obbligatoria per nessuna feature
+- Nessuna dipendenza cloud obbligatoria per nessuna feature (inclusa la verifica licenze)
 - Ogni feature su branch dedicato `feat/<scope>-<descrizione>` con conventional commits in italiano
 - `go build ./...` + `go test ./...` devono essere verdi prima di ogni push
+
+## Issue GitHub (tutte le feature)
+
+| # | Titolo | Sprint | Tipo |
+|---|---|---|---|
+| [#56](https://github.com/easly1989/nutreek/issues/56) | Filtro allergeni nell'UI | Sprint 1 | quick-win |
+| [#57](https://github.com/easly1989/nutreek/issues/57) | Import ricetta da URL (schema.org/Recipe) | Sprint 1 | quick-win |
+| [#58](https://github.com/easly1989/nutreek/issues/58) | Tracciamento idratazione | Sprint 1 | quick-win |
+| [#59](https://github.com/easly1989/nutreek/issues/59) | PWA installabile + scanner barcode | Sprint 2 | differenziante |
+| [#60](https://github.com/easly1989/nutreek/issues/60) | Micronutrienti chiave | Sprint 2 | differenziante |
+| [#61](https://github.com/easly1989/nutreek/issues/61) | ⭐ TDEE adattivo (flagship) | Sprint 2 | differenziante |
+| [#62](https://github.com/easly1989/nutreek/issues/62) | Generazione automatica del piano | Sprint 3 | ambizioso |
+| [#63](https://github.com/easly1989/nutreek/issues/63) | Coach mode multi-cliente (RBAC) | Sprint 3 | ambizioso |
+| [#64](https://github.com/easly1989/nutreek/issues/64) | Analytics aderenza + streak | Sprint 3 | ambizioso |
+| [#65](https://github.com/easly1989/nutreek/issues/65) | REST API + integrazioni self-hosted | Sprint 3 | ambizioso |
+| [#66](https://github.com/easly1989/nutreek/issues/66) | Pannello admin + feature flag + licenze | Monetizzazione | strategico |
+
