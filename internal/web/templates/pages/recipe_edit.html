@@ -153,7 +153,7 @@
               hx-target="#modal-host" hx-swap="innerHTML"
               class="text-xs text-muted hover:text-accent hover:underline">Duplica ricetta</button>
       <form method="post" action="/recipes/{{.Recipe.ID}}/delete"
-            onsubmit="return confirm('Eliminare la ricetta? Se è usata nei piani settimanali, sarà rimossa anche da lì. Operazione non reversibile.');">
+            data-confirm="Eliminare la ricetta? Se è usata nei piani settimanali, sarà rimossa anche da lì. Operazione non reversibile.">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button class="text-xs text-danger hover:underline">Elimina ricetta</button>
       </form>

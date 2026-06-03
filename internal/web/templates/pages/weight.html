@@ -80,7 +80,7 @@
           <td class="px-4 py-2 text-muted hidden sm:table-cell">{{if .Note}}{{.Note}}{{end}}</td>
           <td class="px-4 py-2 text-right">
             <form method="post" action="/profile/peso/{{.ID}}/delete"
-                  onsubmit="return confirm('Eliminare questa misurazione?')">
+                  data-confirm="Eliminare questa misurazione?">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <button type="submit" class="text-xs text-danger hover:underline">Elimina</button>
             </form>
