@@ -37,8 +37,13 @@
   <script src="/static/js/ingredient_search.js" defer></script>
   <script src="/static/js/day_macro.js" defer></script>
   <script src="/static/js/confirm.js" defer></script>
+  {{if .ShowTour}}
+  <link rel="stylesheet" href="/static/css/shepherd.css">
+  <script src="/static/js/shepherd.min.js" defer></script>
+  <script src="/static/js/tour.js" defer></script>
+  {{end}}
 </head>
-<body class="bg-bg text-text min-h-screen">
+<body class="bg-bg text-text min-h-screen"{{if .ShowTour}} data-show-tour="1"{{end}}>
 
   <!-- Top bar fissa: hamburger | logo | tema + esci -->
   <header class="fixed top-0 inset-x-0 h-14 z-40 bg-surface border-b border-border flex items-center gap-3 px-4">
@@ -127,6 +132,14 @@
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           <span class="nav-label">Guida rapida</span>
         </a>
+        <form method="post" action="/tour/restart">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" title="Tour guidato"
+                  class="flex items-center gap-2 w-full px-3 py-2 rounded text-sm transition text-text hover:bg-surface-2">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.82V15.18a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+            <span class="nav-label">Tour guidato</span>
+          </button>
+        </form>
       {{else}}
         <a href="/login"    class="flex items-center gap-2 px-3 py-2 rounded text-sm text-text hover:bg-surface-2 transition"><span class="nav-label">Accedi</span></a>
         <a href="/register" class="flex items-center gap-2 px-3 py-2 rounded text-sm text-text hover:bg-surface-2 transition"><span class="nav-label">Registrati</span></a>
