@@ -19,8 +19,10 @@
 
   <div>
     <label class="block text-xs text-muted mb-1" for="qr-name">Nome ricetta</label>
-    <input id="qr-name" name="name" required value="{{.Form.Name}}" autofocus
-           class="w-full rounded border border-border bg-surface px-2 py-1">
+    <input id="qr-name" name="name" required value="{{.Form.Name}}" autofocus maxlength="200"
+           class="w-full rounded border border-border bg-surface px-2 py-1"
+           oninput="document.getElementById('qr-name-cnt').textContent=this.value.length">
+    <p class="text-xs text-muted/60 text-right mt-0.5"><span id="qr-name-cnt">{{len .Form.Name}}</span>/200</p>
   </div>
   <div>
     <label class="block text-xs text-muted mb-1" for="qr-srv">Porzioni totali</label>

@@ -92,7 +92,7 @@
       <span></span>
     {{end}}
     <form method="post" action="/templates/{{.Template.ID}}/delete"
-          onsubmit="return confirm('Eliminare il template? Operazione non reversibile.');">
+          data-confirm="Eliminare il template? Operazione non reversibile.">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <button class="text-xs text-danger hover:underline">Elimina template</button>
     </form>

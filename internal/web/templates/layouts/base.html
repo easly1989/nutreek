@@ -36,6 +36,7 @@
   <script src="/static/js/modal.js" defer></script>
   <script src="/static/js/ingredient_search.js" defer></script>
   <script src="/static/js/day_macro.js" defer></script>
+  <script src="/static/js/confirm.js" defer></script>
 </head>
 <body class="bg-bg text-text min-h-screen">
 
@@ -167,7 +168,17 @@
   <main id="main-content" class="pt-14 min-h-screen">
     <div class="max-w-5xl mx-auto px-4 py-8">
       {{if .Flash}}
-        <div class="mb-4 rounded border border-warn-fg/20 bg-warn-bg text-warn-fg px-4 py-2">{{.Flash}}</div>
+        <div id="flash-msg" class="mb-4 rounded border border-warn-fg/20 bg-warn-bg text-warn-fg px-4 py-2 flex items-center justify-between gap-3">
+          <span>{{.Flash}}</span>
+          <button type="button" onclick="document.getElementById('flash-msg').remove()"
+                  class="shrink-0 text-warn-fg/70 hover:text-warn-fg transition text-xl leading-none">&times;</button>
+        </div>
+        <script>
+          (function(){
+            var el=document.getElementById('flash-msg');
+            if(el) setTimeout(function(){ el.style.transition='opacity 0.5s'; el.style.opacity='0'; setTimeout(function(){ if(el.parentNode) el.remove(); },500); },4000);
+          })();
+        </script>
       {{end}}
       {{block "content" .}}{{end}}
     </div>
