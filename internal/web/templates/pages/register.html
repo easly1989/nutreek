@@ -21,7 +21,30 @@
       <label class="block text-sm font-medium mb-1" for="password">Password</label>
       <input id="password" name="password" type="password" required minlength="8" maxlength="72"
              class="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-      <p class="text-xs text-muted mt-1">Minimo 8 caratteri, massimo 72.</p>
+      <div class="h-1.5 rounded mt-2 bg-border overflow-hidden">
+        <div id="pwd-strength-fill" class="h-full rounded transition-all duration-300" style="width:0%"></div>
+      </div>
+      <p id="pwd-strength-label" class="text-xs text-muted mt-0.5 h-4">Minimo 8 caratteri, massimo 72.</p>
+      <script>
+      (function(){
+        var inp=document.getElementById('password');
+        var fill=document.getElementById('pwd-strength-fill');
+        var lbl=document.getElementById('pwd-strength-label');
+        if(!inp)return;
+        inp.addEventListener('input',function(){
+          var v=inp.value,score=0;
+          if(v.length>=8)score++;
+          if(/[A-Z]/.test(v))score++;
+          if(/[0-9]/.test(v))score++;
+          if(/[^A-Za-z0-9]/.test(v))score++;
+          var labels=['','Debole','Discreta','Buona','Ottima'];
+          var colors=['','#ef4444','#f97316','#eab308','#22c55e'];
+          fill.style.width=(score*25)+'%';
+          fill.style.background=colors[score]||'';
+          lbl.textContent=v.length?labels[score]||'':'Minimo 8 caratteri, massimo 72.';
+        });
+      })();
+      </script>
     </div>
     <button type="submit" class="w-full bg-accent text-accent-fg rounded py-2 hover:bg-accent/90">Registrati</button>
   </form>
