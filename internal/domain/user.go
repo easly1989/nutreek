@@ -31,4 +31,7 @@ type User struct {
 
 	// Wizard di onboarding: NULL = non completato, valorizzato = completato.
 	OnboardingCompletedAt *time.Time
+
+	// Tour guidato: NULL = mostrare il tour, valorizzato = tour dismesso.
+	TourDismissedAt *time.Time
 }

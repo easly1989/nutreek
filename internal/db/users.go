@@ -56,7 +56,7 @@ func (u *Users) GetByEmail(ctx context.Context, email string) (*domain.User, err
 		`SELECT id, email, password_hash, display_name, created_at,
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
-		        bmi, bmr, activity_level, onboarding_completed_at
+		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at
 		 FROM users WHERE email = ?`, email,
 	)
 	return scanUser(row)
@@ -68,7 +68,7 @@ func (u *Users) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 		`SELECT id, email, password_hash, display_name, created_at,
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
-		        bmi, bmr, activity_level, onboarding_completed_at
+		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at
 		 FROM users WHERE id = ?`, id,
 	)
 	return scanUser(row)
@@ -123,7 +123,7 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 		&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName, &user.CreatedAt,
 		&user.WeightKg, &user.HeightCm, &user.BirthYear, &user.Sex,
 		&user.TargetKcal, &user.TargetProtein, &user.TargetCarbs, &user.TargetFat,
-		&user.BMI, &user.BMR, &user.ActivityLevel, &user.OnboardingCompletedAt,
+		&user.BMI, &user.BMR, &user.ActivityLevel, &user.OnboardingCompletedAt, &user.TourDismissedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
@@ -145,6 +145,20 @@ func (u *Users) CompleteOnboarding(ctx context.Context, id int64) error {
 func (u *Users) ResetOnboarding(ctx context.Context, id int64) error {
 	_, err := u.db.ExecContext(ctx,
 		`UPDATE users SET onboarding_completed_at = NULL WHERE id = ?`, id)
+	return err
+}
+
+// DismissTour segna il tour guidato come dismesso dall'utente.
+func (u *Users) DismissTour(ctx context.Context, id int64) error {
+	_, err := u.db.ExecContext(ctx,
+		`UPDATE users SET tour_dismissed_at = CURRENT_TIMESTAMP WHERE id = ?`, id)
+	return err
+}
+
+// ResetTour azzera il timestamp del tour (permette di riavviarlo).
+func (u *Users) ResetTour(ctx context.Context, id int64) error {
+	_, err := u.db.ExecContext(ctx,
+		`UPDATE users SET tour_dismissed_at = NULL WHERE id = ?`, id)
 	return err
 }
 

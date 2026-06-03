@@ -82,6 +82,10 @@ func (a *App) Router() http.Handler {
 		r.Get("/onboarding",  a.handleOnboardingPage)
 		r.Post("/onboarding", a.handleOnboardingStep)
 
+		// Tour guidato (dismiss + restart).
+		r.Post("/tour/dismiss", a.handleTourDismiss)
+		r.Post("/tour/restart", a.handleTourRestart)
+
 		// Piano Nutrizionale (pagina unificata nutrizionista + template).
 		r.Get("/piano-nutrizionale", a.handlePianoNutrizionale)
 

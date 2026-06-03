@@ -28,6 +28,7 @@ type authPageData struct {
 	Form      authFormData
 	Theme     string
 	ActiveNav string // URL path corrente, per evidenziare il link attivo nella sidebar
+	ShowTour  bool   // true se il tour guidato deve essere mostrato sulla dashboard
 }
 
 // validThemes elenca i temi accettati. Tenuto allineato a web/tailwind/input.css
@@ -53,12 +54,18 @@ func readTheme(r *http.Request) string {
 }
 
 func (a *App) baseData(r *http.Request) authPageData {
+	user := userFromContext(r.Context())
+	showTour := false
+	if user != nil && r.URL.Path == "/" {
+		showTour = user.TourDismissedAt == nil
+	}
 	return authPageData{
-		User:      userFromContext(r.Context()),
+		User:      user,
 		CSRFToken: nosurf.Token(r),
 		Flash:     a.Sessions.PopString(r.Context(), "flash"),
 		Theme:     readTheme(r),
 		ActiveNav: r.URL.Path,
+		ShowTour:  showTour,
 	}
 }
 
