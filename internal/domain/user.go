@@ -28,4 +28,7 @@ type User struct {
 
 	// Livello di attività fisica: 'sedentary'|'light'|'moderate'|'active'|'athlete'
 	ActivityLevel *string
+
+	// Wizard di onboarding: NULL = non completato, valorizzato = completato.
+	OnboardingCompletedAt *time.Time
 }

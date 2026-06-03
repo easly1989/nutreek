@@ -200,8 +200,7 @@ func (a *App) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), sessionKeyUserID, id)
-	a.Sessions.Put(r.Context(), "flash", "Registrazione completata. Benvenuto!")
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/onboarding", http.StatusSeeOther)
 }
 
 func (a *App) renderRegisterError(w http.ResponseWriter, r *http.Request, data authPageData, msg string) {
