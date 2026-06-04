@@ -13,6 +13,7 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/macros"
+	"github.com/amon2126/nutreek/internal/recipeimport"
 )
 
 // ---- view models -----------------------------------------------------------
@@ -35,6 +36,11 @@ type recipeNewData struct {
 	authPageData
 	Form  recipeForm
 	Error string
+
+	// Campi popolati dopo un import da URL (schema.org/Recipe).
+	ImportError         string   // errore del fetch/parse, mostrato nel pannello import
+	ImportedIngredients []string // righe ingrediente rilevate (da mappare a mano)
+	ImportSource        string   // URL di origine, mostrato come riferimento
 }
 
 type recipeForm struct {
@@ -108,6 +114,71 @@ func (a *App) handleRecipeNewForm(w http.ResponseWriter, r *http.Request) {
 	if err := a.Render.Render(w, http.StatusOK, "recipe_new", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+// handleRecipeImport gestisce POST /recipes/import: scarica la pagina indicata,
+// estrae la ricetta schema.org/Recipe e ri-renderizza /recipes/new con il form
+// pre-compilato. Gli ingredienti rilevati sono testo libero (schema.org non li
+// struttura) e vengono mostrati come riferimento da mappare manualmente.
+func (a *App) handleRecipeImport(w http.ResponseWriter, r *http.Request) {
+	srcURL := strings.TrimSpace(r.PostFormValue("import_url"))
+	renderImport := func(data recipeNewData) {
+		if err := a.Render.Render(w, http.StatusOK, "recipe_new", data); err != nil {
+			a.serverError(w, r, err)
+		}
+	}
+
+	if srcURL == "" {
+		renderImport(recipeNewData{
+			authPageData: a.baseData(r),
+			Form:         recipeForm{Servings: "1"},
+			ImportError:  "Incolla l'URL di una ricetta da importare.",
+		})
+		return
+	}
+
+	parsed, err := recipeimport.NewFetcher().FetchAndParse(r.Context(), srcURL)
+	if err != nil {
+		a.Logger.Info("recipe import failed", "url", srcURL, "err", err)
+		msg := "Impossibile importare la ricetta da questo URL."
+		if errors.Is(err, recipeimport.ErrNoRecipe) {
+			msg = "La pagina non contiene una ricetta in formato strutturato (schema.org/Recipe)."
+		} else if errors.Is(err, recipeimport.ErrInvalidURL) {
+			msg = "URL non valido: usa un link http(s) verso un sito pubblico."
+		}
+		renderImport(recipeNewData{
+			authPageData: a.baseData(r),
+			Form:         recipeForm{Servings: "1"},
+			ImportError:  msg,
+			ImportSource: srcURL,
+		})
+		return
+	}
+
+	// Normalizza i campi entro i limiti dei form.
+	name := parsed.Name
+	if !withinLen(name, MaxNameLen) {
+		name = truncateRunes(name, MaxNameLen)
+	}
+	desc := parsed.Description
+	if !withinLen(desc, MaxDescriptionLen) {
+		desc = truncateRunes(desc, MaxDescriptionLen)
+	}
+	servings := "1"
+	if parsed.Servings > 0 {
+		servings = strconv.Itoa(parsed.Servings)
+	}
+
+	renderImport(recipeNewData{
+		authPageData: a.baseData(r),
+		Form: recipeForm{
+			Name:        name,
+			Description: desc,
+			Servings:    servings,
+		},
+		ImportedIngredients: parsed.Ingredients,
+		ImportSource:        srcURL,
+	})
 }
 
 func (a *App) handleRecipeCreate(w http.ResponseWriter, r *http.Request) {

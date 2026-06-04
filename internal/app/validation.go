@@ -16,3 +16,13 @@ const MaxDescriptionLen = 2000
 func withinLen(s string, max int) bool {
 	return utf8.RuneCountInString(s) <= max
 }
+
+// truncateRunes taglia s a max rune, rispettando i confini UTF-8. Usato per
+// normalizzare i campi importati (es. da una pagina web) entro i limiti dei form.
+func truncateRunes(s string, max int) string {
+	if utf8.RuneCountInString(s) <= max {
+		return s
+	}
+	runes := []rune(s)
+	return string(runes[:max])
+}
