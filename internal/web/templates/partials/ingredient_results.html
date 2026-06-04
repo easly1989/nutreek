@@ -16,6 +16,13 @@
           <p class="font-medium text-text truncate">
             {{.Name}}{{with .Brand}} <span class="text-muted font-normal">— {{.}}</span>{{end}}
           </p>
+          {{if .Allergens}}
+            <p class="mt-0.5 flex flex-wrap gap-1">
+              {{range .Allergens}}
+              <span class="inline-flex items-center gap-0.5 rounded bg-warn-bg text-warn-fg text-[10px] font-medium px-1.5 py-0.5">⚠ {{.Name}}</span>
+              {{end}}
+            </p>
+          {{end}}
           {{if .IsOFF}}
             {{/* Verifica macro via barcode: mostra placeholder animato, poi sostituisce con dati reali. */}}
             <p class="text-xs text-muted"
