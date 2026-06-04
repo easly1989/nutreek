@@ -67,6 +67,7 @@ func (a *App) Router() http.Handler {
 
 		r.Get("/recipes", a.handleRecipesList)
 		r.Get("/recipes/new", a.handleRecipeNewForm)
+		r.Post("/recipes/import", a.handleRecipeImport)
 		r.Post("/recipes", a.handleRecipeCreate)
 		r.Post("/recipes/bulk-delete", a.handleRecipesBulkDelete)
 		r.Get("/recipes/{id}", a.handleRecipeEdit)
