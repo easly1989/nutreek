@@ -97,6 +97,20 @@
     </div>
     {{end}}
 
+    {{if .Allergens}}
+    <div>
+      <span class="block text-sm font-medium text-text mb-2">Allergeni contenuti <span class="text-muted font-normal">(opzionale)</span></span>
+      <div class="grid grid-cols-2 gap-1">
+        {{range .Allergens}}
+        <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" name="allergen_ids" value="{{.ID}}" class="accent-accent" {{if index $.SelectedAllergens .ID}}checked{{end}}>
+          {{.Name}}
+        </label>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
     <div class="flex items-center justify-between pt-2">
       <a href="/ingredients" class="text-sm text-muted hover:underline">Annulla</a>
       <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Aggiorna</button>

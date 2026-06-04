@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/amon2126/nutreek/internal/domain"
 )
@@ -135,6 +136,69 @@ func (c *Categories) SetIngredientAllergens(ctx context.Context, ingredientID in
 	}
 
 	return tx.Commit()
+}
+
+// AllergensForIngredients carica in batch gli allergeni di piu' ingredienti,
+// evitando il pattern N+1 nei picker e nelle liste. Ritorna una mappa
+// ingredient_id -> allergeni (ordinati per nome). Gli ingredienti senza
+// allergeni semplicemente non compaiono nella mappa.
+func (c *Categories) AllergensForIngredients(ctx context.Context, ingredientIDs []int64) (map[int64][]domain.AllergenTag, error) {
+	out := make(map[int64][]domain.AllergenTag)
+	if len(ingredientIDs) == 0 {
+		return out, nil
+	}
+
+	placeholders := make([]string, len(ingredientIDs))
+	args := make([]any, len(ingredientIDs))
+	for i, id := range ingredientIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	rows, err := c.db.QueryContext(ctx,
+		`SELECT ia.ingredient_id, at.id, at.name
+		   FROM ingredient_allergens ia
+		   JOIN allergen_tags at ON at.id = ia.allergen_id
+		  WHERE ia.ingredient_id IN (`+strings.Join(placeholders, ",")+`)
+		  ORDER BY at.name`,
+		args...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("allergens for ingredients: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ingID int64
+		var tag domain.AllergenTag
+		if err := rows.Scan(&ingID, &tag.ID, &tag.Name); err != nil {
+			return nil, fmt.Errorf("scan allergen row: %w", err)
+		}
+		out[ingID] = append(out[ingID], tag)
+	}
+	return out, rows.Err()
+}
+
+// IngredientIDsByAllergen ritorna l'insieme degli ID ingrediente taggati con
+// uno specifico allergene. Usato dal filtro della lista /ingredients.
+func (c *Categories) IngredientIDsByAllergen(ctx context.Context, allergenID int64) (map[int64]bool, error) {
+	rows, err := c.db.QueryContext(ctx,
+		`SELECT ingredient_id FROM ingredient_allergens WHERE allergen_id = ?`, allergenID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ingredient ids by allergen: %w", err)
+	}
+	defer rows.Close()
+
+	ids := make(map[int64]bool)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan ingredient id: %w", err)
+		}
+		ids[id] = true
+	}
+	return ids, rows.Err()
 }
 
 // SetIngredientCategory aggiorna la categoria di un ingrediente (NULL per rimuoverla).

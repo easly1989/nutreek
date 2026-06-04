@@ -23,6 +23,10 @@ import (
 type ingredientRow struct {
 	Local *domain.Ingredient // nil se la riga e' un OFF non ancora importato
 	OFF   *off.Product       // nil se la riga e' gia' nel DB
+
+	// Allergens e' popolato (batch) solo per le righe locali taggate: i
+	// template lo usano per il badge ⚠ nel picker e nella lista.
+	Allergens []domain.AllergenTag
 }
 
 // IsOFF e' usato dal template per decidere se mostrare il pulsante Importa.
@@ -183,6 +187,10 @@ type ingredientsListData struct {
 	Query      string
 	OFFWarning string // riempito se la search OFF locale e' fallita (raro)
 
+	// Filtro allergeni della pagina /ingredients (non usato dai picker).
+	AllAllergens       []domain.AllergenTag
+	SelectedAllergenID int64
+
 	// Campi di context del picker. Quando il partial e' renderizzato in
 	// modalita' "picker" (es. dentro la pagina recipe-edit o nella card
 	// di un meal), questi campi guidano il form action e i parametri.
@@ -198,10 +206,11 @@ type ingredientsListData struct {
 
 type ingredientsNewData struct {
 	authPageData
-	Form       ingredientForm
-	Error      string
-	Categories []domain.IngredientCategory
-	Allergens  []domain.AllergenTag
+	Form              ingredientForm
+	Error             string
+	Categories        []domain.IngredientCategory
+	Allergens         []domain.AllergenTag
+	SelectedAllergens map[int64]bool
 }
 
 // ingredientForm cattura i campi del form "nuovo/modifica ingrediente" per poter
@@ -224,18 +233,25 @@ type ingredientForm struct {
 
 func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	allergenID := parseAllergenFilter(r)
 	// Render iniziale SSR: includi OFF solo se l'utente arriva gia' con una
 	// query in URL (link condiviso, refresh). Senza q, lista solo locali.
-	rows, warn, err := a.searchMixed(r.Context(), q, q != "")
+	// Col filtro allergene attivo niente OFF: i prodotti non importati non
+	// hanno tag allergeni, quindi sarebbero comunque esclusi.
+	rows, warn, err := a.searchMixed(r.Context(), q, q != "" && allergenID == 0)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
+	rows = filterRowsByAllergen(rows, allergenID)
+	allergens, _ := a.Categories.ListAllergens(r.Context())
 	data := ingredientsListData{
-		authPageData: a.baseData(r),
-		Rows:         rows,
-		Query:        q,
-		OFFWarning:   warn,
+		authPageData:       a.baseData(r),
+		Rows:               rows,
+		Query:              q,
+		OFFWarning:         warn,
+		AllAllergens:       allergens,
+		SelectedAllergenID: allergenID,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "ingredients_list", data); err != nil {
 		a.serverError(w, r, err)
@@ -247,21 +263,50 @@ func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 // Param `off=1` per includere OpenFoodFacts; senza, solo DB locale (veloce).
 func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r))
+	allergenID := parseAllergenFilter(r)
+	rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r) && allergenID == 0)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
+	rows = filterRowsByAllergen(rows, allergenID)
 	// CSRF token serve nel partial per il form Importa.
 	data := ingredientsListData{
-		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
-		Rows:         rows,
-		Query:        q,
-		OFFWarning:   warn,
+		authPageData:       authPageData{CSRFToken: nosurf.Token(r)},
+		Rows:               rows,
+		Query:              q,
+		OFFWarning:         warn,
+		SelectedAllergenID: allergenID,
 	}
 	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "ingredient_results", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+// parseAllergenFilter legge il parametro ?allergen=ID dalla query (0 = nessun filtro).
+func parseAllergenFilter(r *http.Request) int64 {
+	if id, err := strconv.ParseInt(r.URL.Query().Get("allergen"), 10, 64); err == nil && id > 0 {
+		return id
+	}
+	return 0
+}
+
+// filterRowsByAllergen tiene solo le righe che contengono l'allergene indicato.
+// Con allergenID == 0 ritorna le righe invariate.
+func filterRowsByAllergen(rows []ingredientRow, allergenID int64) []ingredientRow {
+	if allergenID == 0 {
+		return rows
+	}
+	out := rows[:0]
+	for _, row := range rows {
+		for _, tag := range row.Allergens {
+			if tag.ID == allergenID {
+				out = append(out, row)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // includeOFFParam ritorna true se il client ha richiesto esplicitamente
@@ -302,6 +347,8 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 		}
 	}
 
+	a.attachAllergens(ctx, rows)
+
 	if !includeOFF || q == "" {
 		return rows, "", nil
 	}
@@ -322,15 +369,54 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 	return rows, "", nil
 }
 
+// attachAllergens carica in batch gli allergeni delle righe locali e li
+// assegna in-place, cosi' il picker e la lista possono mostrare il badge ⚠
+// senza query N+1. Le righe OFF non importate non hanno allergeni.
+func (a *App) attachAllergens(ctx context.Context, rows []ingredientRow) {
+	if a.Categories == nil {
+		return
+	}
+	ids := make([]int64, 0, len(rows))
+	for _, row := range rows {
+		if row.Local != nil {
+			ids = append(ids, row.Local.ID)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	byIng, err := a.Categories.AllergensForIngredients(ctx, ids)
+	if err != nil {
+		a.Logger.Warn("attach allergens failed", "err", err)
+		return
+	}
+	for i := range rows {
+		if rows[i].Local != nil {
+			rows[i].Allergens = byIng[rows[i].Local.ID]
+		}
+	}
+}
+
+// allergenIDSet converte una slice di ID in un set per il rendering dei
+// checkbox "selezionati" nel form ingrediente.
+func allergenIDSet(ids []int64) map[int64]bool {
+	set := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		set[id] = true
+	}
+	return set
+}
+
 func (a *App) handleIngredientNewForm(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
 	allergens, _ := a.Categories.ListAllergens(r.Context())
 	data := ingredientsNewData{
-		authPageData: a.baseData(r),
-		Form:         ingredientForm{Unit: "g"},
-		Categories:   cats,
-		Allergens:    allergens,
+		authPageData:      a.baseData(r),
+		Form:              ingredientForm{Unit: "g"},
+		Categories:        cats,
+		Allergens:         allergens,
+		SelectedAllergens: map[int64]bool{},
 	}
 	if err := a.Render.Render(w, http.StatusOK, "ingredient_new", data); err != nil {
 		a.serverError(w, r, err)
@@ -606,12 +692,13 @@ func writeMacroFragment(w http.ResponseWriter, full bool, kcal, protein, carbs, 
 
 type ingredientEditData struct {
 	authPageData
-	Form         ingredientForm
-	Error        string
-	IngredientID int64
-	IsOFF        bool
-	Categories   []domain.IngredientCategory
-	Allergens    []domain.AllergenTag
+	Form              ingredientForm
+	Error             string
+	IngredientID      int64
+	IsOFF             bool
+	Categories        []domain.IngredientCategory
+	Allergens         []domain.AllergenTag
+	SelectedAllergens map[int64]bool
 }
 
 func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
@@ -628,6 +715,7 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
 	allergens, _ := a.Categories.ListAllergens(r.Context())
+	selected, _ := a.Categories.GetIngredientAllergenIDs(r.Context(), id)
 
 	form := ingredientForm{
 		Name:    ing.Name,
@@ -648,12 +736,13 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := ingredientEditData{
-		authPageData: a.baseData(r),
-		Form:         form,
-		IngredientID: id,
-		IsOFF:        ing.Source == domain.IngredientSourceOFF,
-		Categories:   cats,
-		Allergens:    allergens,
+		authPageData:      a.baseData(r),
+		Form:              form,
+		IngredientID:      id,
+		IsOFF:             ing.Source == domain.IngredientSourceOFF,
+		Categories:        cats,
+		Allergens:         allergens,
+		SelectedAllergens: selected,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "ingredient_edit", data); err != nil {
 		a.serverError(w, r, err)
@@ -673,6 +762,12 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var parsedAllergenIDs []int64
+	for _, s := range r.PostForm["allergen_ids"] {
+		if aid, err := strconv.ParseInt(s, 10, 64); err == nil {
+			parsedAllergenIDs = append(parsedAllergenIDs, aid)
+		}
+	}
 	form := ingredientForm{
 		Name:            strings.TrimSpace(r.PostFormValue("name")),
 		Brand:           strings.TrimSpace(r.PostFormValue("brand")),
@@ -684,6 +779,7 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		UnitWeightG:     strings.TrimSpace(r.PostFormValue("unit_weight_g")),
 		DefaultQuantity: strings.TrimSpace(r.PostFormValue("default_quantity")),
 		CategoryID:      strings.TrimSpace(r.PostFormValue("category_id")),
+		AllergenIDs:     parsedAllergenIDs,
 	}
 
 	renderEditErr := func(msg string) {
@@ -691,13 +787,14 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
 		allergens, _ := a.Categories.ListAllergens(r.Context())
 		data := ingredientEditData{
-			authPageData: a.baseData(r),
-			Form:         form,
-			Error:        msg,
-			IngredientID: id,
-			IsOFF:        ing.Source == domain.IngredientSourceOFF,
-			Categories:   cats,
-			Allergens:    allergens,
+			authPageData:      a.baseData(r),
+			Form:              form,
+			Error:             msg,
+			IngredientID:      id,
+			IsOFF:             ing.Source == domain.IngredientSourceOFF,
+			Categories:        cats,
+			Allergens:         allergens,
+			SelectedAllergens: allergenIDSet(form.AllergenIDs),
 		}
 		_ = a.Render.Render(w, http.StatusUnprocessableEntity, "ingredient_edit", data)
 	}
@@ -769,6 +866,9 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		_ = a.Categories.SetIngredientCategory(r.Context(), id, nil)
 	}
 
+	// Aggiorna allergeni (replace: lista vuota = rimuove tutti i tag).
+	_ = a.Categories.SetIngredientAllergens(r.Context(), id, form.AllergenIDs)
+
 	a.Sessions.Put(r.Context(), "flash", "Ingrediente aggiornato.")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
@@ -778,11 +878,12 @@ func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form
 	cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
 	allergens, _ := a.Categories.ListAllergens(r.Context())
 	data := ingredientsNewData{
-		authPageData: a.baseData(r),
-		Form:         form,
-		Error:        msg,
-		Categories:   cats,
-		Allergens:    allergens,
+		authPageData:      a.baseData(r),
+		Form:              form,
+		Error:             msg,
+		Categories:        cats,
+		Allergens:         allergens,
+		SelectedAllergens: allergenIDSet(form.AllergenIDs),
 	}
 	if err := a.Render.Render(w, http.StatusUnprocessableEntity, "ingredient_new", data); err != nil {
 		a.serverError(w, r, err)
