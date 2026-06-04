@@ -86,7 +86,7 @@
       <div class="grid grid-cols-2 gap-1">
         {{range .Allergens}}
         <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" name="allergen_ids" value="{{.ID}}" class="accent-accent">
+          <input type="checkbox" name="allergen_ids" value="{{.ID}}" class="accent-accent" {{if index $.SelectedAllergens .ID}}checked{{end}}>
           {{.Name}}
         </label>
         {{end}}
