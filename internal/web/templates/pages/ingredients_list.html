@@ -17,10 +17,28 @@
       data-search-url="/ingredients/search"
       data-search-target="#ingredient-results"
       data-search-spinner="#ingredient-search-spinner"
+      {{if gt .SelectedAllergenID 0}}data-search-extra="allergen={{.SelectedAllergenID}}"{{end}}
       autocomplete="off"
       autofocus
     >
   </div>
+
+  {{if .AllAllergens}}
+  <form method="get" action="/ingredients" class="mb-3 flex items-center gap-2">
+    <input type="hidden" name="q" value="{{.Query}}">
+    <label for="allergen-filter" class="text-sm text-muted shrink-0">Filtra allergene:</label>
+    <select id="allergen-filter" name="allergen" onchange="this.form.submit()"
+            class="rounded border border-border bg-surface px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+      <option value="">Tutti</option>
+      {{range .AllAllergens}}
+      <option value="{{.ID}}" {{if eq $.SelectedAllergenID .ID}}selected{{end}}>{{.Name}}</option>
+      {{end}}
+    </select>
+    {{if gt .SelectedAllergenID 0}}
+    <a href="/ingredients{{if .Query}}?q={{.Query}}{{end}}" class="text-xs text-muted hover:text-text hover:underline">Azzera</a>
+    {{end}}
+  </form>
+  {{end}}
 
   <div id="ingredient-search-spinner" class="hidden mb-3 flex items-center gap-2 text-xs text-muted px-1">
     <span class="inline-block h-3 w-3 rounded-full border-2 border-muted border-t-transparent animate-spin" aria-hidden="true"></span>
