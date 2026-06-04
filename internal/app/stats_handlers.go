@@ -29,6 +29,12 @@ type cheatWeekPoint struct {
 	Count     int
 }
 
+type waterWeekPoint struct {
+	WeekLabel string
+	AvgML     float64 // media ml/giorno (totale settimana / 7)
+	BarPct    float64 // 0-100 per la sparkbar CSS
+}
+
 type statsPageData struct {
 	authPageData
 	Weeks    []weekStatsRow
@@ -39,11 +45,14 @@ type statsPageData struct {
 	WeightPoints    []weightPoint
 	WorkoutWeeks    []workoutWeekPoint
 	CheatWeeks      []cheatWeekPoint
+	WaterWeeks      []waterWeekPoint
 	HasWeightData   bool
 	HasWorkoutData  bool
 	HasCheatData    bool
+	HasWaterData    bool
 	AvgWorkouts     float64
 	AvgCheats       float64
+	AvgWaterML      float64
 }
 
 func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
@@ -58,8 +67,11 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	var countNonEmpty int
 	var workoutWeeks []workoutWeekPoint
 	var cheatWeeks []cheatWeekPoint
-	var hasWorkoutData, hasCheatData bool
+	var waterWeeks []waterWeekPoint
+	var hasWorkoutData, hasCheatData, hasWaterData bool
 	var totalWorkoutSessions, totalCheats int
+	var sumWaterAvg float64
+	var countWaterWeeks int
 
 	for i := 0; i < 12; i++ {
 		ws := weekStart.AddDate(0, 0, -7*i)
@@ -115,6 +127,22 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 			hasCheatData = true
 		}
 		totalCheats += cheatCount
+
+		// Idratazione: media ml/giorno della settimana (totale / 7).
+		var weekWaterML int
+		if a.WaterLogs != nil {
+			totals, _ := a.WaterLogs.ForDateRange(ctx, user.ID, ws, ws.AddDate(0, 0, 6))
+			for _, ml := range totals {
+				weekWaterML += ml
+			}
+		}
+		avgML := float64(weekWaterML) / 7.0
+		waterWeeks = append(waterWeeks, waterWeekPoint{WeekLabel: label, AvgML: avgML})
+		if weekWaterML > 0 {
+			hasWaterData = true
+			sumWaterAvg += avgML
+			countWaterWeeks++
+		}
 	}
 
 	var averages macros.Macros
@@ -150,20 +178,40 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Sparkbar idratazione: percentuale rispetto al picco settimanale.
+	var maxWaterAvg float64
+	for _, p := range waterWeeks {
+		if p.AvgML > maxWaterAvg {
+			maxWaterAvg = p.AvgML
+		}
+	}
+	if maxWaterAvg > 0 {
+		for i := range waterWeeks {
+			waterWeeks[i].BarPct = waterWeeks[i].AvgML / maxWaterAvg * 100
+		}
+	}
+
 	// Inverti le settimane (cronologico: dalla più vecchia alla più recente).
 	reverseWorkoutWeeks := make([]workoutWeekPoint, len(workoutWeeks))
 	reverseCheatWeeks := make([]cheatWeekPoint, len(cheatWeeks))
+	reverseWaterWeeks := make([]waterWeekPoint, len(waterWeeks))
 	for i, v := range workoutWeeks {
 		reverseWorkoutWeeks[len(workoutWeeks)-1-i] = v
 	}
 	for i, v := range cheatWeeks {
 		reverseCheatWeeks[len(cheatWeeks)-1-i] = v
 	}
+	for i, v := range waterWeeks {
+		reverseWaterWeeks[len(waterWeeks)-1-i] = v
+	}
 
-	var avgWorkouts, avgCheats float64
+	var avgWorkouts, avgCheats, avgWaterML float64
 	if countNonEmpty > 0 {
 		avgWorkouts = float64(totalWorkoutSessions) / float64(countNonEmpty)
 		avgCheats = float64(totalCheats) / float64(countNonEmpty)
+	}
+	if countWaterWeeks > 0 {
+		avgWaterML = sumWaterAvg / float64(countWaterWeeks)
 	}
 
 	data := statsPageData{
@@ -175,11 +223,14 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		WeightPoints:   weightPoints,
 		WorkoutWeeks:   reverseWorkoutWeeks,
 		CheatWeeks:     reverseCheatWeeks,
+		WaterWeeks:     reverseWaterWeeks,
 		HasWeightData:  len(weightPoints) > 0,
 		HasWorkoutData: hasWorkoutData,
 		HasCheatData:   hasCheatData,
+		HasWaterData:   hasWaterData,
 		AvgWorkouts:    avgWorkouts,
 		AvgCheats:      avgCheats,
+		AvgWaterML:     avgWaterML,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "stats", data); err != nil {
 		a.serverError(w, r, err)

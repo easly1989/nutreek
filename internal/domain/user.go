@@ -34,4 +34,7 @@ type User struct {
 
 	// Tour guidato: NULL = mostrare il tour, valorizzato = tour dismesso.
 	TourDismissedAt *time.Time
+
+	// Target idratazione giornaliero in ml (default 2000, mai NULL).
+	WaterTargetML int
 }
