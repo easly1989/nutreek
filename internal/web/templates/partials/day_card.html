@@ -333,6 +333,10 @@
     </details>
     {{end}}
   </div>
+
+  {{/* Widget idratazione: self-contained, si aggiorna via HTMX senza
+       toccare il resto della card. */}}
+  {{template "water_widget" .Water}}
 </section>
 {{end}}
 

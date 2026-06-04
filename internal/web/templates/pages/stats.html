@@ -37,6 +37,10 @@
       <div class="text-xs text-muted mb-1">Media sgarri/sett.</div>
       <div class="text-xl font-semibold tabular-nums">{{printf "%.1f" .AvgCheats}}</div>
     </div>
+    <div class="bg-surface border border-border rounded px-4 py-3">
+      <div class="text-xs text-muted mb-1">💧 Media idratazione (ml/g)</div>
+      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .AvgWaterML}}</div>
+    </div>
   </section>
 
   {{/* ===== Grafici ===== */}}
@@ -70,6 +74,28 @@
     </div>
     <div class="px-4 py-4">
       <canvas id="chart-cheats" height="120"></canvas>
+    </div>
+  </section>
+  {{end}}
+
+  {{if .HasWaterData}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">💧 Idratazione media per settimana (ml/giorno)</h2>
+    </div>
+    <div class="px-4 py-4">
+      <div class="flex items-end gap-1 h-28">
+        {{range .WaterWeeks}}
+        <div class="flex-1 flex flex-col items-center justify-end h-full" title="{{.WeekLabel}}: {{printf "%.0f" .AvgML}} ml/g">
+          <div class="w-full rounded-t bg-accent transition-all" style="height:{{printf "%.0f" .BarPct}}%"></div>
+        </div>
+        {{end}}
+      </div>
+      <div class="flex gap-1 mt-1">
+        {{range .WaterWeeks}}
+        <div class="flex-1 text-center text-[10px] text-muted truncate">{{.WeekLabel}}</div>
+        {{end}}
+      </div>
     </div>
   </section>
   {{end}}

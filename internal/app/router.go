@@ -136,6 +136,10 @@ func (a *App) Router() http.Handler {
 		r.Post("/allenamento", a.handleWorkoutLog)
 		r.Post("/allenamento/{id}/delete", a.handleWorkoutLogDelete)
 
+		// Tracciamento idratazione (quick-log dalla day card).
+		r.Post("/water", a.handleWaterLog)
+		r.Post("/water/delete-last", a.handleWaterDelete)
+
 		// Statistiche.
 		r.Get("/stats", a.handleStats)
 
