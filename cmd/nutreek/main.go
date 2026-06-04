@@ -129,6 +129,7 @@ func run(logger *slog.Logger) error {
 		ShoppingLists:          db.NewShoppingLists(store.DB, weeklyPlansRepo),
 		WeightLogs:             db.NewWeightLogs(store.DB),
 		WorkoutLogs:            db.NewWorkoutLogs(store.DB),
+		WaterLogs:              db.NewWaterLogs(store.DB),
 		Categories:             db.NewCategories(store.DB),
 		NutritionistPlans:      db.NewNutritionistPlans(store.DB),
 		OFF:                    offClient,

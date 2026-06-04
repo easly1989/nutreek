@@ -36,6 +36,7 @@ type profileForm struct {
 	TargetProtein string
 	TargetCarbs   string
 	TargetFat     string
+	WaterTargetML string
 }
 
 var validActivityLevels = map[string]bool{
@@ -74,6 +75,9 @@ func profileFormFromUser(u *domain.User) profileForm {
 	}
 	if u.TargetFat != nil {
 		f.TargetFat = formatOptFloat(*u.TargetFat)
+	}
+	if u.WaterTargetML > 0 {
+		f.WaterTargetML = strconv.Itoa(u.WaterTargetML)
 	}
 	return f
 }
@@ -119,6 +123,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		BirthYear:     strings.TrimSpace(r.PostFormValue("birth_year")),
 		Sex:           strings.TrimSpace(r.PostFormValue("sex")),
 		ActivityLevel: strings.TrimSpace(r.PostFormValue("activity_level")),
+		WaterTargetML: strings.TrimSpace(r.PostFormValue("water_target_ml")),
 		TargetKcal:    strings.TrimSpace(r.PostFormValue("target_kcal")),
 		TargetProtein: strings.TrimSpace(r.PostFormValue("target_protein")),
 		TargetCarbs:   strings.TrimSpace(r.PostFormValue("target_carbs")),
@@ -198,6 +203,18 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Target idratazione: opzionale. Vuoto = mantieni il valore corrente
+	// (0 = sentinella "non modificare" lato UpdateProfile).
+	waterTargetML := 0
+	if form.WaterTargetML != "" {
+		v, errW := strconv.Atoi(form.WaterTargetML)
+		if errW != nil || v < 250 || v > 10000 {
+			renderErr("Target idratazione non valido (250–10000 ml).")
+			return
+		}
+		waterTargetML = v
+	}
+
 	// Validazione combinazione macro (controllo fisicamente impossibile).
 	if targetKcal != nil && *targetKcal > 0 {
 		if *targetKcal < 800 {
@@ -246,6 +263,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		TargetFat:     targetFat,
 		BMI:           bmiPtr,
 		BMR:           bmrPtr,
+		WaterTargetML: waterTargetML,
 	}
 	if err := a.Users.UpdateProfile(r.Context(), user.ID, inp); err != nil {
 		a.serverError(w, r, err)

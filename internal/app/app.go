@@ -26,6 +26,7 @@ type App struct {
 	ShoppingLists *db.ShoppingLists
 	WeightLogs    *db.WeightLogs
 	WorkoutLogs   *db.WorkoutLogs
+	WaterLogs     *db.WaterLogs
 	Categories    *db.Categories
 	NutritionistPlans *db.NutritionistPlans
 	OFF           *off.Client

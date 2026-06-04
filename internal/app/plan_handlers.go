@@ -63,6 +63,33 @@ type dayCardData struct {
 	WorkoutKcal float64              // kcal bruciate con allenamenti in quel giorno
 	Workouts    []domain.WorkoutLog  // allenamenti del giorno
 	Activities  []domain.WorkoutActivity // per il select nel form di aggiunta
+	Water       waterWidgetData      // widget idratazione del giorno
+}
+
+// waterWidgetData alimenta il partial water_widget.html, renderizzabile sia
+// dentro la day card sia da solo (HTMX swap dopo quick-log).
+type waterWidgetData struct {
+	DateStr       string
+	WaterML       int
+	WaterTargetML int
+	CSRFToken     string
+}
+
+// Pct ritorna la percentuale di avanzamento (0-100, clamp) per la barra.
+func (d waterWidgetData) Pct() int {
+	if d.WaterTargetML <= 0 {
+		return 0
+	}
+	p := d.WaterML * 100 / d.WaterTargetML
+	if p > 100 {
+		return 100
+	}
+	return p
+}
+
+// Reached indica se il target e' stato raggiunto (per evidenziare la barra).
+func (d waterWidgetData) Reached() bool {
+	return d.WaterTargetML > 0 && d.WaterML >= d.WaterTargetML
 }
 
 type mealView struct {
@@ -273,9 +300,10 @@ func reorderFocusCards(cards []dayCardData) []dayCardData {
 // buildDayCards costruisce le 7 dayCardData con InFocus default-driven dallo
 // stato calendariale: today + future = true, past = false. La timeline
 // renderizza tutte e 7 le pillole; #focus-grid solo quelle InFocus.
-func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string, user *domain.User, workoutKcals [7]float64, workoutLogs [7][]domain.WorkoutLog, activities []domain.WorkoutActivity) []dayCardData {
+func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string, user *domain.User, workoutKcals [7]float64, workoutLogs [7][]domain.WorkoutLog, activities []domain.WorkoutActivity, waterMLs [7]int) []dayCardData {
 	out := make([]dayCardData, 0, 7)
 	allPast := len(days) > 0 && dayState(days[len(days)-1].Date, today) == "past"
+	target := waterTargetFor(user)
 	for i, dv := range days {
 		state := dayState(dv.Date, today)
 		inFocus := allPast || state != "past"
@@ -283,9 +311,20 @@ func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken stri
 		if user != nil {
 			progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
 		}
-		out = append(out, makeDayCard(dv, state, inFocus, weekStartStr, csrfToken, progress, workoutKcals[i], workoutLogs[i], activities))
+		card := makeDayCard(dv, state, inFocus, weekStartStr, csrfToken, progress, workoutKcals[i], workoutLogs[i], activities)
+		card.Water = waterWidgetData{DateStr: card.DateStr, WaterML: waterMLs[i], WaterTargetML: target, CSRFToken: csrfToken}
+		out = append(out, card)
 	}
 	return out
+}
+
+// waterTargetFor ritorna il target idratazione dell'utente, con fallback a
+// 2000 ml se non valorizzato (utenti pre-migrazione o nil).
+func waterTargetFor(user *domain.User) int {
+	if user != nil && user.WaterTargetML > 0 {
+		return user.WaterTargetML
+	}
+	return 2000
 }
 
 // dayMutationResponse e' il view-model per day_card_with_pill_oob: card +
@@ -317,6 +356,10 @@ func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, 
 		acts, _ = a.WorkoutLogs.ListActivities(r.Context())
 	}
 	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress, wkcal, wlogs, acts)
+	if a.WaterLogs != nil && user != nil {
+		ml, _ := a.WaterLogs.TotalForDate(r.Context(), user.ID, dv.Date)
+		card.Water = waterWidgetData{DateStr: card.DateStr, WaterML: ml, WaterTargetML: waterTargetFor(user), CSRFToken: card.CSRFToken}
+	}
 	resp := dayMutationResponse{Card: card, WeekTotal: weekTotal}
 	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card_with_pill_oob", resp); err != nil {
 		a.serverError(w, r, err)
@@ -452,7 +495,15 @@ func (a *App) renderDashboard(
 			workoutLogs[i], _ = a.WorkoutLogs.ListWorkoutLogs(r.Context(), user.ID, d, d)
 		}
 	}
-	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken, user, workoutKcals, workoutLogs, activities)
+	// Idratazione: una sola query per la settimana, poi distribuita sui 7 giorni.
+	var waterMLs [7]int
+	if a.WaterLogs != nil && user != nil {
+		totals, _ := a.WaterLogs.ForDateRange(r.Context(), user.ID, weekStart, weekStart.AddDate(0, 0, 6))
+		for i := 0; i < 7; i++ {
+			waterMLs[i] = totals[formatDate(weekStart.AddDate(0, 0, i))]
+		}
+	}
+	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken, user, workoutKcals, workoutLogs, activities, waterMLs)
 	focusCards := make([]dayCardData, 0, len(allCards))
 	for _, c := range allCards {
 		if c.InFocus {
