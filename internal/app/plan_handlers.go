@@ -65,7 +65,12 @@ type dayCardData struct {
 	Workouts    []domain.WorkoutLog      // allenamenti del giorno
 	Activities  []domain.WorkoutActivity // per il select nel form di aggiunta
 	Water       waterWidgetData          // widget idratazione del giorno
+	Adherence   macros.AdherenceScore    // aderenza piano vs effettivo del giorno
 }
+
+// HasMeals indica se il giorno ha almeno un pasto pianificato (per decidere
+// se mostrare il badge aderenza).
+func (d dayCardData) HasMeals() bool { return len(d.Day.Meals) > 0 }
 
 // waterWidgetData alimenta il partial water_widget.html, renderizzabile sia
 // dentro la day card sia da solo (HTMX swap dopo quick-log).
@@ -259,6 +264,16 @@ func scaleRecipeItems(it domain.MealItemFull) []scaledIngredient {
 	return out
 }
 
+// adherenceForDay calcola l'aderenza giornaliera a partire dai pasti di una
+// dayView (estrae i domain.MealWithItems dalle mealView gia' costruite).
+func adherenceForDay(dv dayView) macros.AdherenceScore {
+	meals := make([]domain.MealWithItems, 0, len(dv.Meals))
+	for _, mv := range dv.Meals {
+		meals = append(meals, mv.Meal)
+	}
+	return macros.ScoreDay(meals)
+}
+
 // makeDayCard costruisce dayCardData a partire da una dayView e dal contesto.
 // `state` e' il giorno calendariale; `inFocus` decide se andra' anche nella
 // griglia focus. Default: today/future = true, past = false.
@@ -314,6 +329,7 @@ func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken stri
 		}
 		card := makeDayCard(dv, state, inFocus, weekStartStr, csrfToken, progress, workoutKcals[i], workoutLogs[i], activities)
 		card.Water = waterWidgetData{DateStr: card.DateStr, WaterML: waterMLs[i], WaterTargetML: target, CSRFToken: csrfToken}
+		card.Adherence = adherenceForDay(dv)
 		out = append(out, card)
 	}
 	return out
@@ -357,6 +373,7 @@ func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, 
 		acts, _ = a.WorkoutLogs.ListActivities(r.Context())
 	}
 	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress, wkcal, wlogs, acts)
+	card.Adherence = adherenceForDay(dv)
 	if a.WaterLogs != nil && user != nil {
 		ml, _ := a.WaterLogs.TotalForDate(r.Context(), user.ID, dv.Date)
 		card.Water = waterWidgetData{DateStr: card.DateStr, WaterML: ml, WaterTargetML: waterTargetFor(user), CSRFToken: card.CSRFToken}

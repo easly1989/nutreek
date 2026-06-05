@@ -19,6 +19,13 @@
     </h2>
     <div class="flex items-center gap-2 text-xs text-muted">
       <span>{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
+      {{if .HasMeals}}
+        {{if .Adherence.HasCheats}}
+          <span class="text-danger font-medium" title="Aderenza al piano: scostamento kcal {{printf "%+.0f" .Adherence.KcalDiffPct}}%">⚠ {{printf "%.0f" .Adherence.Score}}%</span>
+        {{else}}
+          <span class="text-accent font-medium" title="Nessuno sgarro: piano rispettato">✓ aderente</span>
+        {{end}}
+      {{end}}
       {{if gt .WorkoutKcal 0.0}}<span class="text-accent" title="Calorie bruciate con allenamento">-{{printf "%.0f" .WorkoutKcal}} bruciati</span>{{end}}
       {{if .Progress.AnyExceeds}}<span class="text-danger" title="Uno o più macro sforati">⚠</span>{{end}}
       <button type="button" data-unfocus="{{.DateStr}}" title="Rimuovi dal focus"
