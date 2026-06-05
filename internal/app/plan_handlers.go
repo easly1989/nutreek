@@ -21,20 +21,21 @@ import (
 
 type dashboardData struct {
 	authPageData
-	Plan         *domain.WeeklyPlanFull
-	Days         []dayView     // legacy: usato nei test eventuali
-	AllCards     []dayCardData // 7 giorni, in ordine, ognuno renderizzato come pill in timeline
-	FocusCards   []dayCardData // sotto-insieme di AllCards: card piene in #focus-grid
-	WeekStart    time.Time
-	WeekStartStr string // YYYY-MM-DD per i form
-	PrevWeek     string // YYYY-MM-DD
-	NextWeek     string
-	WeekTotal    macros.Macros
-	HasMeals     bool
-	Templates    []*domain.MealTemplate // per il picker "applica template"
-	ApplyError   string
-	NewMealForm  newMealForm
-	NewMealError string
+	Plan                *domain.WeeklyPlanFull
+	Days                []dayView     // legacy: usato nei test eventuali
+	AllCards            []dayCardData // 7 giorni, in ordine, ognuno renderizzato come pill in timeline
+	FocusCards          []dayCardData // sotto-insieme di AllCards: card piene in #focus-grid
+	WeekStart           time.Time
+	WeekStartStr        string // YYYY-MM-DD per i form
+	PrevWeek            string // YYYY-MM-DD
+	NextWeek            string
+	WeekTotal           macros.Macros
+	HasMeals            bool
+	Templates           []*domain.MealTemplate // per il picker "applica template"
+	HasNutritionistPlan bool                   // true se l'utente ha varianti da cui generare
+	ApplyError          string
+	NewMealForm         newMealForm
+	NewMealError        string
 }
 
 type dayView struct {
@@ -60,10 +61,10 @@ type dayCardData struct {
 	WeekStart   string // YYYY-MM-DD per nascondere/passare nei form
 	CSRFToken   string
 	Progress    profile.MacroProgress
-	WorkoutKcal float64              // kcal bruciate con allenamenti in quel giorno
-	Workouts    []domain.WorkoutLog  // allenamenti del giorno
+	WorkoutKcal float64                  // kcal bruciate con allenamenti in quel giorno
+	Workouts    []domain.WorkoutLog      // allenamenti del giorno
 	Activities  []domain.WorkoutActivity // per il select nel form di aggiunta
-	Water       waterWidgetData      // widget idratazione del giorno
+	Water       waterWidgetData          // widget idratazione del giorno
 }
 
 // waterWidgetData alimenta il partial water_widget.html, renderizzabile sia
@@ -513,22 +514,28 @@ func (a *App) renderDashboard(
 	focusCards = reorderFocusCards(focusCards)
 	weekTotal := macros.ForWeek(full.Days)
 
+	hasNutritionistPlan := false
+	if a.NutritionistPlans != nil && user != nil {
+		hasNutritionistPlan, _ = a.NutritionistPlans.HasVariations(r.Context(), user.ID)
+	}
+
 	data := dashboardData{
-		authPageData: base,
-		Plan:         full,
-		Days:         days,
-		AllCards:     allCards,
-		FocusCards:   focusCards,
-		WeekStart:    weekStart,
-		WeekStartStr: weekStartStr,
-		PrevWeek:     formatDate(weekStart.AddDate(0, 0, -7)),
-		NextWeek:     formatDate(weekStart.AddDate(0, 0, 7)),
-		WeekTotal:    weekTotal,
-		HasMeals:     hasMeals,
-		Templates:    tpls,
-		ApplyError:   applyErr,
-		NewMealForm:  mealForm,
-		NewMealError: mealErr,
+		authPageData:        base,
+		Plan:                full,
+		Days:                days,
+		AllCards:            allCards,
+		FocusCards:          focusCards,
+		WeekStart:           weekStart,
+		WeekStartStr:        weekStartStr,
+		PrevWeek:            formatDate(weekStart.AddDate(0, 0, -7)),
+		NextWeek:            formatDate(weekStart.AddDate(0, 0, 7)),
+		WeekTotal:           weekTotal,
+		HasMeals:            hasMeals,
+		Templates:           tpls,
+		HasNutritionistPlan: hasNutritionistPlan,
+		ApplyError:          applyErr,
+		NewMealForm:         mealForm,
+		NewMealError:        mealErr,
 	}
 	if mealForm.DayOfWeek == "" {
 		data.NewMealForm.DayOfWeek = "0"

@@ -16,27 +16,28 @@ import (
 
 // App raccoglie le dipendenze condivise fra handler e middleware.
 type App struct {
-	Cfg           *config.Config
-	Store         *db.Store
-	Users         *db.Users
-	Ingredients           *db.Ingredients
-	Recipes               *db.Recipes
-	MealTemplates         *db.MealTemplates
-	WeeklyPlans           *db.WeeklyPlans
+	Cfg                    *config.Config
+	Store                  *db.Store
+	Users                  *db.Users
+	Ingredients            *db.Ingredients
+	Recipes                *db.Recipes
+	MealTemplates          *db.MealTemplates
+	WeeklyPlans            *db.WeeklyPlans
 	MealItemCustomizations *db.MealItemCustomizations
-	ShoppingLists *db.ShoppingLists
-	WeightLogs    *db.WeightLogs
-	WorkoutLogs   *db.WorkoutLogs
-	WaterLogs     *db.WaterLogs
-	Categories    *db.Categories
-	NutritionistPlans *db.NutritionistPlans
-	TDEE          *service.TDEEService
-	OFF           *off.Client
-	OFFSyncer     *off.Syncer
-	Reconciler    *off.Reconciler
-	Sessions      *scs.SessionManager
-	Render        *web.Renderer
-	Logger        *slog.Logger
+	ShoppingLists          *db.ShoppingLists
+	WeightLogs             *db.WeightLogs
+	WorkoutLogs            *db.WorkoutLogs
+	WaterLogs              *db.WaterLogs
+	Categories             *db.Categories
+	NutritionistPlans      *db.NutritionistPlans
+	TDEE                   *service.TDEEService
+	Planner                *service.PlannerService
+	OFF                    *off.Client
+	OFFSyncer              *off.Syncer
+	Reconciler             *off.Reconciler
+	Sessions               *scs.SessionManager
+	Render                 *web.Renderer
+	Logger                 *slog.Logger
 
 	// loginLimiter limita i tentativi POST /login per IP. Inizializzato
 	// pigramente al primo accesso dentro handleLogin (non serve in test).

@@ -521,6 +521,82 @@ func (r *WeeklyPlans) AddItem(
 	return res.LastInsertId()
 }
 
+// GeneratedMealItem e' una voce da inserire in un pasto generato
+// automaticamente (vedi CreateMeals).
+type GeneratedMealItem struct {
+	RecipeID     *int64
+	IngredientID *int64
+	Quantity     float64
+	QuantityUnit string
+}
+
+// GeneratedMeal e' un pasto da creare con le sue voci, usato dal generatore
+// automatico del piano (internal/service/planner_service.go).
+type GeneratedMeal struct {
+	DayOfWeek int
+	Name      string
+	SortOrder int
+	Items     []GeneratedMealItem
+}
+
+// CreateMeals inserisce in un'unica transazione i pasti generati (con le
+// rispettive voci) nel piano indicato. Verifica l'ownership del piano una
+// sola volta. Pensato per il generatore automatico: il chiamante deve
+// assicurarsi che il piano sia vuoto (vedi HasMeals).
+func (r *WeeklyPlans) CreateMeals(ctx context.Context, planID, userID int64, meals []GeneratedMeal) error {
+	var pUser int64
+	err := r.db.QueryRowContext(ctx, `SELECT user_id FROM weekly_plans WHERE id = ?`, planID).Scan(&pUser)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrPlanNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("plan owner: %w", err)
+	}
+	if pUser != userID {
+		return ErrPlanNotFound
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	mealStmt, err := tx.PrepareContext(ctx,
+		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("prepare insert meal: %w", err)
+	}
+	defer mealStmt.Close()
+	itemStmt, err := tx.PrepareContext(ctx,
+		`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("prepare insert item: %w", err)
+	}
+	defer itemStmt.Close()
+
+	for _, m := range meals {
+		res, err := mealStmt.ExecContext(ctx, planID, m.DayOfWeek, m.Name, m.SortOrder)
+		if err != nil {
+			return fmt.Errorf("insert meal: %w", err)
+		}
+		mealID, err := res.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("meal id: %w", err)
+		}
+		for i, it := range m.Items {
+			unit := it.QuantityUnit
+			if unit == "" || it.RecipeID != nil {
+				unit = "g" // ricette usano sempre porzioni, default g per ingredienti
+			}
+			if _, err := itemStmt.ExecContext(ctx, mealID, it.RecipeID, it.IngredientID, it.Quantity, unit, i); err != nil {
+				return fmt.Errorf("insert meal item: %w", err)
+			}
+		}
+	}
+	return tx.Commit()
+}
+
 // RemoveItem cancella un meal_item; verifica ownership tramite join.
 func (r *WeeklyPlans) RemoveItem(ctx context.Context, itemID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
