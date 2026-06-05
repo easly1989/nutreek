@@ -2,8 +2,10 @@ package app
 
 import (
 	"net/http"
+	"sort"
 	"time"
 
+	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/macros"
 	"github.com/amon2126/nutreek/internal/service"
 )
@@ -36,6 +38,19 @@ type waterWeekPoint struct {
 	BarPct    float64 // 0-100 per la sparkbar CSS
 }
 
+type adherenceWeekPoint struct {
+	WeekLabel string
+	Score     float64 // 0-100 aderenza media della settimana
+	HasData   bool    // false = settimana senza pasti pianificati (punto null nel grafico)
+}
+
+// slotAdherence aggrega l'aderenza media per tipo di pasto (es. "Colazione").
+type slotAdherence struct {
+	SlotName string
+	AvgScore float64
+	Count    int // numero di giorni-pasto con sgarro osservato
+}
+
 type statsPageData struct {
 	authPageData
 	Weeks    []weekStatsRow
@@ -43,20 +58,25 @@ type statsPageData struct {
 	HasData  bool
 	MaxKcal  float64 // per la sparkbar CSS
 
-	WeightPoints    []weightPoint
-	WorkoutWeeks    []workoutWeekPoint
-	CheatWeeks      []cheatWeekPoint
-	WaterWeeks      []waterWeekPoint
-	HasWeightData   bool
-	HasWorkoutData  bool
-	HasCheatData    bool
-	HasWaterData    bool
-	AvgWorkouts     float64
-	AvgCheats       float64
-	AvgWaterML      float64
+	WeightPoints   []weightPoint
+	WorkoutWeeks   []workoutWeekPoint
+	CheatWeeks     []cheatWeekPoint
+	WaterWeeks     []waterWeekPoint
+	HasWeightData  bool
+	HasWorkoutData bool
+	HasCheatData   bool
+	HasWaterData   bool
+	AvgWorkouts    float64
+	AvgCheats      float64
+	AvgWaterML     float64
 
 	TDEEReport     *service.TDEEReport
 	UserTargetKcal float64 // valore dereferenziato di User.TargetKcal (0 se non impostato)
+
+	StreakDays       int                  // giorni consecutivi recenti senza sgarri
+	AdherenceWeeks   []adherenceWeekPoint // score aderenza per settimana (cronologico)
+	SlotAdherence    []slotAdherence      // aderenza media per tipo di pasto
+	HasAdherenceData bool                 // true se esiste almeno un giorno pianificato
 }
 
 func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +96,18 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	var totalWorkoutSessions, totalCheats int
 	var sumWaterAvg float64
 	var countWaterWeeks int
+
+	// Aderenza piano vs effettivo: punteggio per settimana, streak giornaliero
+	// e breakdown per tipo di pasto.
+	var adherenceWeeks []adherenceWeekPoint
+	type datedScore struct {
+		date  time.Time
+		score float64
+	}
+	var dailyAdh []datedScore // solo giorni pianificati fino a oggi, per lo streak
+	slotAgg := map[string]*slotAdherence{}
+	var slotOrder []string
+	today := todayDate()
 
 	for i := 0; i < 12; i++ {
 		ws := weekStart.AddDate(0, 0, -7*i)
@@ -131,6 +163,47 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 			hasCheatData = true
 		}
 		totalCheats += cheatCount
+
+		// Aderenza: punteggio per ciascun giorno, media settimanale, streak e
+		// breakdown per slot (nome pasto).
+		dayScores := make([]macros.AdherenceScore, 0, 7)
+		for d := 0; d < 7; d++ {
+			dayMeals := full.Days[d]
+			adh := macros.ScoreDay(dayMeals)
+			dayScores = append(dayScores, adh)
+			dayDate := ws.AddDate(0, 0, d)
+			// Streak: solo giorni con pasti pianificati, non futuri.
+			if !adh.PlannedMacros.IsZero() && !dayDate.After(today) {
+				dailyAdh = append(dailyAdh, datedScore{date: dayDate, score: adh.Score})
+			}
+			// Breakdown per slot: aderenza del singolo pasto.
+			for _, meal := range dayMeals {
+				ms := macros.ScoreDay([]domain.MealWithItems{meal})
+				if ms.PlannedMacros.IsZero() {
+					continue
+				}
+				agg, ok := slotAgg[meal.Name]
+				if !ok {
+					agg = &slotAdherence{SlotName: meal.Name}
+					slotAgg[meal.Name] = agg
+					slotOrder = append(slotOrder, meal.Name)
+				}
+				agg.AvgScore += ms.Score // somma, mediata dopo il loop
+				agg.Count++
+			}
+		}
+		weekHasPlanned := false
+		for _, ds := range dayScores {
+			if !ds.PlannedMacros.IsZero() {
+				weekHasPlanned = true
+				break
+			}
+		}
+		adherenceWeeks = append(adherenceWeeks, adherenceWeekPoint{
+			WeekLabel: label,
+			Score:     macros.ScoreWeek(dayScores),
+			HasData:   weekHasPlanned,
+		})
 
 		// Idratazione: media ml/giorno della settimana (totale / 7).
 		var weekWaterML int
@@ -208,6 +281,34 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	for i, v := range waterWeeks {
 		reverseWaterWeeks[len(waterWeeks)-1-i] = v
 	}
+	reverseAdherenceWeeks := make([]adherenceWeekPoint, len(adherenceWeeks))
+	for i, v := range adherenceWeeks {
+		reverseAdherenceWeeks[len(adherenceWeeks)-1-i] = v
+	}
+
+	// Streak: ordina i giorni pianificati cronologicamente e conta i piu'
+	// recenti consecutivi con score >= 80.
+	sort.Slice(dailyAdh, func(i, j int) bool {
+		return dailyAdh[i].date.Before(dailyAdh[j].date)
+	})
+	dailyScores := make([]float64, len(dailyAdh))
+	for i, ds := range dailyAdh {
+		dailyScores[i] = ds.score
+	}
+	streakDays := macros.Streak(dailyScores, 80)
+
+	// Breakdown per slot: media e ordinamento per aderenza decrescente.
+	slotAdherences := make([]slotAdherence, 0, len(slotOrder))
+	for _, name := range slotOrder {
+		agg := slotAgg[name]
+		if agg.Count > 0 {
+			agg.AvgScore /= float64(agg.Count)
+		}
+		slotAdherences = append(slotAdherences, *agg)
+	}
+	sort.Slice(slotAdherences, func(i, j int) bool {
+		return slotAdherences[i].AvgScore > slotAdherences[j].AvgScore
+	})
 
 	var avgWorkouts, avgCheats, avgWaterML float64
 	if countNonEmpty > 0 {
@@ -245,6 +346,11 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		AvgWaterML:     avgWaterML,
 		TDEEReport:     tdeeReport,
 		UserTargetKcal: userTargetKcal,
+
+		StreakDays:       streakDays,
+		AdherenceWeeks:   reverseAdherenceWeeks,
+		SlotAdherence:    slotAdherences,
+		HasAdherenceData: len(dailyAdh) > 0,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "stats", data); err != nil {
 		a.serverError(w, r, err)
