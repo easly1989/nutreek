@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/amon2126/nutreek/internal/macros"
+	"github.com/amon2126/nutreek/internal/service"
 )
 
 type weekStatsRow struct {
@@ -53,6 +54,9 @@ type statsPageData struct {
 	AvgWorkouts     float64
 	AvgCheats       float64
 	AvgWaterML      float64
+
+	TDEEReport     *service.TDEEReport
+	UserTargetKcal float64 // valore dereferenziato di User.TargetKcal (0 se non impostato)
 }
 
 func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
@@ -214,6 +218,14 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		avgWaterML = sumWaterAvg / float64(countWaterWeeks)
 	}
 
+	// TDEE adattivo: stima dal trend peso/intake.
+	tdeeReport, _ := a.TDEE.Report(ctx, user, 12, weekStart)
+
+	var userTargetKcal float64
+	if user.TargetKcal != nil {
+		userTargetKcal = *user.TargetKcal
+	}
+
 	data := statsPageData{
 		authPageData:   a.baseData(r),
 		Weeks:          rows,
@@ -231,6 +243,8 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		AvgWorkouts:    avgWorkouts,
 		AvgCheats:      avgCheats,
 		AvgWaterML:     avgWaterML,
+		TDEEReport:     tdeeReport,
+		UserTargetKcal: userTargetKcal,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "stats", data); err != nil {
 		a.serverError(w, r, err)

@@ -69,6 +69,37 @@ func (w *WeightLogs) ListWeightLogs(ctx context.Context, userID int64, limit int
 	return logs, rows.Err()
 }
 
+// ForRange ritorna tutti i weight log dell'utente in un intervallo di date
+// (estremi inclusi), ordinati per data crescente.
+func (w *WeightLogs) ForRange(ctx context.Context, userID int64, from, to time.Time) ([]domain.WeightLog, error) {
+	rows, err := w.db.QueryContext(ctx,
+		`SELECT id, user_id, measured_at, weight_kg, note, created_at
+		 FROM weight_logs
+		 WHERE user_id = ? AND measured_at >= ? AND measured_at <= ?
+		 ORDER BY measured_at ASC`,
+		userID, from.Format("2006-01-02"), to.Format("2006-01-02"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("weight for range: %w", err)
+	}
+	defer rows.Close()
+	var logs []domain.WeightLog
+	for rows.Next() {
+		var l domain.WeightLog
+		var dateStr string
+		var note sql.NullString
+		if err := rows.Scan(&l.ID, &l.UserID, &dateStr, &l.WeightKg, &note, &l.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan weight log: %w", err)
+		}
+		l.MeasuredAt, _ = time.Parse("2006-01-02", dateStr)
+		if note.Valid {
+			l.Note = &note.String
+		}
+		logs = append(logs, l)
+	}
+	return logs, rows.Err()
+}
+
 func (w *WeightLogs) DeleteWeightLog(ctx context.Context, id, userID int64) error {
 	res, err := w.db.ExecContext(ctx,
 		`DELETE FROM weight_logs WHERE id = ? AND user_id = ?`, id, userID,

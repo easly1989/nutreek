@@ -141,8 +141,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/water", a.handleWaterLog)
 		r.Post("/water/delete-last", a.handleWaterDelete)
 
-		// Statistiche.
+		// Statistiche e TDEE adattivo.
 		r.Get("/stats", a.handleStats)
+		r.Post("/tdee/accept", a.handleAcceptTDEESuggestion)
 
 		// Export/Import piano settimanale.
 		r.Get("/week/{start}/export", a.handleWeekExport)
