@@ -20,6 +20,7 @@ import (
 	"github.com/amon2126/nutreek/internal/config"
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/off"
+	"github.com/amon2126/nutreek/internal/service"
 	"github.com/amon2126/nutreek/internal/web"
 )
 
@@ -132,6 +133,10 @@ func run(logger *slog.Logger) error {
 		WaterLogs:              db.NewWaterLogs(store.DB),
 		Categories:             db.NewCategories(store.DB),
 		NutritionistPlans:      db.NewNutritionistPlans(store.DB),
+		TDEE: &service.TDEEService{
+			WeightLogs:  db.NewWeightLogs(store.DB),
+			WeeklyPlans: weeklyPlansRepo,
+		},
 		OFF:                    offClient,
 		OFFSyncer:              offSyncer,
 		Reconciler:             reconciler,
