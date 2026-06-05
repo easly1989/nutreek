@@ -181,6 +181,47 @@ func (r ingredientRow) UnitWeightG() float64 {
 	return 0
 }
 
+// HasMicronutrients ritorna true se il locale ha almeno un micronutriente.
+func (r ingredientRow) HasMicronutrients() bool {
+	if r.Local == nil {
+		return false
+	}
+	return r.Local.FiberPer100 != nil || r.Local.SugarsPer100 != nil ||
+		r.Local.SaturatedFatPer100 != nil || r.Local.SodiumPer100 != nil
+}
+
+// FiberPer100Val ritorna le fibre per 100g/ml (0 se non disponibili).
+func (r ingredientRow) FiberPer100Val() float64 {
+	if r.Local != nil && r.Local.FiberPer100 != nil {
+		return *r.Local.FiberPer100
+	}
+	return 0
+}
+
+// SugarsPer100Val ritorna gli zuccheri per 100g/ml (0 se non disponibili).
+func (r ingredientRow) SugarsPer100Val() float64 {
+	if r.Local != nil && r.Local.SugarsPer100 != nil {
+		return *r.Local.SugarsPer100
+	}
+	return 0
+}
+
+// SaturatedFatPer100Val ritorna i grassi saturi per 100g/ml (0 se non disponibili).
+func (r ingredientRow) SaturatedFatPer100Val() float64 {
+	if r.Local != nil && r.Local.SaturatedFatPer100 != nil {
+		return *r.Local.SaturatedFatPer100
+	}
+	return 0
+}
+
+// SodiumPer100Val ritorna il sodio per 100g/ml (0 se non disponibili).
+func (r ingredientRow) SodiumPer100Val() float64 {
+	if r.Local != nil && r.Local.SodiumPer100 != nil {
+		return *r.Local.SodiumPer100
+	}
+	return 0
+}
+
 type ingredientsListData struct {
 	authPageData
 	Rows       []ingredientRow
@@ -227,6 +268,11 @@ type ingredientForm struct {
 	DefaultQuantity string  // opzionale: quantita' predefinita nel picker
 	CategoryID      string  // opzionale: ID categoria
 	AllergenIDs     []int64 // opzionale: ID allergeni selezionati
+	// Micronutrienti opzionali (per 100 g/ml)
+	Fiber        string
+	Sugars       string
+	SaturatedFat string
+	Sodium       string
 }
 
 // ---- handlers --------------------------------------------------------------
@@ -432,16 +478,20 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	form := ingredientForm{
-		Name:        strings.TrimSpace(r.PostFormValue("name")),
-		Brand:       strings.TrimSpace(r.PostFormValue("brand")),
-		Unit:        strings.TrimSpace(r.PostFormValue("unit")),
-		Kcal:        strings.TrimSpace(r.PostFormValue("kcal")),
-		Protein:     strings.TrimSpace(r.PostFormValue("protein")),
-		Carbs:       strings.TrimSpace(r.PostFormValue("carbs")),
-		Fat:         strings.TrimSpace(r.PostFormValue("fat")),
-		UnitWeightG: strings.TrimSpace(r.PostFormValue("unit_weight_g")),
-		CategoryID:  strings.TrimSpace(r.PostFormValue("category_id")),
-		AllergenIDs: parsedAllergenIDs,
+		Name:         strings.TrimSpace(r.PostFormValue("name")),
+		Brand:        strings.TrimSpace(r.PostFormValue("brand")),
+		Unit:         strings.TrimSpace(r.PostFormValue("unit")),
+		Kcal:         strings.TrimSpace(r.PostFormValue("kcal")),
+		Protein:      strings.TrimSpace(r.PostFormValue("protein")),
+		Carbs:        strings.TrimSpace(r.PostFormValue("carbs")),
+		Fat:          strings.TrimSpace(r.PostFormValue("fat")),
+		UnitWeightG:  strings.TrimSpace(r.PostFormValue("unit_weight_g")),
+		CategoryID:   strings.TrimSpace(r.PostFormValue("category_id")),
+		AllergenIDs:  parsedAllergenIDs,
+		Fiber:        strings.TrimSpace(r.PostFormValue("fiber")),
+		Sugars:       strings.TrimSpace(r.PostFormValue("sugars")),
+		SaturatedFat: strings.TrimSpace(r.PostFormValue("saturated_fat")),
+		Sodium:       strings.TrimSpace(r.PostFormValue("sodium")),
 	}
 
 	if form.Name == "" {
@@ -506,7 +556,9 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ingID, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, creatorID, unitWeightG, defaultQuantity)
+	ingID, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, creatorID, unitWeightG, defaultQuantity,
+		parseOptionalFloat(form.Fiber), parseOptionalFloat(form.Sugars),
+		parseOptionalFloat(form.SaturatedFat), parseOptionalFloat(form.Sodium))
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -578,6 +630,7 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 		domain.UnitGram,
 		product.Kcal, product.Protein, product.Carbs, product.Fat,
 		product.UnitWeightG,
+		product.Fiber, product.Sugars, product.SaturatedFat, product.Sodium,
 	); err != nil && !errors.Is(err, db.ErrBarcodeAlreadyUsed) {
 		a.serverError(w, r, err)
 		return
@@ -624,6 +677,7 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 		domain.UnitGram,
 		product.Kcal, product.Protein, product.Carbs, product.Fat,
 		product.UnitWeightG,
+		product.Fiber, product.Sugars, product.SaturatedFat, product.Sodium,
 	)
 	if err == nil {
 		return id, nil
@@ -734,6 +788,18 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	if ing.DefaultQuantity != nil {
 		form.DefaultQuantity = strconv.FormatFloat(*ing.DefaultQuantity, 'f', -1, 64)
 	}
+	if ing.FiberPer100 != nil {
+		form.Fiber = strconv.FormatFloat(*ing.FiberPer100, 'f', -1, 64)
+	}
+	if ing.SugarsPer100 != nil {
+		form.Sugars = strconv.FormatFloat(*ing.SugarsPer100, 'f', -1, 64)
+	}
+	if ing.SaturatedFatPer100 != nil {
+		form.SaturatedFat = strconv.FormatFloat(*ing.SaturatedFatPer100, 'f', -1, 64)
+	}
+	if ing.SodiumPer100 != nil {
+		form.Sodium = strconv.FormatFloat(*ing.SodiumPer100, 'f', -1, 64)
+	}
 
 	data := ingredientEditData{
 		authPageData:      a.baseData(r),
@@ -780,6 +846,10 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		DefaultQuantity: strings.TrimSpace(r.PostFormValue("default_quantity")),
 		CategoryID:      strings.TrimSpace(r.PostFormValue("category_id")),
 		AllergenIDs:     parsedAllergenIDs,
+		Fiber:           strings.TrimSpace(r.PostFormValue("fiber")),
+		Sugars:          strings.TrimSpace(r.PostFormValue("sugars")),
+		SaturatedFat:    strings.TrimSpace(r.PostFormValue("saturated_fat")),
+		Sodium:          strings.TrimSpace(r.PostFormValue("sodium")),
 	}
 
 	renderEditErr := func(msg string) {
@@ -852,7 +922,9 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := a.Ingredients.Update(r.Context(), id, form.Name, brandPtr, unit, kcal, protein, carbs, fat, unitWeightG, defaultQuantity); err != nil {
+	if err := a.Ingredients.Update(r.Context(), id, form.Name, brandPtr, unit, kcal, protein, carbs, fat, unitWeightG, defaultQuantity,
+		parseOptionalFloat(form.Fiber), parseOptionalFloat(form.Sugars),
+		parseOptionalFloat(form.SaturatedFat), parseOptionalFloat(form.Sodium)); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -888,6 +960,20 @@ func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form
 	if err := a.Render.Render(w, http.StatusUnprocessableEntity, "ingredient_new", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+// parseOptionalFloat analoga a parseNonNegFloat ma ritorna nil invece di
+// errore se s e' vuota. Usata per micronutrienti opzionali.
+func parseOptionalFloat(s string) *float64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	v, err := parseNonNegFloat(s)
+	if err != nil {
+		return nil
+	}
+	return &v
 }
 
 // parseNonNegFloat accetta numeri con virgola o punto come separatore

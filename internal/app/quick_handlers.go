@@ -122,7 +122,7 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 		brandPtr = &form.Brand
 	}
 	creator := user.ID
-	id, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, &creator, nil, nil)
+	id, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, &creator, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
