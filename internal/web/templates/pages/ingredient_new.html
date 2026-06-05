@@ -52,6 +52,31 @@
       </div>
     </fieldset>
 
+    <details class="group">
+      <summary class="cursor-pointer text-sm font-medium text-text select-none list-none flex items-center gap-1">
+        <svg class="w-3.5 h-3.5 shrink-0 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+        Micronutrienti <span class="text-muted font-normal">(opzionale, per 100 g/ml)</span>
+      </summary>
+      <fieldset class="grid grid-cols-2 gap-4 mt-3">
+        <div>
+          <label class="block text-xs text-muted mb-1" for="f-fiber">Fibre (g)</label>
+          <input id="f-fiber" name="fiber" inputmode="decimal" value="{{.Form.Fiber}}" class="w-full rounded border border-border px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1" for="f-sugars">Zuccheri (g)</label>
+          <input id="f-sugars" name="sugars" inputmode="decimal" value="{{.Form.Sugars}}" class="w-full rounded border border-border px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1" for="f-satfat">Grassi saturi (g)</label>
+          <input id="f-satfat" name="saturated_fat" inputmode="decimal" value="{{.Form.SaturatedFat}}" class="w-full rounded border border-border px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1" for="f-sodium">Sodio (g)</label>
+          <input id="f-sodium" name="sodium" inputmode="decimal" value="{{.Form.Sodium}}" class="w-full rounded border border-border px-3 py-2">
+        </div>
+      </fieldset>
+    </details>
+
     <div>
       <label class="block text-sm font-medium text-text mb-1" for="f-unit-weight">
         Peso per unita' <span class="text-muted font-normal">(opzionale, g)</span>

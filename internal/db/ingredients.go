@@ -38,14 +38,17 @@ func (r *Ingredients) CreateLocal(
 	createdBy *int64,
 	unitWeightG *float64,
 	defaultQuantity *float64,
+	fiber, sugars, saturatedFat, sodium *float64,
 ) (int64, error) {
 	res, err := r.db.ExecContext(ctx, `
 		INSERT INTO ingredients (
 			source, name, brand, unit,
 			kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-			created_by, unit_weight_g, default_quantity
-		) VALUES ('local', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, strings.TrimSpace(name), brand, string(unit), kcal, protein, carbs, fat, createdBy, unitWeightG, defaultQuantity)
+			created_by, unit_weight_g, default_quantity,
+			fiber_per_100, sugars_per_100, saturated_fat_per_100, sodium_per_100
+		) VALUES ('local', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, strings.TrimSpace(name), brand, string(unit), kcal, protein, carbs, fat, createdBy, unitWeightG, defaultQuantity,
+		fiber, sugars, saturatedFat, sodium)
 	if err != nil {
 		return 0, fmt.Errorf("insert ingredient: %w", err)
 	}
@@ -66,16 +69,19 @@ func (r *Ingredients) Update(
 	unit domain.IngredientUnit,
 	kcal, protein, carbs, fat float64,
 	unitWeightG, defaultQuantity *float64,
+	fiber, sugars, saturatedFat, sodium *float64,
 ) error {
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE ingredients SET
 			name=?, brand=?, unit=?,
 			kcal_per_100=?, protein_per_100=?, carbs_per_100=?, fat_per_100=?,
-			unit_weight_g=?, default_quantity=?
+			unit_weight_g=?, default_quantity=?,
+			fiber_per_100=?, sugars_per_100=?, saturated_fat_per_100=?, sodium_per_100=?
 		WHERE id=?`,
 		strings.TrimSpace(name), brand, string(unit),
 		kcal, protein, carbs, fat,
 		unitWeightG, defaultQuantity,
+		fiber, sugars, saturatedFat, sodium,
 		id,
 	)
 	if err != nil {
@@ -109,16 +115,19 @@ func (r *Ingredients) CreateOFF(
 	unit domain.IngredientUnit,
 	kcal, protein, carbs, fat float64,
 	unitWeightG *float64,
+	fiber, sugars, saturatedFat, sodium *float64,
 ) (int64, error) {
 	res, err := r.db.ExecContext(ctx, `
 		INSERT INTO ingredients (
 			source, off_barcode, name, brand, unit,
 			kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-			unit_weight_g, last_verified_at
-		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+			unit_weight_g, last_verified_at,
+			fiber_per_100, sugars_per_100, saturated_fat_per_100, sodium_per_100
+		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
 	`,
 		strings.TrimSpace(barcode), strings.TrimSpace(name), brand, string(unit),
 		kcal, protein, carbs, fat, unitWeightG,
+		fiber, sugars, saturatedFat, sodium,
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -249,7 +258,8 @@ const selectIngredientCols = `SELECT
 	id, source, off_barcode, name, brand, unit,
 	kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
 	created_by, created_at, last_verified_at, superseded_by,
-	unit_weight_g, default_quantity`
+	unit_weight_g, default_quantity,
+	fiber_per_100, sugars_per_100, saturated_fat_per_100, sodium_per_100`
 
 func collectIngredients(rows *sql.Rows) ([]*domain.Ingredient, error) {
 	out := make([]*domain.Ingredient, 0, 16)
@@ -277,6 +287,7 @@ func scanIngredient(scan scanFn) (*domain.Ingredient, error) {
 		&ing.KcalPer100, &ing.ProteinPer100, &ing.CarbsPer100, &ing.FatPer100,
 		&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy,
 		&ing.UnitWeightG, &ing.DefaultQuantity,
+		&ing.FiberPer100, &ing.SugarsPer100, &ing.SaturatedFatPer100, &ing.SodiumPer100,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrIngredientNotFound
