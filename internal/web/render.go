@@ -140,5 +140,8 @@ func funcMap() template.FuncMap {
 		"rowUser": func(item domain.ShoppingUserItem, dup bool, weekStart, csrf string) ShoppingRowUserData {
 			return ShoppingRowUserData{Item: item, Duplicate: dup, WeekStart: weekStart, CSRFToken: csrf}
 		},
+		// neg restituisce il negativo di un float64. Usato nei template per
+		// invertire il segno senza eseguire operazioni aritmetiche inline.
+		"neg": func(v float64) float64 { return -v },
 	}
 }
