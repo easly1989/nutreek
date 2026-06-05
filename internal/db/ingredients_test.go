@@ -21,7 +21,7 @@ func TestIngredientsCreateAndGet(t *testing.T) {
 	}
 
 	brand := "Molino X"
-	id, err := ings.CreateLocal(ctx, "Farina di ceci", &brand, domain.UnitGram, 380, 22, 50, 6, &uid, nil, nil)
+	id, err := ings.CreateLocal(ctx, "Farina di ceci", &brand, domain.UnitGram, 380, 22, 50, 6, &uid, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateLocal: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestIngredientsSearchAndList(t *testing.T) {
 	ctx := context.Background()
 
 	mk := func(name string) int64 {
-		id, err := ings.CreateLocal(ctx, name, nil, domain.UnitGram, 100, 5, 20, 1, nil, nil, nil)
+		id, err := ings.CreateLocal(ctx, name, nil, domain.UnitGram, 100, 5, 20, 1, nil, nil, nil, nil, nil, nil, nil)
 		if err != nil {
 			t.Fatalf("CreateLocal %q: %v", name, err)
 		}
@@ -118,7 +118,7 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	ctx := context.Background()
 
 	brand := "Consorzio"
-	id, err := ings.CreateOFF(ctx, "8000000000017", "Grana Padano", &brand, domain.UnitGram, 384, 33, 0, 28, nil)
+	id, err := ings.CreateOFF(ctx, "8000000000017", "Grana Padano", &brand, domain.UnitGram, 384, 33, 0, 28, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateOFF: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	}
 
 	// Duplicate barcode -> ErrBarcodeAlreadyUsed
-	_, err = ings.CreateOFF(ctx, "8000000000017", "Altro", nil, domain.UnitGram, 1, 1, 1, 1, nil)
+	_, err = ings.CreateOFF(ctx, "8000000000017", "Altro", nil, domain.UnitGram, 1, 1, 1, 1, nil, nil, nil, nil, nil)
 	if !errors.Is(err, ErrBarcodeAlreadyUsed) {
 		t.Fatalf("atteso ErrBarcodeAlreadyUsed, got %v", err)
 	}
@@ -149,17 +149,58 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	}
 }
 
+func TestIngredientsMicronutrienti(t *testing.T) {
+	store := newTestStore(t)
+	ings := NewIngredients(store.DB)
+	ctx := context.Background()
+
+	fiber := 3.2
+	sugars := 1.1
+	satFat := 0.8
+	sodium := 0.4
+
+	id, err := ings.CreateLocal(ctx, "Avena", nil, domain.UnitGram, 389, 17, 66, 7, nil, nil, nil, &fiber, &sugars, &satFat, &sodium)
+	if err != nil {
+		t.Fatalf("CreateLocal con micronutrienti: %v", err)
+	}
+	got, err := ings.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.FiberPer100 == nil || *got.FiberPer100 != fiber {
+		t.Errorf("FiberPer100: %v", got.FiberPer100)
+	}
+	if got.SugarsPer100 == nil || *got.SugarsPer100 != sugars {
+		t.Errorf("SugarsPer100: %v", got.SugarsPer100)
+	}
+	if got.SaturatedFatPer100 == nil || *got.SaturatedFatPer100 != satFat {
+		t.Errorf("SaturatedFatPer100: %v", got.SaturatedFatPer100)
+	}
+	if got.SodiumPer100 == nil || *got.SodiumPer100 != sodium {
+		t.Errorf("SodiumPer100: %v", got.SodiumPer100)
+	}
+
+	// Update azzera i micronutrienti (nil = NULL).
+	if err := ings.Update(ctx, id, "Avena aggiornata", nil, domain.UnitGram, 389, 17, 66, 7, nil, nil, nil, nil, nil, nil); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	got, _ = ings.GetByID(ctx, id)
+	if got.FiberPer100 != nil {
+		t.Errorf("FiberPer100 dovrebbe essere nil dopo update a nil, got %v", *got.FiberPer100)
+	}
+}
+
 func TestIngredientsReconcileHelpers(t *testing.T) {
 	store := newTestStore(t)
 	ings := NewIngredients(store.DB)
 	ctx := context.Background()
 
 	// 3 locals: A, B, C. Tutti senza last_verified_at.
-	idA, _ := ings.CreateLocal(ctx, "A", nil, "g", 100, 5, 10, 1, nil, nil, nil)
-	idB, _ := ings.CreateLocal(ctx, "B", nil, "g", 100, 5, 10, 1, nil, nil, nil)
-	idC, _ := ings.CreateLocal(ctx, "C", nil, "g", 100, 5, 10, 1, nil, nil, nil)
+	idA, _ := ings.CreateLocal(ctx, "A", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil, nil)
+	idB, _ := ings.CreateLocal(ctx, "B", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil, nil)
+	idC, _ := ings.CreateLocal(ctx, "C", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil, nil)
 	// Un OFF (non deve apparire fra i candidati).
-	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1, nil)
+	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,11 +238,11 @@ func TestIngredientsReconcileHelpers(t *testing.T) {
 	if err := ings.MarkSuperseded(ctx, idA, idOFF); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := ings.GetByID(ctx, idA)
-	if got.SupersededBy == nil || *got.SupersededBy != idOFF {
-		t.Errorf("A non superseded da OFF: %v", got.SupersededBy)
+	got2, _ := ings.GetByID(ctx, idA)
+	if got2.SupersededBy == nil || *got2.SupersededBy != idOFF {
+		t.Errorf("A non superseded da OFF: %v", got2.SupersededBy)
 	}
-	if got.LastVerifiedAt == nil {
+	if got2.LastVerifiedAt == nil {
 		t.Errorf("A last_verified_at non aggiornato")
 	}
 

@@ -39,7 +39,7 @@ func TestAllergensSeedAndSet(t *testing.T) {
 		t.Fatalf("attesi 14 allergeni seed, trovati %d", len(tags))
 	}
 
-	id, err := ings.CreateLocal(ctx, "Pane", nil, domain.UnitGram, 270, 9, 50, 3, nil, nil, nil)
+	id, err := ings.CreateLocal(ctx, "Pane", nil, domain.UnitGram, 270, 9, 50, 3, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateLocal: %v", err)
 	}
@@ -84,8 +84,8 @@ func TestAllergensForIngredientsBatch(t *testing.T) {
 	cats := NewCategories(store.DB)
 	ctx := context.Background()
 
-	a, _ := ings.CreateLocal(ctx, "Latte", nil, domain.UnitMilliliter, 64, 3, 5, 3, nil, nil, nil)
-	b, _ := ings.CreateLocal(ctx, "Riso", nil, domain.UnitGram, 350, 7, 78, 1, nil, nil, nil)
+	a, _ := ings.CreateLocal(ctx, "Latte", nil, domain.UnitMilliliter, 64, 3, 5, 3, nil, nil, nil, nil, nil, nil, nil)
+	b, _ := ings.CreateLocal(ctx, "Riso", nil, domain.UnitGram, 350, 7, 78, 1, nil, nil, nil, nil, nil, nil, nil)
 
 	lattosio := allergenIDByName(t, cats, "lattosio")
 	if err := cats.SetIngredientAllergens(ctx, a, []int64{lattosio}); err != nil {
@@ -120,9 +120,9 @@ func TestIngredientIDsByAllergen(t *testing.T) {
 	cats := NewCategories(store.DB)
 	ctx := context.Background()
 
-	a, _ := ings.CreateLocal(ctx, "Gamberi", nil, domain.UnitGram, 99, 24, 0, 1, nil, nil, nil)
-	b, _ := ings.CreateLocal(ctx, "Cozze", nil, domain.UnitGram, 86, 12, 4, 2, nil, nil, nil)
-	c, _ := ings.CreateLocal(ctx, "Mela", nil, domain.UnitGram, 52, 0, 14, 0, nil, nil, nil)
+	a, _ := ings.CreateLocal(ctx, "Gamberi", nil, domain.UnitGram, 99, 24, 0, 1, nil, nil, nil, nil, nil, nil, nil)
+	b, _ := ings.CreateLocal(ctx, "Cozze", nil, domain.UnitGram, 86, 12, 4, 2, nil, nil, nil, nil, nil, nil, nil)
+	c, _ := ings.CreateLocal(ctx, "Mela", nil, domain.UnitGram, 52, 0, 14, 0, nil, nil, nil, nil, nil, nil, nil)
 
 	crostacei := allergenIDByName(t, cats, "crostacei")
 	_ = cats.SetIngredientAllergens(ctx, a, []int64{crostacei})

@@ -43,4 +43,10 @@ type Ingredient struct {
 	UnitWeightG *float64
 	// DefaultQuantity e' la quantita' predefinita da pre-compilare nel picker.
 	DefaultQuantity *float64
+	// Micronutrienti (per 100 g/ml) — tutti nullable: possono mancare per
+	// ingredienti locali inseriti senza dati OFF.
+	FiberPer100        *float64
+	SugarsPer100       *float64
+	SaturatedFatPer100 *float64
+	SodiumPer100       *float64
 }

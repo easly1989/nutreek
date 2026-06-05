@@ -24,12 +24,12 @@ func TestCheats(t *testing.T) {
 	}
 
 	// Aggiungi un item ufficiale (non sgarro), poi 2 sgarri.
-	pane, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil)
+	pane, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil, nil, nil, nil, nil)
 	if _, err := plans.AddItem(ctx, mealID, alice, nil, &pane, 50, "g"); err != nil {
 		t.Fatal(err)
 	}
-	hamb, _ := ings.CreateLocal(ctx, "Hamburger", nil, "g", 250, 14, 5, 18, &alice, nil, nil)
-	pat, _ := ings.CreateLocal(ctx, "Patatine", nil, "g", 312, 4, 41, 15, &alice, nil, nil)
+	hamb, _ := ings.CreateLocal(ctx, "Hamburger", nil, "g", 250, 14, 5, 18, &alice, nil, nil, nil, nil, nil, nil)
+	pat, _ := ings.CreateLocal(ctx, "Patatine", nil, "g", 312, 4, 41, 15, &alice, nil, nil, nil, nil, nil, nil)
 
 	c1, err := plans.AddCheat(ctx, mealID, alice, nil, &hamb, 200)
 	if err != nil {

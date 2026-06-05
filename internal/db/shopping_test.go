@@ -22,8 +22,8 @@ func TestShoppingGenerateAndAggregation(t *testing.T) {
 	plan, _ := plans.GetOrCreateForWeek(ctx, alice, monday)
 
 	// Ricetta: Pasta al pomodoro, 4 porzioni, 200g pasta + 100g pomodoro per ricetta intera.
-	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 360, 12, 75, 1, &alice, nil, nil)
-	pom, _ := ings.CreateLocal(ctx, "Pomodoro", nil, "g", 18, 1, 4, 0, &alice, nil, nil)
+	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 360, 12, 75, 1, &alice, nil, nil, nil, nil, nil, nil)
+	pom, _ := ings.CreateLocal(ctx, "Pomodoro", nil, "g", 18, 1, 4, 0, &alice, nil, nil, nil, nil, nil, nil)
 	rid, _ := recipes.Create(ctx, alice, "Pasta al pomodoro", nil, 4, false)
 	if _, err := recipes.AddItem(ctx, rid, alice, pasta, 200); err != nil {
 		t.Fatal(err)
@@ -33,7 +33,7 @@ func TestShoppingGenerateAndAggregation(t *testing.T) {
 	}
 
 	// Ingrediente diretto in altro pasto: Banana 120g.
-	banana, _ := ings.CreateLocal(ctx, "Banana", nil, "g", 89, 1, 23, 0, &alice, nil, nil)
+	banana, _ := ings.CreateLocal(ctx, "Banana", nil, "g", 89, 1, 23, 0, &alice, nil, nil, nil, nil, nil, nil)
 
 	// Pasto 1 lunedi': 1 porzione di pasta al pomodoro (=> 50g pasta + 25g pomodoro).
 	m1, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "Pranzo")
@@ -55,7 +55,7 @@ func TestShoppingGenerateAndAggregation(t *testing.T) {
 	if _, err := plans.AddItem(ctx, m4, alice, &rid, nil, 1, "g"); err != nil {
 		t.Fatal(err)
 	}
-	hamb, _ := ings.CreateLocal(ctx, "Hamburger", nil, "g", 250, 14, 5, 18, &alice, nil, nil)
+	hamb, _ := ings.CreateLocal(ctx, "Hamburger", nil, "g", 250, 14, 5, 18, &alice, nil, nil, nil, nil, nil, nil)
 	if _, err := plans.AddCheat(ctx, m4, alice, nil, &hamb, 200); err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestShoppingUserItemsPersistAcrossGenerate(t *testing.T) {
 	monday, _ := time.Parse("2006-01-02", "2026-04-27")
 	plan, _ := plans.GetOrCreateForWeek(ctx, alice, monday)
 
-	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 360, 12, 75, 1, &alice, nil, nil)
+	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 360, 12, 75, 1, &alice, nil, nil, nil, nil, nil, nil)
 	m1, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "Pranzo")
 	if _, err := plans.AddItem(ctx, m1, alice, nil, &pasta, 100, "g"); err != nil {
 		t.Fatal(err)

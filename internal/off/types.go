@@ -27,6 +27,11 @@ type Product struct {
 	// UnitWeightG e' il peso in grammi per singola unita', estratto da
 	// product_quantity (es. "150 g" → 150). nil se non parsabile.
 	UnitWeightG *float64
+	// Micronutrienti — nil se non presenti nel dataset OFF.
+	Fiber       *float64
+	Sugars      *float64
+	SaturatedFat *float64
+	Sodium      *float64
 }
 
 // rawProduct riflette la forma JSON degli endpoint OFF "product"
@@ -77,6 +82,19 @@ func (r rawProduct) toProduct() Product {
 	fat, fOK := lookupNutrientAny(r.Nutriments, "fat_100g", "fat")
 	p.Kcal, p.Protein, p.Carbs, p.Fat = kcal, prot, carbs, fat
 	p.HasFullNutrients = kOK && pOK && cOK && fOK
+
+	if v, ok := lookupNutrientAny(r.Nutriments, "fiber_100g", "fiber"); ok {
+		p.Fiber = &v
+	}
+	if v, ok := lookupNutrientAny(r.Nutriments, "sugars_100g", "sugars"); ok {
+		p.Sugars = &v
+	}
+	if v, ok := lookupNutrientAny(r.Nutriments, "saturated-fat_100g", "saturated-fat"); ok {
+		p.SaturatedFat = &v
+	}
+	if v, ok := lookupNutrientAny(r.Nutriments, "sodium_100g", "sodium"); ok {
+		p.Sodium = &v
+	}
 	return p
 }
 

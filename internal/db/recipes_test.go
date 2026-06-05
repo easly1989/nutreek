@@ -81,7 +81,7 @@ func TestRecipesVisibilityAndCRUD(t *testing.T) {
 	}
 
 	// Alice aggiunge un item alla pubblica.
-	ingID, err := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil)
+	ingID, err := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ingredient: %v", err)
 	}
@@ -189,8 +189,8 @@ func TestRecipesDuplicate(t *testing.T) {
 	ctx := context.Background()
 
 	alice, _ := users.Create(ctx, "a@x.com", "h", "Alice")
-	pane, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil)
-	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 350, 12, 70, 1.5, &alice, nil, nil)
+	pane, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil, nil, nil, nil, nil)
+	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 350, 12, 70, 1.5, &alice, nil, nil, nil, nil, nil, nil)
 
 	src, _ := recipes.Create(ctx, alice, "Origine", nil, 2, false)
 	if _, err := recipes.AddItem(ctx, src, alice, pane, 100); err != nil {
@@ -234,8 +234,8 @@ func TestRecipesIdenticalContent(t *testing.T) {
 	ctx := context.Background()
 
 	alice, _ := users.Create(ctx, "a@x.com", "h", "Alice")
-	pane, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil)
-	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 350, 12, 70, 1.5, &alice, nil, nil)
+	pane, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil, nil, nil, nil, nil)
+	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 350, 12, 70, 1.5, &alice, nil, nil, nil, nil, nil, nil)
 
 	r1, _ := recipes.Create(ctx, alice, "Ricetta A", nil, 2, false)
 	_, _ = recipes.AddItem(ctx, r1, alice, pane, 100)
