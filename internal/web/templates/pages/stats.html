@@ -43,6 +43,79 @@
     </div>
   </section>
 
+  {{/* ===== TDEE Adattivo ===== */}}
+  {{if .TDEEReport}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-muted">Fabbisogno stimato (TDEE adattivo)</h2>
+      {{if .TDEEReport.HasEnoughData}}
+      <span class="text-xs text-muted">Confidenza: <strong class="text-text">{{.TDEEReport.Confidence}}%</strong></span>
+      {{end}}
+    </div>
+    <div class="px-4 py-4">
+    {{if .TDEEReport.HasEnoughData}}
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+        <div>
+          <div class="text-xs text-muted mb-1">TDEE stimato</div>
+          <div class="text-2xl font-bold tabular-nums text-accent">{{printf "%.0f" .TDEEReport.EstimatedTDEE}}</div>
+          <div class="text-xs text-muted">kcal/giorno</div>
+        </div>
+        {{if gt .TDEEReport.FormulaBasedTDEE 0.0}}
+        <div>
+          <div class="text-xs text-muted mb-1">TDEE da formula</div>
+          <div class="text-2xl font-bold tabular-nums tabular-nums">{{printf "%.0f" .TDEEReport.FormulaBasedTDEE}}</div>
+          <div class="text-xs text-muted">kcal/giorno</div>
+        </div>
+        {{end}}
+        {{if gt .UserTargetKcal 0.0}}
+        <div>
+          <div class="text-xs text-muted mb-1">Target attuale</div>
+          <div class="text-2xl font-bold tabular-nums">{{printf "%.0f" .UserTargetKcal}}</div>
+          <div class="text-xs text-muted">kcal/giorno</div>
+        </div>
+        {{end}}
+      </div>
+
+      {{$diff := .TDEEReport.SuggestionDiff}}
+      {{if gt $diff 100.0}}
+      <div class="rounded border border-border bg-surface-2 px-4 py-3 flex items-center justify-between gap-4">
+        <p class="text-sm text-text">
+          Il tuo fabbisogno reale sembra <strong>{{printf "%.0f" $diff}} kcal/giorno in più</strong> del target attuale.
+          Vuoi aggiornare?
+        </p>
+        <form method="post" action="/tdee/accept" class="shrink-0">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="estimated_tdee" value="{{printf "%.0f" $.TDEEReport.EstimatedTDEE}}">
+          <button class="text-sm bg-accent text-accent-fg rounded px-4 py-1.5 hover:bg-accent/90 transition whitespace-nowrap">Aggiorna target</button>
+        </form>
+      </div>
+      {{else if lt $diff -100.0}}
+      <div class="rounded border border-border bg-surface-2 px-4 py-3 flex items-center justify-between gap-4">
+        <p class="text-sm text-text">
+          Il tuo fabbisogno reale sembra <strong>{{printf "%.0f" (neg $diff)}} kcal/giorno in meno</strong> del target attuale.
+          Vuoi aggiornare?
+        </p>
+        <form method="post" action="/tdee/accept" class="shrink-0">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="estimated_tdee" value="{{printf "%.0f" $.TDEEReport.EstimatedTDEE}}">
+          <button class="text-sm bg-accent text-accent-fg rounded px-4 py-1.5 hover:bg-accent/90 transition whitespace-nowrap">Aggiorna target</button>
+        </form>
+      </div>
+      {{end}}
+
+      {{if gt (len .TDEEReport.WeeklyData) 1}}
+      <div class="mt-4">
+        <canvas id="chart-tdee" height="120"></canvas>
+      </div>
+      {{end}}
+
+    {{else}}
+      <p class="text-sm text-muted">Inserisci almeno <strong>2 settimane di pasti</strong> e <strong>2 pesate</strong> per ottenere la stima del fabbisogno reale.</p>
+    {{end}}
+    </div>
+  </section>
+  {{end}}
+
   {{/* ===== Grafici ===== */}}
 
   {{if .HasWeightData}}
@@ -154,7 +227,7 @@
 {{end}}
 
 {{define "scripts"}}
-{{if or .HasWeightData (or .HasWorkoutData .HasCheatData)}}
+{{if or .HasWeightData (or .HasWorkoutData (or .HasCheatData (and .TDEEReport .TDEEReport.HasEnoughData)))}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 (function () {
@@ -214,6 +287,32 @@
     },
     options: Object.assign({}, lineOpts, { scales: { y: { beginAtZero: true } } }),
   });
+  {{end}}
+
+  {{if and .TDEEReport .TDEEReport.HasEnoughData (gt (len .TDEEReport.WeeklyData) 1)}}
+  var tdeeLabels = [{{range .TDEEReport.WeeklyData}}"{{.WeekLabel}}",{{end}}];
+  var tdeeValues = [{{range .TDEEReport.WeeklyData}}{{if gt .EstimatedKcal 0.0}}{{printf "%.0f" .EstimatedKcal}},{{else}}null,{{end}}{{end}}];
+  var tdeeChartEl = document.getElementById('chart-tdee');
+  if (tdeeChartEl) {
+    new Chart(tdeeChartEl, {
+      type: 'line',
+      data: {
+        labels: tdeeLabels,
+        datasets: [{
+          label: 'TDEE stimato (kcal/g)',
+          data: tdeeValues,
+          borderColor: accent,
+          backgroundColor: accent + '22',
+          tension: 0.3,
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          spanGaps: true,
+        }]
+      },
+      options: Object.assign({}, lineOpts, { scales: { y: { beginAtZero: false } } }),
+    });
+  }
   {{end}}
 
   {{if .HasCheatData}}

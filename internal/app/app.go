@@ -10,6 +10,7 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/off"
+	"github.com/amon2126/nutreek/internal/service"
 	"github.com/amon2126/nutreek/internal/web"
 )
 
@@ -29,6 +30,7 @@ type App struct {
 	WaterLogs     *db.WaterLogs
 	Categories    *db.Categories
 	NutritionistPlans *db.NutritionistPlans
+	TDEE          *service.TDEEService
 	OFF           *off.Client
 	OFFSyncer     *off.Syncer
 	Reconciler    *off.Reconciler
