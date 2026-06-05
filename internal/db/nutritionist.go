@@ -205,6 +205,28 @@ func scanNutritionistItem(rows *sql.Rows) (domain.NutritionistItem, error) {
 	return item, nil
 }
 
+// HasVariations indica se l'utente ha almeno una variante con almeno un item
+// nel proprio piano nutrizionista: requisito minimo per la generazione
+// automatica del piano settimanale.
+func (n *NutritionistPlans) HasVariations(ctx context.Context, userID int64) (bool, error) {
+	var x int
+	err := n.db.QueryRowContext(ctx, `
+		SELECT 1
+		FROM nutritionist_meal_items ni
+		JOIN nutritionist_meal_variations nv ON nv.id = ni.variation_id
+		JOIN nutritionist_meal_types nmt ON nmt.id = nv.meal_type_id
+		JOIN nutritionist_plans np ON np.id = nmt.plan_id
+		WHERE np.user_id = ?
+		LIMIT 1`, userID).Scan(&x)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("check nutritionist variations: %w", err)
+	}
+	return true, nil
+}
+
 // SearchSuggestedIngredients restituisce gli ingredienti del piano nutrizionista
 // che appartengono a un tipo pasto il cui nome corrisponde (case-insensitive) a mealTypeName.
 func (n *NutritionistPlans) SearchSuggestedIngredients(ctx context.Context, userID int64, mealTypeName string) ([]*domain.Ingredient, error) {

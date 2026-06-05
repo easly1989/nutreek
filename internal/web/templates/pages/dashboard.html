@@ -60,6 +60,22 @@
   </form>
   {{end}}
 
+  {{/* Generazione automatica: visibile solo a settimana vuota e con varianti
+       nel piano nutrizionista da cui pescare. */}}
+  {{if and (not .HasMeals) .HasNutritionistPlan}}
+  <form method="post" action="/week/generate" class="mb-6 bg-surface border border-border rounded p-4">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="start" value="{{.WeekStartStr}}">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <p class="text-sm font-medium text-text">Genera piano automaticamente</p>
+        <p class="text-xs text-muted">Riempie la settimana pescando dalle varianti del piano nutrizionista, puntando ai tuoi target macro.</p>
+      </div>
+      <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90 text-sm whitespace-nowrap">✨ Genera</button>
+    </div>
+  </form>
+  {{end}}
+
   <!-- Timeline: TUTTI i giorni della settimana, sempre visibili. Le pillole
        in focus sono evidenziate (accent). Click sulla pillola toggla il
        relativo card piena in #focus-grid. Wrapper scrollabile su mobile. -->
