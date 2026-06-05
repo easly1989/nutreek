@@ -120,6 +120,30 @@ func ForMealItem(item domain.MealItemFull) Macros {
 	return Macros{}
 }
 
+// ForNutritionistVariation calcola i macro totali degli item di una variante
+// del piano nutrizionista. Poiche' LoadPlanFull non carica gli ingredienti
+// delle ricette referenziate, i macro per-porzione delle ricette vanno
+// precalcolati dal chiamante e passati in recipePerServing (chiave = recipe
+// ID). Gli item ingrediente sono calcolati direttamente: la quantita' e'
+// interpretata in g/ml (gli item "pz" senza peso unitario noto restano
+// un'approssimazione ai soli fini della selezione automatica, dato che il
+// pasto salvato conserva quantita'+unita' e viene ricalcolato correttamente
+// al render).
+func ForNutritionistVariation(items []domain.NutritionistItem, recipePerServing map[int64]Macros) Macros {
+	var out Macros
+	for _, it := range items {
+		switch {
+		case it.Ingredient != nil:
+			out = out.Add(FromIngredient(*it.Ingredient, it.Quantity))
+		case it.RecipeID != nil:
+			if per, ok := recipePerServing[*it.RecipeID]; ok {
+				out = out.Add(per.Scale(it.Quantity)) // quantity = porzioni
+			}
+		}
+	}
+	return out
+}
+
 // ForMeal somma i macro di tutti gli items di un pasto.
 func ForMeal(items []domain.MealItemFull) Macros {
 	var out Macros

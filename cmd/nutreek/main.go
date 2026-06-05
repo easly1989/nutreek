@@ -118,12 +118,14 @@ func run(logger *slog.Logger) error {
 	}
 
 	weeklyPlansRepo := db.NewWeeklyPlans(store.DB)
+	recipesRepo := db.NewRecipes(store.DB)
+	nutritionistRepo := db.NewNutritionistPlans(store.DB)
 	a := &app.App{
 		Cfg:                    cfg,
 		Store:                  store,
 		Users:                  db.NewUsers(store.DB),
 		Ingredients:            ingredientsRepo,
-		Recipes:                db.NewRecipes(store.DB),
+		Recipes:                recipesRepo,
 		MealTemplates:          db.NewMealTemplates(store.DB),
 		WeeklyPlans:            weeklyPlansRepo,
 		MealItemCustomizations: db.NewMealItemCustomizations(store.DB),
@@ -132,17 +134,22 @@ func run(logger *slog.Logger) error {
 		WorkoutLogs:            db.NewWorkoutLogs(store.DB),
 		WaterLogs:              db.NewWaterLogs(store.DB),
 		Categories:             db.NewCategories(store.DB),
-		NutritionistPlans:      db.NewNutritionistPlans(store.DB),
+		NutritionistPlans:      nutritionistRepo,
 		TDEE: &service.TDEEService{
 			WeightLogs:  db.NewWeightLogs(store.DB),
 			WeeklyPlans: weeklyPlansRepo,
 		},
-		OFF:                    offClient,
-		OFFSyncer:              offSyncer,
-		Reconciler:             reconciler,
-		Sessions:               sessions,
-		Render:                 renderer,
-		Logger:                 logger,
+		Planner: &service.PlannerService{
+			WeeklyPlans:       weeklyPlansRepo,
+			NutritionistPlans: nutritionistRepo,
+			Recipes:           recipesRepo,
+		},
+		OFF:        offClient,
+		OFFSyncer:  offSyncer,
+		Reconciler: reconciler,
+		Sessions:   sessions,
+		Render:     renderer,
+		Logger:     logger,
 	}
 
 	srv := &http.Server{
