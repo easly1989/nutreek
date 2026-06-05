@@ -39,6 +39,11 @@
               <span class="text-muted">{{.SourceLabel}}</span>
               · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
             </p>
+            {{if .HasMicronutrients}}
+            <p class="text-[10px] text-muted mt-0.5">
+              Fibre {{printf "%.1f" .FiberPer100Val}}g · Zucch. {{printf "%.1f" .SugarsPer100Val}}g · Saturi {{printf "%.1f" .SaturatedFatPer100Val}}g · Sodio {{printf "%.2f" .SodiumPer100Val}}g
+            </p>
+            {{end}}
           {{end}}
         </div>
         {{if .IsOFF}}
