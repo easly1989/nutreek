@@ -41,6 +41,12 @@
       <div class="text-xs text-muted mb-1">💧 Media idratazione (ml/g)</div>
       <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .AvgWaterML}}</div>
     </div>
+    {{if .HasAdherenceData}}
+    <div class="bg-surface border border-border rounded px-4 py-3">
+      <div class="text-xs text-muted mb-1">🔥 Streak senza sgarri</div>
+      <div class="text-xl font-semibold tabular-nums">{{.StreakDays}} <span class="text-sm font-normal text-muted">giorni</span></div>
+    </div>
+    {{end}}
   </section>
 
   {{/* ===== TDEE Adattivo ===== */}}
@@ -173,6 +179,52 @@
   </section>
   {{end}}
 
+  {{/* ===== Aderenza al piano ===== */}}
+  {{if .HasAdherenceData}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">Aderenza al piano per settimana (%)</h2>
+    </div>
+    <div class="px-4 py-4">
+      <canvas id="chart-adherence" height="120"></canvas>
+      <p class="text-xs text-muted mt-2">100% = nessuno sgarro. Il punteggio scende in proporzione allo scostamento calorico fra pianificato ed effettivo.</p>
+    </div>
+  </section>
+
+  {{if .SlotAdherence}}
+  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-surface-2">
+      <h2 class="text-sm font-semibold text-muted">Aderenza per pasto</h2>
+    </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border">
+          <th class="text-left px-4 py-2 font-medium text-muted">Pasto</th>
+          <th class="text-left px-4 py-2 font-medium text-muted">Aderenza media</th>
+          <th class="text-right px-4 py-2 font-medium text-muted">Giorni</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-border">
+        {{range .SlotAdherence}}
+        <tr class="hover:bg-surface-2 transition">
+          <td class="px-4 py-2 font-medium text-text">{{.SlotName}}</td>
+          <td class="px-4 py-2">
+            <div class="flex items-center gap-2">
+              <div class="h-2 w-24 rounded-full bg-surface-2 overflow-hidden">
+                <div class="h-full rounded-full {{if lt .AvgScore 80.0}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .AvgScore}}%"></div>
+              </div>
+              <span class="tabular-nums text-muted">{{printf "%.0f" .AvgScore}}%</span>
+            </div>
+          </td>
+          <td class="px-4 py-2 text-right tabular-nums text-muted">{{.Count}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </section>
+  {{end}}
+  {{end}}
+
   {{/* Tabella storico — in fondo */}}
   <section class="bg-surface border border-border rounded overflow-hidden mb-6">
     <div class="px-4 py-3 border-b border-border bg-surface-2">
@@ -227,7 +279,7 @@
 {{end}}
 
 {{define "scripts"}}
-{{if or .HasWeightData (or .HasWorkoutData (or .HasCheatData (and .TDEEReport .TDEEReport.HasEnoughData)))}}
+{{if or .HasAdherenceData (or .HasWeightData (or .HasWorkoutData (or .HasCheatData (and .TDEEReport .TDEEReport.HasEnoughData))))}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 (function () {
@@ -311,6 +363,34 @@
         }]
       },
       options: Object.assign({}, lineOpts, { scales: { y: { beginAtZero: false } } }),
+    });
+  }
+  {{end}}
+
+  {{if .HasAdherenceData}}
+  var adhLabels = [{{range .AdherenceWeeks}}"{{.WeekLabel}}",{{end}}];
+  var adhValues = [{{range .AdherenceWeeks}}{{if .HasData}}{{printf "%.0f" .Score}},{{else}}null,{{end}}{{end}}];
+  var adhChartEl = document.getElementById('chart-adherence');
+  if (adhChartEl) {
+    new Chart(adhChartEl, {
+      type: 'line',
+      data: {
+        labels: adhLabels,
+        datasets: [{
+          label: 'Aderenza (%)',
+          data: adhValues,
+          borderColor: accent,
+          backgroundColor: accent + '22',
+          tension: 0.3,
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          spanGaps: true,
+        }]
+      },
+      options: Object.assign({}, lineOpts, {
+        scales: { y: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } },
+      }),
     });
   }
   {{end}}
