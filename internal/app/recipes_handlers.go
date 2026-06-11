@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/db"
@@ -762,8 +761,4 @@ func (a *App) handleRecipeError(w http.ResponseWriter, r *http.Request, err erro
 	default:
 		a.serverError(w, r, err)
 	}
-}
-
-func parseID(r *http.Request, key string) (int64, error) {
-	return strconv.ParseInt(chi.URLParam(r, key), 10, 64)
 }
