@@ -31,6 +31,12 @@ type Config struct {
 	ReconcileInterval time.Duration
 	ReconcileEnabled  bool
 	AdminToken        string
+
+	// Backup SQLite automatico via VACUUM INTO.
+	BackupEnabled  bool
+	BackupDir      string
+	BackupInterval time.Duration
+	BackupKeep     int
 }
 
 // Load legge la configurazione dalle env var. Valida i vincoli di prod
@@ -61,6 +67,21 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("NUTREEK_OFF_SYNC_ENABLED: %w", err)
 	}
 
+	backupEnabled, err := strconv.ParseBool(getenv("NUTREEK_BACKUP_ENABLED", "false"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_BACKUP_ENABLED: %w", err)
+	}
+
+	backupInterval, err := time.ParseDuration(getenv("NUTREEK_BACKUP_INTERVAL", "24h"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_BACKUP_INTERVAL: %w", err)
+	}
+
+	backupKeep, err := strconv.Atoi(getenv("NUTREEK_BACKUP_KEEP", "7"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_BACKUP_KEEP: %w", err)
+	}
+
 	cfg := &Config{
 		Addr:              getenv("NUTREEK_ADDR", ":8080"),
 		DBPath:            getenv("NUTREEK_DB_PATH", "./data/nutreek.db"),
@@ -72,6 +93,10 @@ func Load() (*Config, error) {
 		ReconcileInterval: reconcileInterval,
 		ReconcileEnabled:  reconcileEnabled,
 		AdminToken:        os.Getenv("NUTREEK_ADMIN_TOKEN"),
+		BackupEnabled:     backupEnabled,
+		BackupDir:         getenv("NUTREEK_BACKUP_DIR", "./data/backups"),
+		BackupInterval:    backupInterval,
+		BackupKeep:        backupKeep,
 	}
 
 	keyHex := os.Getenv("NUTREEK_SESSION_KEY")

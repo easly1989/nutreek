@@ -1,6 +1,9 @@
 package app
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -16,6 +19,7 @@ func (a *App) Router() http.Handler {
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.StripSlashes)
+	r.Use(requestIDMiddleware)
 	r.Use(a.requestLogger)
 	r.Use(a.Sessions.LoadAndSave)
 	r.Use(a.csrfMiddleware)
@@ -180,4 +184,23 @@ func (a *App) Router() http.Handler {
 	r.Get("/admin/off-status", a.requireAdmin(a.handleAdminOFFStatus))
 
 	return r
+}
+
+type reqIDKey struct{}
+
+// requestIDMiddleware genera un request ID esadecimale casuale (8 byte = 16 char)
+// per ogni richiesta, lo inietta nel context e lo aggiunge all'header di risposta
+// X-Request-ID per facilitare il correlamento nei log.
+func requestIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.Header.Get("X-Request-ID")
+		if id == "" {
+			b := make([]byte, 8)
+			_, _ = rand.Read(b)
+			id = hex.EncodeToString(b)
+		}
+		w.Header().Set("X-Request-ID", id)
+		ctx := context.WithValue(r.Context(), reqIDKey{}, id)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
