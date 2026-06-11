@@ -66,12 +66,12 @@ func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 
 	// Campione: 3 prodotti con nutrienti completi (se esistono).
 	type sampleRow struct {
-		Barcode  string  `json:"barcode"`
-		Name     string  `json:"name"`
-		Kcal     float64 `json:"kcal"`
-		Protein  float64 `json:"protein"`
-		Carbs    float64 `json:"carbs"`
-		Fat      float64 `json:"fat"`
+		Barcode string  `json:"barcode"`
+		Name    string  `json:"name"`
+		Kcal    float64 `json:"kcal"`
+		Protein float64 `json:"protein"`
+		Carbs   float64 `json:"carbs"`
+		Fat     float64 `json:"fat"`
 	}
 	var sample []sampleRow
 	rows, _ := a.Store.DB.QueryContext(r.Context(), `
