@@ -51,18 +51,20 @@
           </div>
 
           <div>
-            <span class="block text-sm font-medium text-text mb-1">Sesso biologico</span>
-            <div class="flex items-center gap-4 pt-2">
-              <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
-                <input type="radio" name="sex" value="M" {{if eq .Form.Sex "M"}}checked{{end}} class="accent-accent"> Uomo
-              </label>
-              <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
-                <input type="radio" name="sex" value="F" {{if eq .Form.Sex "F"}}checked{{end}} class="accent-accent"> Donna
-              </label>
-              <label class="inline-flex items-center gap-1.5 text-sm text-muted cursor-pointer">
-                <input type="radio" name="sex" value="" {{if eq .Form.Sex ""}}checked{{end}} class="accent-accent"> —
-              </label>
-            </div>
+            <fieldset>
+              <legend class="block text-sm font-medium text-text mb-1">Sesso biologico</legend>
+              <div class="flex items-center gap-4 pt-2">
+                <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" name="sex" value="M" {{if eq .Form.Sex "M"}}checked{{end}} class="accent-accent"> Uomo
+                </label>
+                <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" name="sex" value="F" {{if eq .Form.Sex "F"}}checked{{end}} class="accent-accent"> Donna
+                </label>
+                <label class="inline-flex items-center gap-1.5 text-sm text-muted cursor-pointer">
+                  <input type="radio" name="sex" value="" {{if eq .Form.Sex ""}}checked{{end}} class="accent-accent"> —
+                </label>
+              </div>
+            </fieldset>
             <p class="text-xs text-muted mt-1">Usato per il calcolo del BMR (Mifflin-St Jeor).</p>
           </div>
 
