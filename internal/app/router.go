@@ -9,6 +9,24 @@ import (
 	"github.com/amon2126/nutreek/internal/web"
 )
 
+// securityHeaders imposta gli header di sicurezza HTTP su ogni risposta.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		h.Set("Permissions-Policy", "camera=(), microphone=()")
+		h.Set("Content-Security-Policy",
+			"default-src 'self'; "+
+				"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
+				"style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data:; "+
+				"font-src 'self'")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Router costruisce il chi.Mux con tutti gli handler montati, nel giusto
 // ordine di middleware. Il chiamante lo passa come http.Handler del server.
 func (a *App) Router() http.Handler {
@@ -16,6 +34,7 @@ func (a *App) Router() http.Handler {
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.StripSlashes)
+	r.Use(securityHeaders)
 	r.Use(a.requestLogger)
 	r.Use(a.Sessions.LoadAndSave)
 	r.Use(a.csrfMiddleware)
