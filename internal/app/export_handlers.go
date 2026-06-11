@@ -133,7 +133,10 @@ func (a *App) handleWeekImport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Costruisce un indice mealName→mealID per giorno.
-	type mealKey struct{ day int; name string }
+	type mealKey struct {
+		day  int
+		name string
+	}
 	mealIndex := make(map[mealKey]int64)
 	for d, dayMeals := range full.Days {
 		for _, m := range dayMeals {

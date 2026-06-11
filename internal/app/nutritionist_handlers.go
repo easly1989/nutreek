@@ -11,11 +11,6 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-type nutritionistPageData struct {
-	authPageData
-	Plan *domain.NutritionistPlanFull
-}
-
 func (a *App) handleNutritionistPage(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusFound)
 }
