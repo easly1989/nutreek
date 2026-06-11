@@ -61,7 +61,7 @@ func TestWaterForDateRange(t *testing.T) {
 	base := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC) // lunedì
 
 	_ = water.Log(ctx, uid, base, 300)
-	_ = water.Log(ctx, uid, base, 200)               // lun: 500
+	_ = water.Log(ctx, uid, base, 200)                   // lun: 500
 	_ = water.Log(ctx, uid, base.AddDate(0, 0, 2), 1000) // mer: 1000
 
 	m, err := water.ForDateRange(ctx, uid, base, base.AddDate(0, 0, 6))

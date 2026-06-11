@@ -36,9 +36,9 @@ type shoppingUserItemView struct {
 // dopo toggle di una singola riga, sia auto che user).
 type shoppingRowData struct {
 	authPageData
-	Item       *domain.ShoppingListItem
-	UserItem   *domain.ShoppingUserItem
-	WeekStart  string
+	Item      *domain.ShoppingListItem
+	UserItem  *domain.ShoppingUserItem
+	WeekStart string
 }
 
 // parseShoppingWeek normalizza il param `week` (default = lunedi'

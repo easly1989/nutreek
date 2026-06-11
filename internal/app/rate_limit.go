@@ -13,7 +13,7 @@ import (
 // il brute-force banale; per persistenza serverebbe una tabella DB con
 // pulizia periodica.
 type loginRateLimiter struct {
-	mu      sync.Mutex
+	mu       sync.Mutex
 	attempts map[string]*ipBucket
 	max      int
 	window   time.Duration
@@ -59,17 +59,6 @@ func (l *loginRateLimiter) reset(ip string) {
 	l.mu.Lock()
 	delete(l.attempts, ip)
 	l.mu.Unlock()
-}
-
-// gc rimuove i bucket scaduti. Da invocare periodicamente per non far
-// crescere indefinitamente la mappa. Per MVP non lanciamo una goroutine
-// dedicata: chiamiamo gc() da allow() ogni N tentativi (vedi prune).
-func (l *loginRateLimiter) prune(now time.Time) {
-	for k, b := range l.attempts {
-		if now.Sub(b.first) > l.window {
-			delete(l.attempts, k)
-		}
-	}
 }
 
 // remoteIP estrae l'IP del client. Preferisce X-Forwarded-For (primo hop) se
