@@ -13,7 +13,10 @@
              value="{{.ImportSource}}"
              placeholder="https://sito.it/ricetta/..."
              class="flex-1 rounded border border-border px-3 py-2">
-      <button class="shrink-0 bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Importa</button>
+      <button class="shrink-0 bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90 flex items-center gap-2">
+        Importa
+        <span class="htmx-indicator htmx-spinner" aria-hidden="true"></span>
+      </button>
     </div>
     <p class="text-xs text-muted mt-1">Estrae nome, porzioni e lista ingredienti dai siti che pubblicano schema.org/Recipe.</p>
     {{if .ImportError}}
