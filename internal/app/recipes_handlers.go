@@ -53,24 +53,24 @@ type recipeForm struct {
 // recipeDuplicateData è il view-model del modal di duplicazione.
 type recipeDuplicateData struct {
 	authPageData
-	SrcID    int64
-	SrcName  string
-	NewName  string // valore pre-compilato (default "Copia di X")
-	Error    string
+	SrcID   int64
+	SrcName string
+	NewName string // valore pre-compilato (default "Copia di X")
+	Error   string
 }
 
 type recipeEditData struct {
 	authPageData
-	Recipe       *domain.RecipeWithItems
-	Form         recipeForm
-	Error        string
-	ItemError    string
-	CanEdit      bool                  // true se l'utente loggato e' l'autore
-	Total        macros.Macros         // totale ricetta
-	PerServing   macros.Macros         // per-serving
-	Ingredients  []*domain.Ingredient  // pool per il select del nuovo item
-	NewItemQty   string                // valore nel form item dopo errore
-	NewItemIng   string                // ingredient_id selezionato
+	Recipe      *domain.RecipeWithItems
+	Form        recipeForm
+	Error       string
+	ItemError   string
+	CanEdit     bool                 // true se l'utente loggato e' l'autore
+	Total       macros.Macros        // totale ricetta
+	PerServing  macros.Macros        // per-serving
+	Ingredients []*domain.Ingredient // pool per il select del nuovo item
+	NewItemQty  string               // valore nel form item dopo errore
+	NewItemIng  string               // ingredient_id selezionato
 }
 
 // ---- list ------------------------------------------------------------------
@@ -369,6 +369,7 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 //   - ingredient_id: id di un ingrediente gia' nel DB locale.
 //   - barcode: codice OFF di un prodotto NON ancora importato; il server
 //     fa auto-import (idempotente: se gia' presente recupera l'esistente).
+//
 // La distinzione viene fatta dal partial picker_results in base alla
 // natura della riga cliccata.
 func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
