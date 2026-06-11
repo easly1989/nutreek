@@ -926,7 +926,6 @@ func (a *App) handleRemoveMealItem(w http.ResponseWriter, r *http.Request) {
 	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
-
 // handleReorderMeals POST /meals/reorder?day_of_week=N&start=YYYY-MM-DD
 // Body: ids=12,9,15  (form-encoded). Persiste l'ordine dei meal_id per quel
 // giorno e ritorna il partial day_card aggiornato.
