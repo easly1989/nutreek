@@ -12,26 +12,21 @@ import (
 	"github.com/amon2126/nutreek/internal/off"
 )
 
-// ownerEmail e' l'email dell'unico utente "owner" dell'istanza, abilitato a
-// triggerare operazioni privilegiate dalla UI (es. sync OFF on-demand).
-// Hardcoded perche' Nutreek e' un'app single-tenant self-hosted: nessun
-// pannello admin separato, l'owner usa la stessa sessione di tutti.
-const ownerEmail = "carlo@ruggiero.cc"
-
-// isOwner ritorna true se l'utente in context e' l'owner dell'istanza.
-// Case-insensitive sull'email per resistere a variazioni di registrazione.
-func isOwner(u *domain.User) bool {
-	if u == nil {
+// isOwner ritorna true se l'utente e' l'owner dell'istanza (NUTREEK_OWNER_EMAIL).
+// Case-insensitive sull'email. Se NUTREEK_OWNER_EMAIL non è configurata, nessuno
+// è owner e le funzionalità owner-only sono disabilitate.
+func (a *App) isOwner(u *domain.User) bool {
+	if u == nil || a.Cfg.OwnerEmail == "" {
 		return false
 	}
-	return strings.EqualFold(strings.TrimSpace(u.Email), ownerEmail)
+	return strings.EqualFold(strings.TrimSpace(u.Email), a.Cfg.OwnerEmail)
 }
 
 // requireOwner blocca chi non e' l'owner. Risponde 404 (non 403) per non
 // rivelare l'esistenza dell'endpoint a utenti normali.
 func (a *App) requireOwner(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !isOwner(userFromContext(r.Context())) {
+		if !a.isOwner(userFromContext(r.Context())) {
 			http.NotFound(w, r)
 			return
 		}
