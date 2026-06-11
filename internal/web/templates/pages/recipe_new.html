@@ -46,7 +46,7 @@
       <label class="block text-sm font-medium text-text mb-1" for="f-desc">Descrizione <span class="text-muted font-normal">(opzionale)</span></label>
       <textarea id="f-desc" name="description" rows="3" class="w-full rounded border border-border px-3 py-2">{{.Form.Description}}</textarea>
     </div>
-    <div class="grid grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="block text-sm font-medium text-text mb-1" for="f-srv">Porzioni</label>
         <input id="f-srv" name="servings" required inputmode="numeric" value="{{.Form.Servings}}" class="w-full rounded border border-border px-3 py-2">
