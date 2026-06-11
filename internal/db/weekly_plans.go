@@ -65,8 +65,8 @@ func (r *WeeklyPlans) GetOrCreateForWeek(ctx context.Context, userID int64, week
 		userID, dateStr,
 	)
 	var (
-		p          domain.WeeklyPlan
-		dateScan   string
+		p        domain.WeeklyPlan
+		dateScan string
 	)
 	if err := row.Scan(&p.ID, &p.UserID, &dateScan, &p.TemplateID); err != nil {
 		return nil, fmt.Errorf("read plan: %w", err)
