@@ -138,8 +138,8 @@ func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain
 		JOIN users u ON u.id = r.user_id
 		WHERE r.id = ?`, id)
 	var (
-		out                 domain.RecipeWithItems
-		isPubInt, draftInt  int
+		out                domain.RecipeWithItems
+		isPubInt, draftInt int
 	)
 	err := row.Scan(
 		&out.ID, &out.UserID, &out.Name, &out.Description, &out.Servings, &isPubInt,
