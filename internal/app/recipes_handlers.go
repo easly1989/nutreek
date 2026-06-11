@@ -762,4 +762,3 @@ func (a *App) handleRecipeError(w http.ResponseWriter, r *http.Request, err erro
 		a.serverError(w, r, err)
 	}
 }
-

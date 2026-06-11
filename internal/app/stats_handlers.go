@@ -357,4 +357,3 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 	}
 }
-
