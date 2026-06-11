@@ -1,3 +1,6 @@
+# NOTA: misspell escluso volutamente — il codebase è in italiano e il
+# dizionario inglese genera centinaia di falsi positivi (es. "momento"
+# segnalato come typo di "memento").
 linters:
   enable:
     - gofmt
@@ -7,7 +10,6 @@ linters:
     - gosimple
     - ineffassign
     - unused
-    - misspell
 
 run:
   timeout: 5m
