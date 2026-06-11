@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/macros"
 	"github.com/amon2126/nutreek/internal/service"
@@ -84,7 +85,7 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	now := time.Now()
-	weekStart := mondayOf(now)
+	weekStart := db.MondayOf(now)
 
 	var rows []weekStatsRow
 	var sumTotal macros.Macros
@@ -357,12 +358,3 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// mondayOf restituisce il lunedì della settimana contenente t.
-// Duplica la funzione in db/weekly_plans.go ma evita di dipendere dal package db qui.
-func mondayOf(t time.Time) time.Time {
-	wd := int(t.Weekday())
-	if wd == 0 {
-		wd = 7 // domenica → 7
-	}
-	return time.Date(t.Year(), t.Month(), t.Day()-wd+1, 0, 0, 0, 0, t.Location())
-}
