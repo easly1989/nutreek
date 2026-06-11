@@ -72,6 +72,51 @@ func (l *loginRateLimiter) prune(now time.Time) {
 	}
 }
 
+// ipRateLimiter è un rate limiter generico per IP usabile come middleware chi.
+// Stessa logica di loginRateLimiter ma esposto come http.Handler chain.
+type ipRateLimiter struct {
+	mu      sync.Mutex
+	buckets map[string]*ipBucket
+	max     int
+	window  time.Duration
+}
+
+func newIPRateLimiter(max int, window time.Duration) *ipRateLimiter {
+	return &ipRateLimiter{
+		buckets: make(map[string]*ipBucket, 64),
+		max:     max,
+		window:  window,
+	}
+}
+
+func (l *ipRateLimiter) allow(ip string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := time.Now()
+	b, ok := l.buckets[ip]
+	if !ok || now.Sub(b.first) > l.window {
+		l.buckets[ip] = &ipBucket{count: 1, first: now}
+		return true
+	}
+	if b.count >= l.max {
+		return false
+	}
+	b.count++
+	return true
+}
+
+// Middleware ritorna un chi-compatible middleware che blocca le richieste oltre
+// la soglia con 429 Too Many Requests.
+func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !l.allow(remoteIP(r)) {
+			http.Error(w, "Troppe richieste. Riprova tra qualche minuto.", http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // remoteIP estrae l'IP del client. Preferisce X-Forwarded-For (primo hop) se
 // presente — assume reverse proxy fidato in prod. In dev legge RemoteAddr.
 func remoteIP(r *http.Request) string {
