@@ -63,7 +63,8 @@
   {{/* Storico */}}
   {{if .Logs}}
   <section class="bg-surface border border-border rounded overflow-hidden">
-    <table class="w-full text-sm">
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm min-w-[360px]">
       <thead>
         <tr class="border-b border-border bg-surface-2">
           <th class="text-left px-4 py-2 font-medium text-muted">Data</th>
@@ -89,6 +90,7 @@
         {{end}}
       </tbody>
     </table>
+    </div>
   </section>
   {{else}}
   <p class="text-sm text-muted italic">Nessuna misurazione registrata. Aggiungi la prima sopra.</p>
