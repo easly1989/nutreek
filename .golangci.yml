@@ -1,0 +1,21 @@
+# NOTA: misspell escluso volutamente — il codebase è in italiano e il
+# dizionario inglese genera centinaia di falsi positivi (es. "momento"
+# segnalato come typo di "memento").
+linters:
+  enable:
+    - gofmt
+    - govet
+    - staticcheck
+    - errcheck
+    - gosimple
+    - ineffassign
+    - unused
+
+run:
+  timeout: 5m
+
+issues:
+  exclude-rules:
+    - path: "_test.go"
+      linters:
+        - errcheck
