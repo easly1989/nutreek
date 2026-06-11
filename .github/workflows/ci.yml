@@ -66,10 +66,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # govulncheck valuta le vulnerabilità della stdlib rispetto al
+      # toolchain attivo: usiamo sempre l'ultima release stabile patchata,
+      # indipendentemente dalla versione minima dichiarata in go.mod.
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: stable
           cache: true
 
       - name: Install govulncheck
