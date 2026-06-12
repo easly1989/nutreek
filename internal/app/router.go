@@ -219,6 +219,17 @@ func (a *App) Router() http.Handler {
 		r.Get("/admin/off-status", a.requireAdmin(a.handleAdminOFFStatus))
 	})
 
+	// Admin panel owner: accessibile via sessione, protetto da requireOwnerMiddleware.
+	r.Group(func(r chi.Router) {
+		r.Use(a.requireAuth)
+		r.Use(a.requireOwnerMiddleware)
+		r.Get("/admin/panel", a.handleAdminPanel)
+		r.Get("/admin/panel/features", a.handleAdminFeatures)
+		r.Post("/admin/panel/features/{key}/toggle", a.handleAdminFeatureToggle)
+		r.Post("/admin/panel/features/{key}/premium", a.handleAdminFeaturePremium)
+		r.Get("/admin/panel/users", a.handleAdminUsers)
+	})
+
 	return r
 }
 

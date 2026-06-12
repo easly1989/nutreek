@@ -181,6 +181,37 @@ func (u *Users) UpdatePassword(ctx context.Context, id int64, newHash string) er
 	return err
 }
 
+// ListAll restituisce tutti gli utenti ordinati per data di registrazione.
+func (u *Users) ListAll(ctx context.Context) ([]*domain.User, error) {
+	rows, err := u.db.QueryContext(ctx,
+		`SELECT id, email, password_hash, display_name, created_at,
+		        weight_kg, height_cm, birth_year, sex,
+		        target_kcal, target_protein, target_carbs, target_fat,
+		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
+		        water_target_ml
+		 FROM users ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("list all users: %w", err)
+	}
+	defer rows.Close()
+	var out []*domain.User
+	for rows.Next() {
+		var user domain.User
+		err := rows.Scan(
+			&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName, &user.CreatedAt,
+			&user.WeightKg, &user.HeightCm, &user.BirthYear, &user.Sex,
+			&user.TargetKcal, &user.TargetProtein, &user.TargetCarbs, &user.TargetFat,
+			&user.BMI, &user.BMR, &user.ActivityLevel, &user.OnboardingCompletedAt, &user.TourDismissedAt,
+			&user.WaterTargetML,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan user: %w", err)
+		}
+		out = append(out, &user)
+	}
+	return out, rows.Err()
+}
+
 // isUniqueViolation identifica i codici errore SQLite per UNIQUE constraint.
 // modernc.org/sqlite espone *sqlite.Error con Code() int.
 func isUniqueViolation(err error) bool {

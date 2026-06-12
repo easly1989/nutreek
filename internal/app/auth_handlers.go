@@ -29,6 +29,7 @@ type authPageData struct {
 	Theme     string
 	ActiveNav string // URL path corrente, per evidenziare il link attivo nella sidebar
 	ShowTour  bool   // true se il tour guidato deve essere mostrato sulla dashboard
+	IsOwner   bool   // true se l'utente corrente è l'owner dell'istanza
 }
 
 // validThemes elenca i temi accettati. Tenuto allineato a web/tailwind/input.css
@@ -66,6 +67,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 		Theme:     readTheme(r),
 		ActiveNav: r.URL.Path,
 		ShowTour:  showTour,
+		IsOwner:   a.isOwner(user),
 	}
 }
 

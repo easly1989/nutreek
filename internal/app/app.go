@@ -30,6 +30,7 @@ type App struct {
 	WaterLogs              *db.WaterLogs
 	Categories             *db.Categories
 	NutritionistPlans      *db.NutritionistPlans
+	Features               *db.Features
 	TDEE                   *service.TDEEService
 	Planner                *service.PlannerService
 	OFF                    *off.Client
