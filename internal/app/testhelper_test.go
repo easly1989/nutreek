@@ -41,11 +41,12 @@ func newTestApp(t *testing.T) *App {
 	recipesRepo := db.NewRecipes(store.DB)
 	nutritionistRepo := db.NewNutritionistPlans(store.DB)
 	coachRepo := db.NewCoachRepository(store.DB)
+	usersRepo := db.NewUsers(store.DB)
 
 	return &App{
 		Cfg:                    &config.Config{},
 		Store:                  store,
-		Users:                  db.NewUsers(store.DB),
+		Users:                  usersRepo,
 		Ingredients:            db.NewIngredients(store.DB),
 		Recipes:                recipesRepo,
 		MealTemplates:          db.NewMealTemplates(store.DB),
@@ -60,6 +61,7 @@ func newTestApp(t *testing.T) *App {
 		Features:               db.NewFeatures(store.DB),
 		Subscriptions:          db.NewSubscriptions(store.DB),
 		Coach:                  coachRepo,
+		APITokens:              db.NewAPITokens(store.DB, usersRepo),
 		TDEE: &service.TDEEService{
 			WeightLogs:  db.NewWeightLogs(store.DB),
 			WeeklyPlans: weeklyPlansRepo,

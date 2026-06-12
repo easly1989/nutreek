@@ -1,8 +1,10 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/justinas/nosurf"
@@ -41,10 +43,9 @@ func (a *App) csrfMiddleware(next http.Handler) http.Handler {
 		)
 		http.Error(w, "CSRF verification failed", http.StatusForbidden)
 	}))
-	// Endpoint admin sono machine-to-machine (curl/script con X-Admin-Token):
-	// niente cookie, niente CSRF token. La protezione e' gia' nel token in
-	// header confrontato in constant-time.
+	// Endpoint admin e API sono machine-to-machine: esenti da CSRF.
 	csrf.ExemptGlob("/admin/*")
+	csrf.ExemptGlob("/api/*")
 	return csrf
 }
 
@@ -116,4 +117,33 @@ func (s *statusWriter) Write(b []byte) (int, error) {
 	n, err := s.ResponseWriter.Write(b)
 	s.bytes += n
 	return n, err
+}
+
+// requireAPIToken autentica le richieste API via Bearer token.
+// Inietta l'utente nel context; risponde 401 JSON se assente o non valido.
+func (a *App) requireAPIToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		plain, ok := strings.CutPrefix(authHeader, "Bearer ")
+		if !ok || plain == "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "token mancante"})
+			return
+		}
+		user, err := a.APITokens.Authenticate(r.Context(), plain)
+		if errors.Is(err, db.ErrAPITokenNotFound) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "token non valido"})
+			return
+		}
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "errore interno"})
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(contextWithUser(r.Context(), user)))
+	})
 }

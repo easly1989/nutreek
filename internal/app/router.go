@@ -206,11 +206,26 @@ func (a *App) Router() http.Handler {
 		// Pagina upgrade premium (destinazione dei redirect di requireFeature).
 		r.Get("/upgrade", a.handleUpgradePage)
 
-		// Impostazioni account (GDPR export, cambio password, cancellazione).
+		// Impostazioni account (GDPR export, cambio password, cancellazione, token API).
 		r.Get("/settings", a.handleSettingsPage)
 		r.Get("/settings/export", a.handleUserDataExport)
 		r.Post("/settings/password", a.handleChangePassword)
 		r.Post("/settings/delete-account", a.handleDeleteAccount)
+		r.Post("/settings/api-tokens", a.handleSettingsAPITokenCreate)
+		r.Post("/settings/api-tokens/{id}/revoke", a.handleSettingsAPITokenRevoke)
+	})
+
+	// REST API v1: autenticata via Bearer token, esente CSRF.
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(a.requireAPIToken)
+		r.Use(middleware.SetHeader("Content-Type", "application/json"))
+		r.Get("/me", a.handleAPIMe)
+		r.Get("/week", a.handleAPIWeek)
+		r.Get("/ingredients", a.handleAPIIngredients)
+		r.Get("/activities", a.handleAPIActivities)
+		r.Post("/water", a.handleAPILogWater)
+		r.Post("/weight", a.handleAPILogWeight)
+		r.Post("/workout", a.handleAPILogWorkout)
 	})
 
 	adminLimiter := newIPRateLimiter(30, oneMinute)
