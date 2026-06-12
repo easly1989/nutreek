@@ -68,7 +68,12 @@
     <input type="hidden" name="start" value="{{.WeekStartStr}}">
     <div class="flex items-center justify-between gap-3 flex-wrap">
       <div>
-        <p class="text-sm font-medium text-text">Genera piano automaticamente</p>
+        <p class="text-sm font-medium text-text flex items-center gap-2">
+          Genera piano automaticamente
+          {{if not (index .Features "auto_plan")}}
+            <span class="inline-flex items-center text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded px-1.5 py-0.5 font-medium">Premium</span>
+          {{end}}
+        </p>
         <p class="text-xs text-muted">Riempie la settimana pescando dalle varianti del piano nutrizionista, puntando ai tuoi target macro.</p>
       </div>
       <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90 text-sm whitespace-nowrap flex items-center gap-2">
