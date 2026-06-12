@@ -30,6 +30,9 @@ type authPageData struct {
 	ActiveNav string // URL path corrente, per evidenziare il link attivo nella sidebar
 	ShowTour  bool   // true se il tour guidato deve essere mostrato sulla dashboard
 	IsOwner   bool   // true se l'utente corrente è l'owner dell'istanza
+	// Features mappa key→bool: indica se l'utente ha accesso alla feature.
+	// Quando PremiumEnabled=false è sempre tutto true (nessun gating).
+	Features map[string]bool
 }
 
 // validThemes elenca i temi accettati. Tenuto allineato a web/tailwind/input.css
@@ -54,11 +57,17 @@ func readTheme(r *http.Request) string {
 	return "forest"
 }
 
+var premiumFeatureKeys = []string{"auto_plan", "tdee_adaptive", "api_access", "coach_mode"}
+
 func (a *App) baseData(r *http.Request) authPageData {
 	user := userFromContext(r.Context())
 	showTour := false
 	if user != nil && r.URL.Path == "/" {
 		showTour = user.TourDismissedAt == nil
+	}
+	features := make(map[string]bool, len(premiumFeatureKeys))
+	for _, k := range premiumFeatureKeys {
+		features[k] = a.HasFeature(r.Context(), user, k)
 	}
 	return authPageData{
 		User:      user,
@@ -68,6 +77,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 		ActiveNav: r.URL.Path,
 		ShowTour:  showTour,
 		IsOwner:   a.isOwner(user),
+		Features:  features,
 	}
 }
 

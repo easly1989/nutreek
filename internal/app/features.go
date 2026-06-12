@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"sync"
@@ -111,7 +112,12 @@ func (a *App) requireFeature(key string) func(http.Handler) http.Handler {
 					http.Redirect(w, r, "/upgrade", http.StatusSeeOther)
 					return
 				}
-				http.Error(w, "funzionalità non disponibile nel tuo piano", http.StatusForbidden)
+				// API/JSON: risposta strutturata.
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_ = json.NewEncoder(w).Encode(map[string]string{
+					"error": "funzionalità non disponibile nel tuo piano",
+				})
 				return
 			}
 			next.ServeHTTP(w, r)
