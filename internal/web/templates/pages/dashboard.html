@@ -71,7 +71,10 @@
         <p class="text-sm font-medium text-text">Genera piano automaticamente</p>
         <p class="text-xs text-muted">Riempie la settimana pescando dalle varianti del piano nutrizionista, puntando ai tuoi target macro.</p>
       </div>
-      <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90 text-sm whitespace-nowrap">✨ Genera</button>
+      <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90 text-sm whitespace-nowrap flex items-center gap-2">
+        ✨ Genera
+        <span class="htmx-indicator htmx-spinner" aria-hidden="true"></span>
+      </button>
     </div>
   </form>
   {{end}}

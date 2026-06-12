@@ -28,10 +28,10 @@ type Product struct {
 	// product_quantity (es. "150 g" → 150). nil se non parsabile.
 	UnitWeightG *float64
 	// Micronutrienti — nil se non presenti nel dataset OFF.
-	Fiber       *float64
-	Sugars      *float64
+	Fiber        *float64
+	Sugars       *float64
 	SaturatedFat *float64
-	Sodium      *float64
+	Sodium       *float64
 }
 
 // rawProduct riflette la forma JSON degli endpoint OFF "product"

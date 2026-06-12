@@ -2,12 +2,33 @@ package app
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/amon2126/nutreek/internal/web"
 )
+
+const oneMinute = time.Minute
+
+// securityHeaders imposta gli header di sicurezza HTTP su ogni risposta.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		h.Set("Permissions-Policy", "camera=(), microphone=()")
+		h.Set("Content-Security-Policy",
+			"default-src 'self'; "+
+				"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
+				"style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data:; "+
+				"font-src 'self'")
+		next.ServeHTTP(w, r)
+	})
+}
 
 // Router costruisce il chi.Mux con tutti gli handler montati, nel giusto
 // ordine di middleware. Il chiamante lo passa come http.Handler del server.
@@ -16,6 +37,7 @@ func (a *App) Router() http.Handler {
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.StripSlashes)
+	r.Use(securityHeaders)
 	r.Use(a.requestLogger)
 	r.Use(a.Sessions.LoadAndSave)
 	r.Use(a.csrfMiddleware)
@@ -39,17 +61,20 @@ func (a *App) Router() http.Handler {
 
 	r.Get("/", a.handleDashboard)
 
+	registerLimiter := newIPRateLimiter(5, oneMinute)
 	r.Get("/login", a.handleLoginForm)
 	r.Post("/login", a.handleLogin)
 	r.Get("/register", a.handleRegisterForm)
-	r.Post("/register", a.handleRegister)
+	r.With(registerLimiter.Middleware).Post("/register", a.handleRegister)
 	r.Post("/logout", a.handleLogout)
+
+	searchLimiter := newIPRateLimiter(60, oneMinute)
 
 	// Sezioni protette: ingredienti / ricette / piano. Tutte sotto requireAuth.
 	r.Group(func(r chi.Router) {
 		r.Use(a.requireAuth)
 		r.Get("/ingredients", a.handleIngredientsList)
-		r.Get("/ingredients/search", a.handleIngredientsSearchPartial)
+		r.With(searchLimiter.Middleware).Get("/ingredients/search", a.handleIngredientsSearchPartial)
 		r.Get("/ingredients/new", a.handleIngredientNewForm)
 		r.Post("/ingredients", a.handleIngredientCreate)
 		r.Get("/ingredients/{id}/edit", a.handleIngredientEditForm)
@@ -80,7 +105,7 @@ func (a *App) Router() http.Handler {
 		r.Post("/recipes/{id}/items/{itemID}/delete", a.handleRecipeRemoveItem)
 
 		// Wizard di onboarding (post-registrazione e "Guida rapida" dalla sidebar).
-		r.Get("/onboarding",  a.handleOnboardingPage)
+		r.Get("/onboarding", a.handleOnboardingPage)
 		r.Post("/onboarding", a.handleOnboardingStep)
 
 		// Tour guidato (dismiss + restart).
@@ -171,13 +196,24 @@ func (a *App) Router() http.Handler {
 		r.Post("/shopping-list/{id}/user-items", a.handleAddShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/toggle", a.handleToggleShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/delete", a.handleRemoveShoppingUserItem)
+
+		// Impostazioni account (GDPR export, cambio password, cancellazione).
+		r.Get("/settings", a.handleSettingsPage)
+		r.Get("/settings/export", a.handleUserDataExport)
+		r.Post("/settings/password", a.handleChangePassword)
+		r.Post("/settings/delete-account", a.handleDeleteAccount)
 	})
+
+	adminLimiter := newIPRateLimiter(30, oneMinute)
 
 	// Admin: protetto da X-Admin-Token (vedi requireAdmin). Esente CSRF
 	// (esclusione configurata in csrfMiddleware via ExemptGlob).
-	r.Post("/admin/reconcile-ingredients", a.requireAdmin(a.handleAdminReconcile))
-	r.Post("/admin/refresh-off-dump", a.requireAdmin(a.handleAdminOFFRefresh))
-	r.Get("/admin/off-status", a.requireAdmin(a.handleAdminOFFStatus))
+	r.Group(func(r chi.Router) {
+		r.Use(adminLimiter.Middleware)
+		r.Post("/admin/reconcile-ingredients", a.requireAdmin(a.handleAdminReconcile))
+		r.Post("/admin/refresh-off-dump", a.requireAdmin(a.handleAdminOFFRefresh))
+		r.Get("/admin/off-status", a.requireAdmin(a.handleAdminOFFStatus))
+	})
 
 	return r
 }
