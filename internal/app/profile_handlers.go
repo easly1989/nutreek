@@ -97,7 +97,7 @@ func (a *App) handleProfilePage(w http.ResponseWriter, r *http.Request) {
 	data := profileData{
 		authPageData: a.baseData(r),
 		Form:         profileFormFromUser(user),
-		IsOwner:      isOwner(user),
+		IsOwner:      a.isOwner(user),
 	}
 	if user.BMI != nil && user.BMR != nil {
 		data.BMIValue = *user.BMI
