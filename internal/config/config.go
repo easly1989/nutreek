@@ -38,6 +38,10 @@ type Config struct {
 	BackupDir      string
 	BackupInterval time.Duration
 	BackupKeep     int
+
+	// PremiumEnabled attiva il gating premium. Se false HasFeature() restituisce
+	// sempre true e le feature premium sono accessibili a tutti.
+	PremiumEnabled bool
 }
 
 // Load legge la configurazione dalle env var. Valida i vincoli di prod
@@ -83,6 +87,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("NUTREEK_BACKUP_KEEP: %w", err)
 	}
 
+	premiumEnabled, err := strconv.ParseBool(getenv("NUTREEK_PREMIUM_ENABLED", "false"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_PREMIUM_ENABLED: %w", err)
+	}
+
 	cfg := &Config{
 		Addr:              getenv("NUTREEK_ADDR", ":8080"),
 		DBPath:            getenv("NUTREEK_DB_PATH", "./data/nutreek.db"),
@@ -99,6 +108,7 @@ func Load() (*Config, error) {
 		BackupDir:         getenv("NUTREEK_BACKUP_DIR", "./data/backups"),
 		BackupInterval:    backupInterval,
 		BackupKeep:        backupKeep,
+		PremiumEnabled:    premiumEnabled,
 	}
 
 	keyHex := os.Getenv("NUTREEK_SESSION_KEY")

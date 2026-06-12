@@ -132,7 +132,9 @@ func (a *App) Router() http.Handler {
 
 		// Piano settimanale (la dashboard e' montata su /).
 		r.Post("/week/apply-template", a.handleApplyTemplate)
-		r.Post("/week/generate", a.handleGeneratePlan)
+		// Generazione automatica: feature premium (gating attivo solo con
+		// NUTREEK_PREMIUM_ENABLED=true, vedi HasFeature).
+		r.With(a.requireFeature("auto_plan")).Post("/week/generate", a.handleGeneratePlan)
 		r.Post("/week/copy-previous", a.handleCopyPrevious)
 		r.Post("/week/reset", a.handleResetWeek)
 		r.Get("/days/{date}", a.handleDayCard) // partial HTMX per una singola card
@@ -171,9 +173,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/water", a.handleWaterLog)
 		r.Post("/water/delete-last", a.handleWaterDelete)
 
-		// Statistiche e TDEE adattivo.
+		// Statistiche e TDEE adattivo (accettazione suggerimento: premium).
 		r.Get("/stats", a.handleStats)
-		r.Post("/tdee/accept", a.handleAcceptTDEESuggestion)
+		r.With(a.requireFeature("tdee_adaptive")).Post("/tdee/accept", a.handleAcceptTDEESuggestion)
 
 		// Export/Import piano settimanale.
 		r.Get("/week/{start}/export", a.handleWeekExport)
@@ -201,6 +203,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/shopping-list/user-items/{id}/toggle", a.handleToggleShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/delete", a.handleRemoveShoppingUserItem)
 
+		// Pagina upgrade premium (destinazione dei redirect di requireFeature).
+		r.Get("/upgrade", a.handleUpgradePage)
+
 		// Impostazioni account (GDPR export, cambio password, cancellazione).
 		r.Get("/settings", a.handleSettingsPage)
 		r.Get("/settings/export", a.handleUserDataExport)
@@ -217,6 +222,19 @@ func (a *App) Router() http.Handler {
 		r.Post("/admin/reconcile-ingredients", a.requireAdmin(a.handleAdminReconcile))
 		r.Post("/admin/refresh-off-dump", a.requireAdmin(a.handleAdminOFFRefresh))
 		r.Get("/admin/off-status", a.requireAdmin(a.handleAdminOFFStatus))
+	})
+
+	// Admin panel owner: accessibile via sessione, protetto da requireOwnerMiddleware.
+	r.Group(func(r chi.Router) {
+		r.Use(a.requireAuth)
+		r.Use(a.requireOwnerMiddleware)
+		r.Get("/admin/panel", a.handleAdminPanel)
+		r.Get("/admin/panel/features", a.handleAdminFeatures)
+		r.Post("/admin/panel/features/{key}/toggle", a.handleAdminFeatureToggle)
+		r.Post("/admin/panel/features/{key}/premium", a.handleAdminFeaturePremium)
+		r.Get("/admin/panel/users", a.handleAdminUsers)
+		r.Post("/admin/panel/users/{id}/premium", a.handleAdminUserGrantPremium)
+		r.Post("/admin/panel/users/{id}/premium/revoke", a.handleAdminUserRevokePremium)
 	})
 
 	return r
