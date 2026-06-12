@@ -211,13 +211,15 @@ func (a *App) Router() http.Handler {
 		r.Get("/settings/export", a.handleUserDataExport)
 		r.Post("/settings/password", a.handleChangePassword)
 		r.Post("/settings/delete-account", a.handleDeleteAccount)
-		r.Post("/settings/api-tokens", a.handleSettingsAPITokenCreate)
+		r.With(a.requireFeature("api_access")).Post("/settings/api-tokens", a.handleSettingsAPITokenCreate)
 		r.Post("/settings/api-tokens/{id}/revoke", a.handleSettingsAPITokenRevoke)
 	})
 
 	// REST API v1: autenticata via Bearer token, esente CSRF.
+	// requireFeature("api_access") blocca utenti senza subscription con PremiumEnabled=true.
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(a.requireAPIToken)
+		r.Use(a.requireFeature("api_access"))
 		r.Use(middleware.SetHeader("Content-Type", "application/json"))
 		r.Get("/me", a.handleAPIMe)
 		r.Get("/week", a.handleAPIWeek)

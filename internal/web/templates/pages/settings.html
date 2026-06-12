@@ -64,13 +64,26 @@
   {{/* ===== Token API ===== */}}
   <section class="bg-surface border border-border rounded mb-6">
     <div class="px-6 py-4 border-b border-border">
-      <h2 class="text-base font-semibold">Token API</h2>
+      <h2 class="text-base font-semibold flex items-center gap-2">
+        Token API
+        {{if not (index .Features "api_access")}}
+          <span class="inline-flex items-center text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded px-1.5 py-0.5 font-medium">Premium</span>
+        {{end}}
+      </h2>
     </div>
     <div class="px-6 py-4">
       <p class="text-sm text-muted mb-4">
         I token API ti permettono di accedere a Nutreek da applicazioni esterne.
         Il valore del token è mostrato <strong>una sola volta</strong> alla creazione: conservalo in un luogo sicuro.
       </p>
+
+      {{if not (index .Features "api_access")}}
+        <div class="rounded border border-amber-200 bg-amber-50 dark:border-amber-800/30 dark:bg-amber-900/10 px-4 py-3 text-sm mb-4">
+          <p class="font-medium text-amber-800 dark:text-amber-400">Funzionalità Premium</p>
+          <p class="text-amber-700 dark:text-amber-500 mt-0.5">La creazione di token API richiede una sottoscrizione premium. Contatta l'amministratore per attivarla.</p>
+          <a href="/upgrade" class="inline-block mt-2 text-xs text-accent hover:underline">Scopri le funzionalità premium →</a>
+        </div>
+      {{end}}
 
       {{if .NewTokenPlain}}
         <div class="mb-4 rounded border border-accent/30 bg-accent/10 px-4 py-3 text-sm">
@@ -114,6 +127,7 @@
         <p class="text-sm text-muted mb-4">Nessun token ancora.</p>
       {{end}}
 
+      {{if index .Features "api_access"}}
       <form method="post" action="/settings/api-tokens" class="flex items-end gap-2">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <div class="flex-1">
@@ -127,6 +141,7 @@
           Crea token
         </button>
       </form>
+      {{end}}
     </div>
   </section>
 

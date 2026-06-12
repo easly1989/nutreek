@@ -89,7 +89,10 @@
           Il tuo fabbisogno reale sembra <strong>{{printf "%.0f" $diff}} kcal/giorno in più</strong> del target attuale.
           Vuoi aggiornare?
         </p>
-        <form method="post" action="/tdee/accept" class="shrink-0">
+        <form method="post" action="/tdee/accept" class="shrink-0 flex items-center gap-2">
+          {{if not (index .Features "tdee_adaptive")}}
+            <span class="inline-flex items-center text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded px-1.5 py-0.5 font-medium">Premium</span>
+          {{end}}
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input type="hidden" name="estimated_tdee" value="{{printf "%.0f" $.TDEEReport.EstimatedTDEE}}">
           <button class="text-sm bg-accent text-accent-fg rounded px-4 py-1.5 hover:bg-accent/90 transition whitespace-nowrap">Aggiorna target</button>
@@ -101,7 +104,10 @@
           Il tuo fabbisogno reale sembra <strong>{{printf "%.0f" (neg $diff)}} kcal/giorno in meno</strong> del target attuale.
           Vuoi aggiornare?
         </p>
-        <form method="post" action="/tdee/accept" class="shrink-0">
+        <form method="post" action="/tdee/accept" class="shrink-0 flex items-center gap-2">
+          {{if not (index .Features "tdee_adaptive")}}
+            <span class="inline-flex items-center text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded px-1.5 py-0.5 font-medium">Premium</span>
+          {{end}}
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input type="hidden" name="estimated_tdee" value="{{printf "%.0f" $.TDEEReport.EstimatedTDEE}}">
           <button class="text-sm bg-accent text-accent-fg rounded px-4 py-1.5 hover:bg-accent/90 transition whitespace-nowrap">Aggiorna target</button>
