@@ -1,0 +1,47 @@
+{{define "title"}}Premium — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-2xl">
+  <h1 class="text-3xl font-semibold mb-1">Nutreek Premium</h1>
+  <p class="text-sm text-muted mb-6">Funzionalità avanzate per portare la tua pianificazione al livello successivo.</p>
+
+  {{if .HasPremium}}
+  <div class="mb-6 rounded border border-accent/30 bg-accent/10 text-accent px-4 py-3 text-sm">
+    Hai già una sottoscrizione premium attiva. Tutte le funzionalità sono sbloccate. 🎉
+  </div>
+  {{else if not .PremiumEnabled}}
+  <div class="mb-6 rounded border border-accent/30 bg-accent/10 text-accent px-4 py-3 text-sm">
+    Al momento tutte le funzionalità sono accessibili gratuitamente.
+  </div>
+  {{end}}
+
+  <div class="bg-surface border border-border rounded overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-border">
+      <h2 class="text-base font-semibold">Cosa include Premium</h2>
+    </div>
+    <ul class="divide-y divide-border">
+      {{range .PremiumFeatures}}
+      <li class="px-6 py-4 flex items-start gap-3">
+        <svg class="w-5 h-5 shrink-0 text-accent mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+        <div>
+          <p class="font-medium">{{.Name}}</p>
+          {{if .Description}}<p class="text-sm text-muted mt-0.5">{{.Description}}</p>{{end}}
+        </div>
+      </li>
+      {{else}}
+      <li class="px-6 py-8 text-center text-muted text-sm">Nessuna funzionalità premium configurata.</li>
+      {{end}}
+    </ul>
+  </div>
+
+  {{if and .PremiumEnabled (not .HasPremium)}}
+  <div class="bg-surface border border-border rounded px-6 py-5">
+    <h2 class="text-base font-semibold mb-2">Come ottenere Premium</h2>
+    <p class="text-sm text-muted">
+      Contatta l'amministratore dell'istanza per attivare la sottoscrizione premium sul tuo account.
+    </p>
+  </div>
+  {{end}}
+</div>
+{{end}}

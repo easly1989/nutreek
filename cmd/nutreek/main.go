@@ -150,6 +150,7 @@ func run(logger *slog.Logger) error {
 		Categories:             db.NewCategories(store.DB),
 		NutritionistPlans:      nutritionistRepo,
 		Features:               featuresRepo,
+		Subscriptions:          db.NewSubscriptions(store.DB),
 		TDEE: &service.TDEEService{
 			WeightLogs:  db.NewWeightLogs(store.DB),
 			WeeklyPlans: weeklyPlansRepo,

@@ -201,6 +201,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/shopping-list/user-items/{id}/toggle", a.handleToggleShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/delete", a.handleRemoveShoppingUserItem)
 
+		// Pagina upgrade premium (destinazione dei redirect di requireFeature).
+		r.Get("/upgrade", a.handleUpgradePage)
+
 		// Impostazioni account (GDPR export, cambio password, cancellazione).
 		r.Get("/settings", a.handleSettingsPage)
 		r.Get("/settings/export", a.handleUserDataExport)
@@ -228,6 +231,8 @@ func (a *App) Router() http.Handler {
 		r.Post("/admin/panel/features/{key}/toggle", a.handleAdminFeatureToggle)
 		r.Post("/admin/panel/features/{key}/premium", a.handleAdminFeaturePremium)
 		r.Get("/admin/panel/users", a.handleAdminUsers)
+		r.Post("/admin/panel/users/{id}/premium", a.handleAdminUserGrantPremium)
+		r.Post("/admin/panel/users/{id}/premium/revoke", a.handleAdminUserRevokePremium)
 	})
 
 	return r

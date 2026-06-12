@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,9 +58,9 @@ func invalidateFeatureCache() {
 
 // HasFeature verifica se l'utente ha accesso alla feature richiesta.
 //   - Se PremiumEnabled=false: sempre true (tutto è accessibile).
-//   - Se PremiumEnabled=true:  l'owner ha sempre tutto; le feature non-premium
-//     sono true; le feature premium sono false (placeholder finché non ci sarà
-//     la subscription check reale).
+//   - Se PremiumEnabled=true:  l'owner ha sempre tutto; le feature disabilitate
+//     (kill-switch) sono false per tutti; le feature non-premium sono true;
+//     le feature premium richiedono una sottoscrizione attiva.
 func (a *App) HasFeature(ctx context.Context, u *domain.User, key string) bool {
 	if !a.Cfg.PremiumEnabled {
 		return true
@@ -76,19 +77,40 @@ func (a *App) HasFeature(ctx context.Context, u *domain.User, key string) bool {
 			if !f.Enabled {
 				return false
 			}
-			return !f.IsPremium
+			if !f.IsPremium {
+				return true
+			}
+			if u == nil {
+				return false
+			}
+			active, err := a.Subscriptions.IsActive(ctx, u.ID)
+			if err != nil {
+				return true // fallback permissivo in caso di errore DB
+			}
+			return active
 		}
 	}
 	return true // feature sconosciuta = non bloccata
 }
 
 // requireFeature è un middleware chi blocca l'accesso se l'utente non ha la
-// feature. Risponde 403 JSON o HTML in base all'header Accept.
+// feature. Le richieste browser vengono redirette alla pagina /upgrade,
+// le richieste API/HTMX ricevono 403.
 func (a *App) requireFeature(key string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			u := userFromContext(r.Context())
 			if !a.HasFeature(r.Context(), u, key) {
+				if r.Header.Get("HX-Request") == "true" {
+					// HTMX: redirect client-side alla pagina upgrade.
+					w.Header().Set("HX-Redirect", "/upgrade")
+					w.WriteHeader(http.StatusForbidden)
+					return
+				}
+				if strings.Contains(r.Header.Get("Accept"), "text/html") {
+					http.Redirect(w, r, "/upgrade", http.StatusSeeOther)
+					return
+				}
 				http.Error(w, "funzionalità non disponibile nel tuo piano", http.StatusForbidden)
 				return
 			}

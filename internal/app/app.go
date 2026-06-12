@@ -31,6 +31,7 @@ type App struct {
 	Categories             *db.Categories
 	NutritionistPlans      *db.NutritionistPlans
 	Features               *db.Features
+	Subscriptions          *db.Subscriptions
 	TDEE                   *service.TDEEService
 	Planner                *service.PlannerService
 	OFF                    *off.Client

@@ -1,12 +1,22 @@
 {{define "title"}}Utenti — Amministrazione — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-3xl">
+<div class="max-w-4xl">
   <div class="flex items-center gap-3 mb-1">
     <a href="/admin/panel" class="text-muted hover:text-text text-sm transition">← Pannello</a>
     <span class="text-muted">/</span>
     <h1 class="text-3xl font-semibold">Utenti</h1>
   </div>
-  <p class="text-sm text-muted mb-6">Elenco di tutti gli utenti registrati ({{len .Users}} totali).</p>
+  <p class="text-sm text-muted mb-6">Elenco di tutti gli utenti registrati ({{len .Users}} totali). Da qui puoi assegnare o revocare la sottoscrizione premium.</p>
+
+  {{if .Flash}}
+  <div class="mb-4 rounded border border-accent/30 bg-accent/10 text-accent px-4 py-2 text-sm">{{.Flash}}</div>
+  {{end}}
+
+  {{if not .PremiumEnabled}}
+  <div class="mb-4 rounded border border-amber-400/40 bg-amber-400/10 text-amber-700 px-4 py-2 text-sm">
+    Il gating premium è disattivato — le sottoscrizioni vengono salvate ma non hanno effetto finché <code>NUTREEK_PREMIUM_ENABLED=true</code>.
+  </div>
+  {{end}}
 
   <div class="bg-surface border border-border rounded overflow-hidden">
     <table class="w-full text-sm">
@@ -15,6 +25,8 @@
           <th class="px-4 py-3 font-medium">Nome</th>
           <th class="px-4 py-3 font-medium">Email</th>
           <th class="px-4 py-3 font-medium">Registrato</th>
+          <th class="px-4 py-3 font-medium">Piano</th>
+          <th class="px-4 py-3 font-medium text-right">Azioni</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-border">
@@ -23,14 +35,51 @@
           <td class="px-4 py-3">{{.DisplayName}}</td>
           <td class="px-4 py-3 font-mono text-xs">{{.Email}}</td>
           <td class="px-4 py-3 text-muted">{{.CreatedAt}}</td>
+          <td class="px-4 py-3">
+            {{if .Premium}}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent">
+                Premium{{if .SubExpires}} · fino al {{.SubExpires}}{{end}}
+              </span>
+              <p class="text-muted text-xs mt-0.5">origine: {{.SubSource}}</p>
+            {{else}}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-surface-2 text-muted">Free</span>
+            {{end}}
+          </td>
+          <td class="px-4 py-3 text-right">
+            {{if .Premium}}
+            <form method="post" action="/admin/panel/users/{{.ID}}/premium/revoke" class="inline">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <button type="submit"
+                      class="px-3 py-1.5 rounded border border-danger/40 text-danger text-xs font-medium hover:bg-danger/10 transition">
+                Revoca premium
+              </button>
+            </form>
+            {{else}}
+            <form method="post" action="/admin/panel/users/{{.ID}}/premium" class="inline-flex items-center gap-2 justify-end">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <input type="date" name="expires_at" title="Scadenza (vuoto = senza scadenza)"
+                     class="rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+              <button type="submit"
+                      class="px-3 py-1.5 rounded bg-accent text-white text-xs font-medium hover:bg-accent/90 transition">
+                Assegna premium
+              </button>
+            </form>
+            {{end}}
+          </td>
         </tr>
         {{else}}
         <tr>
-          <td colspan="3" class="px-4 py-8 text-center text-muted">Nessun utente registrato.</td>
+          <td colspan="5" class="px-4 py-8 text-center text-muted">Nessun utente registrato.</td>
         </tr>
         {{end}}
       </tbody>
     </table>
   </div>
+
+  <p class="text-xs text-muted mt-4">
+    La sottoscrizione manuale è l'unica origine disponibile oggi. Lo schema è già predisposto
+    per origini <code>license</code> e <code>payment</code>: l'attivazione futura di licenze
+    o pagamenti creerà sottoscrizioni qui, senza modifiche al gating.
+  </p>
 </div>
 {{end}}
