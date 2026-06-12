@@ -1,0 +1,36 @@
+{{define "title"}}Utenti — Amministrazione — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-3xl">
+  <div class="flex items-center gap-3 mb-1">
+    <a href="/admin/panel" class="text-muted hover:text-text text-sm transition">← Pannello</a>
+    <span class="text-muted">/</span>
+    <h1 class="text-3xl font-semibold">Utenti</h1>
+  </div>
+  <p class="text-sm text-muted mb-6">Elenco di tutti gli utenti registrati ({{len .Users}} totali).</p>
+
+  <div class="bg-surface border border-border rounded overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border bg-surface-2 text-left">
+          <th class="px-4 py-3 font-medium">Nome</th>
+          <th class="px-4 py-3 font-medium">Email</th>
+          <th class="px-4 py-3 font-medium">Registrato</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-border">
+        {{range .Users}}
+        <tr>
+          <td class="px-4 py-3">{{.DisplayName}}</td>
+          <td class="px-4 py-3 font-mono text-xs">{{.Email}}</td>
+          <td class="px-4 py-3 text-muted">{{.CreatedAt}}</td>
+        </tr>
+        {{else}}
+        <tr>
+          <td colspan="3" class="px-4 py-8 text-center text-muted">Nessun utente registrato.</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
