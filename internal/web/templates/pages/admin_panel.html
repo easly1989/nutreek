@@ -1,0 +1,53 @@
+{{define "title"}}Amministrazione — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-3xl">
+  <h1 class="text-3xl font-semibold mb-1">Pannello Amministrazione</h1>
+  <p class="text-sm text-muted mb-6">Gestione istanza, feature e utenti.</p>
+
+  {{if .PremiumEnabled}}
+  <div class="mb-6 rounded border border-accent/40 bg-accent/10 text-accent px-4 py-2 text-sm">
+    Modalità premium <strong>attiva</strong> — il gating delle feature è operativo.
+  </div>
+  {{else}}
+  <div class="mb-6 rounded border border-amber-400/40 bg-amber-400/10 text-amber-700 px-4 py-2 text-sm">
+    Modalità premium <strong>disattivata</strong> — tutte le feature sono accessibili a tutti (NUTREEK_PREMIUM_ENABLED=false).
+  </div>
+  {{end}}
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="bg-surface border border-border rounded p-5">
+      <p class="text-sm text-muted mb-1">Utenti registrati</p>
+      <p class="text-3xl font-bold">{{.UserCount}}</p>
+    </div>
+    <div class="bg-surface border border-border rounded p-5">
+      <p class="text-sm text-muted mb-1">Utenti premium</p>
+      <p class="text-3xl font-bold">{{.PremiumCount}}</p>
+    </div>
+    <div class="bg-surface border border-border rounded p-5">
+      <p class="text-sm text-muted mb-1">Feature totali</p>
+      <p class="text-3xl font-bold">{{.FeatureCount}}</p>
+    </div>
+    <div class="bg-surface border border-border rounded p-5">
+      <p class="text-sm text-muted mb-1">Feature abilitate</p>
+      <p class="text-3xl font-bold">{{.ActiveCount}}</p>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-3">
+    <a href="/admin/panel/features"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded bg-accent text-white text-sm font-medium hover:bg-accent/90 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 7a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+      </svg>
+      Gestisci feature
+    </a>
+    <a href="/admin/panel/users"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded border border-border text-sm font-medium hover:bg-surface-2 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      Gestisci utenti
+    </a>
+  </div>
+</div>
+{{end}}

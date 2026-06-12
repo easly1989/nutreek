@@ -34,6 +34,17 @@ func (a *App) requireOwner(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// requireOwnerMiddleware è la versione middleware di requireOwner.
+func (a *App) requireOwnerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !a.isOwner(userFromContext(r.Context())) {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // handleOwnerOFFStatus GET /profile/off-status — stato corrente del sync OFF.
 // Equivalente owner di /admin/off-status, accessibile via sessione invece
 // che X-Admin-Token. Include anche un campione diagnostico dei prodotti in DB.
