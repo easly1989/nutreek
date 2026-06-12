@@ -151,7 +151,7 @@
                     hx-confirm="Eliminare questo pasto?"
                     class="inline">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <button class="text-danger hover:underline" title="Elimina pasto">×</button>
+                <button class="text-danger hover:underline" title="Elimina pasto" aria-label="Elimina pasto">×</button>
               </form>
             </div>
           </div>
@@ -208,7 +208,7 @@
                           hx-swap="outerHTML"
                           class="inline">
                       <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                      <button class="text-danger hover:underline">×</button>
+                      <button class="text-danger hover:underline" title="Elimina voce" aria-label="Elimina voce">×</button>
                     </form>
                   </span>
                 </li>
@@ -268,7 +268,7 @@
                             hx-swap="outerHTML"
                             class="inline">
                         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                        <button class="text-danger hover:underline">×</button>
+                        <button class="text-danger hover:underline" title="Elimina sgarro" aria-label="Elimina sgarro">×</button>
                       </form>
                     </span>
                   </li>
@@ -309,7 +309,7 @@
             hx-swap="outerHTML"
             class="inline">
         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-        <button type="submit" class="text-danger hover:underline ml-2">×</button>
+        <button type="submit" class="text-danger hover:underline ml-2" title="Elimina allenamento" aria-label="Elimina allenamento">×</button>
       </form>
     </div>
     {{end}}
