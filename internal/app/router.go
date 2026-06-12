@@ -206,11 +206,26 @@ func (a *App) Router() http.Handler {
 		// Pagina upgrade premium (destinazione dei redirect di requireFeature).
 		r.Get("/upgrade", a.handleUpgradePage)
 
-		// Impostazioni account (GDPR export, cambio password, cancellazione).
+		// Impostazioni account (GDPR export, cambio password, cancellazione, token API).
 		r.Get("/settings", a.handleSettingsPage)
 		r.Get("/settings/export", a.handleUserDataExport)
 		r.Post("/settings/password", a.handleChangePassword)
 		r.Post("/settings/delete-account", a.handleDeleteAccount)
+		r.Post("/settings/api-tokens", a.handleSettingsAPITokenCreate)
+		r.Post("/settings/api-tokens/{id}/revoke", a.handleSettingsAPITokenRevoke)
+	})
+
+	// REST API v1: autenticata via Bearer token, esente CSRF.
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(a.requireAPIToken)
+		r.Use(middleware.SetHeader("Content-Type", "application/json"))
+		r.Get("/me", a.handleAPIMe)
+		r.Get("/week", a.handleAPIWeek)
+		r.Get("/ingredients", a.handleAPIIngredients)
+		r.Get("/activities", a.handleAPIActivities)
+		r.Post("/water", a.handleAPILogWater)
+		r.Post("/weight", a.handleAPILogWeight)
+		r.Post("/workout", a.handleAPILogWorkout)
 	})
 
 	adminLimiter := newIPRateLimiter(30, oneMinute)
@@ -235,6 +250,22 @@ func (a *App) Router() http.Handler {
 		r.Get("/admin/panel/users", a.handleAdminUsers)
 		r.Post("/admin/panel/users/{id}/premium", a.handleAdminUserGrantPremium)
 		r.Post("/admin/panel/users/{id}/premium/revoke", a.handleAdminUserRevokePremium)
+		r.Post("/admin/panel/users/{id}/role", a.handleAdminUserRole)
+	})
+
+	// Coach mode: richiede ruolo 'coach' (feature premium predisposta).
+	r.Group(func(r chi.Router) {
+		r.Use(a.requireAuth)
+		r.Use(a.requireCoach)
+		r.Use(a.requireFeature("coach_mode"))
+		r.Get("/coach", a.handleCoachDashboard)
+		r.Post("/coach/clients", a.handleCoachAddClient)
+		r.Post("/coach/clients/{id}/remove", a.handleCoachRemoveClient)
+		r.Post("/coach/clients/{id}/assign-plan", a.handleCoachAssignPlan)
+		r.Post("/coach/plans", a.handleCoachCreatePlan)
+		r.Post("/coach/plans/{id}/open", a.handleCoachOpenPlan)
+		r.Post("/coach/plans/{id}/rename", a.handleCoachRenamePlan)
+		r.Post("/coach/plans/{id}/delete", a.handleCoachDeletePlan)
 	})
 
 	return r

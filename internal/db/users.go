@@ -57,7 +57,7 @@ func (u *Users) GetByEmail(ctx context.Context, email string) (*domain.User, err
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
 		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
-		        water_target_ml
+		        water_target_ml, role
 		 FROM users WHERE email = ?`, email,
 	)
 	return scanUser(row)
@@ -70,7 +70,7 @@ func (u *Users) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
 		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
-		        water_target_ml
+		        water_target_ml, role
 		 FROM users WHERE id = ?`, id,
 	)
 	return scanUser(row)
@@ -130,7 +130,7 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 		&user.WeightKg, &user.HeightCm, &user.BirthYear, &user.Sex,
 		&user.TargetKcal, &user.TargetProtein, &user.TargetCarbs, &user.TargetFat,
 		&user.BMI, &user.BMR, &user.ActivityLevel, &user.OnboardingCompletedAt, &user.TourDismissedAt,
-		&user.WaterTargetML,
+		&user.WaterTargetML, &user.Role,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
@@ -139,6 +139,15 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 		return nil, fmt.Errorf("scan user: %w", err)
 	}
 	return &user, nil
+}
+
+// UpdateRole cambia il ruolo dell'utente ('user' | 'coach').
+func (u *Users) UpdateRole(ctx context.Context, id int64, role string) error {
+	if role != domain.RoleUser && role != domain.RoleCoach {
+		return fmt.Errorf("ruolo non valido: %q", role)
+	}
+	_, err := u.db.ExecContext(ctx, `UPDATE users SET role = ? WHERE id = ?`, role, id)
+	return err
 }
 
 // CompleteOnboarding segna il wizard come completato per l'utente.
@@ -188,7 +197,7 @@ func (u *Users) ListAll(ctx context.Context) ([]*domain.User, error) {
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
 		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
-		        water_target_ml
+		        water_target_ml, role
 		 FROM users ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list all users: %w", err)
@@ -202,7 +211,7 @@ func (u *Users) ListAll(ctx context.Context) ([]*domain.User, error) {
 			&user.WeightKg, &user.HeightCm, &user.BirthYear, &user.Sex,
 			&user.TargetKcal, &user.TargetProtein, &user.TargetCarbs, &user.TargetFat,
 			&user.BMI, &user.BMR, &user.ActivityLevel, &user.OnboardingCompletedAt, &user.TourDismissedAt,
-			&user.WaterTargetML,
+			&user.WaterTargetML, &user.Role,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan user: %w", err)

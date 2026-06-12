@@ -2,6 +2,12 @@ package domain
 
 import "time"
 
+// Ruoli utente validi.
+const (
+	RoleUser  = "user"
+	RoleCoach = "coach"
+)
+
 // User rappresenta un account registrato.
 type User struct {
 	ID           int64
@@ -9,6 +15,9 @@ type User struct {
 	PasswordHash string
 	DisplayName  string
 	CreatedAt    time.Time
+
+	// Role: 'user' (default) o 'coach' (gestione multi-cliente).
+	Role string
 
 	// Dati fisici — tutti opzionali (NULL in DB se non impostati).
 	WeightKg  *float64

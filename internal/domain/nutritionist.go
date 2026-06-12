@@ -7,6 +7,7 @@ type NutritionistPlan struct {
 	UserID    int64
 	Name      string
 	Notes     *string
+	IsActive  bool // un solo piano attivo per utente (vincolo via indice parziale)
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
