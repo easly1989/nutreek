@@ -34,7 +34,16 @@ func main() {
 		os.Exit(runHealthcheck())
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// In prod: JSON strutturato per ingestione in stack di osservabilità.
+	// In dev: testo leggibile con livello DEBUG.
+	env := os.Getenv("NUTREEK_ENV")
+	var logHandler slog.Handler
+	if env == "prod" {
+		logHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	} else {
+		logHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	}
+	logger := slog.New(logHandler)
 	slog.SetDefault(logger)
 
 	if err := run(logger); err != nil {
@@ -90,6 +99,10 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	logger.Info("db migrations applied")
+
+	if cfg.BackupEnabled {
+		go runBackupScheduler(ctx, store, cfg, logger)
+	}
 
 	sessions := scs.New()
 	sessions.Store = sqlite3store.New(store.DB)
@@ -193,4 +206,29 @@ func run(logger *slog.Logger) error {
 	}
 	logger.Info("bye")
 	return nil
+}
+
+// runBackupScheduler esegue un backup SQLite periodico usando VACUUM INTO.
+// Attende BackupInterval tra un backup e l'altro, poi elimina i file più
+// vecchi lasciandone al massimo BackupKeep.
+func runBackupScheduler(ctx context.Context, store *db.Store, cfg *config.Config, logger *slog.Logger) {
+	logger.Info("backup scheduler avviato", "dir", cfg.BackupDir, "interval", cfg.BackupInterval, "keep", cfg.BackupKeep)
+	ticker := time.NewTicker(cfg.BackupInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case t := <-ticker.C:
+			dest := db.BackupFileName(cfg.BackupDir, t)
+			if err := store.BackupTo(ctx, dest); err != nil {
+				logger.Error("backup fallito", "err", err, "dest", dest)
+				continue
+			}
+			logger.Info("backup completato", "dest", dest)
+			if err := db.PruneBackups(cfg.BackupDir, cfg.BackupKeep); err != nil {
+				logger.Warn("prune backup fallito", "err", err)
+			}
+		}
+	}
 }
