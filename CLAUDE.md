@@ -4,7 +4,7 @@
 
 **Nutreek** è un'app web self-hosted per la gestione di piani nutrizionali settimanali, scritta interamente in italiano. Sviluppatore singolo (amon2126), licenza proprietaria, MVP attivo.
 
-Funzionalità principali: gestione ingredienti (integrazione OpenFoodFacts), ricette, template settimanali, piani pasto con calcolo macro (Kcal, Proteine, Carboidrati, Grassi), lista della spesa, tracciamento sgarri.
+Funzionalità principali: gestione ingredienti (integrazione OpenFoodFacts locale FTS5), ricette, template settimanali, piani pasto con calcolo macro (Kcal, Proteine, Carboidrati, Grassi), lista della spesa, tracciamento sgarri, TDEE adattivo, generazione automatica settimana, coach mode multi-cliente, REST API v1, admin panel con feature flag e sottoscrizioni premium.
 
 ---
 
@@ -32,13 +32,18 @@ internal/
   auth/               → hashing password (bcrypt), helper sessioni
   config/             → caricamento variabili d'ambiente (NUTREEK_*)
   db/
-    migrations/       → SQL goose (0001…0005, embedded)
+    migrations/       → SQL goose (0001…0025+, embedded)
     queries/          → SQL input per sqlc
     sqlc/             → codice Go generato da sqlc — NON editare a mano
   domain/             → struct di dominio pure (nessuna business logic)
   macros/             → calcoli macro puri (zero side-effect, testati)
-  off/                → client OpenFoodFacts + reconciler periodico
-  service/            → orchestrazione business logic (in espansione)
+  off/                → client OpenFoodFacts + sync dump locale + reconciler periodico
+  planner/            → algoritmo greedy generazione piano settimanale (GenerateWeek)
+  profile/            → logica salvataggio profilo utente (BMI, BMR, target macro)
+  recipeimport/       → import ricetta da URL (schema.org/Recipe, JSON-LD/microdata)
+  service/            → orchestrazione: PlannerService (GenerateWeek, EffectivePlanFull),
+                        TDEEService (calcolo TDEE adattivo da trend peso/intake)
+  tdee/               → calcolo TDEE adattivo puro (algoritmo, nessun side-effect)
   web/
     templates/        → HTML con HTMX (embedded nel binary al compile time)
     static/css/       → tailwind.css generato — NON editare direttamente
@@ -79,7 +84,13 @@ make sqlc             # solo rigenera sqlc
 | `NUTREEK_OFF_SYNC_ENABLED` | `true` | abilita lo scheduler del sync |
 | `NUTREEK_RECONCILE_INTERVAL` | `24h` | |
 | `NUTREEK_RECONCILE_ENABLED` | `true` | |
-| `NUTREEK_ADMIN_TOKEN` | (nessuno) | token per admin endpoints |
+| `NUTREEK_ADMIN_TOKEN` | (nessuno) | token per admin endpoints legacy |
+| `NUTREEK_OWNER_EMAIL` | (nessuno) | email utente owner — accesso esclusivo a `/admin/panel` |
+| `NUTREEK_PREMIUM_ENABLED` | `false` | se `true`, attiva il gating premium sulle feature marcate come tali |
+| `NUTREEK_BACKUP_ENABLED` | `false` | abilita backup SQLite automatico periodico |
+| `NUTREEK_BACKUP_DIR` | `./data/backups` | directory dove salvare i backup |
+| `NUTREEK_BACKUP_INTERVAL` | `24h` | frequenza backup automatici |
+| `NUTREEK_BACKUP_KEEP` | `7` | numero di backup da conservare (i più vecchi vengono eliminati) |
 
 ## Strategia OpenFoodFacts (OFF)
 
@@ -109,6 +120,46 @@ finche' il sync non completa (~10 min, ~0.9GB di banda).
 
 ---
 
+## Feature Premium
+
+### Logica `HasFeature`
+
+`app.HasFeature(ctx, user, key) bool` — funzione centrale per l'accesso premium:
+
+- `PremiumEnabled=false` → **sempre `true`** (tutto accessibile, default dev)
+- Utente è owner (`isOwner`) → **sempre `true`**
+- `feature.enabled = false` → **`false`** per tutti (kill-switch)
+- `feature.is_premium = false` → **`true`** (feature pubblica abilitata)
+- `feature.is_premium = true` → **`Subscriptions.IsActive(userID)`**
+- Errore DB o feature sconosciuta → `true` (fallback permissivo)
+
+### Middleware `requireFeature`
+
+`app.requireFeature(key)` — middleware chi per proteggere le route:
+
+- Richiesta HTML browser → `302 /upgrade`
+- Richiesta HTMX (`HX-Request: true`) → `HX-Redirect: /upgrade` + `403`
+- Richiesta API/JSON → `403 {"error": "funzionalità non disponibile nel tuo piano"}`
+
+### Cache
+
+`featureCache` — `sync.RWMutex` + TTL 60s, invaldata automaticamente dopo ogni toggle admin (`invalidateFeatureCache()`).
+
+### Feature keys in uso
+
+| Key | Funzionalità | Route protette |
+|-----|-------------|---------------|
+| `auto_plan` | Generazione automatica settimana | `POST /week/generate` |
+| `tdee_adaptive` | TDEE adattivo | `POST /tdee/accept` |
+| `coach_mode` | Pannello coach | gruppo `/coach/*` |
+| `api_access` | REST API v1 | gruppo `/api/v1/*`, `POST /settings/api-tokens` |
+
+### `Features` nei template
+
+`authPageData.Features map[string]bool` — popolato in `baseData()` per ogni richiesta autenticata (cheap: usa cache 60s). Usato nei template con `{{if index .Features "key"}}` per mostrare badge Premium e messaggi upgrade prima che l'utente clicchi.
+
+---
+
 ## Convenzioni codice
 
 - **Lingua**: italiano per commenti, UI, messaggi di commit
@@ -130,7 +181,7 @@ finche' il sync non completa (~10 min, ~0.9GB di banda).
 
 ## Testing
 
-- `go test ./...` copre: auth, macros, db layer (tutti i repo), OFF client/reconciler, rate limiter
+- `go test ./...` copre: auth, macros, db layer (tutti i repo), OFF client/reconciler, rate limiter, API tokens, features
 - Pattern: tabella di test, `t.Cleanup()` per risorse, SQLite temporaneo per isolamento
 - Nessun linter configurato, nessuna CI/CD
 - Test UI manuali: `make dev` → `localhost:8080`
@@ -162,6 +213,14 @@ finche' il sync non completa (~10 min, ~0.9GB di banda).
 | Business logic | `internal/service/*.go` |
 | Calcoli macro | `internal/macros/macros.go` |
 | Integrazione OpenFoodFacts | `internal/off/client.go`, `internal/off/reconciler.go` |
+| Feature flags | `internal/db/features.go`, `internal/app/features.go` |
+| Subscriptions | `internal/db/subscriptions.go`, migration `0024_*` |
+| Coach mode | `internal/db/coach.go`, `internal/app/coach_handlers.go` |
+| REST API | `internal/app/api_handlers.go`, `internal/db/api_tokens.go` |
+| Admin panel | `internal/app/admin_panel_handlers.go` |
+| Generazione piano | `internal/planner/`, `internal/service/planner.go` |
+| TDEE adattivo | `internal/tdee/`, `internal/service/tdee.go` |
+| Import ricetta da URL | `internal/recipeimport/` |
 
 ---
 
