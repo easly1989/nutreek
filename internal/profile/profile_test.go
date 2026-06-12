@@ -24,7 +24,10 @@ func TestBMI(t *testing.T) {
 }
 
 func TestBMICategory(t *testing.T) {
-	cases := []struct{ bmi float64; want string }{
+	cases := []struct {
+		bmi  float64
+		want string
+	}{
 		{16, "Sottopeso"},
 		{22, "Normopeso"},
 		{27, "Sovrappeso"},
@@ -100,7 +103,10 @@ func TestBuildMacroProgress(t *testing.T) {
 }
 
 func TestActivityFactor(t *testing.T) {
-	cases := []struct{ code string; want float64 }{
+	cases := []struct {
+		code string
+		want float64
+	}{
 		{"sedentary", 1.2},
 		{"light", 1.375},
 		{"moderate", 1.55},

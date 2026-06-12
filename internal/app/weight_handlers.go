@@ -16,9 +16,9 @@ import (
 type weightPageData struct {
 	authPageData
 	Logs          []domain.WeightLog
-	TodayStr      string   // YYYY-MM-DD per il default del campo data
+	TodayStr      string // YYYY-MM-DD per il default del campo data
 	HasTrend      bool
-	TrendKg       float64  // differenza vs entry di confronto
+	TrendKg       float64 // differenza vs entry di confronto
 	TrendPositive bool
 	TrendDays     int
 }

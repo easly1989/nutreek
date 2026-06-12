@@ -169,6 +169,18 @@ func (u *Users) ResetTour(ctx context.Context, id int64) error {
 	return err
 }
 
+// Delete cancella l'utente e, via cascade FK, tutti i dati associati.
+func (u *Users) Delete(ctx context.Context, id int64) error {
+	_, err := u.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
+	return err
+}
+
+// UpdatePassword sostituisce l'hash della password per l'utente.
+func (u *Users) UpdatePassword(ctx context.Context, id int64, newHash string) error {
+	_, err := u.db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, newHash, id)
+	return err
+}
+
 // isUniqueViolation identifica i codici errore SQLite per UNIQUE constraint.
 // modernc.org/sqlite espone *sqlite.Error con Code() int.
 func isUniqueViolation(err error) bool {
