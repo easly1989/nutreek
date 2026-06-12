@@ -143,5 +143,13 @@ func funcMap() template.FuncMap {
 		// neg restituisce il negativo di un float64. Usato nei template per
 		// invertire il segno senza eseguire operazioni aritmetiche inline.
 		"neg": func(v float64) float64 { return -v },
+		// deref dereferenzia un *int64 (0 se nil). Usato per confrontare
+		// id opzionali (es. piano assegnato) dentro i template.
+		"deref": func(p *int64) int64 {
+			if p == nil {
+				return 0
+			}
+			return *p
+		},
 	}
 }

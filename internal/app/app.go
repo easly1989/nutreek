@@ -32,6 +32,7 @@ type App struct {
 	NutritionistPlans      *db.NutritionistPlans
 	Features               *db.Features
 	Subscriptions          *db.Subscriptions
+	Coach                  *db.CoachRepository
 	TDEE                   *service.TDEEService
 	Planner                *service.PlannerService
 	OFF                    *off.Client

@@ -25,6 +25,7 @@
           <th class="px-4 py-3 font-medium">Nome</th>
           <th class="px-4 py-3 font-medium">Email</th>
           <th class="px-4 py-3 font-medium">Registrato</th>
+          <th class="px-4 py-3 font-medium">Ruolo</th>
           <th class="px-4 py-3 font-medium">Piano</th>
           <th class="px-4 py-3 font-medium text-right">Azioni</th>
         </tr>
@@ -35,6 +36,16 @@
           <td class="px-4 py-3">{{.DisplayName}}</td>
           <td class="px-4 py-3 font-mono text-xs">{{.Email}}</td>
           <td class="px-4 py-3 text-muted">{{.CreatedAt}}</td>
+          <td class="px-4 py-3">
+            <form method="post" action="/admin/panel/users/{{.ID}}/role" class="inline-flex items-center gap-1">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <select name="role" onchange="this.form.submit()"
+                      class="rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent">
+                <option value="user" {{if eq .Role "user"}}selected{{end}}>Utente</option>
+                <option value="coach" {{if eq .Role "coach"}}selected{{end}}>Coach</option>
+              </select>
+            </form>
+          </td>
           <td class="px-4 py-3">
             {{if .Premium}}
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent">
@@ -69,7 +80,7 @@
         </tr>
         {{else}}
         <tr>
-          <td colspan="5" class="px-4 py-8 text-center text-muted">Nessun utente registrato.</td>
+          <td colspan="6" class="px-4 py-8 text-center text-muted">Nessun utente registrato.</td>
         </tr>
         {{end}}
       </tbody>

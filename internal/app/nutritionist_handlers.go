@@ -29,16 +29,38 @@ type pianoNutrizionaleData struct {
 	ActiveTab         string // "piano" | "template"
 	SlotMealTypes     []slotMealType
 	HasActiveTemplate bool
+	ReadOnly          bool   // true se il piano mostrato e' assegnato dal coach
+	CoachName         string // nome del coach che ha assegnato il piano
 }
 
 func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	ctx := r.Context()
 
-	plan, err := a.NutritionistPlans.LoadPlanFull(ctx, user.ID)
+	// Se il coach ha assegnato un piano al cliente, quello e' il piano
+	// effettivo: viene mostrato in sola lettura.
+	var plan *domain.NutritionistPlanFull
+	var readOnly bool
+	var coachName string
+	assignment, err := a.Coach.GetAssignment(ctx, user.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
+	}
+	if assignment != nil && assignment.AssignedPlanID != nil {
+		plan, err = a.NutritionistPlans.LoadPlanFullByID(ctx, *assignment.AssignedPlanID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		readOnly = true
+		coachName = assignment.CoachName
+	} else {
+		plan, err = a.NutritionistPlans.LoadPlanFull(ctx, user.ID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 	}
 	tpls, err := a.MealTemplates.ListByUser(ctx, user.ID)
 	if err != nil {
@@ -50,10 +72,11 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 		tab = "piano"
 	}
 
-	// Costruisce la lista slot→meal-type dal template attivo.
+	// Costruisce la lista slot→meal-type dal template attivo (solo per il
+	// proprio piano: quello assegnato dal coach non va modificato).
 	var slotMealTypes []slotMealType
 	var hasActiveTemplate bool
-	if len(tpls) > 0 && tpls[0].IsActive {
+	if !readOnly && len(tpls) > 0 && tpls[0].IsActive {
 		hasActiveTemplate = true
 		activeWithSlots, err := a.MealTemplates.GetWithSlots(ctx, tpls[0].ID, user.ID)
 		if err == nil {
@@ -94,6 +117,8 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 		ActiveTab:         tab,
 		SlotMealTypes:     slotMealTypes,
 		HasActiveTemplate: hasActiveTemplate,
+		ReadOnly:          readOnly,
+		CoachName:         coachName,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "piano_nutrizionale", data); err != nil {
 		a.serverError(w, r, err)
@@ -108,7 +133,7 @@ func (a *App) handleNutritionistCreateMealType(w http.ResponseWriter, r *http.Re
 		http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 		return
 	}
-	plan, err := a.NutritionistPlans.GetOrCreatePlan(r.Context(), user.ID)
+	plan, err := a.NutritionistPlans.GetOrCreateActivePlan(r.Context(), user.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -127,7 +152,7 @@ func (a *App) handleNutritionistDeleteMealType(w http.ResponseWriter, r *http.Re
 		http.NotFound(w, r)
 		return
 	}
-	plan, err := a.NutritionistPlans.GetOrCreatePlan(r.Context(), user.ID)
+	plan, err := a.NutritionistPlans.GetOrCreateActivePlan(r.Context(), user.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -169,7 +194,7 @@ func (a *App) handleNutritionistDeleteVariation(w http.ResponseWriter, r *http.R
 		http.NotFound(w, r)
 		return
 	}
-	plan, err := a.NutritionistPlans.GetOrCreatePlan(r.Context(), user.ID)
+	plan, err := a.NutritionistPlans.GetOrCreateActivePlan(r.Context(), user.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -328,7 +353,7 @@ func (a *App) handleNutritionistDeleteItem(w http.ResponseWriter, r *http.Reques
 		http.NotFound(w, r)
 		return
 	}
-	plan, err := a.NutritionistPlans.GetOrCreatePlan(r.Context(), user.ID)
+	plan, err := a.NutritionistPlans.GetOrCreateActivePlan(r.Context(), user.ID)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
