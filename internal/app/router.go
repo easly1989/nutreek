@@ -196,6 +196,12 @@ func (a *App) Router() http.Handler {
 		r.Post("/shopping-list/{id}/user-items", a.handleAddShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/toggle", a.handleToggleShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/delete", a.handleRemoveShoppingUserItem)
+
+		// Impostazioni account (GDPR export, cambio password, cancellazione).
+		r.Get("/settings", a.handleSettingsPage)
+		r.Get("/settings/export", a.handleUserDataExport)
+		r.Post("/settings/password", a.handleChangePassword)
+		r.Post("/settings/delete-account", a.handleDeleteAccount)
 	})
 
 	adminLimiter := newIPRateLimiter(30, oneMinute)
