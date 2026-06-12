@@ -31,6 +31,7 @@ type Config struct {
 	ReconcileInterval time.Duration
 	ReconcileEnabled  bool
 	AdminToken        string
+	OwnerEmail        string
 
 	// Backup SQLite automatico via VACUUM INTO.
 	BackupEnabled  bool
@@ -93,6 +94,7 @@ func Load() (*Config, error) {
 		ReconcileInterval: reconcileInterval,
 		ReconcileEnabled:  reconcileEnabled,
 		AdminToken:        os.Getenv("NUTREEK_ADMIN_TOKEN"),
+		OwnerEmail:        os.Getenv("NUTREEK_OWNER_EMAIL"),
 		BackupEnabled:     backupEnabled,
 		BackupDir:         getenv("NUTREEK_BACKUP_DIR", "./data/backups"),
 		BackupInterval:    backupInterval,
