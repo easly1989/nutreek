@@ -155,6 +155,7 @@ type adminUserRow struct {
 	Email       string
 	DisplayName string
 	CreatedAt   string
+	Role        string // user | coach
 	Premium     bool   // sottoscrizione attiva e non scaduta
 	SubSource   string // manual | license | payment
 	SubExpires  string // vuoto = senza scadenza
@@ -179,6 +180,7 @@ func (a *App) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 			Email:       u.Email,
 			DisplayName: u.DisplayName,
 			CreatedAt:   u.CreatedAt.Format("02/01/2006 15:04"),
+			Role:        u.Role,
 		}
 		if sub, ok := subs[u.ID]; ok && sub.IsActive(now) {
 			row.Premium = true
@@ -236,6 +238,23 @@ func (a *App) handleAdminUserRevokePremium(w http.ResponseWriter, r *http.Reques
 	}
 	if err := a.Subscriptions.Revoke(r.Context(), userID); err != nil {
 		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/admin/panel/users", http.StatusSeeOther)
+}
+
+// handleAdminUserRole POST /admin/panel/users/{id}/role — cambia il ruolo
+// dell'utente ('user' | 'coach').
+func (a *App) handleAdminUserRole(w http.ResponseWriter, r *http.Request) {
+	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	role := r.PostFormValue("role")
+	if err := a.Users.UpdateRole(r.Context(), userID, role); err != nil {
+		a.Sessions.Put(r.Context(), "flash", "Ruolo non valido.")
+		http.Redirect(w, r, "/admin/panel/users", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/admin/panel/users", http.StatusSeeOther)

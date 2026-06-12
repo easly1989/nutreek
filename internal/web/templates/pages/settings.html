@@ -61,6 +61,75 @@
     </div>
   </section>
 
+  {{/* ===== Token API ===== */}}
+  <section class="bg-surface border border-border rounded mb-6">
+    <div class="px-6 py-4 border-b border-border">
+      <h2 class="text-base font-semibold">Token API</h2>
+    </div>
+    <div class="px-6 py-4">
+      <p class="text-sm text-muted mb-4">
+        I token API ti permettono di accedere a Nutreek da applicazioni esterne.
+        Il valore del token è mostrato <strong>una sola volta</strong> alla creazione: conservalo in un luogo sicuro.
+      </p>
+
+      {{if .NewTokenPlain}}
+        <div class="mb-4 rounded border border-accent/30 bg-accent/10 px-4 py-3 text-sm">
+          <p class="font-semibold text-accent mb-1">Nuovo token creato — copialo adesso!</p>
+          <code class="block font-mono text-xs break-all bg-surface border border-border rounded px-3 py-2 mt-1 select-all">{{.NewTokenPlain}}</code>
+          <p class="text-muted mt-1 text-xs">Non verrà più mostrato.</p>
+        </div>
+      {{end}}
+
+      {{if .APITokens}}
+        <table class="w-full text-sm mb-4">
+          <thead>
+            <tr class="text-left text-muted border-b border-border">
+              <th class="pb-2 font-medium">Nome</th>
+              <th class="pb-2 font-medium">Creato il</th>
+              <th class="pb-2 font-medium">Usato il</th>
+              <th class="pb-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .APITokens}}
+            <tr class="border-b border-border/50">
+              <td class="py-2 font-mono text-xs">{{.Name}}</td>
+              <td class="py-2 text-muted">{{.CreatedAt.Format "02/01/2006"}}</td>
+              <td class="py-2 text-muted">
+                {{if .LastUsedAt}}{{.LastUsedAt.Format "02/01/2006"}}{{else}}—{{end}}
+              </td>
+              <td class="py-2 text-right">
+                <form method="post" action="/settings/api-tokens/{{.ID}}/revoke"
+                      onsubmit="return confirm('Revocare il token «{{.Name}}»?')">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                  <button type="submit"
+                          class="text-danger text-xs hover:underline">Revoca</button>
+                </form>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      {{else}}
+        <p class="text-sm text-muted mb-4">Nessun token ancora.</p>
+      {{end}}
+
+      <form method="post" action="/settings/api-tokens" class="flex items-end gap-2">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <div class="flex-1">
+          <label class="block text-xs font-medium text-muted mb-1" for="token_name">Nome token</label>
+          <input id="token_name" name="name" type="text" required maxlength="100"
+                 placeholder="es. Home Assistant, app mobile…"
+                 class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+        </div>
+        <button type="submit"
+                class="bg-accent text-accent-fg rounded px-4 py-2 text-sm hover:bg-accent/90 transition whitespace-nowrap">
+          Crea token
+        </button>
+      </form>
+    </div>
+  </section>
+
   {{/* ===== Zona pericolosa ===== */}}
   <section class="bg-surface border border-danger/30 rounded mb-6">
     <div class="px-6 py-4 border-b border-danger/30">

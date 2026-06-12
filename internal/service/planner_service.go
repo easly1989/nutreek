@@ -23,11 +23,29 @@ var (
 )
 
 // PlannerService genera automaticamente il piano settimanale pescando dal
-// pool di varianti del piano nutrizionista dell'utente.
+// pool di varianti del piano nutrizionista effettivo dell'utente (quello
+// assegnato dal coach, se presente, altrimenti il proprio piano attivo).
 type PlannerService struct {
 	WeeklyPlans       *db.WeeklyPlans
 	NutritionistPlans *db.NutritionistPlans
 	Recipes           *db.Recipes
+	Coach             *db.CoachRepository
+}
+
+// EffectivePlanFull risolve il piano nutrizionista effettivo dell'utente:
+// il piano assegnato dal coach se presente, altrimenti il piano attivo
+// dell'utente (creato se mancante).
+func (s *PlannerService) EffectivePlanFull(ctx context.Context, userID int64) (*domain.NutritionistPlanFull, error) {
+	if s.Coach != nil {
+		assignment, err := s.Coach.GetAssignment(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if assignment != nil && assignment.AssignedPlanID != nil {
+			return s.NutritionistPlans.LoadPlanFullByID(ctx, *assignment.AssignedPlanID)
+		}
+	}
+	return s.NutritionistPlans.LoadPlanFull(ctx, userID)
 }
 
 // GenerateWeek riempie la settimana weekStart con pasti generati dal piano
@@ -50,7 +68,7 @@ func (s *PlannerService) GenerateWeek(ctx context.Context, userID int64, weekSta
 		return ErrWeekNotEmpty
 	}
 
-	full, err := s.NutritionistPlans.LoadPlanFull(ctx, userID)
+	full, err := s.EffectivePlanFull(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -115,7 +133,14 @@ func (s *PlannerService) GenerateWeek(ctx context.Context, userID int64, weekSta
 		}
 	}
 
-	return s.WeeklyPlans.CreateMeals(ctx, plan.ID, userID, meals)
+	if err := s.WeeklyPlans.CreateMeals(ctx, plan.ID, userID, meals); err != nil {
+		return err
+	}
+	// Freeze storico: registra quale piano nutrizionista ha generato la settimana.
+	if err := s.WeeklyPlans.SetSourcePlan(ctx, plan.ID, full.ID); err != nil {
+		return err
+	}
+	return nil
 }
 
 // recipePerServing risolve, per ogni ricetta referenziata nel piano, i macro

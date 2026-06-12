@@ -591,6 +591,11 @@ func (a *App) handleApplyTemplate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	// Freeze storico: registra il piano nutrizionista in uso al momento
+	// dell'applicazione (best-effort, non blocca il flusso).
+	if effective, err := a.Planner.EffectivePlanFull(r.Context(), user.ID); err == nil {
+		_ = a.WeeklyPlans.SetSourcePlan(r.Context(), plan.ID, effective.ID)
+	}
 	a.Sessions.Put(r.Context(), "flash", "Template applicato alla settimana.")
 	a.redirectToWeek(w, r, weekStart)
 }

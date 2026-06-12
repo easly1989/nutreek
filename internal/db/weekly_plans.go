@@ -79,6 +79,18 @@ func (r *WeeklyPlans) GetOrCreateForWeek(ctx context.Context, userID int64, week
 	return &p, nil
 }
 
+// SetSourcePlan registra quale piano nutrizionista era in uso quando la
+// settimana e' stata generata/applicata (freeze storico, sola tracciabilita').
+func (r *WeeklyPlans) SetSourcePlan(ctx context.Context, weeklyPlanID, sourcePlanID int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE weekly_plans SET source_plan_id = ? WHERE id = ?`,
+		sourcePlanID, weeklyPlanID)
+	if err != nil {
+		return fmt.Errorf("set source plan: %w", err)
+	}
+	return nil
+}
+
 // HasMeals indica se il piano ha gia' almeno un meal (per evitare double apply).
 func (r *WeeklyPlans) HasMeals(ctx context.Context, planID int64) (bool, error) {
 	var n int

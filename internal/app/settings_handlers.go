@@ -5,9 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/amon2126/nutreek/internal/auth"
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
@@ -16,6 +20,8 @@ type settingsPageData struct {
 	DeleteError   string
 	PasswordError string
 	PasswordOK    bool
+	APITokens     []domain.APIToken
+	NewTokenPlain string // valorizzato solo subito dopo la creazione
 }
 
 // userProfileExport è il profilo utente sanitizzato per l'export (no hash).
@@ -39,14 +45,62 @@ type userDataExport struct {
 }
 
 func (a *App) handleSettingsPage(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
 	data := settingsPageData{authPageData: a.baseData(r)}
 	data.ActiveNav = "/settings"
 	if flash := r.URL.Query().Get("ok"); flash == "password" {
 		data.PasswordOK = true
 	}
+	tokens, err := a.APITokens.List(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	data.APITokens = tokens
 	if err := a.Render.Render(w, http.StatusOK, "settings", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+func (a *App) handleSettingsAPITokenCreate(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	name := r.PostFormValue("name")
+	if name == "" || !withinLen(name, 100) {
+		http.Redirect(w, r, "/settings", http.StatusSeeOther)
+		return
+	}
+	plain, err := a.APITokens.Create(r.Context(), user.ID, name)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	tokens, err := a.APITokens.List(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	data := settingsPageData{authPageData: a.baseData(r)}
+	data.ActiveNav = "/settings"
+	data.APITokens = tokens
+	data.NewTokenPlain = plain
+	if err := a.Render.Render(w, http.StatusOK, "settings", data); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
+func (a *App) handleSettingsAPITokenRevoke(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if rErr := a.APITokens.Revoke(r.Context(), id, user.ID); rErr != nil && !errors.Is(rErr, db.ErrAPITokenNotFound) {
+		a.serverError(w, r, rErr)
+		return
+	}
+	http.Redirect(w, r, "/settings", http.StatusSeeOther)
 }
 
 func (a *App) handleUserDataExport(w http.ResponseWriter, r *http.Request) {
