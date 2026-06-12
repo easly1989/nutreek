@@ -27,7 +27,7 @@ RUN mkdir -p internal/web/static/css && \
       --minify
 
 # --- Stage 2: Go build -------------------------------------------------------
-FROM golang:1.23-alpine AS go-builder
+FROM golang:1.25-alpine AS go-builder
 WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-trimpath
 COPY go.mod go.sum ./

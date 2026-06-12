@@ -1,6 +1,7 @@
 package app
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -63,5 +64,44 @@ func TestRemoteIP(t *testing.T) {
 				t.Errorf("got %q want %q", got, tc.expected)
 			}
 		})
+	}
+}
+
+func TestIPRateLimiterAllow(t *testing.T) {
+	rl := newIPRateLimiter(3, time.Minute)
+	for i := 0; i < 3; i++ {
+		if !rl.allow("1.2.3.4") {
+			t.Fatalf("richiesta %d non dovrebbe essere bloccata", i+1)
+		}
+	}
+	if rl.allow("1.2.3.4") {
+		t.Error("4a richiesta dovrebbe essere bloccata")
+	}
+	if !rl.allow("5.6.7.8") {
+		t.Error("IP diverso non dovrebbe essere bloccato")
+	}
+}
+
+func TestIPRateLimiterMiddleware429(t *testing.T) {
+	rl := newIPRateLimiter(2, time.Minute)
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	for i := 0; i < 2; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.RemoteAddr = "1.2.3.4:1234"
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("richiesta %d: atteso 200, got %d", i+1, rec.Code)
+		}
+	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "1.2.3.4:1234"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("3a richiesta: atteso 429, got %d", rec.Code)
 	}
 }
