@@ -1,0 +1,32 @@
+# Config formato v2 (golangci-lint >= 2.0, richiesto per Go >= 1.25).
+# NOTA: misspell escluso volutamente — il codebase è in italiano e il
+# dizionario inglese genera centinaia di falsi positivi (es. "momento"
+# segnalato come typo di "memento").
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # Il set "standard" include: errcheck, govet, ineffassign, staticcheck
+  # (che in v2 ingloba anche il vecchio gosimple) e unused.
+  default: standard
+  settings:
+    staticcheck:
+      # Parità con la v1: SA* (staticcheck) + S* (ex gosimple). Esclusi
+      # ST* (stylecheck, mai abilitato prima) e QF* (suggerimenti
+      # "quickfix" stilistici, non bug).
+      checks: ["all", "-ST1*", "-QF1*"]
+  exclusions:
+    presets:
+      # Esclusioni standard errcheck (defer Close, fmt.Print*, ecc.) che
+      # in v1 erano attive di default.
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt

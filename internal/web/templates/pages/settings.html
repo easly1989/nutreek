@@ -1,0 +1,95 @@
+{{define "title"}}Impostazioni — Nutreek{{end}}
+{{define "content"}}
+<div class="max-w-2xl">
+  <h1 class="text-3xl font-semibold mb-1">Impostazioni</h1>
+  <p class="text-sm text-muted mb-6">Gestione account e dati personali.</p>
+
+  {{/* ===== Cambia password ===== */}}
+  <section class="bg-surface border border-border rounded mb-6">
+    <div class="px-6 py-4 border-b border-border">
+      <h2 class="text-base font-semibold">Cambia password</h2>
+    </div>
+    <div class="px-6 py-4">
+      {{if .PasswordOK}}
+        <div class="mb-4 rounded border border-accent/30 bg-accent/10 text-accent px-4 py-2 text-sm">
+          Password aggiornata con successo.
+        </div>
+      {{end}}
+      {{if .PasswordError}}
+        <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.PasswordError}}</div>
+      {{end}}
+      <form method="post" action="/settings/password" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="current_password">Password attuale</label>
+          <input id="current_password" name="current_password" type="password" required autocomplete="current-password"
+                 class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="new_password">Nuova password</label>
+          <input id="new_password" name="new_password" type="password" required autocomplete="new-password" minlength="8"
+                 class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+          <p class="text-xs text-muted mt-1">Minimo 8 caratteri.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="confirm_password">Conferma nuova password</label>
+          <input id="confirm_password" name="confirm_password" type="password" required autocomplete="new-password"
+                 class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+        </div>
+        <button type="submit"
+                class="bg-accent text-accent-fg rounded px-4 py-2 text-sm hover:bg-accent/90 transition">
+          Aggiorna password
+        </button>
+      </form>
+    </div>
+  </section>
+
+  {{/* ===== I tuoi dati ===== */}}
+  <section class="bg-surface border border-border rounded mb-6">
+    <div class="px-6 py-4 border-b border-border">
+      <h2 class="text-base font-semibold">I tuoi dati</h2>
+    </div>
+    <div class="px-6 py-4">
+      <p class="text-sm text-muted mb-4">
+        Scarica tutti i tuoi dati in formato JSON (peso, allenamenti, ricette, ecc.).
+        Conforme al diritto di portabilità GDPR Art. 20.
+      </p>
+      <a href="/settings/export"
+         class="inline-block bg-surface-2 border border-border rounded px-4 py-2 text-sm hover:bg-surface transition">
+        Esporta dati JSON
+      </a>
+    </div>
+  </section>
+
+  {{/* ===== Zona pericolosa ===== */}}
+  <section class="bg-surface border border-danger/30 rounded mb-6">
+    <div class="px-6 py-4 border-b border-danger/30">
+      <h2 class="text-base font-semibold text-danger">Zona pericolosa</h2>
+    </div>
+    <div class="px-6 py-4">
+      <p class="text-sm text-muted mb-4">
+        La cancellazione dell'account è permanente e irreversibile.
+        Tutti i tuoi dati (piano, ricette, peso, ecc.) saranno eliminati.
+        Conforme al diritto all'oblio GDPR Art. 17.
+      </p>
+      {{if .DeleteError}}
+        <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.DeleteError}}</div>
+      {{end}}
+      <form method="post" action="/settings/delete-account" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="delete_password">
+            Conferma con la tua password
+          </label>
+          <input id="delete_password" name="password" type="password" required autocomplete="current-password"
+                 class="w-full max-w-xs rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-danger">
+        </div>
+        <button type="submit"
+                class="bg-danger text-white rounded px-4 py-2 text-sm hover:bg-danger/90 transition">
+          Elimina account definitivamente
+        </button>
+      </form>
+    </div>
+  </section>
+</div>
+{{end}}
