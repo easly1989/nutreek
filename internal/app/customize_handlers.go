@@ -216,4 +216,3 @@ func (a *App) renderCustomizeModal(w http.ResponseWriter, r *http.Request, data 
 		a.serverError(w, r, err)
 	}
 }
-
