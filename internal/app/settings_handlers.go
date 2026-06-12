@@ -30,12 +30,12 @@ type userProfileExport struct {
 
 // userDataExport è il payload del JSON scaricato da GET /settings/export.
 type userDataExport struct {
-	ExportedAt  string             `json:"exported_at"`
-	User        userProfileExport  `json:"user"`
-	WeightLogs  []domain.WeightLog `json:"weight_logs"`
-	WaterLogs   map[string]int     `json:"water_logs"`
+	ExportedAt  string              `json:"exported_at"`
+	User        userProfileExport   `json:"user"`
+	WeightLogs  []domain.WeightLog  `json:"weight_logs"`
+	WaterLogs   map[string]int      `json:"water_logs"`
 	WorkoutLogs []domain.WorkoutLog `json:"workout_logs"`
-	Recipes     []*domain.Recipe   `json:"recipes"`
+	Recipes     []*domain.Recipe    `json:"recipes"`
 }
 
 func (a *App) handleSettingsPage(w http.ResponseWriter, r *http.Request) {
