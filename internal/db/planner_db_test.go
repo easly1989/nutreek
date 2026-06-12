@@ -91,7 +91,7 @@ func TestNutritionistHasVariations(t *testing.T) {
 		t.Error("atteso false senza varianti/item")
 	}
 
-	plan, _ := np.GetOrCreatePlan(ctx, alice)
+	plan, _ := np.GetOrCreateActivePlan(ctx, alice)
 	mtID, _ := np.CreateMealType(ctx, plan.ID, "Colazione")
 	varID, _ := np.CreateVariation(ctx, mtID, nil)
 

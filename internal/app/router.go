@@ -235,6 +235,22 @@ func (a *App) Router() http.Handler {
 		r.Get("/admin/panel/users", a.handleAdminUsers)
 		r.Post("/admin/panel/users/{id}/premium", a.handleAdminUserGrantPremium)
 		r.Post("/admin/panel/users/{id}/premium/revoke", a.handleAdminUserRevokePremium)
+		r.Post("/admin/panel/users/{id}/role", a.handleAdminUserRole)
+	})
+
+	// Coach mode: richiede ruolo 'coach' (feature premium predisposta).
+	r.Group(func(r chi.Router) {
+		r.Use(a.requireAuth)
+		r.Use(a.requireCoach)
+		r.Use(a.requireFeature("coach_mode"))
+		r.Get("/coach", a.handleCoachDashboard)
+		r.Post("/coach/clients", a.handleCoachAddClient)
+		r.Post("/coach/clients/{id}/remove", a.handleCoachRemoveClient)
+		r.Post("/coach/clients/{id}/assign-plan", a.handleCoachAssignPlan)
+		r.Post("/coach/plans", a.handleCoachCreatePlan)
+		r.Post("/coach/plans/{id}/open", a.handleCoachOpenPlan)
+		r.Post("/coach/plans/{id}/rename", a.handleCoachRenamePlan)
+		r.Post("/coach/plans/{id}/delete", a.handleCoachDeletePlan)
 	})
 
 	return r

@@ -21,6 +21,51 @@
   {{/* ===== TAB: Piano Pasti ===== */}}
   {{if eq .ActiveTab "piano"}}
 
+  {{if .ReadOnly}}
+  {{/* Piano assegnato dal coach: sola lettura */}}
+  <div class="mb-4 rounded border border-accent/30 bg-accent/10 text-accent px-4 py-3 text-sm">
+    Piano <strong>{{.Plan.Name}}</strong> assegnato dal tuo coach <strong>{{.CoachName}}</strong>.
+    Non è modificabile: per cambiarlo, contatta il tuo coach.
+  </div>
+  {{if .Plan.MealTypes}}
+  <div class="space-y-6">
+    {{range .Plan.MealTypes}}
+    <section class="bg-surface border border-border rounded overflow-hidden">
+      <div class="flex items-center px-4 py-3 border-b border-border bg-surface-2">
+        <h2 class="font-semibold text-text">{{.Name}}</h2>
+      </div>
+      {{range .Variations}}
+      <div class="px-4 py-3 border-b border-border last:border-b-0">
+        <p class="text-sm font-medium text-muted mb-2">
+          {{if .Name}}{{.Name}}{{else}}<em>Variante principale</em>{{end}}
+        </p>
+        {{if .Items}}
+        <ul class="space-y-1">
+          {{range .Items}}
+          <li class="text-sm">
+            {{if .Recipe}}
+              {{.Recipe.Name}} <span class="text-muted text-xs">— {{printf "%.1f" .Quantity}} porz.</span>
+            {{else if .Ingredient}}
+              {{.Ingredient.Name}} <span class="text-muted text-xs">— {{printf "%.0f" .Quantity}} {{.QuantityUnit}}</span>
+            {{end}}
+          </li>
+          {{end}}
+        </ul>
+        {{else}}
+        <p class="text-sm text-muted italic">Variante vuota.</p>
+        {{end}}
+      </div>
+      {{end}}
+    </section>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
+    <p class="text-sm">Il piano assegnato dal coach non ha ancora contenuti.</p>
+  </div>
+  {{end}}
+
+  {{else}}
   <p class="text-sm text-muted mb-4">
     Gli elementi salvati qui compariranno come "Suggeriti" nel picker del piano settimanale.
     I tipi di pasto rispecchiano gli slot del template attivo.
@@ -163,6 +208,7 @@
     {{end}}
   </div>
   {{end}}
+  {{end}}{{/* fine ReadOnly else */}}
 
   {{/* ===== TAB: Template Settimanali ===== */}}
   {{else}}
