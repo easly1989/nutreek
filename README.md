@@ -27,6 +27,50 @@ Eseguibile sia **nativamente** (binario Go, nessuna dipendenza esterna) sia in u
 
 ---
 
+## Screenshot
+
+### Dashboard settimanale
+
+Calendario con pasti, macro per giorno e settimana, barre di aderenza ai target, idratazione inline.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" width="800" alt="Dashboard settimanale con pasti e macro">
+</p>
+
+### Statistiche & TDEE adattivo
+
+Riepilogo settimanale, stima del fabbisogno reale dal trend peso/intake con suggerimento di aggiornamento target.
+
+<p align="center">
+  <img src="docs/screenshots/stats.png" width="800" alt="Statistiche con TDEE adattivo">
+</p>
+
+### Pannello Coach
+
+Gestione clienti, assegnazione piani nutrizionali, libreria piani riutilizzabili.
+
+<p align="center">
+  <img src="docs/screenshots/coach-dashboard.png" width="800" alt="Pannello coach con clienti e libreria piani">
+</p>
+
+### Admin panel
+
+Feature flags, gestione utenti e sottoscrizioni premium (solo owner).
+
+<p align="center">
+  <img src="docs/screenshots/admin-panel.png" width="800" alt="Pannello amministrazione">
+</p>
+
+### Token API
+
+Creazione e revoca token per la REST API v1 dalle impostazioni.
+
+<p align="center">
+  <img src="docs/screenshots/settings-tokens.png" width="800" alt="Gestione token API nelle impostazioni">
+</p>
+
+---
+
 ## Stack
 
 - **Backend:** Go 1.25+ (chi, scs, sqlc, goose, bcrypt, nosurf)
