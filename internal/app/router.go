@@ -132,7 +132,9 @@ func (a *App) Router() http.Handler {
 
 		// Piano settimanale (la dashboard e' montata su /).
 		r.Post("/week/apply-template", a.handleApplyTemplate)
-		r.Post("/week/generate", a.handleGeneratePlan)
+		// Generazione automatica: feature premium (gating attivo solo con
+		// NUTREEK_PREMIUM_ENABLED=true, vedi HasFeature).
+		r.With(a.requireFeature("auto_plan")).Post("/week/generate", a.handleGeneratePlan)
 		r.Post("/week/copy-previous", a.handleCopyPrevious)
 		r.Post("/week/reset", a.handleResetWeek)
 		r.Get("/days/{date}", a.handleDayCard) // partial HTMX per una singola card
@@ -171,9 +173,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/water", a.handleWaterLog)
 		r.Post("/water/delete-last", a.handleWaterDelete)
 
-		// Statistiche e TDEE adattivo.
+		// Statistiche e TDEE adattivo (accettazione suggerimento: premium).
 		r.Get("/stats", a.handleStats)
-		r.Post("/tdee/accept", a.handleAcceptTDEESuggestion)
+		r.With(a.requireFeature("tdee_adaptive")).Post("/tdee/accept", a.handleAcceptTDEESuggestion)
 
 		// Export/Import piano settimanale.
 		r.Get("/week/{start}/export", a.handleWeekExport)
