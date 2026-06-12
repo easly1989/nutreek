@@ -31,6 +31,7 @@ type Config struct {
 	ReconcileInterval time.Duration
 	ReconcileEnabled  bool
 	AdminToken        string
+	OwnerEmail        string
 }
 
 // Load legge la configurazione dalle env var. Valida i vincoli di prod
@@ -72,6 +73,7 @@ func Load() (*Config, error) {
 		ReconcileInterval: reconcileInterval,
 		ReconcileEnabled:  reconcileEnabled,
 		AdminToken:        os.Getenv("NUTREEK_ADMIN_TOKEN"),
+		OwnerEmail:        os.Getenv("NUTREEK_OWNER_EMAIL"),
 	}
 
 	keyHex := os.Getenv("NUTREEK_SESSION_KEY")
