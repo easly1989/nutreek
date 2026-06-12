@@ -2,12 +2,15 @@ package app
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/amon2126/nutreek/internal/web"
 )
+
+const oneMinute = time.Minute
 
 // securityHeaders imposta gli header di sicurezza HTTP su ogni risposta.
 func securityHeaders(next http.Handler) http.Handler {
@@ -58,17 +61,20 @@ func (a *App) Router() http.Handler {
 
 	r.Get("/", a.handleDashboard)
 
+	registerLimiter := newIPRateLimiter(5, oneMinute)
 	r.Get("/login", a.handleLoginForm)
 	r.Post("/login", a.handleLogin)
 	r.Get("/register", a.handleRegisterForm)
-	r.Post("/register", a.handleRegister)
+	r.With(registerLimiter.Middleware).Post("/register", a.handleRegister)
 	r.Post("/logout", a.handleLogout)
+
+	searchLimiter := newIPRateLimiter(60, oneMinute)
 
 	// Sezioni protette: ingredienti / ricette / piano. Tutte sotto requireAuth.
 	r.Group(func(r chi.Router) {
 		r.Use(a.requireAuth)
 		r.Get("/ingredients", a.handleIngredientsList)
-		r.Get("/ingredients/search", a.handleIngredientsSearchPartial)
+		r.With(searchLimiter.Middleware).Get("/ingredients/search", a.handleIngredientsSearchPartial)
 		r.Get("/ingredients/new", a.handleIngredientNewForm)
 		r.Post("/ingredients", a.handleIngredientCreate)
 		r.Get("/ingredients/{id}/edit", a.handleIngredientEditForm)
@@ -192,11 +198,16 @@ func (a *App) Router() http.Handler {
 		r.Post("/shopping-list/user-items/{id}/delete", a.handleRemoveShoppingUserItem)
 	})
 
+	adminLimiter := newIPRateLimiter(30, oneMinute)
+
 	// Admin: protetto da X-Admin-Token (vedi requireAdmin). Esente CSRF
 	// (esclusione configurata in csrfMiddleware via ExemptGlob).
-	r.Post("/admin/reconcile-ingredients", a.requireAdmin(a.handleAdminReconcile))
-	r.Post("/admin/refresh-off-dump", a.requireAdmin(a.handleAdminOFFRefresh))
-	r.Get("/admin/off-status", a.requireAdmin(a.handleAdminOFFStatus))
+	r.Group(func(r chi.Router) {
+		r.Use(adminLimiter.Middleware)
+		r.Post("/admin/reconcile-ingredients", a.requireAdmin(a.handleAdminReconcile))
+		r.Post("/admin/refresh-off-dump", a.requireAdmin(a.handleAdminOFFRefresh))
+		r.Get("/admin/off-status", a.requireAdmin(a.handleAdminOFFStatus))
+	})
 
 	return r
 }
