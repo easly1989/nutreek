@@ -135,10 +135,11 @@ func run(logger *slog.Logger) error {
 	nutritionistRepo := db.NewNutritionistPlans(store.DB)
 	featuresRepo := db.NewFeatures(store.DB)
 	coachRepo := db.NewCoachRepository(store.DB)
+	usersRepo := db.NewUsers(store.DB)
 	a := &app.App{
 		Cfg:                    cfg,
 		Store:                  store,
-		Users:                  db.NewUsers(store.DB),
+		Users:                  usersRepo,
 		Ingredients:            ingredientsRepo,
 		Recipes:                recipesRepo,
 		MealTemplates:          db.NewMealTemplates(store.DB),
@@ -153,6 +154,7 @@ func run(logger *slog.Logger) error {
 		Features:               featuresRepo,
 		Subscriptions:          db.NewSubscriptions(store.DB),
 		Coach:                  coachRepo,
+		APITokens:              db.NewAPITokens(store.DB, usersRepo),
 		TDEE: &service.TDEEService{
 			WeightLogs:  db.NewWeightLogs(store.DB),
 			WeeklyPlans: weeklyPlansRepo,

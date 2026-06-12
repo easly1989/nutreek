@@ -33,6 +33,7 @@ type App struct {
 	Features               *db.Features
 	Subscriptions          *db.Subscriptions
 	Coach                  *db.CoachRepository
+	APITokens              *db.APITokens
 	TDEE                   *service.TDEEService
 	Planner                *service.PlannerService
 	OFF                    *off.Client
