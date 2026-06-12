@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"github.com/amon2126/nutreek/internal/domain"
 )
 
 // ErrWaterLogNotFound viene restituito quando non c'e' un log da cancellare.
@@ -95,28 +93,4 @@ func (w *WaterLogs) DeleteLast(ctx context.Context, userID int64, date time.Time
 		return ErrWaterLogNotFound
 	}
 	return nil
-}
-
-// listForDate e' usato dai test per verificare i singoli record.
-func (w *WaterLogs) listForDate(ctx context.Context, userID int64, date time.Time) ([]domain.WaterLog, error) {
-	rows, err := w.db.QueryContext(ctx,
-		`SELECT id, user_id, logged_at, amount_ml, created_at
-		 FROM water_logs WHERE user_id = ? AND logged_at = ? ORDER BY id`,
-		userID, date.Format("2006-01-02"),
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var logs []domain.WaterLog
-	for rows.Next() {
-		var l domain.WaterLog
-		var dateStr string
-		if err := rows.Scan(&l.ID, &l.UserID, &dateStr, &l.AmountML, &l.CreatedAt); err != nil {
-			return nil, err
-		}
-		l.LoggedAt, _ = time.Parse("2006-01-02", dateStr)
-		logs = append(logs, l)
-	}
-	return logs, rows.Err()
 }

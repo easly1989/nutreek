@@ -3,7 +3,7 @@
 <div class="max-w-md mx-auto">
   <h1 class="text-2xl font-semibold mb-6">Accedi</h1>
   {{if .Error}}
-    <div class="mb-4 rounded border border-rose-200 bg-rose-50 text-rose-900 px-4 py-2 text-sm">{{.Error}}</div>
+    <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
   {{end}}
   <form method="post" action="/login" class="space-y-4 bg-surface p-6 rounded border border-border">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
