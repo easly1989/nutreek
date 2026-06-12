@@ -149,18 +149,6 @@ var dayLabelsFull = [7]string{
 
 // ---- helpers ---------------------------------------------------------------
 
-// parseWeekStart legge ?start=YYYY-MM-DD e normalizza a lunedi'. Se mancante
-// o invalida, ritorna il lunedi' della settimana corrente.
-func parseWeekStart(r *http.Request) time.Time {
-	q := strings.TrimSpace(r.URL.Query().Get("start"))
-	if q != "" {
-		if t, err := time.Parse("2006-01-02", q); err == nil {
-			return db.MondayOf(t)
-		}
-	}
-	return db.MondayOf(time.Now())
-}
-
 func formatDate(t time.Time) string { return t.Format("2006-01-02") }
 
 // todayDate ritorna la data odierna normalizzata a mezzanotte locale.
@@ -936,32 +924,6 @@ func (a *App) handleRemoveMealItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.respondMutationOrRedirect(w, r, weekStart, day)
-}
-
-// parseIDList interpreta il valore form `ids` come lista comma-separated e
-// ritorna gli int64 corrispondenti. Errore se vuoto o malformato.
-func parseIDList(s string) ([]int64, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil, fmt.Errorf("ids vuoto")
-	}
-	parts := strings.Split(s, ",")
-	out := make([]int64, 0, len(parts))
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		n, err := strconv.ParseInt(p, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("id non valido: %q", p)
-		}
-		out = append(out, n)
-	}
-	if len(out) == 0 {
-		return nil, fmt.Errorf("ids vuoto")
-	}
-	return out, nil
 }
 
 // handleReorderMeals POST /meals/reorder?day_of_week=N&start=YYYY-MM-DD

@@ -57,10 +57,10 @@ type MealItemCustomization struct {
 // Recipe e Ingredient e' valorizzato.
 type MealItemFull struct {
 	MealItem
-	Recipe         *Recipe                  // popolato se IsRecipe
-	RecipeItems    []RecipeItemFull         // popolato se IsRecipe (per macro)
-	Customizations []MealItemCustomization  // popolato se l'item ha variazioni
-	Ingredient     *Ingredient              // popolato se IsIngredient
+	Recipe         *Recipe                 // popolato se IsRecipe
+	RecipeItems    []RecipeItemFull        // popolato se IsRecipe (per macro)
+	Customizations []MealItemCustomization // popolato se l'item ha variazioni
+	Ingredient     *Ingredient             // popolato se IsIngredient
 }
 
 // IsCustomized ritorna true se questo item ricetta ha variazioni personalizzate

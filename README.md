@@ -10,7 +10,7 @@ Eseguibile sia **nativamente** (binario Go, nessuna dipendenza esterna) sia in u
 
 ## Stack
 
-- **Backend:** Go 1.23+ (chi, scs, sqlc, goose, bcrypt, nosurf)
+- **Backend:** Go 1.25+ (chi, scs, sqlc, goose, bcrypt, nosurf)
 - **DB:** SQLite via `modernc.org/sqlite` (pure Go, no CGO)
 - **Frontend:** server-side rendering con `html/template` + HTMX + Tailwind CSS
 - **Deploy:** binario statico o immagine Docker distroless (~20 MB)
@@ -18,7 +18,7 @@ Eseguibile sia **nativamente** (binario Go, nessuna dipendenza esterna) sia in u
 ## Requisiti
 
 Per sviluppo nativo (senza Docker):
-- Go 1.23 o superiore — https://go.dev/dl/
+- Go 1.25 o superiore — https://go.dev/dl/
 - Nient'altro. Il CLI standalone di Tailwind viene scaricato automaticamente in `./bin/`.
 
 Per deploy in container:
