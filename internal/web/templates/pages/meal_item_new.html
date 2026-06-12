@@ -42,6 +42,7 @@
     </div>
 
     <div id="picker-results"
+         aria-live="polite" aria-atomic="false"
          hx-get="/meals/{{.MealID}}/picker?kind=ingredient&q=&start={{.WeekStart}}{{$asParam}}{{$mealNameParam}}"
          hx-trigger="load"
          hx-target="this"
