@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 )
@@ -44,9 +43,7 @@ func TestPruneBackups_KeepsN(t *testing.T) {
 
 	// Crea 5 file di backup fittizi con timestamp progressivi
 	for i := range 5 {
-		name := filepath.Join(dir, strings.Replace(
-			BackupFileName("", time.Now().Add(time.Duration(i)*time.Second)), "/", "", -1))
-		name = BackupFileName(dir, time.Now().Add(time.Duration(i)*time.Second))
+		name := BackupFileName(dir, time.Now().Add(time.Duration(i)*time.Second))
 		f, err := os.Create(name)
 		if err != nil {
 			t.Fatalf("crea file test: %v", err)
