@@ -40,9 +40,9 @@ var ErrSyncInProgress = errors.New("sync OFF gia' in corso")
 
 // SyncStats riassume l'esito di una SyncDump.
 type SyncStats struct {
-	ScannedTotal int   // righe processate (qualunque paese)
-	Imported     int   // prodotti italiani inseriti
-	Skipped      bool  // true se ETag invariato → niente download
+	ScannedTotal int  // righe processate (qualunque paese)
+	Imported     int  // prodotti italiani inseriti
+	Skipped      bool // true se ETag invariato → niente download
 	ETag         string
 	DurationMs   int64
 }
@@ -346,8 +346,8 @@ type progressReader struct {
 	LogEvery  int64
 	LogPrefix string
 
-	read     int64
-	nextLog  int64
+	read    int64
+	nextLog int64
 }
 
 func (p *progressReader) Read(buf []byte) (int, error) {
