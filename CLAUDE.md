@@ -230,3 +230,13 @@ finche' il sync non completa (~10 min, ~0.9GB di banda).
 - Rate limiting per IP sul login (`internal/app/rate_limit.go`)
 - Ogni risorsa (ricette, piani, template) è scoped all'utente autenticato
 - In prod: `NUTREEK_SESSION_KEY` deve essere generato con `openssl rand -hex 32`
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
