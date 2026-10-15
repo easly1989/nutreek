@@ -1,127 +1,94 @@
-{{define "title"}}Dashboard — Nutreek{{end}}
+{{define "title"}}Settimana {{weekRange .WeekStart}} — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-5xl">
-  <!-- Header settimana -->
-  <div class="flex items-center justify-between mb-1 flex-wrap gap-3">
-    <h1 class="text-3xl font-semibold flex items-center gap-2">
-      <span>Settimana del {{.WeekStart.Format "02/01/2006"}}</span>
-      {{if not .HasMeals}}
-        {{/* Iconcina "copia dalla scorsa settimana": visibile solo se la
-             settimana corrente e' vuota. */}}
-        <form method="post" action="/week/copy-previous" class="inline">
-          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <input type="hidden" name="start" value="{{.WeekStartStr}}">
-          <button type="submit" title="Copia dalla settimana precedente"
-                  class="text-base p-1 rounded hover:bg-surface-2 text-muted hover:text-accent transition" aria-label="Copia dalla settimana precedente">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-          </button>
-        </form>
-      {{else}}
-        {{/* Iconcina "reset settimana": cancella tutti i meals.
-             Confirma JS perche' azione distruttiva. */}}
-        <form method="post" action="/week/reset" class="inline"
-              data-confirm="Svuotare la settimana? Tutti i pasti, voci e sgarri verranno cancellati.">
-          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <input type="hidden" name="start" value="{{.WeekStartStr}}">
-          <button type="submit" title="Svuota la settimana (annulla copia/template)"
-                  class="text-base p-1 rounded hover:bg-surface-2 text-muted hover:text-danger transition" aria-label="Svuota la settimana">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"></path></svg>
-          </button>
-        </form>
-      {{end}}
-    </h1>
-    <div class="flex items-center gap-2 text-sm">
-      <a href="/shopping-list?week={{.NextWeek}}" class="rounded border border-accent bg-accent-soft text-text px-3 py-1 hover:bg-accent/20">📋 Lista spesa</a>
-      <a href="/?start={{.PrevWeek}}" class="rounded border border-border px-3 py-1 hover:bg-surface-2">&larr; precedente</a>
-      <a href="/" class="rounded border border-border px-3 py-1 hover:bg-surface-2">oggi</a>
-      <a href="/?start={{.NextWeek}}" class="rounded border border-border px-3 py-1 hover:bg-surface-2">prossima &rarr;</a>
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  <header class="flex flex-wrap items-center justify-between gap-3">
+    <div class="min-w-0">
+      <h1 class="text-[20px] lg:text-[22px] leading-tight font-bold">Settimana {{weekRange .WeekStart}}</h1>
+      {{template "week_totals" .Week}}
     </div>
-  </div>
-
-  <!-- Macro settimana: id usato per OOB swap dopo mutazioni. -->
-  {{template "week_totals_card" .WeekTotal}}
-
-  {{/* Setup settimana: il bottone "Copia da scorsa" e' ora iconcina inline
-       accanto al titolo. Resta solo il box "Applica template" se ce ne sono. */}}
-  {{if and (not .HasMeals) .Templates}}
-  <form method="post" action="/week/apply-template" class="mb-6 bg-surface border border-border rounded p-4">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <input type="hidden" name="start" value="{{.WeekStartStr}}">
-    <p class="text-sm font-medium text-text mb-2">Applica template alla settimana</p>
-    <div class="flex items-center gap-2">
-      <select name="template_id" required class="grow rounded border border-border bg-surface px-3 py-2">
-        <option value="">— scegli —</option>
-        {{range .Templates}}
-          <option value="{{.ID}}" {{if .IsActive}}selected{{end}}>{{.Name}}{{if .IsActive}} (attivo){{end}}</option>
-        {{end}}
-      </select>
-      <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90 text-sm">Applica</button>
-    </div>
-  </form>
-  {{end}}
-
-  {{/* Generazione automatica: visibile solo a settimana vuota e con varianti
-       nel piano nutrizionista da cui pescare. */}}
-  {{if and (not .HasMeals) .HasNutritionistPlan}}
-  <form method="post" action="/week/generate" class="mb-6 bg-surface border border-border rounded p-4">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <input type="hidden" name="start" value="{{.WeekStartStr}}">
-    <div class="flex items-center justify-between gap-3 flex-wrap">
-      <div>
-        <p class="text-sm font-medium text-text flex items-center gap-2">
-          Genera piano automaticamente
-          {{if not (index .Features "auto_plan")}}
-            <span class="inline-flex items-center text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded px-1.5 py-0.5 font-medium">Premium</span>
-          {{end}}
-        </p>
-        <p class="text-xs text-muted">Riempie la settimana pescando dalle varianti del piano nutrizionista, puntando ai tuoi target macro.</p>
+    <div class="flex flex-wrap items-center gap-2">
+      <div id="week-nav" class="inline-flex rounded-[10px] border border-border bg-surface overflow-hidden">
+        <a href="/?start={{.PrevWeek}}" class="w-9 h-9 grid place-items-center hover:bg-surface-2" aria-label="Settimana precedente" title="Settimana precedente">{{template "icon" "i-chevron-left"}}</a>
+        <a href="/" class="h-9 px-3 grid place-items-center border-x border-border text-[13px] font-semibold hover:bg-surface-2">Oggi</a>
+        <a href="/?start={{.NextWeek}}" class="w-9 h-9 grid place-items-center hover:bg-surface-2" aria-label="Settimana successiva" title="Settimana successiva">{{template "icon" "i-chevron-right"}}</a>
       </div>
-      <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90 text-sm whitespace-nowrap flex items-center gap-2">
-        ✨ Genera
-        <span class="htmx-indicator htmx-spinner" aria-hidden="true"></span>
-      </button>
+      <a href="/shopping-list?week={{.NextWeek}}" class="btn-secondary hidden sm:inline-flex">Lista della spesa</a>
+      <div class="relative">
+        <button type="button" class="btn-secondary btn-icon" data-popover="week-menu" aria-expanded="false" aria-controls="week-menu" aria-label="Altre azioni sulla settimana" title="Altre azioni sulla settimana">{{template "icon" "i-dots"}}</button>
+        <div id="week-menu" class="menu-panel hidden absolute right-0 top-full mt-2 w-[290px] z-40 p-1.5 flex flex-col">
+          {{if not .HasMeals}}
+          <form method="post" action="/week/copy-previous">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input type="hidden" name="start" value="{{.WeekStartStr}}">
+            <button class="nav-link w-full">Copia la settimana precedente</button>
+          </form>
+          {{else}}
+          <form method="post" action="/week/reset" data-confirm="Svuotare la settimana? Pasti, voci e sgarri verranno cancellati.">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input type="hidden" name="start" value="{{.WeekStartStr}}">
+            <button class="nav-link w-full text-danger">Svuota la settimana</button>
+          </form>
+          {{end}}
+          <a href="/week/{{.WeekStartStr}}/export" class="nav-link">Esporta in CSV</a>
+          <form method="post" action="/week/{{.WeekStartStr}}/import" enctype="multipart/form-data"
+                class="mt-1 pt-2 px-2.5 pb-1 border-t border-border flex flex-col gap-2">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <label for="csv-file" class="font-semibold">Importa da CSV</label>
+            <input id="csv-file" type="file" name="csv_file" accept=".csv" required
+                   class="text-[12.5px] text-muted file:mr-2 file:h-8 file:px-2.5 file:rounded-lg file:border file:border-border file:bg-surface file:text-text file:font-semibold">
+            <button type="submit" class="btn-secondary self-start">Importa</button>
+          </form>
+        </div>
+      </div>
+      <button type="button" class="btn-primary" data-focus="new-meal-name" aria-label="Aggiungi pasto">{{template "icon" "i-plus"}}<span class="hidden sm:inline">Aggiungi pasto</span></button>
     </div>
-  </form>
-  {{end}}
+  </header>
 
-  <!-- Timeline: TUTTI i giorni della settimana, sempre visibili. Le pillole
-       in focus sono evidenziate (accent). Click sulla pillola toggla il
-       relativo card piena in #focus-grid. Wrapper scrollabile su mobile. -->
-  <div class="overflow-x-auto -mx-4 px-4 mb-4">
-    <div id="timeline-pills" class="grid grid-cols-7 gap-2 min-w-[480px]">
-      {{range .AllCards}}
-        {{template "day_pill" .}}
+  {{/* Settimana vuota: le scorciatoie per riempirla. */}}
+  {{if not .HasMeals}}
+    {{if or .Templates .HasNutritionistPlan}}
+    <div class="grid gap-3 sm:grid-cols-2">
+      {{if .Templates}}
+      <form method="post" action="/week/apply-template" class="card p-4 flex flex-col gap-2.5">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="hidden" name="start" value="{{.WeekStartStr}}">
+        <div>
+          <h2 class="font-bold text-[15px]">Parti da un template</h2>
+          <p class="text-muted">Crea i pasti di tutta la settimana dal tuo schema.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <select name="template_id" required aria-label="Template" class="field">
+            <option value="">Scegli un template</option>
+            {{range .Templates}}<option value="{{.ID}}" {{if .IsActive}}selected{{end}}>{{.Name}}{{if .IsActive}} (attivo){{end}}</option>{{end}}
+          </select>
+          <button class="btn-primary shrink-0">Applica</button>
+        </div>
+      </form>
+      {{end}}
+      {{if .HasNutritionistPlan}}
+      <form method="post" action="/week/generate" class="card p-4 flex flex-col gap-2.5">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="hidden" name="start" value="{{.WeekStartStr}}">
+        <div>
+          <h2 class="font-bold text-[15px] flex items-center gap-2">Genera la settimana
+            {{if not (index .Features "auto_plan")}}<span class="chip bg-warn-bg text-warn-fg">Premium</span>{{end}}
+          </h2>
+          <p class="text-muted">Sceglie dalle varianti del piano nutrizionale puntando ai tuoi obiettivi.</p>
+        </div>
+        <button class="btn-primary self-start">Genera<span class="htmx-indicator htmx-spinner" aria-hidden="true"></span></button>
+      </form>
       {{end}}
     </div>
-  </div>
-
-  <!-- Lista focus: card piene impilate verticalmente, riordinabili via
-       drag-and-drop client-side (ordine non persistito: e' solo l'ordine
-       di visualizzazione nella sessione corrente). -->
-  <div id="focus-grid" class="flex flex-col gap-4" data-sortable="focus" data-sortable-handle="header" data-week-start="{{.WeekStartStr}}">
-    {{range .FocusCards}}
-      {{template "day_card" .}}
     {{end}}
+  {{end}}
+
+  <div id="timeline-pills" role="tablist" aria-label="Giorni della settimana" class="grid grid-cols-7 gap-1 sm:gap-1.5">
+    {{range .AllCards}}{{template "day_pill" .}}{{end}}
   </div>
 
-  <!-- Export / Import CSV -->
-  <div class="mt-6 flex flex-wrap items-center gap-4">
-    <a href="/week/{{.WeekStartStr}}/export"
-       class="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-2 transition">
-      ↓ Esporta CSV
-    </a>
-    <form method="post" action="/week/{{.WeekStartStr}}/import"
-          enctype="multipart/form-data" class="flex items-center gap-2">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <label class="text-sm text-muted">Importa CSV:</label>
-      <input type="file" name="csv_file" accept=".csv"
-             class="text-sm text-muted file:mr-2 file:rounded file:border file:border-border file:bg-surface file:px-2 file:py-1 file:text-xs file:hover:bg-surface-2">
-      <button type="submit"
-              class="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-2 transition">
-        Importa
-      </button>
-    </form>
+  <div id="day-panel" role="tabpanel" aria-labelledby="pill-{{.Selected.DateStr}}" tabindex="-1" class="focus:outline-none">
+    {{template "day_card" .Selected}}
   </div>
 </div>
-<script src="/static/js/day_focus.js" defer></script>
+<script src="/static/js/day_tabs.js" defer></script>
 {{end}}

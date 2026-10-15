@@ -23,13 +23,13 @@ type dashboardData struct {
 	authPageData
 	Plan                *domain.WeeklyPlanFull
 	Days                []dayView     // legacy: usato nei test eventuali
-	AllCards            []dayCardData // 7 giorni, in ordine, ognuno renderizzato come pill in timeline
-	FocusCards          []dayCardData // sotto-insieme di AllCards: card piene in #focus-grid
+	AllCards            []dayCardData // 7 giorni, in ordine: le schede in alto
+	Selected            dayCardData   // il giorno aperto sotto le schede
 	WeekStart           time.Time
 	WeekStartStr        string // YYYY-MM-DD per i form
 	PrevWeek            string // YYYY-MM-DD
 	NextWeek            string
-	WeekTotal           macros.Macros
+	Week                weekSummary
 	HasMeals            bool
 	Templates           []*domain.MealTemplate // per il picker "applica template"
 	HasNutritionistPlan bool                   // true se l'utente ha varianti da cui generare
@@ -46,18 +46,19 @@ type dayView struct {
 	DayTotal macros.Macros
 }
 
-// dayCardData e' il view-model passato ai partial day_pill.html (timeline)
-// e day_card.html (focus-grid). Self-contained per essere renderizzabile
-// sia inline (dashboard) sia da solo (HTMX swap dopo mutation).
+// dayCardData e' il view-model passato ai partial day_pill.html (scheda del
+// giorno in alto) e day_card.html (il giorno aperto). Self-contained per
+// essere renderizzabile sia inline (dashboard) sia da solo (HTMX swap dopo
+// mutation o cambio di scheda).
 //
-// `State` descrive il giorno calendariale (past/today/future). `InFocus` dice
-// se il giorno e' attualmente nella griglia focus. Default iniziale:
-// today + future = InFocus=true; past = InFocus=false.
+// `State` descrive il giorno calendariale (past/today/future). `Selected`
+// dice se e' il giorno aperto: uno solo per pagina.
 type dayCardData struct {
 	Day         dayView
 	DateStr     string // YYYY-MM-DD per data-day attribute
 	State       string // "past" | "today" | "future"
-	InFocus     bool   // true = card piena visibile in #focus-grid
+	Selected    bool   // true = giorno aperto in #day-panel
+	OOB         bool   // true = la scheda viaggia come swap out-of-band
 	WeekStart   string // YYYY-MM-DD per nascondere/passare nei form
 	CSRFToken   string
 	Progress    profile.MacroProgress
@@ -263,14 +264,13 @@ func adherenceForDay(dv dayView) macros.AdherenceScore {
 }
 
 // makeDayCard costruisce dayCardData a partire da una dayView e dal contesto.
-// `state` e' il giorno calendariale; `inFocus` decide se andra' anche nella
-// griglia focus. Default: today/future = true, past = false.
-func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken string, progress profile.MacroProgress, workoutKcal float64, workouts []domain.WorkoutLog, activities []domain.WorkoutActivity) dayCardData {
+// `state` e' il giorno calendariale; `selected` dice se e' il giorno aperto.
+func makeDayCard(dv dayView, state string, selected bool, weekStartStr, csrfToken string, progress profile.MacroProgress, workoutKcal float64, workouts []domain.WorkoutLog, activities []domain.WorkoutActivity) dayCardData {
 	return dayCardData{
 		Day:         dv,
 		DateStr:     formatDate(dv.Date),
 		State:       state,
-		InFocus:     inFocus,
+		Selected:    selected,
 		WeekStart:   weekStartStr,
 		CSRFToken:   csrfToken,
 		Progress:    progress,
@@ -280,42 +280,18 @@ func makeDayCard(dv dayView, state string, inFocus bool, weekStartStr, csrfToken
 	}
 }
 
-// reorderFocusCards porta la card "today" in prima posizione; le restanti
-// mantengono l'ordine Lun-Dom originale (skipping today). Le pillole nella
-// timeline rimangono sempre in ordine calendariale fisso.
-func reorderFocusCards(cards []dayCardData) []dayCardData {
-	idx := -1
-	for i, c := range cards {
-		if c.State == "today" {
-			idx = i
-			break
-		}
-	}
-	if idx <= 0 {
-		return cards // today già prima o assente
-	}
-	out := make([]dayCardData, 0, len(cards))
-	out = append(out, cards[idx])
-	out = append(out, cards[:idx]...)
-	out = append(out, cards[idx+1:]...)
-	return out
-}
-
-// buildDayCards costruisce le 7 dayCardData con InFocus default-driven dallo
-// stato calendariale: today + future = true, past = false. La timeline
-// renderizza tutte e 7 le pillole; #focus-grid solo quelle InFocus.
-func buildDayCards(days []dayView, today time.Time, weekStartStr, csrfToken string, user *domain.User, workoutKcals [7]float64, workoutLogs [7][]domain.WorkoutLog, activities []domain.WorkoutActivity, waterMLs [7]int) []dayCardData {
+// buildDayCards costruisce le 7 dayCardData; `selected` (YYYY-MM-DD) e' il
+// giorno aperto.
+func buildDayCards(days []dayView, today time.Time, selected, weekStartStr, csrfToken string, user *domain.User, workoutKcals [7]float64, workoutLogs [7][]domain.WorkoutLog, activities []domain.WorkoutActivity, waterMLs [7]int) []dayCardData {
 	out := make([]dayCardData, 0, 7)
-	allPast := len(days) > 0 && dayState(days[len(days)-1].Date, today) == "past"
 	target := waterTargetFor(user)
 	for i, dv := range days {
 		state := dayState(dv.Date, today)
-		inFocus := allPast || state != "past"
 		var progress profile.MacroProgress
 		if user != nil {
 			progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
 		}
-		card := makeDayCard(dv, state, inFocus, weekStartStr, csrfToken, progress, workoutKcals[i], workoutLogs[i], activities)
+		card := makeDayCard(dv, state, formatDate(dv.Date) == selected, weekStartStr, csrfToken, progress, workoutKcals[i], workoutLogs[i], activities)
 		card.Water = waterWidgetData{DateStr: card.DateStr, WaterML: waterMLs[i], WaterTargetML: target, CSRFToken: csrfToken}
 		card.Adherence = adherenceForDay(dv)
 		out = append(out, card)
@@ -332,20 +308,45 @@ func waterTargetFor(user *domain.User) int {
 	return 2000
 }
 
-// dayMutationResponse e' il view-model per day_card_with_pill_oob: card +
-// pillola OOB + totali settimanali OOB. Serve per aggiornare in unica risposta
-// tutti gli elementi che dipendono dai macro dopo una mutazione (add, remove,
-// reorder), in modo che il client non debba ricaricare la pagina.
-type dayMutationResponse struct {
-	Card      dayCardData
-	WeekTotal macros.Macros
+// weekSummary e' il riepilogo della settimana nell'intestazione della
+// dashboard (#week-totals), aggiornato out-of-band dopo ogni mutazione.
+type weekSummary struct {
+	Total       macros.Macros
+	PlannedDays int  // giorni con almeno un pasto
+	OOB         bool // true = viaggia come swap out-of-band
 }
 
-// renderDayCard scrive il partial day_card piu' la pillola corrispondente
-// con HX-OOB swap, in un unico response. Cosi' una mutation aggiorna sia
-// la card in #focus-grid sia la pillola in #timeline-pills (kcal totali,
-// accent state).
-func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, weekTotal macros.Macros, weekStart time.Time, state string) {
+// AvgKcal e' la media giornaliera sui soli giorni pianificati.
+func (s weekSummary) AvgKcal() float64 {
+	if s.PlannedDays == 0 {
+		return 0
+	}
+	return s.Total.Kcal / float64(s.PlannedDays)
+}
+
+func summarizeWeek(full *domain.WeeklyPlanFull) weekSummary {
+	s := weekSummary{Total: macros.ForWeek(full.Days)}
+	for _, meals := range full.Days {
+		if len(meals) > 0 {
+			s.PlannedDays++
+		}
+	}
+	return s
+}
+
+// dayMutationResponse e' il view-model per day_card_with_pill_oob: card +
+// scheda del giorno OOB + riepilogo settimanale OOB. Serve per aggiornare in
+// unica risposta tutti gli elementi che dipendono dai macro dopo una
+// mutazione (add, remove, reorder) o un cambio di scheda.
+type dayMutationResponse struct {
+	Card dayCardData
+	Week weekSummary
+}
+
+// renderDayCard scrive il partial day_card piu' la scheda corrispondente e
+// il riepilogo settimanale con HX-OOB swap, in un unico response. Il giorno
+// renderizzato diventa quello selezionato.
+func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, week weekSummary, weekStart time.Time, state string) {
 	user := userFromContext(r.Context())
 	var progress profile.MacroProgress
 	if user != nil {
@@ -362,35 +363,36 @@ func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, 
 	}
 	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress, wkcal, wlogs, acts)
 	card.Adherence = adherenceForDay(dv)
+	card.OOB = true
 	if a.WaterLogs != nil && user != nil {
 		ml, _ := a.WaterLogs.TotalForDate(r.Context(), user.ID, dv.Date)
 		card.Water = waterWidgetData{DateStr: card.DateStr, WaterML: ml, WaterTargetML: waterTargetFor(user), CSRFToken: card.CSRFToken}
 	}
-	resp := dayMutationResponse{Card: card, WeekTotal: weekTotal}
+	week.OOB = true
+	resp := dayMutationResponse{Card: card, Week: week}
 	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card_with_pill_oob", resp); err != nil {
 		a.serverError(w, r, err)
 	}
 }
 
 // loadDayCard carica il piano dell'utente per la settimana data, costruisce
-// la dayView del giorno richiesto e ritorna anche il totale settimanale per
-// permettere l'aggiornamento OOB del riquadro macro in alto.
-func (a *App) loadDayCard(r *http.Request, userID int64, weekStart time.Time, dayIndex int) (*dayView, macros.Macros, error) {
+// la dayView del giorno richiesto e ritorna anche il riepilogo settimanale
+// per permettere l'aggiornamento OOB dell'intestazione.
+func (a *App) loadDayCard(r *http.Request, userID int64, weekStart time.Time, dayIndex int) (*dayView, weekSummary, error) {
 	if dayIndex < 0 || dayIndex > 6 {
-		return nil, macros.Macros{}, fmt.Errorf("day_index fuori range")
+		return nil, weekSummary{}, fmt.Errorf("day_index fuori range")
 	}
 	plan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), userID, weekStart)
 	if err != nil {
-		return nil, macros.Macros{}, err
+		return nil, weekSummary{}, err
 	}
 	full, err := a.WeeklyPlans.LoadFull(r.Context(), plan)
 	if err != nil {
-		return nil, macros.Macros{}, err
+		return nil, weekSummary{}, err
 	}
 	days := buildDayViews(full, weekStart)
 	dv := days[dayIndex]
-	weekTotal := macros.ForWeek(full.Days)
-	return &dv, weekTotal, nil
+	return &dv, summarizeWeek(full), nil
 }
 
 // nosurfTokenOrEmpty e' un thin wrapper per leggere il CSRF token; usato dai
@@ -401,20 +403,21 @@ func nosurfTokenOrEmpty(r *http.Request) string {
 
 // respondMutationOrRedirect gestisce in modo uniforme il dual-mode (HTMX
 // vs full navigation) dopo una mutazione su un meal/item. Per HX-Request
-// ritorna la card piena + la pillola OOB; altrimenti redirect alla settimana.
+// ritorna la card piena + la scheda OOB; altrimenti redirect alla settimana,
+// sul giorno toccato.
 func (a *App) respondMutationOrRedirect(w http.ResponseWriter, r *http.Request, weekStart time.Time, dayIndex int) {
 	if r.Header.Get("HX-Request") != "true" {
-		a.redirectToWeek(w, r, weekStart)
+		a.redirectToDay(w, r, weekStart, dayIndex)
 		return
 	}
 	user := userFromContext(r.Context())
-	dv, weekTotal, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
+	dv, week, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	state := dayState(dv.Date, todayDate())
-	a.renderDayCard(w, r, *dv, weekTotal, weekStart, state)
+	a.renderDayCard(w, r, *dv, week, weekStart, state)
 }
 
 // dayIndexFromMealID risolve il day_of_week di un meal a partire dal suo id.
@@ -509,15 +512,14 @@ func (a *App) renderDashboard(
 			waterMLs[i] = totals[formatDate(weekStart.AddDate(0, 0, i))]
 		}
 	}
-	allCards := buildDayCards(days, today, weekStartStr, base.CSRFToken, user, workoutKcals, workoutLogs, activities, waterMLs)
-	focusCards := make([]dayCardData, 0, len(allCards))
-	for _, c := range allCards {
-		if c.InFocus {
-			focusCards = append(focusCards, c)
+	selected := selectedDay(r.URL.Query().Get("day"), weekStart, today)
+	allCards := buildDayCards(days, today, formatDate(selected), weekStartStr, base.CSRFToken, user, workoutKcals, workoutLogs, activities, waterMLs)
+	selIdx := 0
+	for i, c := range allCards {
+		if c.Selected {
+			selIdx = i
 		}
 	}
-	focusCards = reorderFocusCards(focusCards)
-	weekTotal := macros.ForWeek(full.Days)
 
 	hasNutritionistPlan := false
 	if a.NutritionistPlans != nil && user != nil {
@@ -529,12 +531,12 @@ func (a *App) renderDashboard(
 		Plan:                full,
 		Days:                days,
 		AllCards:            allCards,
-		FocusCards:          focusCards,
+		Selected:            allCards[selIdx],
 		WeekStart:           weekStart,
 		WeekStartStr:        weekStartStr,
 		PrevWeek:            formatDate(weekStart.AddDate(0, 0, -7)),
 		NextWeek:            formatDate(weekStart.AddDate(0, 0, 7)),
-		WeekTotal:           weekTotal,
+		Week:                summarizeWeek(full),
 		HasMeals:            hasMeals,
 		Templates:           tpls,
 		HasNutritionistPlan: hasNutritionistPlan,
@@ -673,6 +675,36 @@ func (a *App) flashAndBack(w http.ResponseWriter, r *http.Request, weekStart tim
 
 func (a *App) redirectToWeek(w http.ResponseWriter, r *http.Request, weekStart time.Time) {
 	http.Redirect(w, r, "/?start="+formatDate(weekStart), http.StatusSeeOther)
+}
+
+// redirectToDay torna alla settimana con aperto il giorno dayIndex (0=lunedi').
+func (a *App) redirectToDay(w http.ResponseWriter, r *http.Request, weekStart time.Time, dayIndex int) {
+	if dayIndex < 0 || dayIndex > 6 {
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	http.Redirect(w, r, weekDayURL(weekStart, weekStart.AddDate(0, 0, dayIndex)), http.StatusSeeOther)
+}
+
+// weekDayURL e' l'indirizzo della dashboard sulla settimana weekStart con
+// aperto il giorno day.
+func weekDayURL(weekStart, day time.Time) string {
+	return "/?start=" + formatDate(weekStart) + "&day=" + formatDate(day)
+}
+
+// selectedDay sceglie il giorno aperto nella dashboard: quello in ?day= se
+// cade nella settimana, altrimenti oggi se e' in settimana, altrimenti il
+// lunedi'. Confronta le date come stringhe YYYY-MM-DD (vedi dayState).
+func selectedDay(param string, weekStart, today time.Time) time.Time {
+	first, last := formatDate(weekStart), formatDate(weekStart.AddDate(0, 0, 6))
+	in := func(s string) bool { return s >= first && s <= last }
+	if d, err := time.Parse("2006-01-02", param); err == nil && in(param) {
+		return d
+	}
+	if t := formatDate(today); in(t) {
+		return today
+	}
+	return weekStart
 }
 
 // handleAddMeal POST /meals — aggiunge un pasto manuale al piano corrente.
@@ -998,10 +1030,9 @@ func (a *App) handleReorderMealItems(w http.ResponseWriter, r *http.Request) {
 	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
-// handleDayCard GET /days/{date} ritorna la card piena (+ pillola OOB) per
-// il giorno indicato. Chiamato dal client quando l'utente porta un giorno
-// in focus (click su una pillola not-in-focus). Il "togliere dal focus"
-// e' UI-only, lato client (rimuove la card dal DOM).
+// handleDayCard GET /days/{date} ritorna la card piena (+ scheda OOB) per
+// il giorno indicato. Chiamato dalle schede dei giorni (hx-get) quando
+// l'utente apre un altro giorno della settimana.
 func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	dateStr := chi.URLParam(r, "date")
@@ -1016,13 +1047,13 @@ func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	dv, weekTotal, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
+	dv, week, err := a.loadDayCard(r, user.ID, weekStart, dayIndex)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	state := dayState(dv.Date, todayDate())
-	a.renderDayCard(w, r, *dv, weekTotal, weekStart, state)
+	a.renderDayCard(w, r, *dv, week, weekStart, state)
 }
 
 // handleAddItemForm GET /meals/{mealID}/items/new — shell del picker live

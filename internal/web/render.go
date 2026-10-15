@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"math"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/amon2126/nutreek/internal/domain"
 )
@@ -151,5 +154,129 @@ func funcMap() template.FuncMap {
 			}
 			return *p
 		},
+		"num": formatNum,
+		"dec": formatDec,
+		// list costruisce una lista di stringhe da usare in un range.
+		"list": func(v ...string) []string { return v },
+		"liters": func(ml int) string {
+			return formatDec(float64(ml)/1000, 2) + " l"
+		},
+		"sub": func(a, b float64) float64 { return a - b },
+		"ringDash": func(pct float64) string {
+			// Anello di progresso: cerchio r=44 (circonferenza 276,46).
+			const c = 2 * math.Pi * 44
+			pct = math.Max(0, math.Min(pct, 100))
+			return fmt.Sprintf("%.1f %.1f", pct/100*c, c)
+		},
+		"weekRange": weekRange,
+		"dayTitle": func(t time.Time) string {
+			return weekdaysIT[(int(t.Weekday())+6)%7] + " " + strconv.Itoa(t.Day())
+		},
+		"dayShort": func(t time.Time) string {
+			return weekdaysIT[(int(t.Weekday())+6)%7][:3] + " " + strconv.Itoa(t.Day())
+		},
+		"dayLetter": func(t time.Time) string {
+			return weekdaysIT[(int(t.Weekday())+6)%7][:1]
+		},
+		// mealCtx / itemCtx passano a meal_card e meal_item_row la vista del
+		// pasto (o della voce) insieme al contesto della card che serve ai
+		// form: html/template non permette struct literal.
+		"mealCtx": func(meal any, weekStart, csrf string) MealCtx {
+			return MealCtx{Meal: meal, WeekStart: weekStart, CSRFToken: csrf}
+		},
+		"itemCtx": func(view any, struck, cheat bool, weekStart, csrf string) ItemCtx {
+			return ItemCtx{View: view, Struck: struck, Cheat: cheat, WeekStart: weekStart, CSRFToken: csrf}
+		},
+		"navActive": navActive,
+		// nav costruisce una voce di navigazione della shell (sidebar e
+		// barra in basso): {{template "nav_link" (nav $.ActiveNav "/recipes" "Ricette" "i-recipes")}}.
+		"nav": func(cur, href, label, icon string) NavItem {
+			return NavItem{Href: href, Label: label, Icon: icon, Active: navActive(cur, href)}
+		},
+		// initial restituisce la prima lettera maiuscola di un nome, per
+		// l'avatar nella sidebar.
+		"initial": func(s string) string {
+			for _, r := range strings.TrimSpace(s) {
+				return strings.ToUpper(string(r))
+			}
+			return "?"
+		},
 	}
+}
+
+// MealCtx e' il view-model di meal_card: Meal e' la vista del pasto
+// costruita dal pacchetto app.
+type MealCtx struct {
+	Meal      any
+	WeekStart string
+	CSRFToken string
+}
+
+// ItemCtx e' il view-model di meal_item_row. Struck = voce del piano
+// sostituita da uno sgarro (barrata); Cheat = voce dello sgarro.
+type ItemCtx struct {
+	View          any
+	Struck, Cheat bool
+	WeekStart     string
+	CSRFToken     string
+}
+
+// NavItem e' il view-model di una voce di navigazione della shell.
+type NavItem struct {
+	Href, Label, Icon string
+	Active            bool
+}
+
+var (
+	weekdaysIT = [7]string{"Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"}
+	monthsIT   = [12]string{"gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"}
+)
+
+// formatNum arrotonda all'intero e separa le migliaia col punto, come si
+// scrive in italiano: 1636.4 -> "1.636".
+func formatNum(v float64) string {
+	n := int64(math.Round(v))
+	sign := ""
+	if n < 0 {
+		sign, n = "-", -n
+	}
+	s := strconv.FormatInt(n, 10)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "." + s[i:]
+	}
+	return sign + s
+}
+
+// formatDec scrive v con al massimo `digits` decimali, virgola decimale e
+// senza zeri finali: 1.5 -> "1,5", 2.0 -> "2", 1.25 -> "1,25".
+func formatDec(v float64, digits int) string {
+	s := strconv.FormatFloat(v, 'f', digits, 64)
+	if strings.Contains(s, ".") {
+		s = strings.TrimRight(strings.TrimRight(s, "0"), ".")
+	}
+	return strings.Replace(s, ".", ",", 1)
+}
+
+// weekRange descrive la settimana che inizia il lunedi' start:
+// "12–18 ottobre", "29 settembre – 5 ottobre", "29 dicembre 2025 – 4 gennaio 2026".
+func weekRange(start time.Time) string {
+	end := start.AddDate(0, 0, 6)
+	switch {
+	case start.Year() != end.Year():
+		return fmt.Sprintf("%d %s %d – %d %s %d", start.Day(), monthsIT[start.Month()-1], start.Year(), end.Day(), monthsIT[end.Month()-1], end.Year())
+	case start.Month() != end.Month():
+		return fmt.Sprintf("%d %s – %d %s", start.Day(), monthsIT[start.Month()-1], end.Day(), monthsIT[end.Month()-1])
+	default:
+		return fmt.Sprintf("%d–%d %s", start.Day(), end.Day(), monthsIT[end.Month()-1])
+	}
+}
+
+// navActive dice se il link href corrisponde alla pagina corrente cur:
+// "/" solo esatto, le altre sezioni anche sulle sottopagine
+// (/recipes/12 accende Ricette).
+func navActive(cur, href string) bool {
+	if href == "/" {
+		return cur == "/"
+	}
+	return cur == href || strings.HasPrefix(cur, href+"/")
 }
