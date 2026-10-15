@@ -1,394 +1,270 @@
 {{define "day_card"}}
 {{- /*
   day_card.html — view-model: dayCardData
-  Card piena renderizzata in #focus-grid. Quando ritornata da una
-  mutation HTMX, include anche la pillola corrispondente con
-  hx-swap-oob per aggiornare la timeline (kcal totale, accent state).
-  La rimozione dal focus e' UI-only (gestita da day_focus.js, no
-  round-trip server).
+  Il giorno aperto in #day-panel: riepilogo (anello kcal + macro), pasti,
+  acqua e allenamenti. La <section> e' la radice che le mutazioni HTMX
+  sostituiscono (hx-target="closest section[data-day]"), quindi tutto cio'
+  che dipende dai macro del giorno sta qui dentro.
+
+  Disposizione: su desktop due colonne (pasti | riepilogo + extra), sul
+  telefono una colonna nell'ordine del DOM: riepilogo, pasti, extra.
 */ -}}
-<section data-day="{{.DateStr}}"
-         data-state="{{.State}}"
-         class="bg-surface border rounded p-4 transition-all duration-200
-                {{if eq .State "today"}}border-accent ring-2 ring-accent/40{{else}}border-border{{end}}">
-  <header class="flex items-center justify-between mb-3 gap-2">
-    <h2 class="font-medium text-text">
-      {{.Day.Label}}
-      <span class="text-xs text-muted font-normal">{{.Day.Date.Format "02/01"}}</span>
-      {{if eq .State "today"}}<span class="ml-1 text-xs text-accent font-semibold uppercase">oggi</span>{{end}}
-    </h2>
-    <div class="flex items-center gap-2 text-xs text-muted">
-      <span>{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
+<section data-day="{{.DateStr}}" data-state="{{.State}}" aria-label="{{dayTitle .Day.Date}}"
+         class="grid gap-3 lg:gap-[18px] items-start lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_1fr]">
+
+  {{/* ---- Riepilogo del giorno ---- */}}
+  <div class="card p-4 flex flex-col gap-3.5 lg:col-start-2 lg:row-start-1">
+    <div class="flex items-baseline justify-between gap-2">
+      <h2 class="text-[15px] font-bold">{{dayTitle .Day.Date}}{{if eq .State "today"}}<span class="ml-1.5 text-[12.5px] font-semibold text-accent">oggi</span>{{end}}</h2>
+      {{if gt .Progress.Kcal.Target 0.0}}<span class="text-[12.5px] text-muted">obiettivo {{num .Progress.Kcal.Target}} kcal</span>{{end}}
+    </div>
+
+    {{if .Progress.HasTarget}}
+      {{with .Progress.Kcal}}
+      <div class="flex items-center gap-4">
+        <svg role="img" aria-label="{{num .Actual}} kcal su {{num .Target}}" viewBox="0 0 104 104" class="w-[84px] h-[84px] lg:w-[104px] lg:h-[104px] shrink-0">
+          <circle cx="52" cy="52" r="44" fill="none" stroke="var(--track)" stroke-width="9"/>
+          <circle cx="52" cy="52" r="44" fill="none" stroke="var({{if .Overflow}}--danger{{else}}--accent{{end}})" stroke-width="9" stroke-linecap="round"
+                  stroke-dasharray="{{ringDash .Pct}}" transform="rotate(-90 52 52)"/>
+          <text x="52" y="51" text-anchor="middle" font-size="20" font-weight="700" fill="var(--text)">{{num .Actual}}</text>
+          <text x="52" y="69" text-anchor="middle" font-size="11" fill="var(--muted)">kcal</text>
+        </svg>
+        <div class="flex flex-col gap-0.5">
+          {{if .Overflow}}
+            <span class="text-[18px] lg:text-[20px] font-bold tabular-nums text-danger">{{num (sub .Actual .Target)}} kcal</span>
+            <span class="text-muted">oltre l'obiettivo</span>
+          {{else}}
+            <span class="text-[18px] lg:text-[20px] font-bold tabular-nums">{{num (sub .Target .Actual)}} kcal</span>
+            <span class="text-muted">ancora da pianificare</span>
+          {{end}}
+        </div>
+      </div>
+      {{end}}
+      <div class="flex flex-col gap-2.5">
+        {{template "macro_bar" .Progress.Protein}}
+        {{template "macro_bar" .Progress.Carbs}}
+        {{template "macro_bar" .Progress.Fat}}
+      </div>
+    {{else}}
+      <div class="flex flex-col gap-1">
+        <span class="text-[20px] font-bold tabular-nums">{{num .Day.DayTotal.Kcal}} kcal</span>
+        <span class="text-muted tabular-nums">Proteine {{num .Day.DayTotal.Protein}} g, carboidrati {{num .Day.DayTotal.Carbs}} g, grassi {{num .Day.DayTotal.Fat}} g</span>
+        <a href="/profile" class="mt-1 text-accent font-semibold hover:underline">Imposta gli obiettivi per vedere i progressi</a>
+      </div>
+    {{end}}
+
+    {{if or .HasMeals (gt .WorkoutKcal 0.0)}}
+    <div class="flex flex-wrap gap-1.5">
       {{if .HasMeals}}
         {{if .Adherence.HasCheats}}
-          <span class="text-danger font-medium" title="Aderenza al piano: scostamento kcal {{printf "%+.0f" .Adherence.KcalDiffPct}}%">⚠ {{printf "%.0f" .Adherence.Score}}%</span>
+          <span class="chip bg-danger-soft text-danger" title="Scostamento kcal dal piano: {{printf "%+.0f" .Adherence.KcalDiffPct}}%">Aderenza {{printf "%.0f" .Adherence.Score}}%</span>
         {{else}}
-          <span class="text-accent font-medium" title="Nessuno sgarro: piano rispettato">✓ aderente</span>
+          <span class="chip bg-accent-soft text-accent">Piano rispettato</span>
         {{end}}
       {{end}}
-      {{if gt .WorkoutKcal 0.0}}<span class="text-accent" title="Calorie bruciate con allenamento">-{{printf "%.0f" .WorkoutKcal}} bruciati</span>{{end}}
-      {{if .Progress.AnyExceeds}}<span class="text-danger" title="Uno o più macro sforati">⚠</span>{{end}}
-      <button type="button" data-unfocus="{{.DateStr}}" title="Rimuovi dal focus"
-              class="text-muted hover:text-danger leading-none text-base">&times;</button>
+      {{if gt .WorkoutKcal 0.0}}<span class="chip bg-surface-2 text-text">−{{num .WorkoutKcal}} kcal di allenamento</span>{{end}}
     </div>
-  </header>
-
-  {{if .Progress.HasTarget}}
-    <button type="button" data-macro-toggle aria-expanded="false"
-            aria-label="Espandi/comprimi dettaglio macro"
-            class="w-full mb-3 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-
-      {{/* ---- Compatto: 4 mini-bar sempre visibili (track grigio = giorno vuoto) ---- */}}
-      <div data-macro-compact class="flex items-center gap-2">
-        {{with .Progress.Kcal}}
-          <div class="flex items-center gap-1 flex-1 min-w-0" title="Calorie: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} kcal">
-            <span class="text-muted font-medium shrink-0 w-3 text-xs">K</span>
-            <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
-              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
-            </div>
-          </div>
-        {{end}}
-        {{with .Progress.Protein}}
-          <div class="flex items-center gap-1 flex-1 min-w-0" title="Proteine: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
-            <span class="text-muted font-medium shrink-0 w-3 text-xs">P</span>
-            <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
-              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
-            </div>
-          </div>
-        {{end}}
-        {{with .Progress.Carbs}}
-          <div class="flex items-center gap-1 flex-1 min-w-0" title="Carboidrati: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
-            <span class="text-muted font-medium shrink-0 w-3 text-xs">C</span>
-            <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
-              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
-            </div>
-          </div>
-        {{end}}
-        {{with .Progress.Fat}}
-          <div class="flex items-center gap-1 flex-1 min-w-0" title="Grassi: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
-            <span class="text-muted font-medium shrink-0 w-3 text-xs">F</span>
-            <div class="h-2 flex-1 rounded-full bg-surface-2 overflow-hidden">
-              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
-            </div>
-          </div>
-        {{end}}
-        <svg class="w-3 h-3 text-muted shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 4.5l3 3 3-3"/>
-        </svg>
-      </div>
-
-      {{/* ---- Espanso: dettaglio 4 righe con bordo visibile + header ---- */}}
-      <div data-macro-detail class="hidden text-xs mt-2 border border-border rounded p-3">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-muted font-medium uppercase tracking-wide" style="font-size:0.65rem">Progressi giornalieri</span>
-          <svg class="w-3 h-3 text-muted" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 7.5l3-3 3 3"/>
-          </svg>
-        </div>
-        <div class="space-y-1">
-        {{with .Progress.Kcal}}
-          <div class="flex items-center gap-2" title="Calorie: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} kcal">
-            <span class="w-20 text-muted">{{.Label}}</span>
-            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
-              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
-            </div>
-            <span class="w-24 text-right tabular-nums whitespace-nowrap {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} kcal</span>
-          </div>
-        {{end}}
-        {{with .Progress.Protein}}
-          <div class="flex items-center gap-2" title="Proteine: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
-            <span class="w-20 text-muted">{{.Label}}</span>
-            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
-              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
-            </div>
-            <span class="w-24 text-right tabular-nums whitespace-nowrap {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} g</span>
-          </div>
-        {{end}}
-        {{with .Progress.Carbs}}
-          <div class="flex items-center gap-2" title="Carboidrati: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
-            <span class="w-20 text-muted">{{.Label}}</span>
-            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
-              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
-            </div>
-            <span class="w-24 text-right tabular-nums whitespace-nowrap {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} g</span>
-          </div>
-        {{end}}
-        {{with .Progress.Fat}}
-          <div class="flex items-center gap-2" title="Grassi: {{printf "%.0f" .Actual}} / {{printf "%.0f" .Target}} g">
-            <span class="w-20 text-muted">{{.Label}}</span>
-            <div class="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden">
-              <div class="h-full rounded-full {{if .Overflow}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .Pct}}%"></div>
-            </div>
-            <span class="w-24 text-right tabular-nums whitespace-nowrap {{if .Overflow}}text-danger font-semibold{{else}}text-muted{{end}}">{{printf "%.0f" .Actual}}/{{printf "%.0f" .Target}} g</span>
-          </div>
-        {{end}}
-        </div>
-      </div>
-
-    </button>
-  {{end}}
-
-  {{if .Day.Meals}}
-    <ul class="divide-y divide-border" data-sortable="meals" data-sort-url="/meals/reorder?day_of_week={{.Day.Index}}&start={{.WeekStart}}">
-      {{range .Day.Meals}}
-        <li class="py-2" data-id="{{.Meal.ID}}">
-          <div class="flex items-center justify-between gap-2 mb-1">
-            <p class="text-sm font-medium {{if .HasCheats}}text-danger{{else}}text-text{{end}}">
-              <span class="cursor-grab text-muted/60 select-none mr-1" aria-hidden="true">⠿</span>
-              {{.Meal.Name}}
-              {{if .HasCheats}}<span class="ml-2 text-xs uppercase font-semibold text-danger">Sgarro</span>{{end}}
-            </p>
-            <div class="flex items-center gap-2 text-xs text-muted">
-              <span>{{printf "%.0f" .MealTotal.Kcal}} kcal</span>
-              <a href="/meals/{{.Meal.ID}}/items/new?start={{$.WeekStart}}&meal_name={{.Meal.Name}}"
-                 class="text-text hover:underline" title="Aggiungi voce">+</a>
-              <a href="/meals/{{.Meal.ID}}/items/new?cheat=1&start={{$.WeekStart}}"
-                 class="text-danger hover:underline" title="Aggiungi sgarro">🍔</a>
-              <form method="post" action="/meals/{{.Meal.ID}}/delete?start={{$.WeekStart}}"
-                    hx-post="/meals/{{.Meal.ID}}/delete?start={{$.WeekStart}}"
-                    hx-target="closest section[data-day]"
-                    hx-swap="outerHTML"
-                    hx-confirm="Eliminare questo pasto?"
-                    class="inline">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <button class="text-danger hover:underline" title="Elimina pasto" aria-label="Elimina pasto">×</button>
-              </form>
-            </div>
-          </div>
-          {{if .ItemViews}}
-            <ul class="text-xs space-y-1 ml-2 {{if .HasCheats}}opacity-60{{end}}" data-sortable="items" data-sort-url="/meals/{{.Meal.ID}}/items/reorder?start={{$.WeekStart}}">
-              {{$hc := .HasCheats}}
-              {{range .ItemViews}}
-                <li class="flex items-baseline justify-between gap-2" data-id="{{.Item.ID}}">
-                  <span class="grow {{if $hc}}line-through text-muted{{else}}text-muted{{end}}">
-                    {{if .Item.Recipe}}
-                      {{/* Riga ricetta: icona + nome (link al dettaglio) + porzioni "X di Y". */}}
-                      <span class="inline-flex items-baseline gap-1">
-                        <span aria-hidden="true">🍽️</span>
-                        <a href="/recipes/{{.Item.Recipe.ID}}" class="{{if not $hc}}text-accent {{end}}font-medium hover:underline" title="Apri la ricetta">{{.Item.Recipe.Name}}</a>
-                        <span class="text-muted text-xs whitespace-nowrap">
-                          {{printf "%.1f" .Item.Quantity}} di {{.Item.Recipe.Servings}} porz.
-                        </span>
-                        {{if .Item.IsCustomized}}<span class="text-xs text-accent" title="Ingredienti personalizzati">✎</span>{{end}}
-                      </span>
-                      {{with .Item.Recipe.Description}}
-                        <span class="block ml-5 italic text-muted/80 text-xs">{{.}}</span>
-                      {{end}}
-                      {{if .ScaledRecipeItems}}
-                        <ul class="block ml-5 mt-0.5 text-muted/80">
-                          {{range .ScaledRecipeItems}}
-                            <li class="flex items-baseline gap-1">
-                              <span aria-hidden="true">·</span>
-                              <span>{{.Name}}</span>
-                              <span class="tabular-nums">{{printf "%.0f" .Quantity}}{{.Unit}}</span>
-                            </li>
-                          {{end}}
-                        </ul>
-                      {{end}}
-                    {{else if .Item.Ingredient}}
-                      <span class="font-medium {{if not $hc}}text-text{{end}}">{{.Item.Ingredient.Name}}</span>
-                      {{if and (eq .Item.QuantityUnit "pz") .Item.Ingredient.UnitWeightG}}
-                        <span>{{printf "%.0f" .Item.Quantity}} pz <span class="text-muted/70">({{printf "%.0f" .EffectiveGrams}}g)</span></span>
-                      {{else}}
-                        <span>{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
-                      {{end}}
-                    {{end}}
-                  </span>
-                  <span class="flex items-baseline gap-2 shrink-0">
-                    <span class="text-muted {{if $hc}}line-through{{end}}" title="P {{printf "%.1f" .Macros.Protein}}g · C {{printf "%.1f" .Macros.Carbs}}g · F {{printf "%.1f" .Macros.Fat}}g">{{printf "%.0f" .Macros.Kcal}} kcal</span>
-                    {{if and .Item.Recipe (not $hc)}}
-                      <button type="button"
-                              hx-get="/meal-items/{{.Item.ID}}/customize?start={{$.WeekStart}}"
-                              hx-target="#modal-host" hx-swap="innerHTML"
-                              class="text-muted hover:text-accent" title="Personalizza ingredienti">✎</button>
-                    {{end}}
-                    <form method="post" action="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
-                          hx-post="/meal-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
-                          hx-target="closest section[data-day]"
-                          hx-swap="outerHTML"
-                          class="inline">
-                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                      <button class="text-danger hover:underline" title="Elimina voce" aria-label="Elimina voce">×</button>
-                    </form>
-                  </span>
-                </li>
-              {{end}}
-            </ul>
-          {{end}}
-          {{if .HasCheats}}
-            <div class="mt-2 ml-3 border-l-2 border-danger/50 pl-3">
-              <div class="flex items-baseline justify-between mb-1">
-                <p class="text-xs font-semibold uppercase text-danger">Sgarro effettivo</p>
-                <form method="post" action="/meals/{{.Meal.ID}}/cheat/clear?start={{$.WeekStart}}"
-                      hx-post="/meals/{{.Meal.ID}}/cheat/clear?start={{$.WeekStart}}"
-                      hx-target="closest section[data-day]"
-                      hx-swap="outerHTML"
-                      hx-confirm="Annullare lo sgarro? I valori ufficiali del pasto torneranno attivi."
-                      class="inline">
-                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                  <button class="text-xs text-muted hover:text-danger hover:underline">annulla sgarro</button>
-                </form>
-              </div>
-              <ul class="text-xs space-y-1">
-                {{range .CheatViews}}
-                  <li class="flex items-baseline justify-between gap-2" data-id="{{.Item.ID}}">
-                    <span class="grow text-text">
-                      {{if .Item.Recipe}}
-                        <span class="inline-flex items-baseline gap-1">
-                          <span aria-hidden="true">🍽️</span>
-                          <a href="/recipes/{{.Item.Recipe.ID}}" class="font-medium hover:underline" title="Apri la ricetta">{{.Item.Recipe.Name}}</a>
-                          <span class="text-muted text-xs whitespace-nowrap">
-                            {{printf "%.1f" .Item.Quantity}} di {{.Item.Recipe.Servings}} porz.
-                          </span>
-                        </span>
-                        {{with .Item.Recipe.Description}}
-                          <span class="block ml-5 italic text-muted/80 text-xs">{{.}}</span>
-                        {{end}}
-                        {{if .ScaledRecipeItems}}
-                          <ul class="block ml-5 mt-0.5 text-muted/80">
-                            {{range .ScaledRecipeItems}}
-                              <li class="flex items-baseline gap-1">
-                                <span aria-hidden="true">·</span>
-                                <span>{{.Name}}</span>
-                                <span class="tabular-nums">{{printf "%.0f" .Quantity}}{{.Unit}}</span>
-                              </li>
-                            {{end}}
-                          </ul>
-                        {{end}}
-                      {{else if .Item.Ingredient}}
-                        <span class="font-medium">{{.Item.Ingredient.Name}}</span>
-                        <span class="text-muted">{{printf "%.0f" .Item.Quantity}}{{.Item.Ingredient.Unit}}</span>
-                      {{end}}
-                    </span>
-                    <span class="flex items-center gap-2 shrink-0">
-                      <span class="text-danger">{{printf "%.0f" .Macros.Kcal}}</span>
-                      <form method="post" action="/meal-cheat-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
-                            hx-post="/meal-cheat-items/{{.Item.ID}}/delete?start={{$.WeekStart}}"
-                            hx-target="closest section[data-day]"
-                            hx-swap="outerHTML"
-                            class="inline">
-                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                        <button class="text-danger hover:underline" title="Elimina sgarro" aria-label="Elimina sgarro">×</button>
-                      </form>
-                    </span>
-                  </li>
-                {{end}}
-              </ul>
-            </div>
-          {{end}}
-        </li>
-      {{end}}
-    </ul>
-  {{else}}
-    <p class="text-xs text-muted italic">Nessun pasto.</p>
-  {{end}}
-
-  <form method="post" action="/meals?start={{.WeekStart}}"
-        hx-post="/meals?start={{.WeekStart}}"
-        hx-target="closest section[data-day]"
-        hx-swap="outerHTML"
-        class="mt-3 flex items-center gap-2">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <input type="hidden" name="start" value="{{.WeekStart}}">
-    <input type="hidden" name="day_of_week" value="{{.Day.Index}}">
-    <input name="name" required placeholder="+ pasto extra"
-           class="grow rounded border border-border bg-surface px-2 py-1 text-sm placeholder:text-muted">
-    <button class="rounded bg-accent text-accent-fg px-3 py-1 text-sm hover:bg-accent/90">+</button>
-  </form>
-
-  {{/* Sezione allenamenti */}}
-  <div class="mt-3 pt-3 border-t border-border">
-    {{if gt .WorkoutKcal 0.0}}
-    <p class="text-xs text-muted font-medium mb-1">Allenamenti (−{{printf "%.0f" .WorkoutKcal}} kcal)</p>
-    {{range .Workouts}}
-    <div class="flex items-center justify-between text-xs text-muted mb-0.5">
-      <span>{{.ActivityName}} · {{.DurationMinutes}} min</span>
-      <form method="post" action="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}"
-            hx-post="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}"
-            hx-target="closest section[data-day]"
-            hx-swap="outerHTML"
-            class="inline">
-        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-        <button type="submit" class="text-danger hover:underline ml-2" title="Elimina allenamento" aria-label="Elimina allenamento">×</button>
-      </form>
-    </div>
-    {{end}}
-    {{end}}
-    {{if .Activities}}
-    <details class="text-sm mt-1">
-      <summary class="cursor-pointer text-accent hover:underline text-xs select-none">+ Allenamento</summary>
-      <form method="post" action="/allenamento?start={{$.WeekStart}}"
-            hx-post="/allenamento?start={{$.WeekStart}}"
-            hx-target="closest section[data-day]"
-            hx-swap="outerHTML"
-            class="mt-2 flex flex-wrap gap-2 items-end">
-        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-        <input type="hidden" name="logged_at" value="{{.DateStr}}">
-        <select name="activity_id"
-                class="rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
-          {{range .Activities}}
-          <option value="{{.ID}}">{{.Name}} ({{printf "%.0f" .KcalPerHour}} kcal/h)</option>
-          {{end}}
-        </select>
-        <input name="duration_minutes" type="number" min="1" max="720" placeholder="min"
-               class="w-16 rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent">
-        <button type="submit"
-                class="rounded bg-accent text-accent-fg px-3 py-1 text-xs font-medium hover:bg-accent/90 transition">
-          OK
-        </button>
-      </form>
-    </details>
     {{end}}
   </div>
 
-  {{/* Widget idratazione: self-contained, si aggiorna via HTMX senza
-       toccare il resto della card. */}}
-  {{template "water_widget" .Water}}
+  {{/* ---- Pasti ---- */}}
+  <div class="flex flex-col gap-3 min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+    {{if .Day.Meals}}
+    <div class="flex flex-col gap-3" data-sortable="meals" data-sortable-handle="[data-meal-grip]"
+         data-sort-url="/meals/reorder?day_of_week={{.Day.Index}}&start={{.WeekStart}}">
+      {{range .Day.Meals}}{{template "meal_card" (mealCtx . $.WeekStart $.CSRFToken)}}{{end}}
+    </div>
+    {{else}}
+    <div class="card px-4 py-6 text-center text-muted">Nessun pasto in questo giorno. Aggiungine uno qui sotto.</div>
+    {{end}}
+
+    <form method="post" action="/meals?start={{.WeekStart}}"
+          hx-post="/meals?start={{.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
+          class="flex items-center gap-2">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <input type="hidden" name="start" value="{{.WeekStart}}">
+      <input type="hidden" name="day_of_week" value="{{.Day.Index}}">
+      <label for="new-meal-name" class="sr-only">Nome del nuovo pasto</label>
+      <input id="new-meal-name" name="name" required maxlength="200" placeholder="Nuovo pasto, es. Merenda" class="field">
+      <button class="btn-secondary shrink-0">{{template "icon" "i-plus"}}Aggiungi</button>
+    </form>
+  </div>
+
+  {{/* ---- Acqua e allenamenti ---- */}}
+  <div class="flex flex-col gap-3 lg:col-start-2 lg:row-start-2">
+    {{template "water_widget" .Water}}
+
+    {{if or .Workouts .Activities}}
+    <div class="card px-4 py-3 flex flex-col gap-2">
+      <div class="flex items-baseline justify-between gap-2">
+        <h3 class="font-semibold">Allenamento</h3>
+        {{if gt .WorkoutKcal 0.0}}<span class="text-muted tabular-nums">−{{num .WorkoutKcal}} kcal</span>{{end}}
+      </div>
+      {{range .Workouts}}
+      <div class="flex items-center justify-between gap-2 min-h-[32px] border-t border-border">
+        <span>{{.ActivityName}} <span class="text-muted">{{.DurationMinutes}} min</span></span>
+        <form method="post" action="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}"
+              hx-post="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" class="icon-action hover:text-danger" title="Elimina allenamento" aria-label="Elimina allenamento {{.ActivityName}}">{{template "icon" "i-trash"}}</button>
+        </form>
+      </div>
+      {{end}}
+      {{if .Activities}}
+      <details class="group">
+        <summary class="list-none cursor-pointer inline-flex items-center gap-1.5 text-accent font-semibold text-[13px] select-none">{{template "icon" "i-plus"}}Aggiungi allenamento</summary>
+        <form method="post" action="/allenamento?start={{$.WeekStart}}"
+              hx-post="/allenamento?start={{$.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
+              class="mt-2 flex flex-wrap gap-2">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <input type="hidden" name="logged_at" value="{{.DateStr}}">
+          <select name="activity_id" aria-label="Attività" class="field flex-1 min-w-[10rem]">
+            {{range .Activities}}<option value="{{.ID}}">{{.Name}} ({{num .KcalPerHour}} kcal/h)</option>{{end}}
+          </select>
+          <input name="duration_minutes" type="number" min="1" max="720" required placeholder="min" aria-label="Durata in minuti" class="field w-20">
+          <button type="submit" class="btn-secondary">Salva</button>
+        </form>
+      </details>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
 </section>
 {{end}}
 
-{{define "week_totals_card"}}
-{{- /* Box "Macro settimana" con id stabile per consentire OOB swap dopo
-       mutazioni (add/remove/reorder) sui meal_items. View-model: macros.Macros. */ -}}
-<div id="week-totals" class="mt-4 mb-6 rounded border border-border bg-surface p-4 grid grid-cols-4 gap-4 text-center">
-  <div>
-    <p class="text-xs text-muted uppercase">Kcal sett.</p>
-    <p class="text-2xl font-semibold">{{printf "%.0f" .Kcal}}</p>
+{{define "macro_bar"}}
+{{- /* Una riga macro del riepilogo. View-model: profile.MacroBar. */ -}}
+{{if gt .Target 0.0}}
+<div class="flex flex-col gap-1">
+  <div class="flex justify-between gap-2">
+    <span class="font-semibold">{{.Label}}</span>
+    <span class="tabular-nums"><strong class="{{if .Overflow}}text-danger{{end}}">{{num .Actual}} g</strong><span class="text-muted"> / {{num .Target}} g</span></span>
   </div>
-  <div>
-    <p class="text-xs text-muted uppercase">Proteine</p>
-    <p class="text-2xl font-semibold">{{printf "%.0f" .Protein}}<span class="text-sm font-normal text-muted">g</span></p>
-  </div>
-  <div>
-    <p class="text-xs text-muted uppercase">Carbo</p>
-    <p class="text-2xl font-semibold">{{printf "%.0f" .Carbs}}<span class="text-sm font-normal text-muted">g</span></p>
-  </div>
-  <div>
-    <p class="text-xs text-muted uppercase">Grassi</p>
-    <p class="text-2xl font-semibold">{{printf "%.0f" .Fat}}<span class="text-sm font-normal text-muted">g</span></p>
-  </div>
+  <span class="block h-1.5 rounded-full bg-track overflow-hidden" aria-hidden="true">
+    <span class="block h-full rounded-full {{if .Overflow}}bg-danger{{else if eq .Label "Proteine"}}bg-prot{{else if eq .Label "Carboidrati"}}bg-carb{{else}}bg-fat{{end}}" style="width:{{printf "%.0f" .Pct}}%"></span>
+  </span>
 </div>
+{{end}}
+{{end}}
+
+{{define "meal_card"}}
+{{- /* Un pasto del giorno. View-model: web.MealCtx (mealView + contesto). */ -}}
+{{$m := .Meal}}{{$ws := .WeekStart}}{{$csrf := .CSRFToken}}
+<article class="card" data-id="{{$m.Meal.ID}}">
+  <header class="flex items-start gap-2 pl-1.5 pr-2 pt-2 pb-1.5">
+    <span data-meal-grip class="w-6 h-8 shrink-0 grid place-items-center text-muted cursor-grab touch-none" title="Trascina per riordinare" aria-hidden="true">{{template "icon" "i-grip"}}</span>
+    <div class="min-w-0 flex-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1">
+      <h3 class="text-[15px] font-bold leading-6 {{if $m.HasCheats}}text-danger{{end}}">{{$m.Meal.Name}}</h3>
+      {{if $m.HasCheats}}<span class="chip bg-danger-soft text-danger">Sgarro</span>{{end}}
+      <span class="inline-flex gap-2.5 text-[12.5px] text-muted tabular-nums">
+        <span title="Proteine"><b class="text-prot font-semibold">P</b> {{num $m.MealTotal.Protein}} g</span>
+        <span title="Carboidrati"><b class="text-carb font-semibold">C</b> {{num $m.MealTotal.Carbs}} g</span>
+        <span title="Grassi"><b class="text-fat font-semibold">G</b> {{num $m.MealTotal.Fat}} g</span>
+      </span>
+    </div>
+    <span class="shrink-0 font-bold tabular-nums leading-6 py-1">{{num $m.MealTotal.Kcal}} kcal</span>
+    <div class="relative shrink-0">
+      <button type="button" class="icon-action" data-popover="meal-menu-{{$m.Meal.ID}}" aria-expanded="false" aria-controls="meal-menu-{{$m.Meal.ID}}" aria-label="Azioni sul pasto {{$m.Meal.Name}}">{{template "icon" "i-dots"}}</button>
+      <div id="meal-menu-{{$m.Meal.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
+        <a href="/meals/{{$m.Meal.ID}}/items/new?cheat=1&start={{$ws}}" class="nav-link">{{template "icon" "i-plus"}}Registra uno sgarro</a>
+        <form method="post" action="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}"
+              hx-post="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
+              hx-confirm="Eliminare il pasto «{{$m.Meal.Name}}»?">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina pasto</button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  {{if $m.ItemViews}}
+  <ul class="px-4 {{if $m.HasCheats}}opacity-60{{end}}" data-sortable="items" data-sortable-handle="[data-item-grip]"
+      data-sort-url="/meals/{{$m.Meal.ID}}/items/reorder?start={{$ws}}">
+    {{range $m.ItemViews}}{{template "meal_item_row" (itemCtx . $m.HasCheats false $ws $csrf)}}{{end}}
+  </ul>
+  {{end}}
+
+  {{if $m.HasCheats}}
+  <div class="mx-4 mt-2 mb-1 pl-3 border-l-2 border-danger">
+    <div class="flex items-center justify-between gap-2 min-h-[32px]">
+      <span class="text-[12.5px] font-semibold text-danger">Mangiato al posto del piano</span>
+      <form method="post" action="/meals/{{$m.Meal.ID}}/cheat/clear?start={{$ws}}"
+            hx-post="/meals/{{$m.Meal.ID}}/cheat/clear?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
+            hx-confirm="Annullare lo sgarro? Tornano a contare i valori del piano.">
+        <input type="hidden" name="csrf_token" value="{{$csrf}}">
+        <button class="text-[12.5px] font-semibold text-muted hover:text-danger">Annulla sgarro</button>
+      </form>
+    </div>
+    <ul>
+      {{range $m.CheatViews}}{{template "meal_item_row" (itemCtx . false true $ws $csrf)}}{{end}}
+    </ul>
+  </div>
+  {{end}}
+
+  <a href="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}&meal_name={{$m.Meal.Name}}"
+     class="flex items-center gap-1.5 min-h-[38px] px-4 mt-1 border-t border-border text-accent font-semibold text-[13px] rounded-b-xl hover:bg-accent-soft">
+    {{template "icon" "i-plus"}}Aggiungi alimento
+  </a>
+</article>
+{{end}}
+
+{{define "meal_item_row"}}
+{{- /* Una voce (o uno sgarro) di un pasto. View-model: web.ItemCtx. */ -}}
+{{$v := .View}}{{$it := $v.Item}}
+<li class="group grid grid-cols-[minmax(0,1fr)_auto_3.5rem_auto] gap-x-2.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0" data-id="{{$it.ID}}">
+  <div class="min-w-0 flex items-start gap-1">
+    {{if not .Cheat}}<span data-item-grip class="hidden sm:grid w-4 h-5 -ml-4 place-items-center text-muted cursor-grab touch-none opacity-0 group-hover:opacity-100" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
+    <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
+      {{if $it.Recipe}}
+        <a href="/recipes/{{$it.Recipe.ID}}" class="font-medium hover:underline" title="Apri la ricetta">{{$it.Recipe.Name}}</a>
+        {{if $it.IsCustomized}}<span class="text-[12px] text-accent" title="Ingredienti personalizzati">modificata</span>{{end}}
+        {{if $v.ScaledRecipeItems}}
+        <span class="block text-[12.5px] text-muted truncate">{{range $i, $s := $v.ScaledRecipeItems}}{{if $i}}, {{end}}{{$s.Name}} {{num $s.Quantity}} {{$s.Unit}}{{end}}</span>
+        {{end}}
+      {{else if $it.Ingredient}}
+        <span>{{$it.Ingredient.Name}}</span>
+      {{end}}
+    </div>
+  </div>
+  <span class="text-right text-muted tabular-nums whitespace-nowrap {{if .Struck}}line-through{{end}}">
+    {{- if $it.Recipe}}{{dec $it.Quantity 1}} di {{$it.Recipe.Servings}} porz.
+    {{- else if and $it.Ingredient (eq $it.QuantityUnit "pz") $it.Ingredient.UnitWeightG}}<span title="{{num $v.EffectiveGrams}} g">{{dec $it.Quantity 1}} pz</span>
+    {{- else if $it.Ingredient}}{{num $it.Quantity}} {{$it.Ingredient.Unit}}{{end -}}
+  </span>
+  <span class="text-right tabular-nums {{if .Cheat}}text-danger{{end}} {{if .Struck}}line-through text-muted{{end}}"
+        title="Proteine {{dec $v.Macros.Protein 1}} g, carboidrati {{dec $v.Macros.Carbs 1}} g, grassi {{dec $v.Macros.Fat 1}} g">{{num $v.Macros.Kcal}}</span>
+  <span class="flex items-center -mr-2 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+    {{if and $it.Recipe (not .Struck) (not .Cheat)}}
+    <button type="button" hx-get="/meal-items/{{$it.ID}}/customize?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
+            class="icon-action" title="Personalizza ingredienti" aria-label="Personalizza {{$it.Recipe.Name}}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>
+    </button>
+    {{end}}
+    <form method="post" action="/{{if .Cheat}}meal-cheat-items{{else}}meal-items{{end}}/{{$it.ID}}/delete?start={{.WeekStart}}"
+          hx-post="/{{if .Cheat}}meal-cheat-items{{else}}meal-items{{end}}/{{$it.ID}}/delete?start={{.WeekStart}}"
+          hx-target="closest section[data-day]" hx-swap="outerHTML">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button class="icon-action hover:text-danger" title="Elimina" aria-label="Elimina {{if $it.Recipe}}{{$it.Recipe.Name}}{{else if $it.Ingredient}}{{$it.Ingredient.Name}}{{end}}">{{template "icon" "i-trash"}}</button>
+    </form>
+  </span>
+</li>
+{{end}}
+
+{{define "week_totals"}}
+{{- /* Sottotitolo della settimana, aggiornato OOB dopo ogni mutazione.
+       View-model: weekSummary. */ -}}
+<p id="week-totals" class="mt-0.5 text-muted"{{if .OOB}} hx-swap-oob="true"{{end}}
+   title="Totale settimana: {{num .Total.Kcal}} kcal, proteine {{num .Total.Protein}} g, carboidrati {{num .Total.Carbs}} g, grassi {{num .Total.Fat}} g">
+  {{- if .PlannedDays}}Media {{num .AvgKcal}} kcal al giorno, {{.PlannedDays}} {{if eq .PlannedDays 1}}giorno pianificato{{else}}giorni pianificati{{end}}
+  {{- else}}Nessun pasto pianificato{{end -}}
+</p>
 {{end}}
 
 {{define "day_card_with_pill_oob"}}
-{{- /* Wrapper per la risposta a mutation HTMX: card piena (target principale)
-       + pillola del giorno (OOB swap in #timeline-pills) + box totali settimanali
-       (OOB swap in #week-totals). View-model: dayMutationResponse. */ -}}
+{{- /* Risposta a mutazioni e cambio di scheda: il giorno (target principale)
+       + la sua scheda + il sottotitolo della settimana, entrambi OOB.
+       View-model: dayMutationResponse. */ -}}
 {{template "day_card" .Card}}
-<button type="button"
-        id="pill-{{.Card.DateStr}}"
-        data-day="{{.Card.DateStr}}"
-        data-state="{{.Card.State}}"
-        data-in-focus="true"
-        hx-swap-oob="outerHTML:#pill-{{.Card.DateStr}}"
-        class="relative w-full px-2 py-2 rounded border text-center transition border-accent bg-accent-soft text-text">
-  {{if .Card.Progress.AnyExceeds}}<span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger" title="Uno o più macro sforati"></span>{{end}}
-  <span class="block text-xs truncate">{{.Card.Day.Label}}{{if eq .Card.State "today"}} · oggi{{end}}</span>
-  <span class="block text-sm font-medium">{{.Card.Day.Date.Format "02/01"}}</span>
-  <span class="block text-xs">{{printf "%.0f" .Card.Day.DayTotal.Kcal}} kcal</span>
-</button>
-{{/* OOB: ricalcola e sostituisce il box "Macro settimana" in alto. */}}
-<div hx-swap-oob="outerHTML:#week-totals">
-  {{template "week_totals_card" .WeekTotal}}
-</div>
+{{template "day_pill" .Card}}
+{{template "week_totals" .Week}}
 {{end}}

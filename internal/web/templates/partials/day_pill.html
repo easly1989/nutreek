@@ -1,26 +1,28 @@
 {{define "day_pill"}}
 {{- /*
   day_pill.html — view-model: dayCardData
-  Pillola sempre visibile in #timeline-pills. Click toggla la card
-  corrispondente in #focus-grid (gestito da day_focus.js, che intercetta
-  il click invece di lasciarlo a HTMX nativo per evitare round-trip
-  superfluo quando la card e' gia' presente).
-  Stato visivo:
-    .past + !InFocus  = surface-2 muted, opacita' ridotta
-    .past + InFocus   = surface-2 con bordo accent
-    .today / .future + InFocus = bordo accent forte (default)
-    .today / .future + !InFocus = surface, niente accent
+  Scheda di un giorno in #timeline-pills (tablist). Il click apre il giorno
+  in #day-panel via HTMX; senza JS il link porta alla stessa pagina con
+  ?day=. Lo stato selezionato e' aria-selected (stile in input.css, .day-tab),
+  aggiornato da day_tabs.js e dalla copia OOB che il server rimanda dopo
+  ogni mutazione.
 */ -}}
-<button type="button"
-        id="pill-{{.DateStr}}"
-        data-day="{{.DateStr}}"
-        data-state="{{.State}}"
-        data-in-focus="{{if .InFocus}}true{{else}}false{{end}}"
-        class="relative w-full px-2 py-2 rounded border text-center transition
-               {{if .InFocus}}border-accent bg-accent-soft text-text{{else if eq .State "past"}}border-border bg-surface-2 text-muted opacity-70 hover:opacity-100{{else}}border-border bg-surface text-text hover:bg-surface-2{{end}}">
-  {{if .Progress.AnyExceeds}}<span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-danger" title="Uno o più macro sforati"></span>{{end}}
-  <span class="block text-xs truncate">{{.Day.Label}}{{if eq .State "today"}} · oggi{{end}}</span>
-  <span class="block text-sm font-medium">{{.Day.Date.Format "02/01"}}</span>
-  <span class="block text-xs">{{printf "%.0f" .Day.DayTotal.Kcal}} kcal</span>
-</button>
+<a role="tab" id="pill-{{.DateStr}}"
+   href="/?start={{.WeekStart}}&day={{.DateStr}}"
+   hx-get="/days/{{.DateStr}}" hx-target="#day-panel" hx-swap="innerHTML"
+   hx-push-url="/?start={{.WeekStart}}&day={{.DateStr}}"
+   aria-selected="{{.Selected}}" aria-controls="day-panel" tabindex="{{if .Selected}}0{{else}}-1{{end}}"
+   data-day="{{.DateStr}}" data-state="{{.State}}"
+   class="day-tab"{{if .OOB}} hx-swap-oob="true"{{end}}>
+  <span class="flex items-center gap-1 text-[11px] sm:text-[12.5px] font-semibold opacity-85">
+    <span class="sm:hidden">{{dayLetter .Day.Date}}</span>
+    <span class="hidden sm:inline">{{if eq .State "today"}}Oggi{{else}}{{dayShort .Day.Date}}{{end}}</span>
+    {{if .Progress.AnyExceeds}}<span class="w-1.5 h-1.5 rounded-full bg-danger" title="Uno o più macro oltre l'obiettivo"></span>{{end}}
+  </span>
+  <span class="text-[15px] font-bold tabular-nums leading-tight">
+    <span class="sm:hidden">{{.Day.Date.Day}}</span>
+    <span class="hidden sm:inline">{{if .Day.Meals}}{{num .Day.DayTotal.Kcal}}{{else}}—{{end}}</span>
+  </span>
+  <span class="day-tab-track" aria-hidden="true"><span class="day-tab-bar" style="width:{{printf "%.0f" .Progress.Kcal.Pct}}%"></span></span>
+</a>
 {{end}}
