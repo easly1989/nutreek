@@ -9,11 +9,11 @@
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.innerHTML =
-      '<div class="bg-surface border border-border rounded-lg shadow-xl max-w-sm w-full p-6">' +
-        '<p class="text-text text-sm mb-6 leading-relaxed" id="_confirm-msg"></p>' +
-        '<div class="flex justify-end gap-3">' +
-          '<button id="_confirm-cancel" class="px-4 py-2 text-sm rounded border border-border text-text hover:bg-surface-2 transition">Annulla</button>' +
-          '<button id="_confirm-ok" class="px-4 py-2 text-sm rounded bg-danger text-white hover:bg-danger/90 transition">Conferma</button>' +
+      '<div class="menu-panel max-w-sm w-full p-5">' +
+        '<p class="text-text mb-5 leading-relaxed" id="_confirm-msg"></p>' +
+        '<div class="flex justify-end gap-2">' +
+          '<button id="_confirm-cancel" class="btn-secondary">Annulla</button>' +
+          '<button id="_confirm-ok" class="btn bg-danger text-surface hover:opacity-90">Conferma</button>' +
         '</div>' +
       '</div>';
 

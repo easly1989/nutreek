@@ -1,33 +1,10 @@
 {{define "layout"}}<!doctype html>
-<html lang="it" data-theme="{{or .Theme "forest"}}">
+<html lang="it" data-mode="{{.Appearance.Mode}}" data-accent="{{.Appearance.Accent}}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{block "title" .}}Nutreek{{end}}</title>
-  <style>
-    /* Sidebar pin states — gestite da JS via data-sidebar su <body> */
-    body[data-sidebar="pinned"] #sidebar { transform:translateX(0); width:15rem; }
-    body[data-sidebar="slim"]   #sidebar { transform:translateX(0); width:4rem; overflow-x:hidden; }
-    body[data-sidebar="pinned"] #main-content { margin-left:15rem; }
-    body[data-sidebar="slim"]   #main-content { margin-left:4rem; }
-    body[data-sidebar="pinned"] #sidebar-backdrop,
-    body[data-sidebar="slim"]   #sidebar-backdrop { display:none !important; }
-    body[data-sidebar="pinned"] #sidebar-toggle,
-    body[data-sidebar="slim"]   #sidebar-toggle { display:none; }
-    /* Slim: icone centrate, etichette nascoste */
-    body[data-sidebar="slim"]   .nav-label { display:none; }
-    body[data-sidebar="slim"]   #sidebar nav a { justify-content:center; padding-left:0; padding-right:0; }
-    body[data-sidebar="slim"]   #sidebar-footer-link { justify-content:center; padding-left:0; padding-right:0; }
-    body[data-sidebar="slim"]   .nav-footer-label { display:none; }
-    /* Bottoni stato: slim mostra solo Espandi, gli altri sono nascosti */
-    body[data-sidebar="slim"]   #btn-pin,
-    body[data-sidebar="slim"]   #btn-slim,
-    body[data-sidebar="slim"]   #btn-unpin { display:none; }
-    #btn-expand { display:none; }
-    body[data-sidebar="slim"]   #btn-expand { display:flex; }
-    body[data-sidebar="slim"]   #sidebar-state-btns { justify-content:center; padding-left:0; padding-right:0; }
-    #main-content { transition: margin-left 0.2s ease-in-out; }
-  </style>
+  <link rel="preload" href="/static/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/tailwind.css">
   <script src="/static/js/htmx.min.js" defer></script>
   <script src="/static/js/sortable.min.js" defer></script>
@@ -35,7 +12,6 @@
   <script src="/static/js/dnd.js" defer></script>
   <script src="/static/js/modal.js" defer></script>
   <script src="/static/js/ingredient_search.js" defer></script>
-  <script src="/static/js/day_macro.js" defer></script>
   <script src="/static/js/confirm.js" defer></script>
   {{if .ShowTour}}
   <link rel="stylesheet" href="/static/css/shepherd.css">
@@ -44,181 +20,119 @@
   {{end}}
 </head>
 <body class="bg-bg text-text min-h-screen"{{if .ShowTour}} data-show-tour="1"{{end}}>
+  {{template "icon_sprite"}}
 
-  <!-- Top bar fissa: hamburger | logo | tema + esci -->
-  <header class="fixed top-0 inset-x-0 h-14 z-40 bg-surface border-b border-border flex items-center gap-3 px-4">
-    <button id="sidebar-toggle" type="button"
-            class="p-1.5 rounded hover:bg-surface-2 transition text-text shrink-0"
-            aria-label="Menu">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-      </svg>
-    </button>
+  {{if .User}}
+  {{- $p := .ActiveNav -}}
 
-    <a href="/" class="font-semibold text-lg tracking-tight shrink-0">Nutreek</a>
-
-    <div class="ml-auto flex items-center gap-3 text-sm">
-      <div class="relative">
-        <button type="button" data-theme-trigger
-                class="px-2 py-1 rounded border border-border text-text hover:bg-surface-2 transition flex items-center gap-1"
-                aria-haspopup="true" aria-label="Cambia tema">
-          <span aria-hidden="true">&#9728;</span>
-          <span data-theme-current-label class="text-xs hidden sm:inline">Forest</span>
-        </button>
-        <div data-theme-menu class="hidden absolute right-0 mt-2 w-40 bg-surface border border-border rounded shadow-md py-1 z-50" role="menu">
-          <button type="button" data-theme-option="forest" role="menuitemradio" class="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm">Forest</button>
-          <button type="button" data-theme-option="ocean"  role="menuitemradio" class="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm">Ocean</button>
-          <button type="button" data-theme-option="sunset" role="menuitemradio" class="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm">Sunset</button>
-          <button type="button" data-theme-option="mono"   role="menuitemradio" class="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm">Mono</button>
-        </div>
-      </div>
-      {{if .User}}
-        <form method="post" action="/logout" class="inline">
-          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <button class="text-text hover:underline">Esci</button>
-        </form>
-      {{end}}
-    </div>
-  </header>
-
-  <!-- Backdrop sidebar (click fuori chiude, solo in overlay mode) -->
-  <div id="sidebar-backdrop" class="hidden fixed inset-0 z-30 bg-black/40" aria-hidden="true"></div>
-
-  <!-- Sidebar drawer -->
-  <aside id="sidebar"
-         class="fixed top-14 bottom-0 left-0 z-30 w-60 bg-surface border-r border-border
-                flex flex-col -translate-x-full transition-transform duration-200 ease-in-out overflow-y-auto">
-    <nav class="flex-1 p-3 flex flex-col gap-0.5">
-      {{if .User}}
-        {{- $p := .ActiveNav -}}
-        <a href="/" title="Piano Settimanale"
-           {{if eq $p "/"}}aria-current="page"{{end}}
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
-                  {{if eq $p "/"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          <span class="nav-label">Piano Settimanale</span>
-        </a>
-        <a href="/ingredients" title="Ingredienti"
-           {{if eq $p "/ingredients"}}aria-current="page"{{end}}
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
-                  {{if eq $p "/ingredients"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-          <span class="nav-label">Ingredienti</span>
-        </a>
-        <a href="/recipes" title="Ricette"
-           {{if eq $p "/recipes"}}aria-current="page"{{end}}
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
-                  {{if eq $p "/recipes"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-          <span class="nav-label">Ricette</span>
-        </a>
-        <a href="/piano-nutrizionale" title="Piano Nutrizionale"
-           {{if eq $p "/piano-nutrizionale"}}aria-current="page"{{end}}
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
-                  {{if eq $p "/piano-nutrizionale"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          <span class="nav-label">Piano Nutrizionale</span>
-        </a>
-        <a href="/stats" title="Statistiche"
-           {{if eq $p "/stats"}}aria-current="page"{{end}}
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
-                  {{if eq $p "/stats"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-          <span class="nav-label">Statistiche</span>
-        </a>
-        <a href="/profile/peso" title="Tracciamento Peso"
-           {{if eq $p "/profile/peso"}}aria-current="page"{{end}}
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
-                  {{if eq $p "/profile/peso"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
-          <span class="nav-label">Tracciamento Peso</span>
-        </a>
-        <a href="/onboarding?restart=true" title="Guida rapida"
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition text-text hover:bg-surface-2">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          <span class="nav-label">Guida rapida</span>
-        </a>
+  {{/* Sidebar: solo da desktop (lg). Sul telefono la sostituisce la barra in basso. */}}
+  <nav id="sidebar" aria-label="Sezioni"
+       class="hidden lg:flex fixed inset-y-0 left-0 z-30 w-[220px] flex-col gap-5 px-3 py-5 bg-surface border-r border-border overflow-y-auto">
+    {{template "brand"}}
+    <ul class="flex flex-col gap-0.5">
+      {{template "nav_link" (nav $p "/" "Settimana" "i-week")}}
+      {{template "nav_link" (nav $p "/recipes" "Ricette" "i-recipes")}}
+      {{template "nav_link" (nav $p "/ingredients" "Ingredienti" "i-ingredients")}}
+      {{template "nav_link" (nav $p "/piano-nutrizionale" "Piano nutrizionale" "i-plan")}}
+      {{template "nav_link" (nav $p "/shopping-list" "Lista della spesa" "i-cart")}}
+      {{template "nav_link" (nav $p "/stats" "Statistiche" "i-stats")}}
+      {{template "nav_link" (nav $p "/profile/peso" "Peso" "i-weight")}}
+    </ul>
+    <ul class="flex flex-col gap-0.5 pt-4 border-t border-border">
+      {{template "nav_link" (nav $p "/settings" "Impostazioni" "i-settings")}}
+      {{if eq .User.Role "coach"}}{{template "nav_link" (nav $p "/coach" "Pannello coach" "i-coach")}}{{end}}
+      {{if .IsOwner}}{{template "nav_link" (nav $p "/admin/panel" "Amministrazione" "i-shield")}}{{end}}
+      <li><a href="/onboarding?restart=true" class="nav-link{{if eq $p "/onboarding"}} is-active{{end}}">{{template "icon" "i-help"}}Guida rapida</a></li>
+      <li>
         <form method="post" action="/tour/restart">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" title="Tour guidato"
-                  class="flex items-center gap-2 w-full px-3 py-2 rounded text-sm transition text-text hover:bg-surface-2">
-            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.82V15.18a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
-            <span class="nav-label">Tour guidato</span>
-          </button>
+          <button type="submit" class="nav-link w-full">{{template "icon" "i-play"}}Tour guidato</button>
         </form>
-        <a href="/settings" title="Impostazioni"
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
-                  {{if eq $p "/settings"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          <span class="nav-label">Impostazioni</span>
-        </a>
-        {{if eq .User.Role "coach"}}
-        <a href="/coach" title="Pannello Coach"
-           {{if eq $p "/coach"}}aria-current="page"{{end}}
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
-                  {{if eq $p "/coach"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-          <span class="nav-label">Pannello Coach</span>
-        </a>
-        {{end}}
-        {{if .IsOwner}}
-        <a href="/admin/panel" title="Amministrazione"
-           class="flex items-center gap-2 px-3 py-2 rounded text-sm transition
-                  {{if eq $p "/admin/panel"}}bg-surface-2 text-accent font-medium{{else}}text-text hover:bg-surface-2{{end}}">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-          <span class="nav-label">Amministrazione</span>
-        </a>
-        {{end}}
-      {{else}}
-        <a href="/login"    class="flex items-center gap-2 px-3 py-2 rounded text-sm text-text hover:bg-surface-2 transition"><span class="nav-label">Accedi</span></a>
-        <a href="/register" class="flex items-center gap-2 px-3 py-2 rounded text-sm text-text hover:bg-surface-2 transition"><span class="nav-label">Registrati</span></a>
-      {{end}}
-    </nav>
+      </li>
+    </ul>
 
-    {{/* Bottoni stato sidebar */}}
-    <div id="sidebar-state-btns" class="px-3 py-2 border-t border-border flex items-center gap-1">
-      {{/* Visibili in overlay/pinned: Fissa, Riduci, Chiudi */}}
-      <button id="btn-pin" type="button" title="Fissa sidebar"
-              class="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted hover:bg-surface-2 hover:text-text transition">
-        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
-        Fissa
-      </button>
-      <button id="btn-slim" type="button" title="Modalità icone"
-              class="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted hover:bg-surface-2 hover:text-text transition">
-        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
-        Riduci
-      </button>
-      <button id="btn-unpin" type="button" title="Chiudi sidebar"
-              class="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted hover:bg-surface-2 hover:text-text transition">
-        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        Chiudi
-      </button>
-      {{/* Visibile solo in slim: Espandi */}}
-      <button id="btn-expand" type="button" title="Espandi sidebar"
-              class="flex items-center justify-center p-2 rounded text-muted hover:bg-surface-2 hover:text-text transition">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
-      </button>
-    </div>
-
-    {{if .User}}
-    <div class="p-3 border-t border-border">
-      <a id="sidebar-footer-link" href="/profile" title="Profilo"
-         class="flex items-center gap-2 px-3 py-2 rounded text-sm text-muted hover:bg-surface-2 hover:text-text transition">
-        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-        <span class="nav-footer-label">{{.User.DisplayName}}</span>
+    <div class="mt-auto flex flex-col gap-1">
+      <div>
+        {{/* Il pannello e' fixed accanto alla sidebar: dentro la sidebar
+             (overflow-y-auto) verrebbe tagliato. */}}
+        <button type="button" class="nav-link w-full" data-popover="appearance-desktop" aria-expanded="false" aria-controls="appearance-desktop">
+          <span class="w-[18px] h-[18px] grid place-items-center"><span class="w-3.5 h-3.5 rounded-full bg-accent"></span></span>Aspetto
+        </button>
+        <div id="appearance-desktop" class="menu-panel hidden fixed left-[228px] bottom-4 w-[280px] z-40" role="dialog" aria-label="Aspetto">
+          {{template "appearance_controls" .Appearance}}
+        </div>
+      </div>
+      <a href="/profile" class="nav-link {{if eq $p "/profile"}}is-active{{end}}"{{if eq $p "/profile"}} aria-current="page"{{end}}>
+        <span class="w-[26px] h-[26px] -ml-1 rounded-full bg-surface-2 text-text grid place-items-center text-xs font-bold">{{initial .User.DisplayName}}</span>
+        <span class="truncate">{{.User.DisplayName}}</span>
       </a>
+      <form method="post" action="/logout">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button class="nav-link w-full text-muted">{{template "icon" "i-logout"}}Esci</button>
+      </form>
     </div>
-    {{end}}
-  </aside>
+  </nav>
 
-  <!-- Contenuto principale, spazio per la top bar -->
-  <main id="main-content" class="pt-14 min-h-screen">
-    <div class="max-w-5xl mx-auto px-4 py-8">
+  {{/* Barra in basso: telefono e tablet. Le quattro sezioni d'uso
+       quotidiano piu' «Altro», che apre un foglio con il resto. */}}
+  {{- $tabOn := or (navActive $p "/") (navActive $p "/shopping-list") (navActive $p "/recipes") (navActive $p "/stats") -}}
+  <nav id="bottom-nav" aria-label="Sezioni"
+       class="lg:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-5 bg-surface border-t border-border px-1.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+    {{template "tab_link" (nav $p "/" "Settimana" "i-week")}}
+    {{template "tab_link" (nav $p "/shopping-list" "Spesa" "i-cart")}}
+    {{template "tab_link" (nav $p "/recipes" "Ricette" "i-recipes")}}
+    {{template "tab_link" (nav $p "/stats" "Statistiche" "i-stats")}}
+    <button type="button" class="tab-link{{if not $tabOn}} is-active{{end}}" data-sheet="more-sheet" aria-haspopup="dialog">
+      {{template "icon_lg" "i-more"}}Altro
+    </button>
+  </nav>
+
+  <dialog id="more-sheet" class="sheet" aria-label="Altre sezioni">
+    <div class="flex items-center justify-between px-4 pt-4 pb-2">
+      <span class="font-bold text-[15px]">{{.User.DisplayName}}</span>
+      <button type="button" class="btn-secondary btn-icon" data-sheet-close aria-label="Chiudi">{{template "icon" "i-close"}}</button>
+    </div>
+    <ul class="grid grid-cols-2 gap-1 px-3">
+      {{template "nav_link" (nav $p "/ingredients" "Ingredienti" "i-ingredients")}}
+      {{template "nav_link" (nav $p "/piano-nutrizionale" "Piano nutrizionale" "i-plan")}}
+      {{template "nav_link" (nav $p "/profile/peso" "Peso" "i-weight")}}
+      <li><a href="/profile" class="nav-link{{if eq $p "/profile"}} is-active{{end}}">{{template "icon" "i-user"}}Profilo</a></li>
+      {{template "nav_link" (nav $p "/settings" "Impostazioni" "i-settings")}}
+      <li><a href="/onboarding?restart=true" class="nav-link{{if eq $p "/onboarding"}} is-active{{end}}">{{template "icon" "i-help"}}Guida rapida</a></li>
+      {{if eq .User.Role "coach"}}{{template "nav_link" (nav $p "/coach" "Pannello coach" "i-coach")}}{{end}}
+      {{if .IsOwner}}{{template "nav_link" (nav $p "/admin/panel" "Amministrazione" "i-shield")}}{{end}}
+      <li>
+        <form method="post" action="/tour/restart">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" class="nav-link w-full">{{template "icon" "i-play"}}Tour guidato</button>
+        </form>
+      </li>
+    </ul>
+    <div class="mx-4 mt-3 pt-4 border-t border-border">
+      {{template "appearance_controls" .Appearance}}
+    </div>
+    <form method="post" action="/logout" class="px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button class="btn-secondary w-full">{{template "icon" "i-logout"}}Esci</button>
+    </form>
+  </dialog>
+  {{else}}
+  <header class="h-14 flex items-center gap-3 px-4 bg-surface border-b border-border">
+    {{template "brand"}}
+    <div class="ml-auto flex items-center gap-2">
+      <a href="/login" class="btn-ghost">Accedi</a>
+      <a href="/register" class="btn-primary">Registrati</a>
+    </div>
+  </header>
+  {{end}}
+
+  <main id="main-content" class="min-h-screen{{if .User}} lg:pl-[220px] pb-24 lg:pb-0{{end}}">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 lg:py-6">
       {{if .Flash}}
-        <div id="flash-msg" class="mb-4 rounded border border-warn-fg/20 bg-warn-bg text-warn-fg px-4 py-2 flex items-center justify-between gap-3">
+        <div id="flash-msg" role="status" class="mb-4 rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-center justify-between gap-3">
           <span>{{.Flash}}</span>
           <button type="button" onclick="document.getElementById('flash-msg').remove()"
-                  class="shrink-0 text-warn-fg/70 hover:text-warn-fg transition text-xl leading-none">&times;</button>
+                  class="shrink-0 opacity-70 hover:opacity-100 text-xl leading-none" aria-label="Chiudi">&times;</button>
         </div>
         <script>
           (function(){
@@ -234,74 +148,13 @@
   <div id="modal-host"></div>
   {{block "scripts" .}}{{end}}
 
-  <script>
-  (function () {
-    var SKEY = 'nutreek_sidebar';
-    var sidebar  = document.getElementById('sidebar');
-    var backdrop = document.getElementById('sidebar-backdrop');
-
-    function applyState(s) {
-      document.body.setAttribute('data-sidebar', s);
-      localStorage.setItem(SKEY, s);
-    }
-
-    // Applica stato salvato subito (prima del primo paint per evitare flash)
-    var saved = localStorage.getItem(SKEY);
-    applyState(saved === 'pinned' || saved === 'slim' ? saved : 'closed');
-
-    // Hamburger — visibile solo in modalità closed
-    document.getElementById('sidebar-toggle').addEventListener('click', function () {
-      if (document.body.getAttribute('data-sidebar') === 'closed') {
-        sidebar.classList.remove('-translate-x-full');
-        backdrop.classList.remove('hidden');
-      }
-    });
-
-    // Backdrop — chiude overlay
-    backdrop.addEventListener('click', function () {
-      sidebar.classList.add('-translate-x-full');
-      backdrop.classList.add('hidden');
-    });
-
-    // Chiudi overlay su click link (solo in closed mode)
-    sidebar.querySelectorAll('a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        if (document.body.getAttribute('data-sidebar') === 'closed') {
-          sidebar.classList.add('-translate-x-full');
-          backdrop.classList.add('hidden');
-        }
-      });
-    });
-
-    // Bottoni stato
-    document.getElementById('btn-pin').addEventListener('click', function () {
-      sidebar.classList.remove('-translate-x-full');
-      backdrop.classList.add('hidden');
-      applyState('pinned');
-    });
-    document.getElementById('btn-slim').addEventListener('click', function () {
-      sidebar.classList.remove('-translate-x-full');
-      backdrop.classList.add('hidden');
-      applyState('slim');
-    });
-    document.getElementById('btn-unpin').addEventListener('click', function () {
-      sidebar.classList.add('-translate-x-full');
-      backdrop.classList.add('hidden');
-      applyState('closed');
-    });
-    document.getElementById('btn-expand').addEventListener('click', function () {
-      applyState('pinned');
-    });
-  })();
-  </script>
-
   <!-- Toast errori HTMX (rete/server) -->
   <div id="htmx-error-toast"
-       class="hidden fixed bottom-4 right-4 z-50 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-3 text-sm shadow-lg max-w-xs"
-       role="alert" aria-live="polite">
+       class="hidden fixed bottom-20 lg:bottom-4 right-4 left-4 sm:left-auto z-50 rounded-xl bg-danger-soft text-danger px-4 py-3 text-sm sm:max-w-xs"
+       style="box-shadow: var(--shadow)" role="alert" aria-live="polite">
     <span id="htmx-error-msg">Errore di rete. Riprova.</span>
     <button onclick="this.parentElement.classList.add('hidden')"
-            class="ml-3 text-danger/70 hover:text-danger" aria-label="Chiudi">×</button>
+            class="ml-3 opacity-70 hover:opacity-100" aria-label="Chiudi">×</button>
   </div>
   <script>
   (function () {
@@ -324,3 +177,67 @@
   </script>
 </body>
 </html>{{end}}
+
+{{/* ---- Pezzi della shell ---------------------------------------------- */}}
+
+{{define "brand"}}<a href="/" class="flex items-center gap-2 px-2.5 py-1 text-[17px] font-bold text-text">
+  <span class="inline-flex w-[26px] h-[26px] rounded-lg bg-accent text-accent-fg items-center justify-center">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-leaf"/></svg>
+  </span>Nutreek</a>{{end}}
+
+{{define "icon"}}<svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#{{.}}"/></svg>{{end}}
+{{define "icon_lg"}}<svg class="w-[22px] h-[22px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#{{.}}"/></svg>{{end}}
+
+{{define "nav_link"}}<li><a href="{{.Href}}" class="nav-link{{if .Active}} is-active{{end}}"{{if .Active}} aria-current="page"{{end}}>{{template "icon" .Icon}}{{.Label}}</a></li>{{end}}
+
+{{define "tab_link"}}<a href="{{.Href}}" class="tab-link{{if .Active}} is-active{{end}}"{{if .Active}} aria-current="page"{{end}}>{{template "icon_lg" .Icon}}{{.Label}}</a>{{end}}
+
+{{/* Modalita' x colore. Il click cambia subito <html> e scrive i cookie
+     (static/js/theme.js); il server li rilegge al caricamento successivo. */}}
+{{define "appearance_controls"}}<div class="flex flex-col gap-3">
+  <div class="flex flex-col gap-1.5">
+    <span class="text-[12.5px] font-semibold text-muted">Modalità</span>
+    <div class="segmented grid-cols-3" role="radiogroup" aria-label="Modalità">
+      <button type="button" role="radio" data-appearance-mode="chiaro" aria-checked="{{eq .Mode "chiaro"}}">Chiaro</button>
+      <button type="button" role="radio" data-appearance-mode="scuro" aria-checked="{{eq .Mode "scuro"}}">Scuro</button>
+      <button type="button" role="radio" data-appearance-mode="sistema" aria-checked="{{eq .Mode "sistema"}}">Sistema</button>
+    </div>
+  </div>
+  <div class="flex flex-col gap-1.5">
+    <span class="text-[12.5px] font-semibold text-muted">Colore</span>
+    <div class="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Colore">
+      <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Accent "bosco"}}"><span class="swatch-dot" style="background:#2F7A55"></span>Bosco</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Accent "mare"}}"><span class="swatch-dot" style="background:#1D6FA5"></span>Mare</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Accent "tramonto"}}"><span class="swatch-dot" style="background:#B4511A"></span>Tramonto</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Accent "grafite"}}"><span class="swatch-dot" style="background:#3A4150"></span>Grafite</button>
+    </div>
+  </div>
+</div>{{end}}
+
+{{/* Icone a tratto 24x24, usate con <use href="#id">: colore e spessore
+     arrivano dall'<svg> che le richiama. */}}
+{{define "icon_sprite"}}<svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14zM5 19l7-7"/></symbol>
+  <symbol id="i-week" viewBox="0 0 24 24"><path d="M3 5h18v16H3zM3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-recipes" viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-16 0zM9 7c0-2 2-2 2-4M14 7c0-2 2-2 2-4"/></symbol>
+  <symbol id="i-ingredients" viewBox="0 0 24 24"><path d="M12 3c-3 3-6 6-6 10a6 6 0 0 0 12 0c0-4-3-7-6-10z"/></symbol>
+  <symbol id="i-plan" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM9 12h7M9 16h7"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2l2.5 11h11L21 7H6.5M9 20h.01M18 20h.01"/></symbol>
+  <symbol id="i-stats" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="i-weight" viewBox="0 0 24 24"><path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM8.5 10a3.5 3.5 0 0 1 7 0M12 10l1.5-2"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.4M12 17h.01"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/></symbol>
+  <symbol id="i-coach" viewBox="0 0 24 24"><path d="M16 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM22 20v-1.5a4 4 0 0 0-3-3.9M15.5 4.1a3.5 3.5 0 0 1 0 6.8"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 17l5-5-5-5M15 12H3"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+</svg>{{end}}

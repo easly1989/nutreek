@@ -3,12 +3,14 @@ module.exports = {
   content: [
     "./internal/web/templates/**/*.html",
     "./internal/app/**/*.go",
+    // Solo i nostri script (non i vendor .min.js): alcuni creano markup con classi.
+    "./internal/web/static/js/{confirm,modal,ingredient_search,theme,day_tabs,dnd,tour}.js",
   ],
   theme: {
     extend: {
       // Alias semantici mappati su CSS variables: usare bg-bg, bg-surface,
       // text-text, text-muted, ring-accent, ecc. nei template invece di
-      // colori Tailwind hardcoded. Cambia palette = cambia data-theme.
+      // colori Tailwind hardcoded. Modalita' e colore = data-mode / data-accent su <html>.
       colors: {
         bg: "var(--bg)",
         surface: "var(--surface)",
@@ -22,6 +24,15 @@ module.exports = {
         "warn-bg": "var(--warn-bg)",
         "warn-fg": "var(--warn-fg)",
         danger: "var(--danger)",
+        "danger-soft": "var(--danger-soft)",
+        track: "var(--track)",
+        // Codice colore dei macro: proteine, carboidrati, grassi.
+        prot: "var(--prot)",
+        carb: "var(--carb)",
+        fat: "var(--fat)",
+      },
+      fontFamily: {
+        sans: ["Figtree", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderColor: {
         DEFAULT: "var(--border)",

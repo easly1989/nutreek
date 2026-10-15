@@ -20,40 +20,18 @@ type authFormData struct {
 }
 
 type authPageData struct {
-	User      any
-	CSRFToken string
-	Flash     string
-	Error     string
-	Form      authFormData
-	Theme     string
-	ActiveNav string // URL path corrente, per evidenziare il link attivo nella sidebar
-	ShowTour  bool   // true se il tour guidato deve essere mostrato sulla dashboard
-	IsOwner   bool   // true se l'utente corrente è l'owner dell'istanza
+	User       any
+	CSRFToken  string
+	Flash      string
+	Error      string
+	Form       authFormData
+	Appearance Appearance
+	ActiveNav  string // URL path corrente, per evidenziare il link attivo nella sidebar
+	ShowTour   bool   // true se il tour guidato deve essere mostrato sulla dashboard
+	IsOwner    bool   // true se l'utente corrente è l'owner dell'istanza
 	// Features mappa key→bool: indica se l'utente ha accesso alla feature.
 	// Quando PremiumEnabled=false è sempre tutto true (nessun gating).
 	Features map[string]bool
-}
-
-// validThemes elenca i temi accettati. Tenuto allineato a web/tailwind/input.css
-// e internal/web/static/js/theme.js.
-var validThemes = map[string]struct{}{
-	"forest": {},
-	"ocean":  {},
-	"sunset": {},
-	"mono":   {},
-}
-
-// readTheme legge il cookie `theme` e ritorna un valore valido,
-// con fallback al default `forest`. Evita FOUC iniettando data-theme
-// lato server prima del primo render.
-func readTheme(r *http.Request) string {
-	c, err := r.Cookie("theme")
-	if err == nil {
-		if _, ok := validThemes[c.Value]; ok {
-			return c.Value
-		}
-	}
-	return "forest"
 }
 
 var premiumFeatureKeys = []string{"auto_plan", "tdee_adaptive", "api_access", "coach_mode"}
@@ -69,14 +47,14 @@ func (a *App) baseData(r *http.Request) authPageData {
 		features[k] = a.HasFeature(r.Context(), user, k)
 	}
 	return authPageData{
-		User:      user,
-		CSRFToken: nosurf.Token(r),
-		Flash:     a.Sessions.PopString(r.Context(), "flash"),
-		Theme:     readTheme(r),
-		ActiveNav: r.URL.Path,
-		ShowTour:  showTour,
-		IsOwner:   a.isOwner(user),
-		Features:  features,
+		User:       user,
+		CSRFToken:  nosurf.Token(r),
+		Flash:      a.Sessions.PopString(r.Context(), "flash"),
+		Appearance: readAppearance(r),
+		ActiveNav:  r.URL.Path,
+		ShowTour:   showTour,
+		IsOwner:    a.isOwner(user),
+		Features:   features,
 	}
 }
 
