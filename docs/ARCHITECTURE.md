@@ -50,7 +50,7 @@ handler  (internal/app/*_handlers.go)
 service  (internal/service/*)         orchestrazione business logic
    │
    ▼
-db repo  (internal/db/*.go)           query via codice sqlc-generated
+db repo  (internal/db/*.go)           SQL scritto a mano (database/sql)
    │
    ▼
 SQLite  (modernc.org/sqlite, file singolo)
@@ -68,7 +68,7 @@ sono testati in isolamento; i `service` li orchestrano con i repository DB.
 | `app/` | Router chi, middleware, handler HTTP, rate limiter, validazione |
 | `auth/` | Hashing password (bcrypt cost 12), helper sessioni |
 | `config/` | Caricamento variabili d'ambiente `NUTREEK_*` |
-| `db/` | Repository per ogni dominio; `db/sqlc/` è generato, `db/migrations/` e `db/queries/` sono sorgenti |
+| `db/` | Repository per ogni dominio; SQL inline nei repo, `db/migrations/` embedded e applicate da goose |
 | `domain/` | Struct di dominio pure (nessuna business logic) |
 | `macros/` | Calcoli macro (Kcal/Proteine/Carbo/Grassi) puri e testati |
 | `off/` | Client OpenFoodFacts, sync del dump locale, reconciler periodico |

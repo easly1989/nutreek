@@ -14,7 +14,7 @@ Funzionalità principali: gestione ingredienti (integrazione OpenFoodFacts local
 |-------|-----------|
 | Backend | Go 1.27+, chi router |
 | Database | SQLite (`modernc.org/sqlite`, pure Go, no CGO) |
-| ORM/Query | SQLC (codegen da SQL) |
+| Query | SQL scritto a mano su `database/sql` (repo in `internal/db/*.go`) |
 | Migrations | Goose |
 | Sessions | SCS v2 + SQLite store |
 | Auth | bcrypt (cost 12), NOSURF CSRF |
@@ -33,8 +33,6 @@ internal/
   config/             → caricamento variabili d'ambiente (NUTREEK_*)
   db/
     migrations/       → SQL goose (0001…0025+, embedded)
-    queries/          → SQL input per sqlc
-    sqlc/             → codice Go generato da sqlc — NON editare a mano
   domain/             → struct di dominio pure (nessuna business logic)
   macros/             → calcoli macro puri (zero side-effect, testati)
   off/                → client OpenFoodFacts + sync dump locale + reconciler periodico
@@ -58,14 +56,13 @@ data/                 → SQLite DB a runtime (gitignored)
 
 ```bash
 make setup            # scarica Tailwind CLI v3.4.17 in ./bin/
-make generate         # sqlc + tailwind (eseguire dopo modifiche SQL o CSS)
+make generate         # alias di tailwind (eseguire dopo modifiche a template o CSS)
 make tailwind         # solo build CSS
 make tailwind-watch   # watch CSS in dev
 make dev              # go run ./cmd/nutreek  →  localhost:8080
 make test             # go test ./...
 make build            # binary statico (CGO_ENABLED=0)
 make docker-up        # docker compose up --build
-make sqlc             # solo rigenera sqlc
 ```
 
 ---
@@ -172,7 +169,7 @@ finche' il sync non completa (~10 min, ~0.9GB di banda).
 
 ### Regole build
 
-- Dopo modifiche a `db/queries/*.sql` o `db/migrations/*.sql` → `make generate` (sqlc + tailwind)
+- Le migrazioni `db/migrations/*.sql` sono embedded e applicate da goose all'avvio: nessuna generazione
 - Dopo modifiche a `web/tailwind/input.css` o `tailwind.config.js` → `make tailwind`
 - I template HTML e il CSS sono embedded nel binary → serve rebuild per vederli nei test
 - **Tailwind bloccato a v3.4.17** — NON aggiornare a v4 senza task dedicato
@@ -183,19 +180,21 @@ finche' il sync non completa (~10 min, ~0.9GB di banda).
 
 - `go test ./...` copre: auth, macros, db layer (tutti i repo), OFF client/reconciler, rate limiter, API tokens, features
 - Pattern: tabella di test, `t.Cleanup()` per risorse, SQLite temporaneo per isolamento
-- Nessun linter configurato, nessuna CI/CD
+- CI GitHub Actions (`.github/workflows/ci.yml`): test `-race`, golangci-lint (`.golangci.yml`), build binario + immagine Docker, govulncheck
+- Release (`.github/workflows/release.yml`): pubblicare una GitHub Release `vX.Y.Z` costruisce e pusha `ghcr.io/easly1989/nutreek` (privata) con tag `:latest`, `:vX.Y.Z`, `:vX.Y`
 - Test UI manuali: `make dev` → `localhost:8080`
 
 ---
 
 ## Workflow branch — da seguire sempre
 
-1. Creare branch dedicato: `feat/<scope>-<breve-descrizione>` o `fix/<scope>-<breve-descrizione>`
-2. Sviluppare il task sul branch
-3. Commit atomici con conventional commits in italiano
-4. Push: `git push -u origin <branch>`
-5. Aprire merge request verso `main`
-6. **NON fare push diretto su `main`**
+Una issue → un branch → una PR verso `main`, con `Closes #N` nella descrizione.
+
+1. Branch dedicato con prefisso `feat/ fix/ chore/ ci/ refactor/ test/ docs/` (es. `feat/shopping-settimane-passate`)
+2. Commit atomici con conventional commits in italiano
+3. Push: `git push -u origin <branch>`, poi PR verso `main`; la CI deve essere verde
+4. Issue e PR che toccano l'interfaccia portano immagini (mockup nell'issue, screenshot reali nella PR)
+5. **NON fare push diretto su `main`**
 
 ---
 
@@ -204,7 +203,7 @@ finche' il sync non completa (~10 min, ~0.9GB di banda).
 | Task | File principali |
 |------|----------------|
 | Nuovo endpoint | `internal/app/router.go` + `internal/app/*_handlers.go` |
-| Nuova query DB | `internal/db/queries/*.sql` → `make sqlc` → `internal/db/*.go` |
+| Nuova query DB | metodo sul repo in `internal/db/*.go` (SQL inline) + test |
 | Nuova migrazione DB | `internal/db/migrations/000N_*.sql` (goose auto-run all'avvio) |
 | Nuovo modello di dominio | `internal/domain/*.go` |
 | Nuova pagina HTML | `internal/web/templates/pages/*.html` + renderer se serve |
@@ -240,3 +239,7 @@ GitHub Issues, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 ### Domain docs
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Token tools
+
+CBM: call `index_repository` once, then `search_graph` / `trace_path` before reading files.
