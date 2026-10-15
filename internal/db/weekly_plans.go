@@ -790,32 +790,21 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		for i, id := range ingredientIDs {
 			ia[i] = id
 		}
-		ingRows, err := r.db.QueryContext(ctx, `
-			SELECT id, source, off_barcode, name, brand, unit,
-			       kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-			       created_by, created_at, last_verified_at, superseded_by
-			FROM ingredients WHERE id IN (`+ph+`)
-		`, ia...)
+		// Colonne complete (selectIngredientCols): serve unit_weight_g per
+		// le voci in pezzi.
+		ingRows, err := r.db.QueryContext(ctx,
+			selectIngredientCols+` FROM ingredients WHERE id IN (`+ph+`)`, ia...)
 		if err != nil {
 			return nil, fmt.Errorf("load ingredients: %w", err)
 		}
-		for ingRows.Next() {
-			var ing domain.Ingredient
-			var src, unit string
-			err := ingRows.Scan(
-				&ing.ID, &src, &ing.OFFBarcode, &ing.Name, &ing.Brand, &unit,
-				&ing.KcalPer100, &ing.ProteinPer100, &ing.CarbsPer100, &ing.FatPer100,
-				&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy,
-			)
-			if err != nil {
-				ingRows.Close()
-				return nil, fmt.Errorf("scan ingredient: %w", err)
-			}
-			ing.Source = domain.IngredientSource(src)
-			ing.Unit = domain.IngredientUnit(unit)
-			ingMap[ing.ID] = &ing
-		}
+		ingList, err := collectIngredients(ingRows)
 		ingRows.Close()
+		if err != nil {
+			return nil, fmt.Errorf("load ingredients: %w", err)
+		}
+		for _, ing := range ingList {
+			ingMap[ing.ID] = ing
+		}
 	}
 
 	// 4. recipes (con i loro items joined a ingredients) in batch.

@@ -133,10 +133,7 @@ type mealItemView struct {
 // quantity * unit_weight_g se QuantityUnit=="pz" e l'ingrediente ha un
 // peso per unita' noto, altrimenti la quantity grezza.
 func effectiveGramsFor(it domain.MealItemFull) float64 {
-	if it.QuantityUnit == "pz" && it.Ingredient != nil && it.Ingredient.UnitWeightG != nil {
-		return it.Quantity * (*it.Ingredient.UnitWeightG)
-	}
-	return it.Quantity
+	return macros.Grams(it.Quantity, it.QuantityUnit, it.Ingredient)
 }
 
 type newMealForm struct {

@@ -281,7 +281,8 @@ func (n *NutritionistPlans) loadFull(ctx context.Context, plan *domain.Nutrition
 				        ni.quantity, ni.quantity_unit, ni.sort_order,
 				        r.name, r.servings,
 				        ing.id, ing.name, ing.brand, ing.unit,
-				        ing.kcal_per_100, ing.protein_per_100, ing.carbs_per_100, ing.fat_per_100
+				        ing.kcal_per_100, ing.protein_per_100, ing.carbs_per_100, ing.fat_per_100,
+				        ing.unit_weight_g
 				 FROM nutritionist_meal_items ni
 				 LEFT JOIN recipes r ON r.id = ni.recipe_id
 				 LEFT JOIN ingredients ing ON ing.id = ni.ingredient_id
@@ -315,7 +316,7 @@ func scanNutritionistItem(rows *sql.Rows) (domain.NutritionistItem, error) {
 	var recipeServings sql.NullInt64
 	var ingID sql.NullInt64
 	var ingName, ingBrand, ingUnit sql.NullString
-	var ingKcal, ingProtein, ingCarbs, ingFat sql.NullFloat64
+	var ingKcal, ingProtein, ingCarbs, ingFat, ingUnitWeight sql.NullFloat64
 
 	err := rows.Scan(
 		&item.ID, &item.VariationID, &recipeID, &ingredientID,
@@ -323,6 +324,7 @@ func scanNutritionistItem(rows *sql.Rows) (domain.NutritionistItem, error) {
 		&recipeName, &recipeServings,
 		&ingID, &ingName, &ingBrand, &ingUnit,
 		&ingKcal, &ingProtein, &ingCarbs, &ingFat,
+		&ingUnitWeight,
 	)
 	if err != nil {
 		return item, fmt.Errorf("scan nutritionist item: %w", err)
@@ -349,6 +351,10 @@ func scanNutritionistItem(rows *sql.Rows) (domain.NutritionistItem, error) {
 		}
 		if ingBrand.Valid {
 			ing.Brand = &ingBrand.String
+		}
+		if ingUnitWeight.Valid {
+			w := ingUnitWeight.Float64
+			ing.UnitWeightG = &w
 		}
 		item.Ingredient = ing
 	}
