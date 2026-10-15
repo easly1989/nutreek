@@ -8,6 +8,9 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
 ## [Non rilasciato]
 
+### Manutenzione
+- Go 1.27.2; chi 5.5, goose 3.29, modernc sqlite 1.60, x/crypto 0.58; SortableJS 1.15.7; GitHub Actions alle major correnti, golangci-lint fissato a v2.14.0; immagini base `golang:1.27-alpine` e `alpine:3.24`; `.gitattributes` con fine riga LF (#112)
+
 ### In corso
 - Premium gating effettivo (#70): `requireFeature("api_access")` su `/api/v1/*`, badge Premium nell'UI, `Features map[string]bool` in `authPageData`
 - README aggiornato con funzionalità Round 5, env vars, esempi REST API (#69)
