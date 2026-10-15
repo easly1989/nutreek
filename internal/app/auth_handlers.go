@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/mail"
 	"strings"
-	"time"
 
 	"github.com/justinas/nosurf"
 
@@ -103,11 +102,9 @@ func (a *App) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// Rate limit per IP: max 5 tentativi per minuto, in-memory.
-	if a.loginLimiter == nil {
-		a.loginLimiter = newLoginRateLimiter(5, time.Minute)
-	}
+	limiter := a.loginRateLimiter()
 	ip := remoteIP(r)
-	if !a.loginLimiter.allow(ip) {
+	if !limiter.allow(ip) {
 		a.Logger.Warn("login rate limit hit", "ip", ip)
 		data := a.baseData(r)
 		data.Error = "Troppi tentativi. Riprova fra un minuto."
@@ -144,7 +141,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Login riuscito: reset del rate limiter cosi' un utente legittimo
 	// non resta sotto threshold per i tentativi falliti precedenti.
-	a.loginLimiter.reset(ip)
+	limiter.reset(ip)
 
 	// Regenerate the session id on privilege change to prevent fixation.
 	if err := a.Sessions.RenewToken(r.Context()); err != nil {

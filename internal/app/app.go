@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"log/slog"
+	"sync"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
 
@@ -43,9 +45,20 @@ type App struct {
 	Render                 *web.Renderer
 	Logger                 *slog.Logger
 
-	// loginLimiter limita i tentativi POST /login per IP. Inizializzato
-	// pigramente al primo accesso dentro handleLogin (non serve in test).
-	loginLimiter *loginRateLimiter
+	// loginLimiter limita i tentativi POST /login per IP (5/minuto).
+	// Creato una volta sola da loginRateLimiter(): l'App e' costruita come
+	// struct literal, quindi niente costruttore in cui inizializzarlo.
+	loginLimiter     *ipRateLimiter
+	loginLimiterOnce sync.Once
+}
+
+// loginRateLimiter ritorna il limiter del login, creandolo al primo uso in
+// modo sicuro rispetto alle richieste concorrenti.
+func (a *App) loginRateLimiter() *ipRateLimiter {
+	a.loginLimiterOnce.Do(func() {
+		a.loginLimiter = newIPRateLimiter(5, time.Minute)
+	})
+	return a.loginLimiter
 }
 
 type ctxKey int
