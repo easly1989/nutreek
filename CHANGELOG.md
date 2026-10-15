@@ -8,6 +8,9 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
 ## [Non rilasciato]
 
+### Aggiunto
+- Immagine Docker privata su GHCR pubblicata a ogni release (`:latest`, `:vX.Y.Z`, `:vX.Y`), flag `nutreek -version` (#111)
+
 ### In corso
 - Premium gating effettivo (#70): `requireFeature("api_access")` su `/api/v1/*`, badge Premium nell'UI, `Features map[string]bool` in `authPageData`
 - README aggiornato con funzionalità Round 5, env vars, esempi REST API (#69)

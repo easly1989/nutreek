@@ -183,19 +183,21 @@ finche' il sync non completa (~10 min, ~0.9GB di banda).
 
 - `go test ./...` copre: auth, macros, db layer (tutti i repo), OFF client/reconciler, rate limiter, API tokens, features
 - Pattern: tabella di test, `t.Cleanup()` per risorse, SQLite temporaneo per isolamento
-- Nessun linter configurato, nessuna CI/CD
+- CI GitHub Actions (`.github/workflows/ci.yml`): test `-race`, golangci-lint (`.golangci.yml`), build binario + immagine Docker, govulncheck
+- Release (`.github/workflows/release.yml`): pubblicare una GitHub Release `vX.Y.Z` costruisce e pusha `ghcr.io/easly1989/nutreek` (privata) con tag `:latest`, `:vX.Y.Z`, `:vX.Y`
 - Test UI manuali: `make dev` → `localhost:8080`
 
 ---
 
 ## Workflow branch — da seguire sempre
 
-1. Creare branch dedicato: `feat/<scope>-<breve-descrizione>` o `fix/<scope>-<breve-descrizione>`
-2. Sviluppare il task sul branch
-3. Commit atomici con conventional commits in italiano
-4. Push: `git push -u origin <branch>`
-5. Aprire merge request verso `main`
-6. **NON fare push diretto su `main`**
+Una issue → un branch → una PR verso `main`, con `Closes #N` nella descrizione.
+
+1. Branch dedicato con prefisso `feat/ fix/ chore/ ci/ refactor/ test/ docs/` (es. `feat/shopping-settimane-passate`)
+2. Commit atomici con conventional commits in italiano
+3. Push: `git push -u origin <branch>`, poi PR verso `main`; la CI deve essere verde
+4. Issue e PR che toccano l'interfaccia portano immagini (mockup nell'issue, screenshot reali nella PR)
+5. **NON fare push diretto su `main`**
 
 ---
 
@@ -240,3 +242,7 @@ GitHub Issues, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 ### Domain docs
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Token tools
+
+CBM: call `index_repository` once, then `search_graph` / `trace_path` before reading files.
