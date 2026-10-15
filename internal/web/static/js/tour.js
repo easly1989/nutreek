@@ -37,14 +37,14 @@
     id: 'navigazione',
     title: 'Navigazione settimana',
     text: 'Usa le frecce per spostarti tra le settimane. "Oggi" torna alla settimana corrente.',
-    attachTo: { element: '.flex.items-center.gap-2.text-sm', on: 'bottom' },
+    attachTo: { element: '#week-nav', on: 'bottom' },
     buttons: [btn('← Indietro', function () { tour.back(); }, true), btn('Avanti →', function () { tour.next(); })]
   });
 
   tour.addStep({
     id: 'timeline',
     title: 'Giorni della settimana',
-    text: 'Clicca su un giorno per aprire la scheda con i pasti di quel giorno e aggiungere alimenti.',
+    text: 'Scegli un giorno per vederne i pasti, il riepilogo dei macro e l’acqua, e per aggiungere alimenti.',
     attachTo: { element: '#timeline-pills', on: 'bottom' },
     buttons: [btn('← Indietro', function () { tour.back(); }, true), btn('Avanti →', function () { tour.next(); })]
   });
@@ -67,9 +67,9 @@
 
   tour.addStep({
     id: 'sidebar',
-    title: 'Menu laterale',
-    text: 'Da qui accedi a tutte le sezioni: ingredienti, ricette, piano nutrizionale, statistiche. Puoi fissare la sidebar con "Fissa" o ridurla a soli icon con "Riduci".',
-    attachTo: { element: '#sidebar', on: 'right' },
+    title: 'Le sezioni',
+    text: 'Da qui raggiungi ricette, ingredienti, piano nutrizionale, lista della spesa e statistiche. «Aspetto», per scegliere modalità chiara o scura e colore, è in fondo al menu (sul telefono sotto «Altro»).',
+    attachTo: { element: window.matchMedia('(min-width: 1024px)').matches ? '#sidebar' : '#bottom-nav', on: window.matchMedia('(min-width: 1024px)').matches ? 'right' : 'top' },
     buttons: [
       btn('← Indietro', function () { tour.back(); }, true),
       btn('Fine ✓', function () { tour.complete(); })
