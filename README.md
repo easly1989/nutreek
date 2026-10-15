@@ -73,7 +73,7 @@ Creazione e revoca token per la REST API v1 dalle impostazioni.
 
 ## Stack
 
-- **Backend:** Go 1.25+ (chi, scs, sqlc, goose, bcrypt, nosurf)
+- **Backend:** Go 1.27+ (chi, scs, goose, bcrypt, nosurf), SQL scritto a mano
 - **DB:** SQLite via `modernc.org/sqlite` (pure Go, no CGO)
 - **Frontend:** server-side rendering con `html/template` + HTMX + Tailwind CSS v3.4.17
 - **Deploy:** binario statico o immagine Docker distroless (~20 MB)
@@ -124,6 +124,23 @@ docker compose up --build
 ```
 
 Il DB persiste su `./data/` (mappato su `/data` nel container).
+
+### Immagine pubblicata (GHCR, privata)
+
+Ogni GitHub Release `vX.Y.Z` pubblica `ghcr.io/easly1989/nutreek` con i tag
+`:latest`, `:vX.Y.Z` e `:vX.Y` (amd64 + arm64). Il pacchetto e' privato:
+sul server serve un login una tantum con un Personal Access Token che abbia
+lo scope `read:packages`.
+
+```bash
+echo "$GHCR_PAT" | docker login ghcr.io -u easly1989 --password-stdin
+docker compose pull && docker compose up -d
+```
+
+Per tagliare una release: `gh release create vX.Y.Z --generate-notes`
+(o dalla UI di GitHub). Il workflow si puo' anche lanciare a mano da
+*Actions → Release* per ripubblicare `:latest`. `nutreek -version` stampa
+la versione dell'immagine in uso.
 
 ---
 
@@ -240,6 +257,8 @@ nutreek.example.com {
 
 Il container **non** termina TLS: assumi sempre un reverse proxy davanti in produzione pubblica.
 
+Il rate limiting (login, registrazione, ricerca, admin) usa l'IP del client. `X-Forwarded-For` viene letto **solo** quando la connessione arriva da loopback o da una rete privata (il proxy sullo stesso host o nella rete Docker); un client che si collega direttamente non può scegliersi l'IP con l'header. Il proxy deve quindi aggiungere `X-Forwarded-For`: Caddy, Traefik e nginx (`proxy_add_x_forwarded_for`) lo fanno.
+
 L'immagine usa `gcr.io/distroless/static:nonroot` come base finale (~15 MB totali). Niente shell, niente pacchetti: il binario è compilato in pure Go (`CGO_ENABLED=0`). Il container espone una healthcheck via sub-comando `nutreek -healthcheck`.
 
 ```bash
@@ -277,8 +296,6 @@ internal/
   config/             caricamento variabili d'ambiente (NUTREEK_*)
   db/
     migrations/       SQL goose versionate (embedded nel binary)
-    queries/          SQL input per sqlc
-    sqlc/             codice Go generato da sqlc (NON editare a mano)
   domain/             struct di dominio pure
   macros/             calcoli macro (puri, testati)
   off/                client OpenFoodFacts + sync dump locale + reconciler

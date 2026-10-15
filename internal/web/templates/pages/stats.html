@@ -289,8 +289,9 @@
 {{end}}
 
 {{define "scripts"}}
-{{if or .HasAdherenceData (or .HasWeightData (or .HasWorkoutData (or .HasCheatData (and .TDEEReport .TDEEReport.HasEnoughData))))}}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{{/* Le canvas esistono solo con .HasData: senza, Chart.js non trova il context. */}}
+{{if and .HasData (or .HasAdherenceData (or .HasWeightData (or .HasWorkoutData (or .HasCheatData (and .TDEEReport .TDEEReport.HasEnoughData)))))}}
+<script src="/static/js/chart.umd.min.js"></script>
 <script>
 (function () {
   var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6366f1';

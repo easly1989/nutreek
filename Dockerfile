@@ -37,7 +37,8 @@ COPY . .
 # in context e' gia' stata esclusa da .dockerignore, quindi questa COPY
 # e' l'unica fonte autoritativa di tailwind.css per l'embed Go.
 COPY --from=tailwind-builder /src/internal/web/static/css/tailwind.css ./internal/web/static/css/tailwind.css
-RUN go build -ldflags="-s -w" -o /out/nutreek ./cmd/nutreek
+ARG VERSION=dev
+RUN go build -ldflags="-s -w -X main.version=${VERSION}" -o /out/nutreek ./cmd/nutreek
 
 # --- Stage 3: runtime --------------------------------------------------------
 FROM gcr.io/distroless/static:nonroot

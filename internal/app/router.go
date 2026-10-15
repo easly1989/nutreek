@@ -25,7 +25,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Permissions-Policy", "camera=(), microphone=()")
 		h.Set("Content-Security-Policy",
 			"default-src 'self'; "+
-				"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
+				"script-src 'self' 'unsafe-inline'; "+
 				"style-src 'self' 'unsafe-inline'; "+
 				"img-src 'self' data:; "+
 				"font-src 'self'")
@@ -280,8 +280,10 @@ type reqIDKey struct{}
 // X-Request-ID per facilitare il correlamento nei log.
 func requestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// L'ID del client (es. da un reverse proxy) finisce in log e risposta:
+		// lo accettiamo solo se corto e fatto di caratteri innocui.
 		id := r.Header.Get("X-Request-ID")
-		if id == "" {
+		if !validRequestID(id) {
 			b := make([]byte, 8)
 			_, _ = rand.Read(b)
 			id = hex.EncodeToString(b)
@@ -290,4 +292,20 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), reqIDKey{}, id)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// validRequestID accetta 1–64 caratteri tra lettere ASCII, cifre, '-' e '_'
+// (copre UUID e gli ID esadecimali dei proxy comuni).
+func validRequestID(id string) bool {
+	if id == "" || len(id) > 64 {
+		return false
+	}
+	for _, c := range id {
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9', c == '-', c == '_':
+		default:
+			return false
+		}
+	}
+	return true
 }

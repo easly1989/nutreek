@@ -10,7 +10,7 @@ configurazione completa vedi [README.md](../README.md).
 
 - **Repository Git completo** con l'intera storia dei commit.
 - **Tutto il codice sorgente**: backend Go, template HTML/HTMX, sorgenti CSS
-  Tailwind, migrazioni SQL, query sqlc.
+  Tailwind, migrazioni SQL, query SQL scritte a mano nei repo.
 - **Documentazione**: README, CLAUDE.md (memoria di progetto), ROADMAP.md,
   CHANGELOG.md, questo asset pack, screenshot in `docs/screenshots/`.
 - **Tutti i diritti** sul codice e sul nome del progetto, secondo i termini
@@ -36,7 +36,7 @@ configurazione completa vedi [README.md](../README.md).
 
 ```bash
 make setup       # scarica Tailwind CLI in ./bin/
-make generate    # rigenera codice sqlc + CSS Tailwind
+make generate    # rigenera il CSS Tailwind
 make dev         # go run ./cmd/nutreek -> http://localhost:8080
 make build       # binario statico (CGO_ENABLED=0)
 make test        # go test ./...
