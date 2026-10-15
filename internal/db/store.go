@@ -41,8 +41,9 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
 
-	// WAL permette letture concorrenti + un writer. Lasciamo il default del
-	// pool di database/sql: SQLite risponde BUSY e busy_timeout rilancia.
+	// WAL permette letture concorrenti + un writer. Le transazioni partono
+	// IMMEDIATE (vedi buildDSN) cosi' i writer concorrenti si accodano su
+	// busy_timeout invece di fallire.
 	return &Store{DB: sqldb}, nil
 }
 
@@ -72,5 +73,10 @@ func buildDSN(path string) string {
 	q.Add("_pragma", "journal_mode(WAL)")
 	q.Add("_pragma", "foreign_keys(ON)")
 	q.Add("_pragma", "synchronous(NORMAL)")
+	// BEGIN IMMEDIATE: le transazioni prendono subito il lock di scrittura.
+	// Con BEGIN deferred due transazioni lettura→scrittura concorrenti
+	// fanno fallire la seconda con SQLITE_BUSY senza attendere
+	// busy_timeout (vedi TestConcurrentReadThenWriteTx).
+	q.Add("_txlock", "immediate")
 	return fmt.Sprintf("file:%s?%s", filepath.ToSlash(path), q.Encode())
 }
