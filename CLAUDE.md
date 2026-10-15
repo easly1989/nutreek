@@ -12,7 +12,7 @@ Funzionalità principali: gestione ingredienti (integrazione OpenFoodFacts local
 
 | Layer | Tecnologia |
 |-------|-----------|
-| Backend | Go 1.25+, chi router |
+| Backend | Go 1.27+, chi router |
 | Database | SQLite (`modernc.org/sqlite`, pure Go, no CGO) |
 | ORM/Query | SQLC (codegen da SQL) |
 | Migrations | Goose |

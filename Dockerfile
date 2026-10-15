@@ -3,7 +3,7 @@
 # --- Stage 1: Tailwind CSS bundle --------------------------------------------
 # Pinned a v3.4.17 (vedi Makefile per la stessa ragione: v4 ha cambiato
 # CLI/config, l'input.css/tailwind.config.js sono v3 syntax).
-FROM alpine:3.20 AS tailwind-builder
+FROM alpine:3.24 AS tailwind-builder
 RUN apk add --no-cache curl ca-certificates
 WORKDIR /src
 ARG TARGETARCH
@@ -27,7 +27,7 @@ RUN mkdir -p internal/web/static/css && \
       --minify
 
 # --- Stage 2: Go build -------------------------------------------------------
-FROM golang:1.25-alpine AS go-builder
+FROM golang:1.27-alpine AS go-builder
 WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-trimpath
 COPY go.mod go.sum ./
