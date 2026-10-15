@@ -125,6 +125,23 @@ docker compose up --build
 
 Il DB persiste su `./data/` (mappato su `/data` nel container).
 
+### Immagine pubblicata (GHCR, privata)
+
+Ogni GitHub Release `vX.Y.Z` pubblica `ghcr.io/easly1989/nutreek` con i tag
+`:latest`, `:vX.Y.Z` e `:vX.Y` (amd64 + arm64). Il pacchetto e' privato:
+sul server serve un login una tantum con un Personal Access Token che abbia
+lo scope `read:packages`.
+
+```bash
+echo "$GHCR_PAT" | docker login ghcr.io -u easly1989 --password-stdin
+docker compose pull && docker compose up -d
+```
+
+Per tagliare una release: `gh release create vX.Y.Z --generate-notes`
+(o dalla UI di GitHub). Il workflow si puo' anche lanciare a mano da
+*Actions → Release* per ripubblicare `:latest`. `nutreek -version` stampa
+la versione dell'immagine in uso.
+
 ---
 
 ## Configurazione
