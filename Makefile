@@ -46,8 +46,7 @@ TAILWIND_OUTPUT := internal/web/static/css/tailwind.css
 help:
 	@echo "Nutreek - target disponibili:"
 	@echo "  setup          scarica tool locali (Tailwind CLI)"
-	@echo "  generate       genera sqlc + CSS"
-	@echo "  sqlc           genera codice sqlc"
+	@echo "  generate       genera il CSS (alias di tailwind)"
 	@echo "  tailwind       build CSS Tailwind una volta"
 	@echo "  tailwind-watch build CSS in watch mode"
 	@echo "  dev            avvia l'app in dev (go run)"
@@ -70,11 +69,6 @@ else
 	@chmod +x $(TAILWIND_BIN)
 endif
 
-.PHONY: sqlc
-sqlc:
-	@which sqlc >/dev/null 2>&1 || go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-	sqlc generate
-
 .PHONY: tailwind
 tailwind: $(TAILWIND_BIN)
 	@$(MKDIR) internal/web/static/css
@@ -86,7 +80,7 @@ tailwind-watch: $(TAILWIND_BIN)
 	$(TAILWIND_BIN) -c $(TAILWIND_CONFIG) -i $(TAILWIND_INPUT) -o $(TAILWIND_OUTPUT) --watch
 
 .PHONY: generate
-generate: sqlc tailwind
+generate: tailwind
 
 .PHONY: dev
 dev: tailwind

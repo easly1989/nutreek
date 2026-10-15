@@ -73,7 +73,7 @@ Creazione e revoca token per la REST API v1 dalle impostazioni.
 
 ## Stack
 
-- **Backend:** Go 1.25+ (chi, scs, sqlc, goose, bcrypt, nosurf)
+- **Backend:** Go 1.27+ (chi, scs, goose, bcrypt, nosurf), SQL scritto a mano
 - **DB:** SQLite via `modernc.org/sqlite` (pure Go, no CGO)
 - **Frontend:** server-side rendering con `html/template` + HTMX + Tailwind CSS v3.4.17
 - **Deploy:** binario statico o immagine Docker distroless (~20 MB)
@@ -296,8 +296,6 @@ internal/
   config/             caricamento variabili d'ambiente (NUTREEK_*)
   db/
     migrations/       SQL goose versionate (embedded nel binary)
-    queries/          SQL input per sqlc
-    sqlc/             codice Go generato da sqlc (NON editare a mano)
   domain/             struct di dominio pure
   macros/             calcoli macro (puri, testati)
   off/                client OpenFoodFacts + sync dump locale + reconciler
