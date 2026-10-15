@@ -3,7 +3,9 @@ package db
 import (
 	"context"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 )
 
 // TestOpenAndMigrate verifica che il DB venga creato sul filesystem,
@@ -58,5 +60,65 @@ func TestOpenAndMigrate(t *testing.T) {
 	// Re-run Migrate deve essere idempotente.
 	if err := store.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate secondario: %v", err)
+	}
+}
+
+// TestConcurrentReadThenWriteTx riproduce il pattern delle transazioni dei
+// repo (lettura, poi scrittura) da due goroutine. Con BEGIN deferred
+// entrambe prendono lo snapshot in lettura e la seconda a scrivere riceve
+// SQLITE_BUSY senza attendere busy_timeout; con _txlock=immediate la
+// seconda aspetta il commit della prima e poi procede.
+func TestConcurrentReadThenWriteTx(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "tx.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	ctx := context.Background()
+	if _, err := store.DB.ExecContext(ctx, `CREATE TABLE counter (n INTEGER)`); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	var bothRead sync.WaitGroup
+	bothRead.Add(2)
+	barrier := make(chan struct{})
+	go func() { bothRead.Wait(); close(barrier) }()
+	errs := make(chan error, 2)
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- func() error {
+				tx, err := store.DB.BeginTx(ctx, nil)
+				if err != nil {
+					return err
+				}
+				defer func() { _ = tx.Rollback() }()
+				var n int
+				if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM counter`).Scan(&n); err != nil {
+					return err
+				}
+				// Aspetta che anche l'altra transazione abbia letto. Con
+				// BEGIN IMMEDIATE l'altra e' ferma in BeginTx: il timeout
+				// evita di attenderla per sempre.
+				bothRead.Done()
+				select {
+				case <-barrier:
+				case <-time.After(500 * time.Millisecond):
+				}
+				if _, err := tx.ExecContext(ctx, `INSERT INTO counter (n) VALUES (?)`, n+1); err != nil {
+					return err
+				}
+				return tx.Commit()
+			}()
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Errorf("transazione concorrente fallita: %v", err)
+		}
 	}
 }
