@@ -1,7 +1,10 @@
 services:
   nutreek:
+    # Immagine privata pubblicata dal workflow Release (serve `docker login ghcr.io`).
+    # `docker compose pull && docker compose up -d` aggiorna all'ultima release;
+    # `docker compose up --build` costruisce invece dal sorgente locale.
+    image: ghcr.io/easly1989/nutreek:latest
     build: .
-    image: nutreek:latest
     container_name: nutreek
     ports:
       - "8080:8080"

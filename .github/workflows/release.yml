@@ -1,0 +1,94 @@
+name: Release
+
+# Costruisce e pubblica l'immagine Docker *privata* su GHCR.
+#
+# Trigger:
+#   - pubblicazione di una GitHub Release -> versione = tag della release (es. v1.2.0)
+#   - lancio manuale (workflow_dispatch)  -> versione opzionale; senza versione
+#     pubblica solo `:latest` dal branch scelto (utile per ripubblicare).
+#
+# Tag pubblicati: `:latest` sempre, piu' `:vX.Y.Z` e `:vX.Y` quando c'e' una
+# versione. Il pacchetto eredita la visibilita' (privata) del repo tramite il
+# label `org.opencontainers.image.source`.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag di versione da pubblicare anche (es. v1.2.0). Vuoto = solo :latest."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/easly1989/nutreek
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Login a GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcola versione e tag
+        id: vars
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="$RELEASE_TAG"
+          else
+            VERSION="$INPUT_VERSION"
+          fi
+
+          tags="${IMAGE}:latest"
+          build_version="latest-${GITHUB_SHA::7}"
+
+          if [ -n "$VERSION" ]; then
+            build_version="$VERSION"
+            tags="${tags},${IMAGE}:${VERSION}"
+            # vX.Y.Z -> pubblica anche il tag mobile :vX.Y
+            if echo "$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+              minor="$(echo "$VERSION" | grep -oE '^v[0-9]+\.[0-9]+')"
+              tags="${tags},${IMAGE}:${minor}"
+            fi
+          fi
+
+          {
+            echo "tags=$tags"
+            echo "build_version=$build_version"
+          } >> "$GITHUB_OUTPUT"
+          echo "Pubblico: $tags (VERSION=$build_version)"
+
+      - name: Build e push (amd64 + arm64)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ steps.vars.outputs.build_version }}
+          tags: ${{ steps.vars.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/easly1989/nutreek
+            org.opencontainers.image.title=nutreek
+            org.opencontainers.image.version=${{ steps.vars.outputs.build_version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
