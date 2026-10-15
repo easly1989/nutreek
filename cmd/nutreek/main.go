@@ -24,12 +24,21 @@ import (
 	"github.com/amon2126/nutreek/internal/web"
 )
 
+// version e' impostata al build con -ldflags "-X main.version=vX.Y.Z"
+// (vedi Dockerfile e .github/workflows/release.yml). In sviluppo resta "dev".
+var version = "dev"
+
 func main() {
 	// Sub-comando di healthcheck: usato dal Dockerfile (distroless non ha
 	// shell ne' wget/curl, quindi facciamo l'HTTP probe in-process). Esce 0
 	// se /healthz risponde 200, 1 altrimenti.
 	healthcheck := flag.Bool("healthcheck", false, "esegue una GET su /healthz e termina con exit code 0/1")
+	showVersion := flag.Bool("version", false, "stampa la versione e termina")
 	flag.Parse()
+	if *showVersion {
+		fmt.Println(version)
+		return
+	}
 	if *healthcheck {
 		os.Exit(runHealthcheck())
 	}
@@ -180,7 +189,7 @@ func run(logger *slog.Logger) error {
 	}
 
 	go func() {
-		logger.Info("nutreek listening", "addr", cfg.Addr, "env", cfg.Env)
+		logger.Info("nutreek listening", "addr", cfg.Addr, "env", cfg.Env, "version", version)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("server error", "err", err)
 			stop()
