@@ -11,6 +11,9 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 ### Aggiunto
 - Immagine Docker privata su GHCR pubblicata a ogni release (`:latest`, `:vX.Y.Z`, `:vX.Y`), flag `nutreek -version` (#111)
 
+### Corretto
+- Le voci in pezzi («pz») valgono quantità × peso unitario dell'ingrediente nella settimana, nella generazione automatica e nella lista della spesa; prima contavano come grammi (#126)
+
 ### Cambiato
 - Restyle «Sereno», prima parte (#121): nuovo sistema di temi (modalità chiaro / scuro / come il sistema × colore bosco / mare / tramonto / grafite, in cookie e letto dal server), font Figtree servito dall'app, sidebar su desktop e barra in basso su telefono con il foglio «Altro», menu «Aspetto». La settimana mostra un giorno alla volta: schede dei giorni, riepilogo con anello kcal e macro, pasti, acqua e allenamenti; il giorno aperto è nell'URL (`?day=`). I vecchi cookie `theme` vengono convertiti.
 

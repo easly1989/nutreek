@@ -90,11 +90,7 @@ func PerServing(total Macros, servings int) Macros {
 //     reale, senza ulteriore scaling per porzioni).
 func ForMealItem(item domain.MealItemFull) Macros {
 	if item.Ingredient != nil {
-		grams := item.Quantity
-		if item.QuantityUnit == "pz" && item.Ingredient.UnitWeightG != nil {
-			grams = item.Quantity * *item.Ingredient.UnitWeightG
-		}
-		return FromIngredient(*item.Ingredient, grams)
+		return FromIngredient(*item.Ingredient, Grams(item.Quantity, item.QuantityUnit, item.Ingredient))
 	}
 	if item.Recipe != nil {
 		if len(item.Customizations) > 0 {
@@ -120,21 +116,28 @@ func ForMealItem(item domain.MealItemFull) Macros {
 	return Macros{}
 }
 
+// Grams converte la quantita' di una voce in grammi/ml: le voci in pezzi
+// («pz») valgono quantita' × peso unitario dell'ingrediente. Senza peso
+// unitario noto la quantita' resta quella inserita.
+func Grams(quantity float64, unit string, ing *domain.Ingredient) float64 {
+	if unit == "pz" && ing != nil && ing.UnitWeightG != nil && *ing.UnitWeightG > 0 {
+		return quantity * *ing.UnitWeightG
+	}
+	return quantity
+}
+
 // ForNutritionistVariation calcola i macro totali degli item di una variante
 // del piano nutrizionista. Poiche' LoadPlanFull non carica gli ingredienti
 // delle ricette referenziate, i macro per-porzione delle ricette vanno
 // precalcolati dal chiamante e passati in recipePerServing (chiave = recipe
-// ID). Gli item ingrediente sono calcolati direttamente: la quantita' e'
-// interpretata in g/ml (gli item "pz" senza peso unitario noto restano
-// un'approssimazione ai soli fini della selezione automatica, dato che il
-// pasto salvato conserva quantita'+unita' e viene ricalcolato correttamente
-// al render).
+// ID). Gli item ingrediente sono calcolati direttamente, con le voci «pz»
+// convertite in grammi tramite il peso unitario (vedi Grams).
 func ForNutritionistVariation(items []domain.NutritionistItem, recipePerServing map[int64]Macros) Macros {
 	var out Macros
 	for _, it := range items {
 		switch {
 		case it.Ingredient != nil:
-			out = out.Add(FromIngredient(*it.Ingredient, it.Quantity))
+			out = out.Add(FromIngredient(*it.Ingredient, Grams(it.Quantity, it.QuantityUnit, it.Ingredient)))
 		case it.RecipeID != nil:
 			if per, ok := recipePerServing[*it.RecipeID]; ok {
 				out = out.Add(per.Scale(it.Quantity)) // quantity = porzioni

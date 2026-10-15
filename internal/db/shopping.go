@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/macros"
 )
 
 // Errori del repo shopping.
@@ -127,7 +128,8 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 				}
 				for _, it := range meal.Items {
 					if it.Ingredient != nil {
-						totals[it.Ingredient.ID] += it.Quantity
+						// Le voci in pezzi si comprano a peso: «2 pz» di mele = 300 g.
+						totals[it.Ingredient.ID] += macros.Grams(it.Quantity, it.QuantityUnit, it.Ingredient)
 					}
 					if it.Recipe != nil && it.Recipe.Servings > 0 {
 						scale := it.Quantity / float64(it.Recipe.Servings)
