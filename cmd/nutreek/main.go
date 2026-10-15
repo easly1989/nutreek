@@ -145,6 +145,7 @@ func run(logger *slog.Logger) error {
 	featuresRepo := db.NewFeatures(store.DB)
 	coachRepo := db.NewCoachRepository(store.DB)
 	usersRepo := db.NewUsers(store.DB)
+	weightLogsRepo := db.NewWeightLogs(store.DB)
 	a := &app.App{
 		Cfg:                    cfg,
 		Store:                  store,
@@ -155,7 +156,7 @@ func run(logger *slog.Logger) error {
 		WeeklyPlans:            weeklyPlansRepo,
 		MealItemCustomizations: db.NewMealItemCustomizations(store.DB),
 		ShoppingLists:          db.NewShoppingLists(store.DB, weeklyPlansRepo),
-		WeightLogs:             db.NewWeightLogs(store.DB),
+		WeightLogs:             weightLogsRepo,
 		WorkoutLogs:            db.NewWorkoutLogs(store.DB),
 		WaterLogs:              db.NewWaterLogs(store.DB),
 		Categories:             db.NewCategories(store.DB),
@@ -165,7 +166,7 @@ func run(logger *slog.Logger) error {
 		Coach:                  coachRepo,
 		APITokens:              db.NewAPITokens(store.DB, usersRepo),
 		TDEE: &service.TDEEService{
-			WeightLogs:  db.NewWeightLogs(store.DB),
+			WeightLogs:  weightLogsRepo,
 			WeeklyPlans: weeklyPlansRepo,
 		},
 		Planner: &service.PlannerService{

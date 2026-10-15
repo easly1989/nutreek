@@ -14,7 +14,7 @@ Funzionalità principali: gestione ingredienti (integrazione OpenFoodFacts local
 |-------|-----------|
 | Backend | Go 1.25+, chi router |
 | Database | SQLite (`modernc.org/sqlite`, pure Go, no CGO) |
-| ORM/Query | SQLC (codegen da SQL) |
+| Query | SQL scritto a mano su `database/sql` (repo in `internal/db/*.go`) |
 | Migrations | Goose |
 | Sessions | SCS v2 + SQLite store |
 | Auth | bcrypt (cost 12), NOSURF CSRF |
@@ -33,8 +33,6 @@ internal/
   config/             → caricamento variabili d'ambiente (NUTREEK_*)
   db/
     migrations/       → SQL goose (0001…0025+, embedded)
-    queries/          → SQL input per sqlc
-    sqlc/             → codice Go generato da sqlc — NON editare a mano
   domain/             → struct di dominio pure (nessuna business logic)
   macros/             → calcoli macro puri (zero side-effect, testati)
   off/                → client OpenFoodFacts + sync dump locale + reconciler periodico
@@ -58,14 +56,13 @@ data/                 → SQLite DB a runtime (gitignored)
 
 ```bash
 make setup            # scarica Tailwind CLI v3.4.17 in ./bin/
-make generate         # sqlc + tailwind (eseguire dopo modifiche SQL o CSS)
+make generate         # alias di tailwind (eseguire dopo modifiche a template o CSS)
 make tailwind         # solo build CSS
 make tailwind-watch   # watch CSS in dev
 make dev              # go run ./cmd/nutreek  →  localhost:8080
 make test             # go test ./...
 make build            # binary statico (CGO_ENABLED=0)
 make docker-up        # docker compose up --build
-make sqlc             # solo rigenera sqlc
 ```
 
 ---
@@ -172,7 +169,7 @@ finche' il sync non completa (~10 min, ~0.9GB di banda).
 
 ### Regole build
 
-- Dopo modifiche a `db/queries/*.sql` o `db/migrations/*.sql` → `make generate` (sqlc + tailwind)
+- Le migrazioni `db/migrations/*.sql` sono embedded e applicate da goose all'avvio: nessuna generazione
 - Dopo modifiche a `web/tailwind/input.css` o `tailwind.config.js` → `make tailwind`
 - I template HTML e il CSS sono embedded nel binary → serve rebuild per vederli nei test
 - **Tailwind bloccato a v3.4.17** — NON aggiornare a v4 senza task dedicato
@@ -206,7 +203,7 @@ Una issue → un branch → una PR verso `main`, con `Closes #N` nella descrizio
 | Task | File principali |
 |------|----------------|
 | Nuovo endpoint | `internal/app/router.go` + `internal/app/*_handlers.go` |
-| Nuova query DB | `internal/db/queries/*.sql` → `make sqlc` → `internal/db/*.go` |
+| Nuova query DB | metodo sul repo in `internal/db/*.go` (SQL inline) + test |
 | Nuova migrazione DB | `internal/db/migrations/000N_*.sql` (goose auto-run all'avvio) |
 | Nuovo modello di dominio | `internal/domain/*.go` |
 | Nuova pagina HTML | `internal/web/templates/pages/*.html` + renderer se serve |
