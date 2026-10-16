@@ -2,6 +2,7 @@ package off
 
 import (
 	"encoding/json"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -173,6 +174,29 @@ func OFFCDNImageURL(barcode string) string {
 		return base + barcode[:3] + "/" + barcode[3:6] + "/" + barcode[6:9] + "/" + barcode[9:] + "/front_fr.200.jpg"
 	}
 	return base + barcode + "/front_fr.200.jpg"
+}
+
+// ThumbHost e' l'unico host da cui la pagina carica le miniature OFF: lo
+// stesso nome sta nella CSP (img-src, internal/app/router.go).
+const ThumbHost = "images.openfoodfacts.org"
+
+// ThumbURL rende mostrabile l'URL di una miniatura OFF: i dump vecchi usano
+// ancora static.openfoodfacts.org/images/, che diventa ThumbHost (stessi
+// percorsi). Qualunque altro URL (altro host, non https) torna "": il
+// template mostra allora l'icona del codice a barre.
+func ThumbURL(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" {
+		return ""
+	}
+	switch {
+	case u.Host == ThumbHost && strings.HasPrefix(u.Path, "/images/"):
+	case u.Host == "static.openfoodfacts.org" && strings.HasPrefix(u.Path, "/images/"):
+		u.Host = ThumbHost
+	default:
+		return ""
+	}
+	return u.String()
 }
 
 func firstBrand(csv string) string {

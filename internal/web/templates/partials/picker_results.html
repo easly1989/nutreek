@@ -72,6 +72,14 @@
 {{end}}
 {{end}}
 
+{{define "off_thumb"}}
+{{- /* Miniatura di un prodotto OFF dentro .thumb; . e' l'URL (vuoto se non
+       c'e'). L'icona del codice sta sotto la foto, che compare solo a
+       caricamento finito: mentre arriva, o se non arriva (404, rete), si
+       vede l'icona. no-referrer: OFF non vede da quale istanza arriva. */ -}}
+{{template "icon_sm" "i-barcode"}}{{with .}}<img src="{{.}}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.classList.add('is-loaded')" onerror="this.remove()" class="thumb-img">{{end}}
+{{- end}}
+
 {{define "picker_row"}}
 {{- /* Una riga del picker. View-model: web.PickerRowCtx {Row, List}. */ -}}
 {{- $r := .Row -}}{{- $d := .List -}}
@@ -80,7 +88,7 @@
 <details class="group" data-picker-row{{if $scanned}} open{{end}}>
   <summary class="flex items-center gap-3 min-h-[52px] py-1.5 pl-4 lg:pl-5 pr-4 cursor-pointer list-none hover:bg-surface-2 group-open:bg-accent-soft [&::-webkit-details-marker]:hidden">
     {{if $r.IsOFF}}
-      <span class="thumb">{{if $r.ImageURL}}<img src="{{$r.ImageURL}}" alt="" loading="lazy" onerror="this.remove()" class="w-full h-full object-contain">{{else}}{{template "icon_sm" "i-barcode"}}{{end}}</span>
+      <span class="thumb">{{template "off_thumb" $r.ImageURL}}</span>
     {{end}}
     <span class="grow min-w-0">
       <span class="block truncate"><b class="font-semibold">{{$r.Name}}</b>{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>

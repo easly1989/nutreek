@@ -237,7 +237,11 @@
   .crumb { @apply inline-flex items-center gap-1 mb-1 text-[13px] font-semibold text-muted hover:text-text; }
   .h1 { @apply text-xl lg:text-[22px] leading-tight font-bold; }
   .h2 { @apply text-[15px] font-bold; }
-  .thumb { @apply w-9 h-9 shrink-0 rounded-lg bg-surface-2 grid place-items-center text-muted overflow-hidden; }
+  .thumb { @apply relative w-9 h-9 shrink-0 rounded-lg bg-surface-2 grid place-items-center text-muted overflow-hidden; }
+  /* Foto sopra l'icona del codice (partial off_thumb), con fondo pieno: ai lati
+     di una foto non quadrata l'icona non deve trasparire. */
+  .thumb-img { @apply absolute inset-0 w-full h-full object-contain bg-surface-2 opacity-0; }
+  .thumb-img.is-loaded { @apply opacity-100; }
   /* Interruttore su checkbox nativa: <input type="checkbox" class="toggle">. */
   .toggle {
     @apply relative w-[34px] h-5 shrink-0 rounded-full bg-track cursor-pointer appearance-none transition-colors;
