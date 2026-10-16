@@ -8,6 +8,12 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
 ## [Non rilasciato]
 
+---
+
+## [2.0.0] — 2026-10-16
+
+Prima release pubblicata come immagine su GHCR: restyle «Sereno», app installabile con scanner del codice a barre, e le correzioni del giro di ripresa.
+
 ### Aggiunto
 - Immagine Docker privata su GHCR pubblicata a ogni release (`:latest`, `:vX.Y.Z`, `:vX.Y`), flag `nutreek -version` (#111)
 - Scanner del codice a barre nei picker di pasto, ricetta e piano nutrizionale (#59): la fotocamera legge il codice (BarcodeDetector nativo, altrimenti un lettore ZXing servito dall'app), il prodotto si apre già pronto da aggiungere, cercato prima tra i propri ingredienti e nella copia locale di OpenFoodFacts; se manca, «Crea l'ingrediente» lo crea con il codice collegato. Le cifre si possono anche scrivere a mano, e la ricerca riconosce un codice EAN-8/13 o UPC-A digitato.
@@ -16,6 +22,8 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 ### Corretto
 - Le foto dei prodotti OpenFoodFacts si vedono di nuovo nella lista Ingredienti e nei picker: la CSP le bloccava. È consentito solo `images.openfoodfacts.org`, le foto si caricano senza referrer, e se una foto manca resta l'icona del codice a barre invece di un quadrato vuoto (#133)
 - Un codice sconosciuto a OpenFoodFacts (l'API risponde 404) è «non trovato» e non più un errore del servizio (#59)
+- Sicurezza: il rate limit del login non si aggira più con un `X-Forwarded-For` inventato. L'header vale solo se la connessione arriva da un proxy in loopback o in rete privata; un `X-Request-ID` non valido viene sostituito (#115)
+- Due transazioni concorrenti che leggono e poi scrivono non falliscono più con `database is locked`: le transazioni SQLite prendono subito il lock di scrittura (`_txlock=immediate`) e si accodano (#116)
 - Le pesate non perdono più la data in lettura (risultavano tutte all'1/1/0001); la tabella delle Statistiche non usa più un campo inesistente del fabbisogno (#123)
 - Sicurezza: varianti e voci del piano nutrizionale si creano solo nel proprio piano, e nelle voci (piano, pasti, sgarri) si possono usare solo ricette proprie o pubbliche; gli id di altri utenti rispondono 404 (#129)
 - Le voci in pezzi («pz») valgono quantità × peso unitario dell'ingrediente nella settimana, nella generazione automatica e nella lista della spesa; prima contavano come grammi (#126)
@@ -28,11 +36,8 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
 ### Manutenzione
 - Go 1.27.2; chi 5.5, goose 3.29, modernc sqlite 1.60, x/crypto 0.58; SortableJS 1.15.7; GitHub Actions alle major correnti, golangci-lint fissato a v2.14.0; immagini base `golang:1.27-alpine` e `alpine:3.24`; `.gitattributes` con fine riga LF (#112)
-
-### In corso
-- Premium gating effettivo (#70): `requireFeature("api_access")` su `/api/v1/*`, badge Premium nell'UI, `Features map[string]bool` in `authPageData`
-- README aggiornato con funzionalità Round 5, env vars, esempi REST API (#69)
-- Documentazione aggiornata: CLAUDE.md, ROADMAP.md, CHANGELOG.md (#68)
+- Nessuno script da host esterni: la CSP non ammette più `cdn.jsdelivr.net` (Chart.js, prima vendorizzato e poi sostituito dai grafici SVG di #123). Tolto `sqlc.yaml`, che non generava nulla: il SQL è scritto a mano nei repo (#117)
+- README con badge e sezione «Supporta il progetto», `.github/FUNDING.yml` per il bottone «Sponsor», screenshot nuovi nello stile Sereno (#124)
 
 ---
 
