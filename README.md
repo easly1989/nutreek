@@ -1,217 +1,220 @@
 <p align="center">
-  <img src="docs/img/logo.svg" alt="Logo di Nutreek" width="96" height="96" />
+  <img src="docs/img/logo.svg" alt="Nutreek logo" width="96" height="96" />
 </p>
 
 <h1 align="center">Nutreek</h1>
 
 <p align="center">
-  <strong>Il piano alimentare della settimana, a casa tua.</strong><br />
-  Webapp self-hosted per pianificare i pasti e tenere i macro per pasto, giorno e settimana.
+  <strong>Your week of meals, self-hosted.</strong><br />
+  An open-source, self-hosted web app to plan meals and track macros per meal, day and week.
 </p>
 
 <p align="center">
-  <a href="https://github.com/easly1989/nutreek/actions/workflows/ci.yml"><img src="https://github.com/easly1989/nutreek/actions/workflows/ci.yml/badge.svg" alt="Stato della CI" /></a>
-  <a href="https://github.com/easly1989/nutreek/pkgs/container/nutreek"><img src="https://img.shields.io/badge/ghcr.io-nutreek-2496ED?logo=docker&logoColor=white" alt="Immagine del container" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/Licenza-proprietaria-lightgrey" alt="Licenza: proprietaria" /></a>
+  <strong>English</strong> · <a href="README.it.md">Italiano</a>
 </p>
 
 <p align="center">
-  <a href="https://buymeacoffee.com/easly1989"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black" alt="Offrimi un caffè" /></a>
-  <a href="https://paypal.me/carloruggiero"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white" alt="Dona con PayPal" /></a>
-  <a href="https://buy.stripe.com/8x26oAeqA7h6dPk80hfbq00"><img src="https://img.shields.io/badge/Donate-Stripe-635BFF?logo=stripe&logoColor=white" alt="Dona con Stripe" /></a>
-  <a href="https://liberapay.com/amon2126/donate"><img src="https://img.shields.io/badge/Donate-Liberapay-F6C915?logo=liberapay&logoColor=black" alt="Dona con Liberapay" /></a>
-  <a href="https://github.com/sponsors/easly1989"><img src="https://img.shields.io/badge/Sponsor-GitHub-EA4AAA?logo=githubsponsors&logoColor=white" alt="Sponsor su GitHub" /></a>
+  <a href="https://github.com/easly1989/nutreek/actions/workflows/ci.yml"><img src="https://github.com/easly1989/nutreek/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+  <a href="https://github.com/easly1989/nutreek/pkgs/container/nutreek"><img src="https://img.shields.io/badge/ghcr.io-nutreek-2496ED?logo=docker&logoColor=white" alt="Container image" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="License: AGPL v3" /></a>
 </p>
 
-Ingredienti con la copia locale di OpenFoodFacts (ricerca in meno di 50 ms, anche senza rete) e lo scanner del codice a barre, ricette, piano nutrizionale con varianti e generazione della settimana, lista della spesa, peso e TDEE adattivo, modalità coach. Si installa sul telefono come un'app.
+<p align="center">
+  <a href="https://buymeacoffee.com/easly1989"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" /></a>
+  <a href="https://paypal.me/carloruggiero"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white" alt="Donate via PayPal" /></a>
+  <a href="https://buy.stripe.com/8x26oAeqA7h6dPk80hfbq00"><img src="https://img.shields.io/badge/Donate-Stripe-635BFF?logo=stripe&logoColor=white" alt="Donate via Stripe" /></a>
+  <a href="https://liberapay.com/amon2126/donate"><img src="https://img.shields.io/badge/Donate-Liberapay-F6C915?logo=liberapay&logoColor=black" alt="Donate via Liberapay" /></a>
+  <a href="https://github.com/sponsors/easly1989"><img src="https://img.shields.io/badge/Sponsor-GitHub-EA4AAA?logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub" /></a>
+</p>
 
-Gira **nativamente** (un binario Go, nessuna dipendenza esterna) o in **un solo container Docker**: SQLite è incluso, non c'è un database da gestire a parte.
+Ingredients from a local copy of OpenFoodFacts (search in under 50 ms, even offline) and a barcode scanner, recipes, a nutrition plan with meal variants and automatic week generation, a shopping list, weight tracking with adaptive TDEE, and a coach mode. It installs on your phone like an app.
+
+It runs **natively** (one Go binary, no external dependencies) or in **a single Docker container**: SQLite is built in, so there is no separate database to run.
+
+The interface is in **Italian**.
 
 ---
 
-## Funzionalità
+## Features
 
-| Area | Funzionalità |
+| Area | What it does |
 |------|-------------|
-| **Piani settimanali** | Un giorno alla volta con anello kcal e macro, pasti, acqua e allenamenti; macro per pasto/giorno/settimana, sgarri, copia da settimana precedente |
-| **Ingredienti** | Ricerca locale FTS5 (<50 ms, offline) con foto dei prodotti, scanner del codice a barre nei picker, riconciliazione OFF |
-| **Ricette** | Creazione con ingredienti, import automatico da URL (schema.org/Recipe) |
-| **Template** | Template settimanali riutilizzabili, applicazione one-click |
-| **Piano nutrizionista** | Varianti pasto, generazione automatica settimana con algoritmo greedy (target macro) |
-| **Lista spesa** | Generazione automatica dalla settimana selezionata |
-| **Peso & idratazione** | Tracciamento giornaliero, grafici trend |
-| **TDEE adattivo** | Calcolo TDEE da trend peso/intake, suggerimento automatico |
-| **Allenamenti** | Log allenamenti con calorie bruciate, dashboard settimanale |
-| **Coach mode** | Libreria piani, assegnazione clienti, storico freeze, dashboard coach |
-| **REST API v1** | Bearer token, endpoint per settimana, ingredienti, peso, idratazione, allenamenti |
-| **Admin panel** | Feature flags, gestione utenti, sottoscrizioni premium (owner-only) |
-| **Premium gating** | Middleware `requireFeature`, cache 60s, badge UI, redirect `/upgrade` |
-| **Aspetto** | Stile «Sereno»: modalità chiaro / scuro / come il sistema × colore bosco / mare / tramonto / grafite; sidebar su desktop, barra in basso sul telefono; tour guidato |
-| **App sul telefono** | Installabile (manifest e icone nel colore scelto, service worker per i file statici); fotocamera e installazione richiedono https |
+| **Weekly plans** | One day at a time with a calorie ring and macros, meals, water and workouts; macros per meal, day and week, cheat meals, copy from the previous week |
+| **Ingredients** | Local FTS5 search (<50 ms, offline) with product photos, a barcode scanner in every food picker, OpenFoodFacts reconciliation |
+| **Recipes** | Built from ingredients, imported automatically from a URL (schema.org/Recipe) |
+| **Templates** | Reusable weekly templates, applied in one click |
+| **Nutrition plan** | Meal variants, automatic week generation with a greedy algorithm that aims at your macro targets |
+| **Shopping list** | Generated from the selected week, grouped by aisle |
+| **Weight & hydration** | Daily tracking, trend charts |
+| **Adaptive TDEE** | Estimates your real energy needs from your weight and intake trend, and suggests new targets |
+| **Workouts** | Workout log with calories burned, weekly overview |
+| **Coach mode** | Plan library, client assignment, frozen plan history, coach dashboard |
+| **REST API v1** | Bearer tokens; endpoints for the week, ingredients, weight, hydration and workouts |
+| **Admin panel** | Feature flags, user management, premium subscriptions (owner only) |
+| **Premium gating** | `requireFeature` middleware, 60 s cache, UI badges, redirect to `/upgrade` |
+| **Look** | The «Sereno» style: light / dark / follow the system × forest / sea / sunset / graphite colour; sidebar on desktop, bottom bar on the phone; guided tour |
+| **On your phone** | Installable (manifest and icons in your chosen colour, a service worker for static files); the camera and installing need https |
 
 ---
 
-## Screenshot
+## Screenshots
 
-Dati demo. Lo stesso aspetto in chiaro e in scuro, su desktop e sul telefono.
+Demo data. The same look in light and dark, on desktop and on the phone.
 
-### La settimana
+### The week
 
-Un giorno alla volta: le schede dei giorni con le kcal, i pasti con i macro, e a lato l'anello delle calorie, l'acqua e gli allenamenti.
+One day at a time: the day tabs with their calories, the meals with their macros, and beside them the calorie ring, water and workouts.
 
 <p align="center">
-  <img src="docs/screenshots/settimana.png" width="800" alt="La settimana: schede dei giorni, pasti con kcal e macro, anello delle calorie, acqua e allenamento">
+  <img src="docs/screenshots/settimana.png" width="800" alt="The week: day tabs, meals with calories and macros, calorie ring, water and workout">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/settimana-scuro.png" width="800" alt="La stessa settimana in modalità scura">
+  <img src="docs/screenshots/settimana-scuro.png" width="800" alt="The same week in dark mode">
 </p>
 
-### Aggiungere un alimento, anche col codice a barre
+### Adding food, barcode included
 
-Il picker si apre sopra la settimana. Con la fotocamera si legge il codice della confezione e il prodotto compare già pronto: prima tra i tuoi ingredienti, poi nella copia locale di OpenFoodFacts.
+The picker opens over the week. The camera reads the barcode on the pack and the product shows up ready to add: first among your own ingredients, then in the local OpenFoodFacts copy.
 
 <p align="center">
-  <img src="docs/screenshots/scanner.png" width="400" alt="Lo scanner aperto sopra il picker, con la fotocamera che inquadra un codice a barre">
-  <img src="docs/screenshots/picker-codice.png" width="400" alt="Il prodotto letto dal codice, aperto con proteine, carboidrati e grassi e la quantità da aggiungere">
+  <img src="docs/screenshots/scanner.png" width="400" alt="The scanner open over the picker, the camera framing a barcode">
+  <img src="docs/screenshots/picker-codice.png" width="400" alt="The scanned product, open with protein, carbs and fat and the quantity to add">
 </p>
 
-### Ricette e piano nutrizionale
+### Recipes and nutrition plan
 
-Ricette con kcal e macro per porzione; il piano nutrizionale con le varianti di ogni pasto, che alimentano il picker e la generazione della settimana.
+Recipes with calories and macros per serving; the nutrition plan with the variants of each meal, which feed the picker and the week generator.
 
 <p align="center">
-  <img src="docs/screenshots/ricette.png" width="400" alt="Elenco delle ricette con kcal e macro per porzione e i filtri">
-  <img src="docs/screenshots/piano-nutrizionale.png" width="400" alt="Piano nutrizionale con le varianti di colazione e pranzo">
+  <img src="docs/screenshots/ricette.png" width="400" alt="Recipe list with calories and macros per serving, and filters">
+  <img src="docs/screenshots/piano-nutrizionale.png" width="400" alt="Nutrition plan with the variants of breakfast and lunch">
 </p>
 
-### Lista della spesa e statistiche
+### Shopping list and statistics
 
-La spesa per reparto, con il carrello e la stampa in due colonne. Le statistiche con il fabbisogno stimato dal peso e da quanto hai mangiato.
+The shopping list by aisle, with a cart and a two-column print. Statistics with your energy needs estimated from your weight and what you ate.
 
 <p align="center">
-  <img src="docs/screenshots/spesa.png" width="400" alt="Lista della spesa raggruppata per reparto, con le voci aggiunte a mano">
-  <img src="docs/screenshots/statistiche-scuro.png" width="400" alt="Statistiche in modalità scura: sintesi, fabbisogno stimato, calorie e macro, peso">
+  <img src="docs/screenshots/spesa.png" width="400" alt="Shopping list grouped by aisle, with items added by hand">
+  <img src="docs/screenshots/statistiche-scuro.png" width="400" alt="Statistics in dark mode: summary, estimated energy needs, calories and macros, weight">
 </p>
 
-### Sul telefono
+### On the phone
 
-Barra in basso con le sezioni di tutti i giorni; si installa come app da Impostazioni.
+A bottom bar with the everyday sections; it installs as an app from Settings.
 
 <p align="center">
-  <img src="docs/screenshots/telefono-settimana.png" width="200" alt="La settimana sul telefono">
-  <img src="docs/screenshots/telefono-scanner.png" width="200" alt="Lo scanner del codice a barre sul telefono">
-  <img src="docs/screenshots/telefono-spesa.png" width="200" alt="La lista della spesa sul telefono">
-  <img src="docs/screenshots/telefono-app.png" width="200" alt="Impostazioni, App sul telefono, con il bottone Installa l'app">
+  <img src="docs/screenshots/telefono-settimana.png" width="200" alt="The week on the phone">
+  <img src="docs/screenshots/telefono-scanner.png" width="200" alt="The barcode scanner on the phone">
+  <img src="docs/screenshots/telefono-spesa.png" width="200" alt="The shopping list on the phone">
+  <img src="docs/screenshots/telefono-app.png" width="200" alt="Settings, phone app section, with the Install the app button">
 </p>
 
-### Coach e amministrazione
+### Coach and administration
 
-Il pannello coach con clienti e libreria dei piani; l'amministrazione (solo owner) con utenti, funzionalità e sincronizzazione di OpenFoodFacts.
+The coach panel with clients and the plan library; administration (owner only) with users, features and the OpenFoodFacts sync.
 
 <p align="center">
-  <img src="docs/screenshots/coach.png" width="400" alt="Pannello coach con un cliente e la libreria dei piani">
-  <img src="docs/screenshots/admin.png" width="400" alt="Amministrazione: utenti, premium, funzionalità e stato di OpenFoodFacts">
+  <img src="docs/screenshots/coach.png" width="400" alt="Coach panel with a client and the plan library">
+  <img src="docs/screenshots/admin.png" width="400" alt="Administration: users, premium, features and OpenFoodFacts status">
 </p>
 
 ---
 
 ## Stack
 
-- **Backend:** Go 1.27+ (chi, scs, goose, bcrypt, nosurf), SQL scritto a mano
-- **DB:** SQLite via `modernc.org/sqlite` (pure Go, no CGO)
-- **Frontend:** server-side rendering con `html/template` + HTMX + Tailwind CSS v3.4.17
-- **Deploy:** binario statico o immagine Docker distroless (~20 MB)
+- **Backend:** Go 1.27+ (chi, scs, goose, bcrypt, nosurf), hand-written SQL
+- **Database:** SQLite via `modernc.org/sqlite` (pure Go, no CGO)
+- **Frontend:** server-side rendering with `html/template` + HTMX + Tailwind CSS v3.4.17
+- **Deploy:** a static binary or a distroless Docker image (~20 MB)
 
 ---
 
-## Requisiti
+## Requirements
 
-Per sviluppo nativo (senza Docker):
-- Go 1.27 o superiore — https://go.dev/dl/
-- Nient'altro. Il CLI standalone di Tailwind viene scaricato automaticamente in `./bin/`.
+For native development (no Docker):
+- Go 1.27 or later — https://go.dev/dl/
+- Nothing else. The standalone Tailwind CLI is downloaded into `./bin/` for you.
 
-Per deploy in container:
-- Docker 24+ e Docker Compose v2
+For a container deploy:
+- Docker 24+ and Docker Compose v2
 
 ---
 
-## Quickstart (dev, senza Docker)
+## Quickstart (dev, no Docker)
 
-### Linux / macOS (con `make`)
+### Linux / macOS (with `make`)
 
 ```bash
-make setup       # scarica Tailwind CLI in ./bin/
-make tailwind    # genera internal/web/static/css/tailwind.css
+make setup       # downloads the Tailwind CLI into ./bin/
+make tailwind    # builds internal/web/static/css/tailwind.css
 make dev         # go run ./cmd/nutreek -> http://localhost:8080
 ```
 
-### Windows (PowerShell, senza `make`)
+### Windows (PowerShell, no `make`)
 
 ```powershell
-pwsh scripts/setup.ps1       # scarica Tailwind CLI in .\bin\
-pwsh scripts/tailwind.ps1    # build CSS (aggiungere -Watch per watch mode)
-pwsh scripts/dev.ps1         # avvia il server su http://localhost:8080
+pwsh scripts/setup.ps1       # downloads the Tailwind CLI into .\bin\
+pwsh scripts/tailwind.ps1    # builds the CSS (add -Watch for watch mode)
+pwsh scripts/dev.ps1         # starts the server on http://localhost:8080
 ```
 
-Il DB SQLite viene creato in `./data/nutreek.db` al primo avvio e le migrazioni sono applicate automaticamente. Il CSS generato (`internal/web/static/css/tailwind.css`) è embeddato nel binario a compile-time: va **sempre** rigenerato prima di `go build` o `go run` dopo aver modificato template o classi Tailwind.
+The SQLite database is created in `./data/nutreek.db` on first start, and migrations run automatically. The generated CSS (`internal/web/static/css/tailwind.css`) is embedded in the binary at compile time: **always** rebuild it before `go build` or `go run` after changing templates or Tailwind classes.
 
 ---
 
 ## Quickstart (Docker)
 
 ```bash
-# Genera una session key sicura la prima volta
+# Generate a secure session key the first time
 export NUTREEK_SESSION_KEY=$(openssl rand -hex 32)
 
 docker compose up --build
 # -> http://localhost:8080
 ```
 
-Il DB persiste su `./data/` (mappato su `/data` nel container).
+The database lives in `./data/` (mapped to `/data` in the container).
 
-### Immagine pubblicata (GHCR, privata)
+### Published image (GHCR)
 
-Ogni GitHub Release `vX.Y.Z` pubblica `ghcr.io/easly1989/nutreek` con i tag
-`:latest`, `:vX.Y.Z` e `:vX.Y` (amd64 + arm64). Il pacchetto e' privato:
-sul server serve un login una tantum con un Personal Access Token che abbia
-lo scope `read:packages`.
+Every GitHub Release `vX.Y.Z` publishes `ghcr.io/easly1989/nutreek` with the tags `:latest`, `:vX.Y.Z` and `:vX.Y` (amd64 + arm64). The image is public: no login needed.
 
 ```bash
-echo "$GHCR_PAT" | docker login ghcr.io -u easly1989 --password-stdin
 docker compose pull && docker compose up -d
 ```
 
-Per tagliare una release: `gh release create vX.Y.Z --generate-notes`
-(o dalla UI di GitHub). Il workflow si puo' anche lanciare a mano da
-*Actions → Release* per ripubblicare `:latest`. `nutreek -version` stampa
-la versione dell'immagine in uso.
+To cut a release: `gh release create vX.Y.Z --generate-notes` (or from the GitHub UI). The workflow can also be run by hand from *Actions → Release* to republish `:latest`. `nutreek -version` prints the version of the running image.
 
 ---
 
-## Configurazione
+## Configuration
 
-Tutte le variabili d'ambiente:
+Every environment variable:
 
-| Variabile | Default | Descrizione |
+| Variable | Default | Description |
 |---|---|---|
-| `NUTREEK_ADDR` | `:8080` | Indirizzo di ascolto HTTP |
-| `NUTREEK_DB_PATH` | `./data/nutreek.db` | Path del file SQLite |
-| `NUTREEK_ENV` | `dev` | `dev` o `prod` (in `prod` abilita secure cookies) |
-| `NUTREEK_SESSION_KEY` | *(auto in dev)* | Chiave HMAC per i cookie; **obbligatoria in `prod`** |
-| `NUTREEK_OWNER_EMAIL` | *(vuoto)* | Email dell'utente owner: accesso esclusivo all'admin panel |
-| `NUTREEK_PREMIUM_ENABLED` | `false` | Se `true`, abilita il gating premium sulle funzionalità a pagamento |
-| `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | Override host API OpenFoodFacts (barcode live) |
-| `NUTREEK_OFF_DUMP_URL` | `https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz` | URL dump OFF per sync locale |
-| `NUTREEK_OFF_SYNC_INTERVAL` | `168h` | Frequenza sync dump OFF (default 7 giorni) |
-| `NUTREEK_OFF_SYNC_ENABLED` | `true` | Abilita lo scheduler sync OFF |
-| `NUTREEK_RECONCILE_INTERVAL` | `24h` | Frequenza job riconciliazione ingredienti locali vs OFF |
-| `NUTREEK_RECONCILE_ENABLED` | `true` | Abilita/disabilita il job di riconciliazione |
-| `NUTREEK_ADMIN_TOKEN` | *(opzionale)* | Token per endpoint amministrativi legacy |
-| `NUTREEK_BACKUP_ENABLED` | `false` | Abilita backup SQLite automatico periodico |
-| `NUTREEK_BACKUP_DIR` | `./data/backups` | Directory dove salvare i backup |
-| `NUTREEK_BACKUP_INTERVAL` | `24h` | Frequenza backup automatici |
-| `NUTREEK_BACKUP_KEEP` | `7` | Numero di backup da conservare (i più vecchi vengono eliminati) |
+| `NUTREEK_ADDR` | `:8080` | HTTP listen address |
+| `NUTREEK_DB_PATH` | `./data/nutreek.db` | Path of the SQLite file |
+| `NUTREEK_ENV` | `dev` | `dev` or `prod` (`prod` turns on secure cookies) |
+| `NUTREEK_SESSION_KEY` | *(auto in dev)* | HMAC key for cookies; **required in `prod`** |
+| `NUTREEK_OWNER_EMAIL` | *(empty)* | Email of the owner: sole access to the admin panel |
+| `NUTREEK_PREMIUM_ENABLED` | `false` | If `true`, gates the features marked as premium |
+| `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | OpenFoodFacts API host (live barcode lookup) |
+| `NUTREEK_OFF_DUMP_URL` | `https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz` | OFF dump URL for the local sync |
+| `NUTREEK_OFF_SYNC_INTERVAL` | `168h` | How often the OFF dump is synced (default 7 days) |
+| `NUTREEK_OFF_SYNC_ENABLED` | `true` | Turns the OFF sync scheduler on |
+| `NUTREEK_RECONCILE_INTERVAL` | `24h` | How often local ingredients are reconciled with OFF |
+| `NUTREEK_RECONCILE_ENABLED` | `true` | Turns the reconciliation job on or off |
+| `NUTREEK_ADMIN_TOKEN` | *(optional)* | Token for the legacy admin endpoints |
+| `NUTREEK_BACKUP_ENABLED` | `false` | Turns on periodic automatic SQLite backups |
+| `NUTREEK_BACKUP_DIR` | `./data/backups` | Where backups are written |
+| `NUTREEK_BACKUP_INTERVAL` | `24h` | How often backups run |
+| `NUTREEK_BACKUP_KEEP` | `7` | How many backups to keep (the oldest are deleted) |
+
+### OpenFoodFacts
+
+All OpenFoodFacts text search is **local**. Once a week the sync downloads the public OFF dump (~0.9 GB compressed), keeps the Italian products (~250k) and indexes them with SQLite FTS5: searches take under 50 ms and never call the network. On first start the table is empty and the first sync runs in the background (about 10 minutes); searches stay empty until it finishes. Only a barcode lookup for a product not yet imported calls the live OFF API.
 
 ---
 
@@ -219,10 +222,10 @@ Tutte le variabili d'ambiente:
 
 ### Owner
 
-Il primo utente con email `NUTREEK_OWNER_EMAIL` ottiene accesso all'admin panel (`/admin/panel`), dove può:
-- Gestire feature flags (abilitare/disabilitare funzionalità, marcarle come premium)
-- Visualizzare e gestire gli utenti registrati
-- Assegnare sottoscrizioni premium
+The first user with the email in `NUTREEK_OWNER_EMAIL` gets the admin panel (`/admin/panel`), where they can:
+- manage feature flags (turn features on or off, mark them as premium);
+- see and manage registered users;
+- grant premium subscriptions.
 
 ```bash
 export NUTREEK_OWNER_EMAIL=admin@example.com
@@ -230,18 +233,18 @@ export NUTREEK_OWNER_EMAIL=admin@example.com
 
 ### Premium gating
 
-Con `NUTREEK_PREMIUM_ENABLED=false` (default), tutte le funzionalità sono accessibili a tutti gli utenti.
+With `NUTREEK_PREMIUM_ENABLED=false` (the default), every feature is open to every user.
 
-Con `NUTREEK_PREMIUM_ENABLED=true`, le funzionalità marcate come premium richiedono una sottoscrizione attiva. L'owner ha sempre accesso completo. Le funzionalità premium includono:
+With `NUTREEK_PREMIUM_ENABLED=true`, features marked as premium need an active subscription. The owner always has full access. The premium features are:
 
-| Feature key | Funzionalità |
+| Feature key | Feature |
 |-------------|-------------|
-| `auto_plan` | Generazione automatica settimana |
-| `tdee_adaptive` | TDEE adattivo con suggerimento automatico |
-| `coach_mode` | Pannello coach, libreria piani, assegnazione clienti |
-| `api_access` | REST API v1 con Bearer token |
+| `auto_plan` | Automatic week generation |
+| `tdee_adaptive` | Adaptive TDEE with target suggestions |
+| `coach_mode` | Coach panel, plan library, client assignment |
+| `api_access` | REST API v1 with bearer tokens |
 
-I badge "Premium" nell'interfaccia indicano le funzionalità non disponibili nel piano corrente, con redirect a `/upgrade` al tentativo di utilizzo.
+"Premium" badges in the interface mark the features outside the current plan; using one redirects to `/upgrade`.
 
 ```bash
 export NUTREEK_OWNER_EMAIL=admin@example.com
@@ -252,47 +255,47 @@ export NUTREEK_PREMIUM_ENABLED=true
 
 ## REST API v1
 
-Crea un token da `/settings` → sezione "Token API", poi:
+Create a token in `/settings` → "Token API", then:
 
 ```bash
 TOKEN="nutreek_your_token_here"
 BASE="http://localhost:8080"
 
-# Profilo utente corrente
+# Current user profile
 curl -H "Authorization: Bearer $TOKEN" $BASE/api/v1/me
 
-# Piano settimanale (inizio settimana lunedì)
+# Weekly plan (weeks start on Monday)
 curl -H "Authorization: Bearer $TOKEN" "$BASE/api/v1/week?start=2026-06-09"
 
-# Lista ingredienti (con ricerca)
+# Ingredient list (with search)
 curl -H "Authorization: Bearer $TOKEN" "$BASE/api/v1/ingredients?q=pollo"
 
-# Log idratazione
+# Log water
 curl -X POST -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"date":"2026-06-12","amount_ml":500}' \
      $BASE/api/v1/water
 
-# Log peso
+# Log weight
 curl -X POST -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"date":"2026-06-12","kg":75.5}' \
      $BASE/api/v1/weight
 
-# Log allenamento
+# Log a workout
 curl -X POST -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"date":"2026-06-12","activity_id":1,"duration_min":45,"kcal_burned":350}' \
      $BASE/api/v1/workout
 ```
 
-Con `NUTREEK_PREMIUM_ENABLED=true`, la feature `api_access` deve essere abilitata e l'utente deve avere una sottoscrizione attiva per utilizzare l'API.
+With `NUTREEK_PREMIUM_ENABLED=true`, the `api_access` feature must be on and the user needs an active subscription to use the API.
 
 ---
 
-## Deploy pubblico (dietro reverse proxy)
+## Public deploy (behind a reverse proxy)
 
-Esempio minimale con [Caddy](https://caddyserver.com/):
+A minimal example with [Caddy](https://caddyserver.com/):
 
 ```caddyfile
 nutreek.example.com {
@@ -300,24 +303,24 @@ nutreek.example.com {
 }
 ```
 
-Il container **non** termina TLS: assumi sempre un reverse proxy davanti in produzione pubblica.
+The container does **not** terminate TLS: always put a reverse proxy in front of it on a public deploy.
 
-Lo scanner del codice a barre e l'installazione come app sul telefono funzionano **solo in https** (o su `localhost`): il browser non dà la fotocamera né registra il service worker su una pagina in http, nemmeno in rete locale. Su http i bottoni dello scanner non compaiono e Impostazioni → «App sul telefono» lo spiega.
+The barcode scanner and installing the app on a phone work **only over https** (or on `localhost`): browsers neither give a page on http the camera nor register its service worker, not even on a local network. On http the scanner buttons do not appear, and Settings → «App sul telefono» explains why.
 
-Il rate limiting (login, registrazione, ricerca, admin) usa l'IP del client. `X-Forwarded-For` viene letto **solo** quando la connessione arriva da loopback o da una rete privata (il proxy sullo stesso host o nella rete Docker); un client che si collega direttamente non può scegliersi l'IP con l'header. Il proxy deve quindi aggiungere `X-Forwarded-For`: Caddy, Traefik e nginx (`proxy_add_x_forwarded_for`) lo fanno.
+Rate limiting (login, sign-up, search, admin) uses the client's IP. `X-Forwarded-For` is read **only** when the connection comes from loopback or a private network (a proxy on the same host or in the Docker network), so a client connecting directly cannot pick its own IP with the header. The proxy must therefore add `X-Forwarded-For`: Caddy, Traefik and nginx (`proxy_add_x_forwarded_for`) do.
 
-L'immagine usa `gcr.io/distroless/static:nonroot` come base finale (~15 MB totali). Niente shell, niente pacchetti: il binario è compilato in pure Go (`CGO_ENABLED=0`). Il container espone una healthcheck via sub-comando `nutreek -healthcheck`.
+The final image is based on `gcr.io/distroless/static:nonroot` (~15 MB in all). No shell, no packages: the binary is pure Go (`CGO_ENABLED=0`). The container has a health check through the `nutreek -healthcheck` subcommand.
 
 ```bash
-nutreek                # avvia il server
-nutreek -healthcheck   # GET /healthz, exit 0 se ok 1 altrimenti
+nutreek                # starts the server
+nutreek -healthcheck   # GET /healthz, exit 0 if ok, 1 otherwise
 ```
 
 ---
 
 ## Backup
 
-Il DB è un singolo file SQLite. Con backup automatico:
+The database is a single SQLite file. With automatic backups:
 
 ```bash
 export NUTREEK_BACKUP_ENABLED=true
@@ -325,7 +328,7 @@ export NUTREEK_BACKUP_DIR=./data/backups
 export NUTREEK_BACKUP_KEEP=7
 ```
 
-Backup manuale a caldo:
+A manual hot backup:
 
 ```bash
 sqlite3 ./data/nutreek.db ".backup ./data/nutreek.backup.db"
@@ -333,48 +336,48 @@ sqlite3 ./data/nutreek.db ".backup ./data/nutreek.backup.db"
 
 ---
 
-## Struttura del repository
+## Repository layout
 
 ```
 cmd/nutreek/          entrypoint (main.go, -healthcheck subcommand)
 internal/
-  app/                router (chi), middleware, handler HTTP, rate limiter
-  auth/               password hashing (bcrypt), sessioni
-  config/             caricamento variabili d'ambiente (NUTREEK_*)
+  app/                router (chi), middleware, HTTP handlers, rate limiter
+  auth/               password hashing (bcrypt), sessions
+  config/             loads the NUTREEK_* environment variables
   db/
-    migrations/       SQL goose versionate (embedded nel binary)
-  domain/             struct di dominio pure
-  macros/             calcoli macro (puri, testati)
-  off/                client OpenFoodFacts + sync dump locale + reconciler
-  planner/            algoritmo greedy generazione piano settimanale
-  profile/            logica salvataggio profilo (BMI, BMR, target macro)
-  recipeimport/       import ricetta da URL (schema.org/Recipe)
-  service/            orchestrazione business logic (PlannerService, TDEEService)
-  tdee/               calcolo TDEE adattivo (trend peso/intake)
+    migrations/       versioned goose SQL (embedded in the binary)
+  domain/             plain domain structs
+  macros/             macro calculations (pure, tested)
+  off/                OpenFoodFacts client + local dump sync + reconciler
+  planner/            greedy weekly plan generator
+  profile/            profile logic (BMI, BMR, macro targets)
+  recipeimport/       recipe import from a URL (schema.org/Recipe)
+  service/            business logic orchestration (PlannerService, TDEEService)
+  tdee/               adaptive TDEE (weight and intake trend)
   web/
-    templates/        HTML con HTMX (embedded nel binary)
-    static/           CSS e JS (embedded, generati)
-web/tailwind/         tailwind.config.js + input.css (sorgenti CSS)
-scripts/              PowerShell helpers per Windows
-data/                 SQLite DB a runtime (gitignored)
+    templates/        HTML with HTMX (embedded in the binary)
+    static/           CSS and JS (embedded, generated)
+web/tailwind/         tailwind.config.js + input.css (CSS sources)
+scripts/              PowerShell helpers for Windows
+data/                 SQLite database at runtime (gitignored)
 ```
 
----
-
-## Licenza
-
-**Proprietaria — All Rights Reserved.** Vedi [LICENSE](LICENSE).
-
-Il codice è visibile ma **non** è open source: nessun uso, copia o distribuzione è consentito senza autorizzazione scritta del titolare.
+Code comments, commit messages and the interface are in Italian.
 
 ---
 
-## Supporta il progetto
+## License
 
-Nutreek è sviluppato da una persona sola, nel tempo libero. Se ti è utile, una donazione aiuta davvero ed è molto apprezzata. ♥ Il modo più semplice è
-[**Buy Me a Coffee**](https://buymeacoffee.com/easly1989). Se ne preferisci un altro, la
-[pagina delle donazioni](https://easly1989.github.io/donate.html) li elenca tutti:
+Nutreek is licensed under the **GNU Affero General Public License v3.0** — see [LICENSE](LICENSE). If you run a modified version as a network service, the AGPL requires you to offer your modified source to its users.
+
+---
+
+## Support the project
+
+Nutreek is open source and built by one person in their spare time. If it's useful to you, consider a donation — it genuinely helps and is much appreciated. ♥ The easiest way is
+[**Buy Me a Coffee**](https://buymeacoffee.com/easly1989). If you prefer another, the
+[donation page](https://easly1989.github.io/donate.html) lists them all:
 [PayPal](https://paypal.me/carloruggiero),
 [Stripe](https://buy.stripe.com/8x26oAeqA7h6dPk80hfbq00),
-[Liberapay](https://liberapay.com/amon2126/donate) o
+[Liberapay](https://liberapay.com/amon2126/donate) or
 [GitHub Sponsors](https://github.com/sponsors/easly1989).
