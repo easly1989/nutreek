@@ -109,7 +109,7 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 	for _, it := range full.Items {
 		ingIDs = append(ingIDs, it.IngredientID)
 	}
-	cats, err := a.Categories.CategoriesForIngredients(r.Context(), ingIDs)
+	cats, err := a.Categories.CategoriesForIngredients(r.Context(), user.ID, ingIDs)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
