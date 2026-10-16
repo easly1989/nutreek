@@ -10,8 +10,11 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
 ### Aggiunto
 - Immagine Docker privata su GHCR pubblicata a ogni release (`:latest`, `:vX.Y.Z`, `:vX.Y`), flag `nutreek -version` (#111)
+- Scanner del codice a barre nei picker di pasto, ricetta e piano nutrizionale (#59): la fotocamera legge il codice (BarcodeDetector nativo, altrimenti un lettore ZXing servito dall'app), il prodotto si apre già pronto da aggiungere, cercato prima tra i propri ingredienti e nella copia locale di OpenFoodFacts; se manca, «Crea l'ingrediente» lo crea con il codice collegato. Le cifre si possono anche scrivere a mano, e la ricerca riconosce un codice EAN-8/13 o UPC-A digitato.
+- Nutreek si installa sul telefono come app (#59): manifest e icone nel colore del tema, service worker con la cache dei soli file statici, sezione «App sul telefono» in Impostazioni (bottone «Installa l'app», passaggi per Safari su iPhone). Fotocamera e installazione richiedono https.
 
 ### Corretto
+- Un codice sconosciuto a OpenFoodFacts (l'API risponde 404) è «non trovato» e non più un errore del servizio (#59)
 - Le pesate non perdono più la data in lettura (risultavano tutte all'1/1/0001); la tabella delle Statistiche non usa più un campo inesistente del fabbisogno (#123)
 - Sicurezza: varianti e voci del piano nutrizionale si creano solo nel proprio piano, e nelle voci (piano, pasti, sgarri) si possono usare solo ricette proprie o pubbliche; gli id di altri utenti rispondono 404 (#129)
 - Le voci in pezzi («pz») valgono quantità × peso unitario dell'ingrediente nella settimana, nella generazione automatica e nella lista della spesa; prima contavano come grammi (#126)
