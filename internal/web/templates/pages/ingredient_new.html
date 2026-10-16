@@ -1,128 +1,17 @@
 {{define "title"}}Nuovo ingrediente — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-xl">
-  <h1 class="text-3xl font-semibold mb-2">Nuovo ingrediente</h1>
-  <p class="text-sm text-muted mb-6">
-    Inserisci un ingrediente <strong>locale</strong>: i valori sono per 100 g (o 100 ml). Verra' candidato alla riconciliazione automatica con OpenFoodFacts.
-  </p>
-
-  {{if .Error}}
-    <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
-  {{end}}
-
-  <form method="post" action="/ingredients" class="space-y-4 bg-surface border border-border rounded p-6">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-
-    <div>
-      <label class="block text-sm font-medium text-text mb-1" for="f-name">Nome</label>
-      <input id="f-name" name="name" required value="{{.Form.Name}}" class="w-full rounded border border-border px-3 py-2">
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium text-text mb-1" for="f-brand">Marca <span class="text-muted font-normal">(opzionale)</span></label>
-        <input id="f-brand" name="brand" value="{{.Form.Brand}}" class="w-full rounded border border-border px-3 py-2">
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-text mb-1" for="f-unit">Unita'</label>
-        <select id="f-unit" name="unit" class="w-full rounded border border-border px-3 py-2">
-          <option value="g" {{if eq .Form.Unit "g"}}selected{{end}}>grammi (g)</option>
-          <option value="ml" {{if eq .Form.Unit "ml"}}selected{{end}}>millilitri (ml)</option>
-        </select>
-      </div>
-    </div>
-
-    <fieldset class="grid grid-cols-2 gap-4">
-      <legend class="text-sm font-medium text-text mb-1 col-span-2">Macro per 100 {{if eq .Form.Unit "ml"}}ml{{else}}g{{end}}</legend>
-      <div>
-        <label class="block text-xs text-muted mb-1" for="f-kcal">Kcal</label>
-        <input id="f-kcal" name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="w-full rounded border border-border px-3 py-2">
-      </div>
-      <div>
-        <label class="block text-xs text-muted mb-1" for="f-protein">Proteine (g)</label>
-        <input id="f-protein" name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="w-full rounded border border-border px-3 py-2">
-      </div>
-      <div>
-        <label class="block text-xs text-muted mb-1" for="f-carbs">Carboidrati (g)</label>
-        <input id="f-carbs" name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="w-full rounded border border-border px-3 py-2">
-      </div>
-      <div>
-        <label class="block text-xs text-muted mb-1" for="f-fat">Grassi (g)</label>
-        <input id="f-fat" name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="w-full rounded border border-border px-3 py-2">
-      </div>
-    </fieldset>
-
-    <details class="group">
-      <summary class="cursor-pointer text-sm font-medium text-text select-none list-none flex items-center gap-1">
-        <svg class="w-3.5 h-3.5 shrink-0 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-        Micronutrienti <span class="text-muted font-normal">(opzionale, per 100 g/ml)</span>
-      </summary>
-      <fieldset class="grid grid-cols-2 gap-4 mt-3">
-        <div>
-          <label class="block text-xs text-muted mb-1" for="f-fiber">Fibre (g)</label>
-          <input id="f-fiber" name="fiber" inputmode="decimal" value="{{.Form.Fiber}}" class="w-full rounded border border-border px-3 py-2">
-        </div>
-        <div>
-          <label class="block text-xs text-muted mb-1" for="f-sugars">Zuccheri (g)</label>
-          <input id="f-sugars" name="sugars" inputmode="decimal" value="{{.Form.Sugars}}" class="w-full rounded border border-border px-3 py-2">
-        </div>
-        <div>
-          <label class="block text-xs text-muted mb-1" for="f-satfat">Grassi saturi (g)</label>
-          <input id="f-satfat" name="saturated_fat" inputmode="decimal" value="{{.Form.SaturatedFat}}" class="w-full rounded border border-border px-3 py-2">
-        </div>
-        <div>
-          <label class="block text-xs text-muted mb-1" for="f-sodium">Sodio (g)</label>
-          <input id="f-sodium" name="sodium" inputmode="decimal" value="{{.Form.Sodium}}" class="w-full rounded border border-border px-3 py-2">
-        </div>
-      </fieldset>
-    </details>
-
-    <div>
-      <label class="block text-sm font-medium text-text mb-1" for="f-unit-weight">
-        Peso per unita' <span class="text-muted font-normal">(opzionale, g)</span>
-      </label>
-      <input id="f-unit-weight" name="unit_weight_g" inputmode="decimal"
-             value="{{.Form.UnitWeightG}}"
-             placeholder="es. 150 per una banana da 150g"
-             class="w-full rounded border border-border px-3 py-2">
-      <p class="text-xs text-muted mt-1">
-        Se valorizzato, potrai inserire la quantita' in <em>pezzi</em> (es. "1 banana") invece che in grammi.
-      </p>
-    </div>
-
-    {{if .Categories}}
-    <div>
-      <label class="block text-sm font-medium text-text mb-1" for="f-category">
-        Categoria <span class="text-muted font-normal">(opzionale)</span>
-      </label>
-      <select id="f-category" name="category_id"
-              class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-        <option value="">Nessuna categoria</option>
-        {{range .Categories}}
-        <option value="{{.ID}}" {{if eq $.Form.CategoryID (printf "%d" .ID)}}selected{{end}}>{{.Name}}</option>
-        {{end}}
-      </select>
-    </div>
-    {{end}}
-
-    {{if .Allergens}}
-    <div>
-      <span class="block text-sm font-medium text-text mb-2">Allergeni contenuti <span class="text-muted font-normal">(opzionale)</span></span>
-      <div class="grid grid-cols-2 gap-1">
-        {{range .Allergens}}
-        <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" name="allergen_ids" value="{{.ID}}" class="accent-accent" {{if index $.SelectedAllergens .ID}}checked{{end}}>
-          {{.Name}}
-        </label>
-        {{end}}
-      </div>
-    </div>
-    {{end}}
-
-    <div class="flex items-center justify-between pt-2">
-      <a href="/ingredients" class="text-sm text-muted hover:underline">Annulla</a>
-      <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Salva</button>
-    </div>
-  </form>
-</div>
+<form method="post" action="/ingredients" class="flex flex-col gap-4 lg:gap-[18px] max-w-[760px]">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div>
+    <a href="/ingredients" class="crumb">{{template "icon_sm" "i-chevron-left"}}Ingredienti</a>
+    <h1 class="h1">Nuovo ingrediente</h1>
+    <p class="text-muted mt-1">Verrà confrontato con OpenFoodFacts per completarne i dati.</p>
+  </div>
+  {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-4 py-2.5" role="alert">{{.Error}}</p>{{end}}
+  {{template "ingredient_fields" .}}
+  <div class="flex justify-end gap-2">
+    <a href="/ingredients" class="btn-secondary">Annulla</a>
+    <button class="btn-primary">Salva ingrediente</button>
+  </div>
+</form>
 {{end}}
