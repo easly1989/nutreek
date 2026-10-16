@@ -47,15 +47,18 @@
       <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2.5 hidden" data-quick-target="recipe"
               hx-get="/quick/recipe" hx-target="#modal-host-2" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Nuova ricetta</button>
     </div>
-    <label class="field-ico">
-      {{template "icon" "i-search"}}
-      <input type="search" name="q" placeholder="Cerca tra i tuoi ingredienti e su OpenFoodFacts" aria-label="Cerca" autocomplete="off" class="field field-lg" autofocus
-             data-ingredient-search
-             data-search-url="/meals/{{.MealID}}/picker"
-             data-search-extra="kind=ingredient&{{$extra}}"
-             data-search-target="#picker-results-{{.MealID}}"
-             data-search-spinner="#picker-spinner-{{.MealID}}">
-    </label>
+    <div class="flex gap-2 [&>.scan-btn]:h-[42px] [&>.scan-btn]:w-[42px]">
+      <label class="field-ico grow">
+        {{template "icon" "i-search"}}
+        <input id="picker-search-{{.MealID}}" type="search" name="q" placeholder="Cerca tra i tuoi ingredienti e su OpenFoodFacts" aria-label="Cerca" autocomplete="off" class="field field-lg" autofocus
+               data-ingredient-search
+               data-search-url="/meals/{{.MealID}}/picker"
+               data-search-extra="kind=ingredient&{{$extra}}"
+               data-search-target="#picker-results-{{.MealID}}"
+               data-search-spinner="#picker-spinner-{{.MealID}}">
+      </label>
+      {{template "scan_button" (printf "#picker-search-%d" .MealID)}}
+    </div>
     <p id="picker-spinner-{{.MealID}}" class="hidden text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco anche su OpenFoodFacts…</p>
   </div>
   <div id="picker-results-{{.MealID}}" data-picker-list aria-live="polite" class="overflow-y-auto min-h-0 grow pb-2"

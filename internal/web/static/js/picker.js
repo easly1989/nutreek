@@ -68,6 +68,10 @@
     picker.querySelectorAll("[data-quick-target]").forEach(function (b) {
       b.classList.toggle("hidden", b.dataset.quickTarget !== kind);
     });
+    // Le ricette non hanno codice a barre: lo scanner solo per gli ingredienti.
+    picker.querySelectorAll("[data-scan-for]").forEach(function (b) {
+      b.classList.toggle("hidden", kind !== "ingredient");
+    });
     var search = picker.querySelector("input[data-ingredient-search]");
     if (search) {
       // Letti da ingredient_search.js; per le ricette niente OpenFoodFacts.

@@ -922,6 +922,7 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			WeekStart:         weekStartStr,
 			NutritionistItems: nutrRows,
 			InDialog:          inDialog,
+			SearchedOFF:       includeOFFParam(r),
 		}
 		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 			a.serverError(w, r, err)

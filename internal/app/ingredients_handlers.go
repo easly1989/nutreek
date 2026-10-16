@@ -248,6 +248,7 @@ type ingredientsListData struct {
 	VariationID       int64           // se PickerKind == "nutritionist_item"
 	WeekStart         string          // YYYY-MM-DD, per redirect post-add da meal_item
 	InDialog          bool            // picker nella finestra sopra la settimana (form HTMX)
+	SearchedOFF       bool            // la ricerca e' arrivata anche alla rete di OFF (off=1)
 	NutritionistItems []ingredientRow // suggeriti dal piano nutrizionista
 }
 
@@ -273,6 +274,7 @@ type ingredientForm struct {
 	UnitWeightG     string  // opzionale: peso per unita' in g (es. "150")
 	DefaultQuantity string  // opzionale: quantita' predefinita nel picker
 	CategoryID      string  // opzionale: ID categoria
+	Barcode         string  // opzionale: codice letto dallo scanner (solo «Nuovo ingrediente» rapido)
 	AllergenIDs     []int64 // opzionale: ID allergeni selezionati
 	// Micronutrienti opzionali (per 100 g/ml)
 	Fiber        string

@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/amon2126/nutreek/internal/off"
 )
 
 // Renderer mantiene i template parsati e offre Render per scriverli sulla
@@ -164,6 +166,12 @@ func funcMap() template.FuncMap {
 		},
 		// pickerRow passa a picker_row la riga insieme ai dati della lista
 		// (tipo di picker, id di destinazione, CSRF).
+		// barcode: il codice normalizzato se q e' un codice a barre valido,
+		// altrimenti "" (i picker mostrano allora l'esito dello scanner).
+		"barcode": func(q string) string {
+			code, _ := off.NormalizeBarcode(q)
+			return code
+		},
 		"pickerRow": func(row, list any) PickerRowCtx {
 			return PickerRowCtx{Row: row, List: list}
 		},
