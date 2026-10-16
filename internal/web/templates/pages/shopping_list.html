@@ -1,117 +1,170 @@
 {{define "title"}}Lista della spesa — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-2xl">
-  <!-- Header -->
-  <div class="flex items-baseline justify-between mb-2 flex-wrap gap-2 no-print">
-    <h1 class="text-3xl font-semibold">Lista della spesa</h1>
-    <div class="flex items-center gap-2 text-sm">
-      <button type="button" onclick="window.print()"
-              class="rounded border border-border px-3 py-1 hover:bg-surface-2">🖨️ Stampa</button>
-      <a href="/?start={{.WeekStart}}" class="rounded border border-border px-3 py-1 hover:bg-surface-2">&larr; Settimana</a>
+{{- $ws := .WeekStart -}}
+{{- $wc := .WeekCount -}}
+<div class="flex flex-col gap-4 lg:gap-[18px] no-print">
+  <header class="flex items-start justify-between gap-3">
+    <div class="min-w-0">
+      <h1 class="h1">Lista della spesa</h1>
+      <p class="text-muted mt-0.5">Da pasti e ricette {{if gt $wc 1}}di {{$wc}} settimane{{else}}della settimana{{end}}; gli sgarri non contano.</p>
     </div>
-  </div>
-
-  <!-- Header per stampa: solo mostrato in print -->
-  <div class="only-print mb-4">
-    <h1 class="text-2xl font-semibold">Lista della spesa</h1>
-    <p class="text-sm">
-      {{if gt .WeekCount 1}}{{.WeekCount}} settimane a partire dal {{else}}Settimana del {{end}}{{.List.WeekStart.Format "02/01/2006"}}
-    </p>
-  </div>
-
-  <p class="text-sm text-muted mb-4 no-print">
-    Settimana del <strong class="text-text">{{.List.WeekStart.Format "02/01/2006"}}</strong>.
-    Aggregata da pasti e ricette pianificate; gli sgarri non sono inclusi.
-  </p>
-
-  <!-- Toolbox: navigazione settimana + dropdown settimane + rigenera -->
-  <div class="bg-surface border border-border rounded p-3 mb-4 flex items-center justify-between gap-2 flex-wrap no-print">
-    <div class="flex items-center gap-2 text-sm">
-      <a href="/shopping-list?week={{.PrevWeek}}&weeks={{.WeekCount}}"
-         class="rounded border border-border px-3 py-1 hover:bg-surface-2">&larr;</a>
-      <span class="text-muted">Settimana {{.List.WeekStart.Format "02/01"}}</span>
-      <a href="/shopping-list?week={{.NextWeek}}&weeks={{.WeekCount}}"
-         class="rounded border border-border px-3 py-1 hover:bg-surface-2">&rarr;</a>
-    </div>
-    <div class="flex items-center gap-2 text-sm">
-      <label for="weeks-select" class="text-muted text-xs uppercase">Settimane</label>
-      <select id="weeks-select" class="rounded border border-border bg-surface px-2 py-1 text-sm"
-              onchange="location.href='/shopping-list?week={{.WeekStart}}&weeks=' + this.value">
-        <option value="1" {{if eq .WeekCount 1}}selected{{end}}>1</option>
-        <option value="2" {{if eq .WeekCount 2}}selected{{end}}>2</option>
-        <option value="3" {{if eq .WeekCount 3}}selected{{end}}>3</option>
-        <option value="4" {{if eq .WeekCount 4}}selected{{end}}>4</option>
-      </select>
-      <form method="post" action="/shopping-list/generate?week={{.WeekStart}}&weeks={{.WeekCount}}" class="inline">
+    <div class="flex items-center gap-2 shrink-0">
+      <form method="post" action="/shopping-list/generate?week={{$ws}}&weeks={{$wc}}">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <button class="rounded border border-border px-3 py-1 text-sm hover:bg-surface-2">Rigenera</button>
+        <button class="btn-secondary btn-icon" title="Rigenera dai pasti" aria-label="Rigenera dai pasti">{{template "icon" "i-refresh"}}</button>
       </form>
+      <button type="button" class="btn-secondary max-sm:w-9 max-sm:px-0" onclick="window.print()" aria-label="Stampa" title="Stampa">{{template "icon" "i-printer"}}<span class="hidden sm:inline">Stampa</span></button>
     </div>
+  </header>
+
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="inline-flex rounded-[10px] border border-border bg-surface overflow-hidden">
+      <a href="/shopping-list?week={{.PrevWeek}}&weeks={{$wc}}" class="w-9 h-9 grid place-items-center text-muted hover:bg-surface-2" aria-label="Settimana precedente" title="Settimana precedente">{{template "icon" "i-chevron-left"}}</a>
+      <span class="h-9 px-3 grid place-items-center border-x border-border text-[13px] font-semibold">{{weeksRange .List.WeekStart $wc}}</span>
+      <a href="/shopping-list?week={{.NextWeek}}&weeks={{$wc}}" class="w-9 h-9 grid place-items-center text-muted hover:bg-surface-2" aria-label="Settimana successiva" title="Settimana successiva">{{template "icon" "i-chevron-right"}}</a>
+    </div>
+    <nav class="segmented" aria-label="Settimane">
+      {{range $n := (list "1" "2" "3" "4")}}
+      <a href="/shopping-list?week={{$ws}}&weeks={{$n}}"{{if eq $n (printf "%d" $wc)}} aria-current="page"{{end}}>{{if eq $n "1"}}1 settimana{{else}}{{$n}}{{end}}</a>
+      {{end}}
+    </nav>
   </div>
 
-  {{if gt .WeekCount 1}}
-    <div class="mb-4 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-sm">
-      ⚠️ <strong>Attenzione</strong>: lista per {{.WeekCount}} settimane consecutive.
-      Per gli alimenti freschi (frutta, verdura, latticini, carne/pesce) valuta tu la deperibilità o pianifica più visite al supermercato.
+  {{if gt $wc 1}}
+  <p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">Lista per {{$wc}} settimane: frutta, verdura, latticini, carne e pesce non durano tanto, valuta se comprarli in più volte.</p>
+  {{end}}
+
+  <div class="grid gap-4 lg:gap-[18px] lg:grid-cols-[minmax(0,1fr)_320px] items-start">
+    <div id="shop-list" class="flex flex-col gap-3">
+      {{if .View.Total}}
+      <div class="card p-4 flex flex-col gap-2">
+        <div class="flex items-baseline gap-1">
+          <b class="tabular-nums">{{.View.Done}} di {{.View.Total}}</b><span class="text-muted">nel carrello</span>
+          <span class="ml-auto text-[12.5px] text-muted tabular-nums">{{.View.Percent}}%</span>
+        </div>
+        <div class="h-1.5 rounded-full bg-track overflow-hidden" role="progressbar" aria-label="Voci nel carrello" aria-valuemin="0" aria-valuemax="{{.View.Total}}" aria-valuenow="{{.View.Done}}">
+          <span class="block h-full rounded-full bg-accent" style="width: {{.View.Percent}}%"></span>
+        </div>
+      </div>
+
+      <div class="card overflow-hidden">
+        {{range .View.Groups}}
+        <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{.Name}}</span><span class="tabular-nums">{{len .Items}}</span></h2>
+        <ul>
+          {{range .Items}}{{template "shop_item" (row . $)}}{{end}}
+        </ul>
+        {{else}}
+        <p class="px-4 py-6 text-center text-muted">Tutto nel carrello.</p>
+        {{end}}
+
+        {{if .View.Cart}}
+        <details open class="group border-t border-border">
+          <summary class="flex items-center gap-2 px-4 py-3 text-muted font-semibold text-[13px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            {{template "icon_sm" "i-check"}}Nel carrello · {{len .View.Cart}}
+            <span class="ml-auto text-accent group-open:hidden">Mostra</span>
+            <span class="ml-auto text-accent hidden group-open:inline">Nascondi</span>
+          </summary>
+          <ul>
+            {{range .View.Cart}}{{template "shop_item" (row . $)}}{{end}}
+          </ul>
+        </details>
+        {{end}}
+      </div>
+      {{else}}
+      <div class="card px-4 py-8 flex flex-col items-center gap-3 text-center">
+        <span class="thumb w-12 h-12 rounded-xl bg-accent-soft text-accent">{{template "icon_lg" "i-cart"}}</span>
+        <p class="font-semibold">Nessun alimento nei pasti di questa settimana</p>
+        <p class="text-muted max-w-sm">La lista si compone da sola con gli alimenti e le ricette che metti nella settimana.</p>
+        <a href="/?start={{$ws}}" class="btn-secondary">{{template "icon" "i-week"}}Vai alla settimana</a>
+      </div>
+      {{end}}
     </div>
-  {{end}}
 
-  {{if .Flash}}
-    <div class="mb-3 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-sm no-print">{{.Flash}}</div>
-  {{end}}
-
-  <!-- Lista auto -->
-  <section class="bg-surface border border-border rounded mb-4">
-    <h2 class="px-3 py-2 text-xs uppercase text-muted border-b border-border">Da comprare</h2>
-    {{if .List.Items}}
-      <ul class="divide-y divide-border">
-        {{$ws := .WeekStart}}
-        {{$csrf := .CSRFToken}}
-        {{range .List.Items}}
-          {{template "shopping_row_auto" (rowAuto . $ws $csrf)}}
+    <div class="flex flex-col gap-3">
+      <section id="shop-manual" class="card overflow-hidden">
+        <div class="flex items-baseline justify-between gap-2 px-4 pt-3.5 pb-3">
+          <h2 class="h2">Aggiunte a mano</h2>
+          <span class="text-[12.5px] text-muted">restano se rigeneri</span>
+        </div>
+        {{if .UserItemViews}}
+        <ul class="border-t border-border">
+          {{range .UserItemViews}}{{template "shop_user_item" (row . $)}}{{end}}
+        </ul>
         {{end}}
-      </ul>
-    {{else}}
-      <p class="px-3 py-6 text-center text-sm text-muted italic">
-        Nessun ingrediente nei pasti pianificati.
-      </p>
-    {{end}}
-  </section>
+        <form method="post" action="/shopping-list/{{.List.ID}}/user-items"
+              hx-post="/shopping-list/{{.List.ID}}/user-items" hx-target="#shop-manual" hx-select="#shop-manual" hx-swap="outerHTML"
+              class="flex gap-2 px-3 py-2.5 border-t border-border">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="week" value="{{$ws}}">
+          <input type="hidden" name="weeks" value="{{$wc}}">
+          <input id="ui-desc" name="description" required maxlength="200" class="field min-w-0 flex-[2]" placeholder="Aggiungi una voce" aria-label="Voce da aggiungere">
+          <input name="quantity_text" maxlength="60" class="field min-w-0 flex-1" placeholder="Quantità" aria-label="Quantità">
+          <button class="btn-secondary btn-icon shrink-0" aria-label="Aggiungi" title="Aggiungi">{{template "icon" "i-plus"}}</button>
+        </form>
+      </section>
+      <p class="px-1 text-[12.5px] text-muted">Le voci sono raggruppate per categoria dell'ingrediente; quelle senza categoria finiscono in «Altro».</p>
+    </div>
+  </div>
+</div>
 
-  <!-- Lista user-items + form aggiunta -->
-  <section class="border border-accent/40 rounded mb-4">
-    <h2 class="px-3 py-2 text-xs uppercase text-muted border-b border-accent/30">Aggiunte manuali</h2>
+{{/* Foglio stampato: solo nero su bianco, due colonne, un quadratino per voce. */}}
+<div class="only-print shop-print">
+  <h1>Lista della spesa</h1>
+  <p>{{if gt $wc 1}}{{$wc}} settimane, {{end}}{{weeksRange .List.WeekStart $wc}} · {{add .View.Total (len .UserItemViews)}} voci</p>
+  <div class="shop-print-cols">
+    {{range .View.PrintGroups}}
+    <section>
+      <h2>{{.Name}}</h2>
+      {{range .Items}}<div class="shop-print-line"><i></i><span>{{.Item.Ingredient.Name}}</span><b>{{template "shop_qty" .}}</b></div>{{end}}
+    </section>
+    {{end}}
     {{if .UserItemViews}}
-      <ul class="divide-y divide-accent/20">
-        {{$ws := .WeekStart}}
-        {{$csrf := .CSRFToken}}
-        {{range .UserItemViews}}
-          {{template "shopping_row_user" (rowUser .Item .Duplicate $ws $csrf)}}
-        {{end}}
-      </ul>
-    {{else}}
-      <p class="px-3 py-4 text-center text-sm text-muted italic no-print">
-        Nessuna voce manuale.
-      </p>
+    <section>
+      <h2>Aggiunte a mano</h2>
+      {{range .UserItemViews}}<div class="shop-print-line"><i></i><span>{{.Item.Description}}</span><b>{{.Item.QuantityText}}</b></div>{{end}}
+    </section>
     {{end}}
-
-    <form method="post" action="/shopping-list/{{.List.ID}}/user-items"
-          class="px-3 py-3 border-t border-accent/30 flex items-end gap-2 no-print">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <input type="hidden" name="week" value="{{.WeekStart}}">
-      <input type="hidden" name="weeks" value="{{.WeekCount}}">
-      <div class="grow">
-        <label class="block text-xs text-muted mb-1" for="ui-desc">Descrizione</label>
-        <input id="ui-desc" name="description" required placeholder="es. vino rosso"
-               class="w-full rounded border border-border bg-surface px-3 py-2 text-sm">
-      </div>
-      <div class="w-32">
-        <label class="block text-xs text-muted mb-1" for="ui-qty">Quantità</label>
-        <input id="ui-qty" name="quantity_text" placeholder="es. 1 bottiglia"
-               class="w-full rounded border border-border bg-surface px-3 py-2 text-sm">
-      </div>
-      <button class="rounded bg-accent text-accent-fg px-3 py-2 text-sm hover:bg-accent/90">+ aggiungi</button>
-    </form>
-  </section>
+  </div>
 </div>
 {{end}}
+
+{{/* Quantita' di una voce: «240 g», o «0,5 g» sotto i 10. */}}
+{{define "shop_qty"}}{{if lt .Item.TotalQuantity 10.0}}{{dec .Item.TotalQuantity 1}}{{else}}{{num .Item.TotalQuantity}}{{end}} {{.Item.Ingredient.Unit}}{{with .Pieces}} ({{.}} pz){{end}}{{end}}
+
+{{/* Voce calcolata dai pasti. Toccarla la mette nel carrello o la toglie:
+     il server torna alla lista e HTMX ne prende #shop-list, perche' la voce
+     cambia gruppo e l'avanzamento cambia. L'id sul bottone tiene il focus. */}}
+{{define "shop_item"}}{{$v := .Row}}{{$it := $v.Item}}{{$p := .Page}}
+<li>
+  <form method="post" action="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+        hx-post="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+        hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+    <button id="shop-item-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
+      <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
+      <span class="shop-name">{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}</span>
+      <span class="shop-qty"><b>{{if lt $it.TotalQuantity 10.0}}{{dec $it.TotalQuantity 1}}{{else}}{{num $it.TotalQuantity}}{{end}} {{$it.Ingredient.Unit}}</b>{{with $v.Pieces}}<small>· {{.}} pz</small>{{end}}</span>
+    </button>
+  </form>
+</li>{{end}}
+
+{{/* Voce aggiunta a mano: stessa forma, piu' il pulsante per toglierla. */}}
+{{define "shop_user_item"}}{{$it := .Row.Item}}{{$p := .Page}}
+<li class="flex items-center pr-2">
+  <form method="post" action="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+        hx-post="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+        hx-target="#shop-manual" hx-select="#shop-manual" hx-swap="outerHTML" class="grow min-w-0">
+    <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+    <button id="shop-user-{{$it.ID}}" class="shop-item pr-2" aria-pressed="{{$it.Checked}}">
+      <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
+      <span class="shop-name">{{$it.Description}}{{if .Row.Duplicate}} <span class="chip chip-warn ml-1" title="La stessa voce c'è già fra quelle dai pasti">anche nella lista</span>{{end}}</span>
+      {{with $it.QuantityText}}<span class="shop-qty text-[12.5px] text-muted">{{.}}</span>{{end}}
+    </button>
+  </form>
+  <form method="post" action="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+        hx-post="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+        hx-target="#shop-manual" hx-select="#shop-manual" hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+    <button class="icon-action hover:text-danger" aria-label="Togli {{$it.Description}}" title="Togli dalla lista">{{template "icon" "i-trash"}}</button>
+  </form>
+</li>{{end}}

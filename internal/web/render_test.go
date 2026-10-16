@@ -72,3 +72,15 @@ func TestWeekRange(t *testing.T) {
 		}
 	}
 }
+
+// La lista della spesa puo' coprire piu' settimane: l'intervallo arriva
+// alla domenica dell'ultima.
+func TestWeeksRange(t *testing.T) {
+	start := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)
+	if got := weeksRange(start, 1); got != "12–18 ottobre" {
+		t.Errorf("1 settimana = %q", got)
+	}
+	if got := weeksRange(start, 3); got != "12 ottobre – 1 novembre" {
+		t.Errorf("3 settimane = %q", got)
+	}
+}
