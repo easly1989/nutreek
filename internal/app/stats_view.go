@@ -93,11 +93,13 @@ func buildStatsView(in statsInput) statsView {
 		Prot: make([]float64, n), Carb: make([]float64, n), Fat: make([]float64, n),
 		Workout: make([]float64, n), Cheats: make([]float64, n), Water: make([]float64, n),
 	}
-	tdeeByWeek := map[time.Time]float64{}
+	// Chiave per data, non time.Time: due istanti uguali con fusi diversi
+	// non sarebbero la stessa chiave.
+	tdeeByWeek := map[string]float64{}
 	if in.TDEE != nil {
 		for _, wd := range in.TDEE.WeeklyData {
 			if k := wd.EstimatedKcal(); k > 0 {
-				tdeeByWeek[wd.WeekStart] = k
+				tdeeByWeek[wd.WeekStart.Format("2006-01-02")] = k
 			}
 		}
 	}
@@ -120,7 +122,7 @@ func buildStatsView(in statsInput) statsView {
 			cheats += w.Cheats
 		}
 		v.Rows = append([]statsWeekRow{row}, v.Rows...)
-		if k, ok := tdeeByWeek[w.Start]; ok {
+		if k, ok := tdeeByWeek[w.Start.Format("2006-01-02")]; ok {
 			c.TDEE[i] = &k
 			tdeePoints++
 		}

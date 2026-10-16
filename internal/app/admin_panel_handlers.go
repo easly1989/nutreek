@@ -81,7 +81,7 @@ func (a *App) handleAdminPanel(w http.ResponseWriter, r *http.Request) {
 // handleAdminFeatures GET /admin/panel/features: le funzionalita' ora stanno
 // nella Panoramica; il vecchio indirizzo ci rimanda.
 func (a *App) handleAdminFeatures(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/admin/panel#funzionalita", http.StatusMovedPermanently)
+	http.Redirect(w, r, "/admin/panel#funzionalita", http.StatusFound)
 }
 
 func (a *App) handleAdminFeatureToggle(w http.ResponseWriter, r *http.Request) {
@@ -283,8 +283,9 @@ func (a *App) handleUpgradePage(w http.ResponseWriter, r *http.Request) {
 	}
 	var premium []featureRow
 	var blocked string
+	from := r.URL.Query().Get("da")
 	for _, f := range features {
-		if f.Key == r.URL.Query().Get("da") && f.IsPremium {
+		if f.Key == from && f.IsPremium {
 			blocked = f.Name
 		}
 		if f.IsPremium && f.Enabled {
