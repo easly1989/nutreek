@@ -1,10 +1,10 @@
-// Grafici di Statistiche e Peso (#123), in SVG: linee da 2px, barre con
-// l'estremo arrotondato, griglia recessiva, valore diretto solo sull'ultimo
-// punto, tooltip al passaggio. I colori sono i token CSS, quindi seguono
-// chiaro/scuro e il colore scelto senza ridisegnare.
+// Statistics and Weight charts (#123), in SVG: 2px lines, bars with a
+// rounded end, a recessive grid, a direct value only on the last point,
+// tooltips on hover. The colors are the CSS tokens, so they follow
+// light/dark and the chosen color without redrawing.
 //
-// Dati: <script type="application/json" id="chart-data">; ogni grafico e'
-// un elemento con data-chart="<nome>" (vedi DRAW in fondo).
+// Data: <script type="application/json" id="chart-data">; every chart is
+// an element with data-chart="<name>" (see DRAW at the bottom).
 (function () {
   "use strict";
   var data;
@@ -14,7 +14,7 @@
     return;
   }
 
-  // useGrouping "always": in italiano 2280 resterebbe senza punto.
+  // useGrouping "always": in Italian 2280 would stay without a dot.
   function fmt(v, d) {
     return v.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: d || 0, useGrouping: "always" });
   }
@@ -22,9 +22,9 @@
     return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; });
   }
 
-  // Tacche «tonde» che coprono [min, max].
-  // dec = cifre decimali delle etichette: il passo non scende sotto la
-  // loro precisione, cosi' due tacche non mostrano lo stesso numero.
+  // «Round» ticks covering [min, max].
+  // dec = decimal digits of the labels: the step does not go below their
+  // precision, so two ticks never show the same number.
   function ticks(min, max, count, dec) {
     if (max <= min) max = min + 1;
     var raw = (max - min) / (count || 4), p = Math.pow(10, Math.floor(Math.log10(raw)));
@@ -67,7 +67,7 @@
       '<text x="' + (f.w - PAD.r + 6) + '" y="' + (ty + 4) + '">' + esc(o.targetLabel) + "</text>";
   }
 
-  // Tooltip: la colonna piu' vicina al puntatore; tip(i) da' l'HTML.
+  // Tooltip: the column nearest the pointer; tip(i) gives the HTML.
   function hover(el, f, tip, guide) {
     var box = document.createElement("div");
     box.className = "ch-tip";
@@ -105,7 +105,7 @@
   }
 
   // o = {el, labels, values, h, color, unit, dec, area, target, targetLabel,
-  //      lo, hi (limiti minimi della scala), name, tipUnit}
+  //      lo, hi (minimum limits of the scale), name, tipUnit}
   function lineChart(o) {
     var vs = present(o.values);
     if (vs.length === 0) return;
@@ -123,7 +123,7 @@
     s += '<polyline points="' + pts.join(" ") + '" fill="none" style="stroke:' + o.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
     if (pts.length === 1) s += '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="4" style="fill:' + o.color + '"/>';
     s += '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="4.5" style="fill:' + o.color + ';stroke:var(--surface)" stroke-width="2"/>';
-    // Valore finale: se cade sull'etichetta dell'obiettivo, si sposta sopra o sotto.
+    // Final value: when it falls on the goal's label, it moves above or below.
     var ly = last[1] + 4;
     if (o.target && Math.abs(f.y(o.target) - last[1]) < 14) ly = last[1] < f.y(o.target) ? f.y(o.target) - 12 : f.y(o.target) + 18;
     s += '<text x="' + (last[0] + 9) + '" y="' + ly + '" class="ch-value">' + fmt(last[2], o.dec) + "</text>";
@@ -138,7 +138,7 @@
 
   // o = {el, labels, series:[{values, color, name}], h, unit, dec, target,
   //      targetLabel, tipUnit, total}
-  // Piu' serie = barre impilate, con 2px di stacco tra i segmenti.
+  // More series = stacked bars, with a 2px gap between the segments.
   function barChart(o) {
     var n = o.labels.length, totals = [];
     for (var i = 0; i < n; i++) totals.push(o.series.reduce(function (s, ser) { return s + (ser.values[i] || 0); }, 0));
@@ -214,7 +214,7 @@
     });
   }
   drawAll();
-  // Le etichette restano a 12px: si ridisegna alla nuova larghezza.
+  // Labels stay at 12px: redraw at the new width.
   var last = window.innerWidth, timer;
   window.addEventListener("resize", function () {
     if (window.innerWidth === last) return;

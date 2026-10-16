@@ -128,7 +128,7 @@
 </div>
 {{end}}
 
-{{/* Campo di un obiettivo: id, name, etichetta, unita', colore (token), esempio, valore. */}}
+{{/* A goal's field: id, name, label, unit, color (token), example, value. */}}
 {{define "profile_macro"}}{{$id := index . 0}}{{$color := index . 4}}
 <label class="lab min-w-0">
   <span class="flex items-center gap-1.5">{{if $color}}<span class="w-2 h-2 rounded-full" style="background:var({{$color}})"></span>{{end}}{{index . 2}}</span>

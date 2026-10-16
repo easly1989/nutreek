@@ -1,9 +1,9 @@
 {{define "recipe_duplicate_form"}}
 {{- /*
-  recipe_duplicate_form.html — view-model: recipeDuplicateData
-  Modal di duplicazione ricetta. Chiede il nuovo nome (obbligatorio).
-  POST a /recipes/{SrcID}/duplicate. Server risponde con HX-Redirect alla
-  edit della nuova ricetta su success.
+  recipe_duplicate_form.html — view model: recipeDuplicateData
+  The recipe duplicate modal. It asks for the new name (required).
+  POST to /recipes/{SrcID}/duplicate. On success the server answers with
+  HX-Redirect to the new recipe's edit page.
 */ -}}
 <form method="post" action="/recipes/{{.SrcID}}/duplicate"
       hx-post="/recipes/{{.SrcID}}/duplicate"

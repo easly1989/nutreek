@@ -1,8 +1,8 @@
 (function () {
   'use strict';
 
-  // Il tour parte solo sulla dashboard (path "/") e solo se il server
-  // indica che va mostrato (data-show-tour sul body).
+  // The tour starts only on the dashboard (path "/") and only when the server
+  // says it must be shown (data-show-tour on the body).
   if (window.location.pathname !== '/') return;
   if (!document.body.hasAttribute('data-show-tour')) return;
   if (typeof Shepherd === 'undefined') return;
@@ -56,7 +56,7 @@
     attachTo: { element: 'form[action="/week/apply-template"]', on: 'bottom' },
     when: {
       show: function () {
-        // Salta questo step se il form non è visibile (settimana già popolata).
+        // Skip this step when the form is not visible (week already filled).
         if (!document.querySelector('form[action="/week/apply-template"]')) {
           tour.next();
         }
@@ -77,11 +77,11 @@
   });
 
   function dismissTour() {
-    // Recupera il CSRF token dal DOM (il form di logout lo ha sempre).
+    // Get the CSRF token from the DOM (the logout form always has it).
     var tokenEl = document.querySelector('input[name="csrf_token"]');
     var token = tokenEl ? tokenEl.value : '';
     var body = 'csrf_token=' + encodeURIComponent(token);
-    // Usa sendBeacon se disponibile (funziona anche su chiusura pagina).
+    // Use sendBeacon when available (it works on page close too).
     if (navigator.sendBeacon) {
       var blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
       navigator.sendBeacon('/tour/dismiss', blob);
@@ -99,6 +99,6 @@
   tour.on('complete', dismissTour);
   tour.on('cancel',   dismissTour);
 
-  // Leggero ritardo per aspettare il rendering completo della pagina.
+  // A small delay to wait for the page to finish rendering.
   setTimeout(function () { tour.start(); }, 900);
 })();

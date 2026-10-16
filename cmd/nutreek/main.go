@@ -24,14 +24,14 @@ import (
 	"github.com/amon2126/nutreek/internal/web"
 )
 
-// version e' impostata al build con -ldflags "-X main.version=vX.Y.Z"
-// (vedi Dockerfile e .github/workflows/release.yml). In sviluppo resta "dev".
+// version is set at build time with -ldflags "-X main.version=vX.Y.Z"
+// (see the Dockerfile and .github/workflows/release.yml). In development it stays "dev".
 var version = "dev"
 
 func main() {
-	// Sub-comando di healthcheck: usato dal Dockerfile (distroless non ha
-	// shell ne' wget/curl, quindi facciamo l'HTTP probe in-process). Esce 0
-	// se /healthz risponde 200, 1 altrimenti.
+	// Healthcheck subcommand: used by the Dockerfile (distroless has no
+	// shell nor wget/curl, so the HTTP probe runs in process). Exits 0
+	// when /healthz answers 200, 1 otherwise.
 	healthcheck := flag.Bool("healthcheck", false, "esegue una GET su /healthz e termina con exit code 0/1")
 	showVersion := flag.Bool("version", false, "stampa la versione e termina")
 	flag.Parse()
@@ -43,8 +43,8 @@ func main() {
 		os.Exit(runHealthcheck())
 	}
 
-	// In prod: JSON strutturato per ingestione in stack di osservabilità.
-	// In dev: testo leggibile con livello DEBUG.
+	// In prod: structured JSON for ingestion into an observability stack.
+	// In dev: readable text at DEBUG level.
 	env := os.Getenv("NUTREEK_ENV")
 	var logHandler slog.Handler
 	if env == "prod" {
@@ -61,9 +61,9 @@ func main() {
 	}
 }
 
-// runHealthcheck contatta il server locale e ritorna il codice exit per
-// docker HEALTHCHECK. Cerca l'addr in NUTREEK_ADDR (es. ":8080") e si
-// connette su localhost.
+// runHealthcheck calls the local server and returns the exit code for the
+// docker HEALTHCHECK. It reads the addr from NUTREEK_ADDR (e.g. ":8080") and
+// connects to localhost.
 func runHealthcheck() int {
 	addr := os.Getenv("NUTREEK_ADDR")
 	if addr == "" {
@@ -200,7 +200,7 @@ func run(logger *slog.Logger) error {
 	if cfg.ReconcileEnabled {
 		go reconciler.Run(ctx, cfg.ReconcileInterval)
 	} else {
-		logger.Info("reconciler disabilitato (NUTREEK_RECONCILE_ENABLED=false)")
+		logger.Info("reconciler disabled (NUTREEK_RECONCILE_ENABLED=false)")
 	}
 
 	if cfg.OFFSyncEnabled {
@@ -211,7 +211,7 @@ func run(logger *slog.Logger) error {
 		}
 		go scheduler.Run(ctx)
 	} else {
-		logger.Info("OFF sync scheduler disabilitato (NUTREEK_OFF_SYNC_ENABLED=false)")
+		logger.Info("OFF sync scheduler disabled (NUTREEK_OFF_SYNC_ENABLED=false)")
 	}
 
 	<-ctx.Done()
@@ -226,11 +226,11 @@ func run(logger *slog.Logger) error {
 	return nil
 }
 
-// runBackupScheduler esegue un backup SQLite periodico usando VACUUM INTO.
-// Attende BackupInterval tra un backup e l'altro, poi elimina i file più
-// vecchi lasciandone al massimo BackupKeep.
+// runBackupScheduler runs a periodic SQLite backup using VACUUM INTO.
+// It waits BackupInterval between backups, then deletes the oldest files,
+// keeping at most BackupKeep.
 func runBackupScheduler(ctx context.Context, store *db.Store, cfg *config.Config, logger *slog.Logger) {
-	logger.Info("backup scheduler avviato", "dir", cfg.BackupDir, "interval", cfg.BackupInterval, "keep", cfg.BackupKeep)
+	logger.Info("backup scheduler started", "dir", cfg.BackupDir, "interval", cfg.BackupInterval, "keep", cfg.BackupKeep)
 	ticker := time.NewTicker(cfg.BackupInterval)
 	defer ticker.Stop()
 	for {
@@ -240,12 +240,12 @@ func runBackupScheduler(ctx context.Context, store *db.Store, cfg *config.Config
 		case t := <-ticker.C:
 			dest := db.BackupFileName(cfg.BackupDir, t)
 			if err := store.BackupTo(ctx, dest); err != nil {
-				logger.Error("backup fallito", "err", err, "dest", dest)
+				logger.Error("backup failed", "err", err, "dest", dest)
 				continue
 			}
-			logger.Info("backup completato", "dest", dest)
+			logger.Info("backup done", "dest", dest)
 			if err := db.PruneBackups(cfg.BackupDir, cfg.BackupKeep); err != nil {
-				logger.Warn("prune backup fallito", "err", err)
+				logger.Warn("backup prune failed", "err", err)
 			}
 		}
 	}

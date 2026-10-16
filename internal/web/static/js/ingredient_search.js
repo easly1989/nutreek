@@ -1,18 +1,18 @@
-// ingredient_search.js — doppio debounce per la live-search ingredienti.
+// ingredient_search.js — a double debounce for the ingredient live search.
 //
-// Pattern: un input cerca contemporaneamente nel DB locale (veloce, ogni
-// keystroke) e su OpenFoodFacts (lento, solo a digitazione ferma). Senza
-// questo split, ogni lettera digitata scatenava una chiamata OFF
-// completa: lenta e con risultati basati su parole parziali.
+// Pattern: one input searches both the local DB (fast, every keystroke) and
+// OpenFoodFacts (slow, only once typing stops). Without this split, every
+// letter typed fired a full OFF call: slow, and with results based on
+// partial words.
 //
-// Markup richiesto sull'input:
+// Markup required on the input:
 //   data-ingredient-search
 //   data-search-url="/path/to/endpoint"
 //   data-search-target="#results-container"
-//   data-search-spinner="#spinner-container"   (opzionale)
-//   data-search-extra="kind=ingredient&start=..."  (opzionale, params fissi)
+//   data-search-spinner="#spinner-container"   (optional)
+//   data-search-extra="kind=ingredient&start=..."  (optional, fixed params)
 //
-// L'endpoint deve accettare `q` e `off=1` (vedi searchMixed lato Go).
+// The endpoint must accept `q` and `off=1` (see searchMixed on the Go side).
 (function () {
   var DB_DELAY_MS = 150;
   var OFF_DELAY_MS = 1000;
@@ -23,8 +23,8 @@
 
     var target = input.dataset.searchTarget;
     if (!input.dataset.searchUrl || !target) return;
-    // url / extra / no-off vengono letti dinamicamente per supportare
-    // i tab switch (es. meal_item_new ingrediente <-> ricetta).
+    // url / extra / no-off are read dynamically to support tab switches
+    // (e.g. meal_item_new ingredient <-> recipe).
     function readURL() { return input.dataset.searchUrl; }
     function readExtra() { return input.dataset.searchExtra || ''; }
     function noOFF() { return input.dataset.searchNoOff === '1' || input.dataset.searchNoOff === 'true'; }
@@ -34,8 +34,8 @@
     var offTimer = null;
     var offInflight = false;
     var lastDispatchedQ = null;
-    // Token incrementale: ignora risposte arrivate fuori ordine (utente ha
-    // gia' modificato la query nel frattempo).
+    // Incremental token: ignore responses arriving out of order (the user
+    // has already changed the query in the meantime).
     var seq = 0;
 
     function spinner() {
@@ -71,9 +71,9 @@
       }).then(function () {
         if (includeOFF) {
           offInflight = false;
-          // Solo l'ultima richiesta OFF nasconde lo spinner; se nel
-          // frattempo l'utente ha ridigitato, seq sara' avanzato e una
-          // nuova OFF e' gia' in attesa.
+          // Only the last OFF request hides the spinner; if the user typed
+          // again in the meantime, seq has moved on and a new OFF request is
+          // already pending.
           if (mySeq === seq) hideSpinner();
         }
       }).catch(function () {
@@ -90,7 +90,7 @@
       clearTimeout(offTimer); offTimer = null;
 
       if (q === '') {
-        // Reset: nessuna ricerca OFF da attendere, niente spinner.
+        // Reset: no OFF search to wait for, no spinner.
         hideSpinner();
         offInflight = false;
         dbTimer = setTimeout(function () { dispatch('', false); }, DB_DELAY_MS);
@@ -99,8 +99,8 @@
 
       var skipOFF = noOFF();
       if (!skipOFF) {
-        // Spinner: l'utente ha digitato qualcosa, OFF non e' ancora partito
-        // o non e' ancora tornato. Lo nasconderemo al completamento OFF.
+        // Spinner: the user typed something, OFF has not started yet or has
+        // not come back yet. We hide it when OFF completes.
         showSpinner();
       } else {
         hideSpinner();
@@ -109,7 +109,7 @@
       if (!skipOFF) {
         offTimer = setTimeout(function () {
           offTimer = null;
-          // Rifletti l'ultima query nel momento in cui parte la chiamata OFF.
+          // Mirror the latest query at the moment the OFF call starts.
           var latest = (input.value || '').trim();
           if (latest === '') {
             hideSpinner();
@@ -122,9 +122,9 @@
     }
 
     input.addEventListener('input', onInput);
-    // Codice a barre arrivato da una ricarica senza OFF (dopo «Nuovo
-    // ingrediente», cambio scheda): il partial lo segnala, qui parte la
-    // ricerca completa, se non e' gia' in arrivo.
+    // A barcode that arrived with a reload without OFF (after «Nuovo
+    // ingrediente», a tab change): the partial flags it, and the full search
+    // starts here, unless it is already on its way.
     document.body.addEventListener('htmx:afterSwap', function (e) {
       if (!e.target.matches || !e.target.matches(target)) return;
       if (!e.target.querySelector('[data-barcode-pending]')) return;
@@ -132,7 +132,7 @@
       var q = (input.value || '').trim();
       if (q) { showSpinner(); dispatch(q, true); }
     });
-    // Tasto Enter: forza subito la ricerca OFF senza aspettare debounce.
+    // Enter key: force the OFF search right away without waiting for the debounce.
     input.addEventListener('search', function () {
       var q = (input.value || '').trim();
       clearTimeout(dbTimer);
@@ -154,7 +154,7 @@
   } else {
     bindAll();
   }
-  // Picker rimontato dinamicamente da HTMX (meal_item_new cambia tab).
+  // Picker remounted dynamically by HTMX (meal_item_new changes tab).
   document.body.addEventListener('htmx:afterSwap', function (e) {
     bindAll(e.target);
   });

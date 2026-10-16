@@ -14,12 +14,12 @@ func TestNormalizeBarcode(t *testing.T) {
 		ok       bool
 	}{
 		{"4006381333931", "4006381333931", true},     // EAN-13
-		{" 4 006381 333931 ", "4006381333931", true}, // come stampato sotto le barre
+		{" 4 006381 333931 ", "4006381333931", true}, // as printed under the bars
 		{"96385074", "96385074", true},               // EAN-8
-		{"036000291452", "0036000291452", true},      // UPC-A: OFF lo salva a 13 cifre
-		{"4006381333932", "", false},                 // cifra di controllo sbagliata
-		{"400638133393", "", false},                  // 12 cifre ma non un UPC valido
-		{"4006381333", "", false},                    // lunghezza non prevista
+		{"036000291452", "0036000291452", true},      // UPC-A: OFF stores it with 13 digits
+		{"4006381333932", "", false},                 // wrong check digit
+		{"400638133393", "", false},                  // 12 digits but not a valid UPC
+		{"4006381333", "", false},                    // unexpected length
 		{"40063813339a", "", false},
 		{"grana", "", false},
 		{"", "", false},
@@ -32,7 +32,7 @@ func TestNormalizeBarcode(t *testing.T) {
 	}
 }
 
-// liveServer risponde come l'API prodotto di OFF e conta le chiamate.
+// liveServer answers like OFF's product API and counts the calls.
 func liveServer(t *testing.T, body string) (*httptest.Server, *int) {
 	t.Helper()
 	calls := 0
@@ -65,7 +65,7 @@ func TestFindByBarcodeLocalFirst(t *testing.T) {
 		t.Errorf("prodotto: %+v", p)
 	}
 	if *calls != 0 {
-		t.Errorf("con la copia locale completa non serve la rete: %d chiamate", *calls)
+		t.Errorf("with a complete local copy the network is not needed: %d calls", *calls)
 	}
 }
 
@@ -80,13 +80,13 @@ func TestFindByBarcodeIncompleteLocalGoesLive(t *testing.T) {
 		t.Fatalf("FindByBarcode: %v", err)
 	}
 	if !p.HasFullNutrients || p.Kcal != 372 || *calls != 1 {
-		t.Errorf("atteso il prodotto live completo, got %+v (%d chiamate)", p, *calls)
+		t.Errorf("want the complete live product, got %+v (%d calls)", p, *calls)
 	}
 
-	// Senza rete resta la copia locale, anche se incompleta.
+	// Without the network the local copy remains, even when incomplete.
 	p, err = c.FindByBarcode(context.Background(), "4006381333931", false)
 	if err != nil || p.HasFullNutrients || *calls != 1 {
-		t.Errorf("senza live: %+v, %v (%d chiamate)", p, err, *calls)
+		t.Errorf("without live: %+v, %v (%d calls)", p, err, *calls)
 	}
 }
 
@@ -96,18 +96,18 @@ func TestFindByBarcodeNotFound(t *testing.T) {
 	c := NewClient(sqldb, srv.URL, nil)
 
 	if _, err := c.FindByBarcode(context.Background(), "96385074", false); !errors.Is(err, ErrNotFound) {
-		t.Errorf("senza live: atteso ErrNotFound, got %v", err)
+		t.Errorf("without live: want ErrNotFound, got %v", err)
 	}
 	if *calls != 0 {
-		t.Errorf("live=false non deve chiamare OFF")
+		t.Errorf("live=false must not call OFF")
 	}
 	if _, err := c.FindByBarcode(context.Background(), "96385074", true); !errors.Is(err, ErrNotFound) {
-		t.Errorf("live: atteso ErrNotFound, got %v", err)
+		t.Errorf("live: want ErrNotFound, got %v", err)
 	}
 }
 
-// Un guasto di OFF e' ErrUnavailable (lo scanner dice «riprova»), distinto
-// da «non trovato».
+// An OFF failure is ErrUnavailable (the scanner says «riprova»), distinct
+// from «not found».
 func TestFindByBarcodeUnavailable(t *testing.T) {
 	sqldb := openTestDB(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -118,6 +118,6 @@ func TestFindByBarcodeUnavailable(t *testing.T) {
 
 	_, err := c.FindByBarcode(context.Background(), "96385074", true)
 	if !errors.Is(err, ErrUnavailable) || errors.Is(err, ErrNotFound) {
-		t.Errorf("atteso ErrUnavailable, got %v", err)
+		t.Errorf("want ErrUnavailable, got %v", err)
 	}
 }

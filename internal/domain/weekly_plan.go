@@ -2,17 +2,17 @@ package domain
 
 import "time"
 
-// WeeklyPlan rappresenta il piano settimanale di un utente per la settimana
-// che inizia il lunedi' WeekStart. TemplateID puo' essere nil (piano vuoto
-// non derivato) o riferirsi al template usato.
+// WeeklyPlan is a user's weekly plan for the week starting on Monday
+// WeekStart. TemplateID can be nil (an empty plan not derived from a
+// template) or point to the template used.
 type WeeklyPlan struct {
 	ID         int64
 	UserID     int64
-	WeekStart  time.Time // sempre un lunedi'
+	WeekStart  time.Time // always a Monday
 	TemplateID *int64
 }
 
-// Meal e' un pasto (es. "Colazione") in un giorno specifico del piano.
+// Meal is a meal (e.g. "Colazione") on a specific day of the plan.
 type Meal struct {
 	ID           int64
 	WeeklyPlanID int64
@@ -21,8 +21,8 @@ type Meal struct {
 	SortOrder    int
 }
 
-// MealItem e' una riga di pasto: o una ricetta (Quantity = porzioni) o un
-// ingrediente puro (Quantity = g/ml/pz). Lo schema impone XOR via CHECK.
+// MealItem is a meal row: either a recipe (Quantity = servings) or a plain
+// ingredient (Quantity = g/ml/pz). The schema enforces the XOR via CHECK.
 type MealItem struct {
 	ID           int64
 	MealID       int64
@@ -30,60 +30,60 @@ type MealItem struct {
 	IngredientID *int64
 	Quantity     float64
 	SortOrder    int
-	// QuantityUnit e' l'unita' scelta dall'utente: 'g', 'ml', o 'pz'.
-	// 'pz' richiede ingredient.UnitWeightG per il calcolo macro.
+	// QuantityUnit is the unit the user picked: 'g', 'ml', or 'pz'.
+	// 'pz' needs ingredient.UnitWeightG for the macro calculation.
 	QuantityUnit string
 }
 
-// IsRecipe ritorna true se l'item punta a una ricetta.
+// IsRecipe returns true when the item points to a recipe.
 func (m MealItem) IsRecipe() bool { return m.RecipeID != nil }
 
-// IsIngredient ritorna true se l'item punta a un ingrediente puro.
+// IsIngredient returns true when the item points to a plain ingredient.
 func (m MealItem) IsIngredient() bool { return m.IngredientID != nil }
 
-// MealItemCustomization e' una riga di personalizzazione per un singolo
-// meal_item ricetta. Sostituisce gli ingredienti base della ricetta nel
-// calcolo dei macro per quell'occorrenza specifica.
+// MealItemCustomization is a customization row for a single recipe
+// meal_item. It replaces the recipe's base ingredients in the macro
+// calculation for that specific occurrence.
 type MealItemCustomization struct {
 	ID           int64
 	MealItemID   int64
 	IngredientID int64
 	Quantity     float64
 	SortOrder    int
-	Ingredient   *Ingredient // popolato al caricamento per i calcoli macro
+	Ingredient   *Ingredient // filled on load for the macro calculations
 }
 
-// MealItemFull e' MealItem con il riferimento risolto. Solo uno fra
-// Recipe e Ingredient e' valorizzato.
+// MealItemFull is MealItem with the reference resolved. Only one of Recipe
+// and Ingredient is set.
 type MealItemFull struct {
 	MealItem
-	Recipe         *Recipe                 // popolato se IsRecipe
-	RecipeItems    []RecipeItemFull        // popolato se IsRecipe (per macro)
-	Customizations []MealItemCustomization // popolato se l'item ha variazioni
-	Ingredient     *Ingredient             // popolato se IsIngredient
+	Recipe         *Recipe                 // filled when IsRecipe
+	RecipeItems    []RecipeItemFull        // filled when IsRecipe (for macros)
+	Customizations []MealItemCustomization // filled when the item has variations
+	Ingredient     *Ingredient             // filled when IsIngredient
 }
 
-// IsCustomized ritorna true se questo item ricetta ha variazioni personalizzate
-// che sostituiscono gli ingredienti base per il calcolo dei macro.
+// IsCustomized returns true when this recipe item has custom variations that
+// replace the base ingredients in the macro calculation.
 func (m MealItemFull) IsCustomized() bool { return len(m.Customizations) > 0 }
 
-// MealWithItems e' Meal + items risolti.
-// Cheats e' la lista degli sgarri associati al pasto: quando ne contiene
-// almeno uno, i macro effettivi del pasto sono dati da Cheats invece che
-// da Items (gli Items "ufficiali" restano presenti per riferimento UI).
+// MealWithItems is Meal + resolved items.
+// Cheats is the list of cheats attached to the meal: when it holds at least
+// one, the meal's actual macros come from Cheats instead of Items (the
+// "official" Items stay there for the UI's reference).
 type MealWithItems struct {
 	Meal
 	Items  []MealItemFull
 	Cheats []MealItemFull
 }
 
-// HasCheats e' true quando il pasto ha sgarri registrati.
+// HasCheats is true when the meal has cheats logged.
 func (m MealWithItems) HasCheats() bool { return len(m.Cheats) > 0 }
 
-// WeeklyPlanFull e' la struttura completa renderizzata in dashboard:
-// piano + tutti i meals raggruppati per giorno (slice 7 lunghezza).
+// WeeklyPlanFull is the complete structure rendered in the dashboard:
+// plan + every meal grouped by day (a slice of length 7).
 type WeeklyPlanFull struct {
 	WeeklyPlan
-	// Days[0..6] = lista pasti per quel giorno della settimana.
+	// Days[0..6] = the list of meals for that day of the week.
 	Days [7][]MealWithItems
 }

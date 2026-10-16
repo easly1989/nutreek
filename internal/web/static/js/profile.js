@@ -3,30 +3,30 @@
 
   // ---- Stato modulo ----------------------------------------------------------
 
-  let calcWeight  = null; // peso da #f-weight (validato)
-  let calcHeight  = null; // altezza in cm (per IBW)
-  let calcSex     = null; // 'M' | 'F' | '' (per IBW)
+  let calcWeight  = null; // weight from #f-weight (validated)
+  let calcHeight  = null; // height in cm (for IBW)
+  let calcSex     = null; // 'M' | 'F' | '' (for IBW)
   let calcBMR     = null; // BMR calcolato live
   let calcTDEE    = null; // TDEE = BMR × activityFactor
 
   let activePreset    = null; // 'maintenance'|'bulk'|'cut'|null
-  let pendingRebalance = null; // { kcal?, protein?, carbs?, fat? } da applicare
+  let pendingRebalance = null; // { kcal?, protein?, carbs?, fat? } to apply
 
-  // Valori dell'ultimo preset applicato (per l'hint "suggerito: X").
+  // Values of the last preset applied (for the "suggerito: X" hint).
   const suggested = { kcal: null, protein: null, carbs: null, fat: null };
 
-  // Strategia del preset attivo. Base scientifica:
+  // Strategy of the active preset. Scientific basis:
   //   - ISSN Position Stand 2017 (protein and exercise):
-  //       1.4–2.0 g/kg per costruire/mantenere massa magra;
-  //       2.3–3.1 g/kg di FFM in deficit per atleti resistance-trained.
-  //   - AMDR (IOM, USDA): grassi 20–35% kcal, carboidrati 45–65%.
+  //       1.4–2.0 g/kg to build/keep lean mass;
+  //       2.3–3.1 g/kg of FFM in a deficit for resistance-trained athletes.
+  //   - AMDR (IOM, USDA): fat 20–35% kcal, carbs 45–65%.
   //   - Adjusted Body Weight (Academy of Nutrition & Dietetics):
-  //       se BMI ≥ 30 calcoliamo le proteine su IBW + 0.25*(peso - IBW)
-  //       per non sovrastimare il fabbisogno (massa magra non scala col grasso).
+  //       when BMI ≥ 30 we compute protein on IBW + 0.25*(weight - IBW)
+  //       so as not to overestimate the need (lean mass does not scale with fat).
   //
-  // kcalFactor: moltiplicatore TDEE
-  // proteinGPerKg: g/kg di peso EFFETTIVO (aggiustato se BMI≥30)
-  // fatPct: % delle kcal dai grassi
+  // kcalFactor: TDEE multiplier
+  // proteinGPerKg: g/kg of EFFECTIVE weight (adjusted when BMI≥30)
+  // fatPct: % of the kcal from fat
   const presetStrategy = {
     maintenance: { kcalFactor: 1.00, proteinGPerKg: 1.6, fatPct: 0.28 },
     bulk:        { kcalFactor: 1.10, proteinGPerKg: 1.8, fatPct: 0.25 },
@@ -48,8 +48,8 @@
     if (bmi < 30.0) return 'Sovrappeso';
     return 'Obesità';
   }
-  // Numeri all'italiana: 1.690, 23,6 (useGrouping "always": senza, 1690
-  // resterebbe senza punto).
+  // Italian-style numbers: 1.690, 23,6 (useGrouping "always": without it, 1690
+  // would stay without a dot).
   function fmt(v, d) {
     return Number(v).toLocaleString('it-IT', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0, useGrouping: 'always' });
   }
@@ -75,10 +75,10 @@
     return base + extra;
   }
 
-  // Peso effettivo da usare per il dosaggio proteico.
-  // Per BMI ≥ 30 (obesità) usiamo l'adjusted body weight (formula AND):
-  //   ABW = IBW + 0.25 × (peso_attuale - IBW)
-  // così evitiamo di sovrastimare le proteine basandoci sulla massa grassa.
+  // Effective weight to use for the protein dose.
+  // For BMI ≥ 30 (obesity) we use the adjusted body weight (AND formula):
+  //   ABW = IBW + 0.25 × (current_weight - IBW)
+  // so we avoid overestimating protein based on fat mass.
   function effectiveProteinWeight(weight, height, sex) {
     if (!height) return weight;
     const bmi = weight / Math.pow(height / 100, 2);
@@ -181,7 +181,7 @@
     setFieldValue('f-tc', v.carbs);
     setFieldValue('f-tf', v.fat);
 
-    // Evidenzia il pulsante attivo.
+    // Highlight the active button.
     document.querySelectorAll('.preset-btn').forEach(function (btn) {
       btn.classList.toggle('is-on', btn.dataset.preset === mode);
       btn.setAttribute('aria-pressed', String(btn.dataset.preset === mode));
@@ -327,8 +327,8 @@
     n.classList.toggle('hidden', !text);
   }
 
-  // Ripartizione delle kcal: barra, percentuale sotto ogni campo e
-  // differenza tra le kcal dei macro e l'obiettivo.
+  // The kcal split: the bar, the percentage under every field and the
+  // difference between the macros' kcal and the goal.
   function updateMacroSummary() {
     const split = el('macro-split'), summary = el('macro-summary');
     const kcal    = parseF(el('f-tk') && el('f-tk').value);

@@ -10,9 +10,9 @@
     <a href="/ingredients/new" class="btn-primary">{{template "icon" "i-plus"}}Nuovo ingrediente</a>
   </div>
 
-  {{/* I filtri sono un form GET: senza JS si applicano con Invio o al cambio
-       dei menu. La ricerca live (ingredient_search.js) porta con se' i
-       filtri attivi tramite data-search-extra. */}}
+  {{/* The filters are a GET form: without JS they apply with Enter or when a
+       menu changes. The live search (ingredient_search.js) carries the
+       active filters along through data-search-extra. */}}
   <form method="get" action="/ingredients" class="flex flex-col gap-3" role="search">
     {{with $f.Src}}<input type="hidden" name="src" value="{{.}}">{{end}}
     <label class="field-ico">

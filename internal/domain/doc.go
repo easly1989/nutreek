@@ -1,3 +1,3 @@
-// Package domain definisce i tipi di dominio puri (User, Ingredient,
-// Recipe, Meal, Plan, ...) indipendenti dal layer di persistenza.
+// Package domain defines the plain domain types (User, Ingredient,
+// Recipe, Meal, Plan, ...) independent of the persistence layer.
 package domain

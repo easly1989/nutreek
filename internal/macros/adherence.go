@@ -6,24 +6,24 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// AdherenceScore descrive quanto un giorno pianificato e' stato rispettato:
-// confronta i macro "pianificati" (gli item ufficiali dei pasti) con quelli
-// "effettivi" (sgarri al posto degli item dove presenti). Senza sgarri il
-// giorno e' perfettamente aderente (Score 100).
+// AdherenceScore describes how well a planned day was followed: it compares
+// the "planned" macros (the meals' official items) with the "actual" ones
+// (cheats in place of the items where present). Without cheats the day is
+// perfectly adherent (Score 100).
 type AdherenceScore struct {
 	HasCheats      bool
 	PlannedMacros  Macros
 	ActualMacros   Macros
 	KcalDiffPct    float64 // (actual - planned) / planned * 100
 	ProteinDiffPct float64
-	Score          float64 // 0–100: 100 = nessuno sgarro; scende con la diff kcal
+	Score          float64 // 0–100: 100 = no cheat; drops with the kcal difference
 }
 
-// ScoreDay calcola l'aderenza di un giorno dato i pasti pianificati.
-// PlannedMacros somma sempre gli item ufficiali; ActualMacros usa gli sgarri
-// al posto degli item nei pasti che ne hanno. Score = 100 - |KcalDiffPct|,
-// clampato a [0,100]. Un giorno senza pasti pianificati ha PlannedMacros zero
-// e Score 100 (nessuno scostamento da misurare).
+// ScoreDay computes a day's adherence from its planned meals.
+// PlannedMacros always sums the official items; ActualMacros uses the cheats
+// in place of the items in the meals that have them. Score = 100 -
+// |KcalDiffPct|, clamped to [0,100]. A day with no planned meals has zero
+// PlannedMacros and Score 100 (no deviation to measure).
 func ScoreDay(meals []domain.MealWithItems) AdherenceScore {
 	var planned, actual Macros
 	hasCheats := false
@@ -56,9 +56,9 @@ func ScoreDay(meals []domain.MealWithItems) AdherenceScore {
 	return score
 }
 
-// diffPct ritorna la differenza percentuale (actual - planned) / planned * 100.
-// Se planned e' 0 ma actual no, ritorna 100 (deviazione massima convenzionale);
-// se entrambi 0, ritorna 0.
+// diffPct returns the percentage difference (actual - planned) / planned * 100.
+// When planned is 0 but actual is not, it returns 100 (the conventional
+// maximum deviation); when both are 0, it returns 0.
 func diffPct(planned, actual float64) float64 {
 	if planned == 0 {
 		if actual == 0 {
@@ -69,8 +69,8 @@ func diffPct(planned, actual float64) float64 {
 	return (actual - planned) / planned * 100
 }
 
-// ScoreWeek media i punteggi dei soli giorni con almeno un pasto pianificato.
-// I giorni vuoti non diluiscono la media. Ritorna 0 se nessun giorno ha pasti.
+// ScoreWeek averages the scores of only the days with at least one planned
+// meal. Empty days do not dilute the average. Returns 0 when no day has meals.
 func ScoreWeek(days []AdherenceScore) float64 {
 	var sum float64
 	var n int
@@ -87,10 +87,10 @@ func ScoreWeek(days []AdherenceScore) float64 {
 	return sum / float64(n)
 }
 
-// Streak conta i giorni consecutivi piu' recenti con Score >= threshold.
-// dailyScores e' atteso in ordine cronologico (dal piu' vecchio al piu'
-// recente): il conteggio parte dalla fine e si ferma al primo giorno sotto
-// soglia.
+// Streak counts the most recent consecutive days with Score >= threshold.
+// dailyScores is expected in chronological order (from the oldest to the
+// most recent): the count starts from the end and stops at the first day
+// under the threshold.
 func Streak(dailyScores []float64, threshold float64) int {
 	n := 0
 	for i := len(dailyScores) - 1; i >= 0; i-- {

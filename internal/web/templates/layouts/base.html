@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{block "title" .}}Nutreek{{end}}</title>
-  {{/* App installabile (#59): manifest e icone seguono il colore del tema. */}}
+  {{/* Installable app (#59): manifest and icons follow the theme color. */}}
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="{{accentColor .Appearance.Accent}}">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-{{.Appearance.Accent}}-32.png">
@@ -34,7 +34,7 @@
   {{if and .User (not .Bare)}}
   {{- $p := .ActiveNav -}}
 
-  {{/* Sidebar: solo da desktop (lg). Sul telefono la sostituisce la barra in basso. */}}
+  {{/* Sidebar: desktop only (lg). On the phone the bottom bar replaces it. */}}
   <nav id="sidebar" aria-label="Sezioni"
        class="hidden lg:flex fixed inset-y-0 left-0 z-30 w-[220px] flex-col gap-5 px-3 py-5 bg-surface border-r border-border overflow-y-auto">
     {{template "brand"}}
@@ -62,8 +62,8 @@
 
     <div class="mt-auto flex flex-col gap-1">
       <div>
-        {{/* Il pannello e' fixed accanto alla sidebar: dentro la sidebar
-             (overflow-y-auto) verrebbe tagliato. */}}
+        {{/* The panel is fixed next to the sidebar: inside the sidebar
+             (overflow-y-auto) it would be cut off. */}}
         <button type="button" class="nav-link w-full" data-popover="appearance-desktop" aria-expanded="false" aria-controls="appearance-desktop">
           <span class="w-[18px] h-[18px] grid place-items-center"><span class="w-3.5 h-3.5 rounded-full bg-accent"></span></span>Aspetto
         </button>
@@ -82,8 +82,8 @@
     </div>
   </nav>
 
-  {{/* Barra in basso: telefono e tablet. Le quattro sezioni d'uso
-       quotidiano piu' «Altro», che apre un foglio con il resto. */}}
+  {{/* Bottom bar: phone and tablet. The four everyday sections plus
+       «Altro», which opens a sheet with the rest. */}}
   {{- $tabOn := or (navActive $p "/") (navActive $p "/shopping-list") (navActive $p "/recipes") (navActive $p "/stats") -}}
   <nav id="bottom-nav" aria-label="Sezioni"
        class="lg:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-5 bg-surface border-t border-border px-1.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
@@ -157,8 +157,8 @@
     </div>
   </main>
 
-  {{/* Finestre aperte via HTMX (modal.js). La seconda ospita una finestra
-       aperta da un'altra, es. «Nuovo ingrediente» dentro il picker. */}}
+  {{/* Dialogs opened via HTMX (modal.js). The second hosts a dialog opened
+       from another, e.g. «Nuovo ingrediente» inside the picker. */}}
   <div id="modal-host" data-modal-host></div>
   <div id="modal-host-2" data-modal-host></div>
   {{if .User}}{{template "scanner_dialog"}}{{end}}
@@ -194,7 +194,7 @@
 </body>
 </html>{{end}}
 
-{{/* ---- Pezzi della shell ---------------------------------------------- */}}
+{{/* ---- Shell pieces --------------------------------------------------- */}}
 
 {{define "brand"}}<a href="/" class="flex items-center gap-2 px-2.5 py-1 text-[17px] font-bold text-text">
   <span class="inline-flex w-[26px] h-[26px] rounded-lg bg-accent text-accent-fg items-center justify-center">
@@ -205,13 +205,13 @@
 {{define "icon_sm"}}<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#{{.}}"/></svg>{{end}}
 {{define "icon_lg"}}<svg class="w-[22px] h-[22px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#{{.}}"/></svg>{{end}}
 
-{{/* Scanner del codice a barre (#59, static/js/scanner.js). Il bottone sta
-     accanto alla ricerca di un picker: . e' il selettore del campo. Resta
-     nascosto finche' scanner.js non trova fotocamera e contesto sicuro. */}}
+{{/* Barcode scanner (#59, static/js/scanner.js). The button sits next to a
+     picker's search: . is the field's selector. It stays hidden until
+     scanner.js finds a camera and a secure context. */}}
 {{define "scan_button"}}<button type="button" class="scan-only scan-btn" data-scan-for="{{.}}" aria-label="Scansiona il codice a barre" title="Scansiona il codice a barre">{{template "icon" "i-scan"}}</button>{{end}}
 
-{{/* Una finestra sopra il picker: la fotocamera, oppure (senza permesso o
-     senza fotocamera) il motivo; sotto, le cifre scritte a mano. */}}
+{{/* A dialog over the picker: the camera, or (without permission or without
+     a camera) the reason; below, the digits typed by hand. */}}
 {{define "scanner_dialog"}}<dialog id="scanner" class="dialog-panel" aria-labelledby="scanner-title">
   <div class="flex flex-col min-h-0">
     <div class="flex items-center gap-3 pl-4 lg:pl-5 pr-4 pt-4 pb-3">
@@ -243,8 +243,8 @@
 
 {{define "tab_link"}}<a href="{{.Href}}" class="tab-link{{if .Active}} is-active{{end}}"{{if .Active}} aria-current="page"{{end}}>{{template "icon_lg" .Icon}}{{.Label}}</a>{{end}}
 
-{{/* Modalita' x colore. Il click cambia subito <html> e scrive i cookie
-     (static/js/theme.js); il server li rilegge al caricamento successivo. */}}
+{{/* Mode x color. A click changes <html> right away and writes the cookies
+     (static/js/theme.js); the server reads them again on the next load. */}}
 {{define "appearance_controls"}}<div class="flex flex-col gap-3">
   <div class="flex flex-col gap-1.5">
     <span class="text-[12.5px] font-semibold text-muted">Modalità</span>
@@ -265,8 +265,8 @@
   </div>
 </div>{{end}}
 
-{{/* Icone a tratto 24x24, usate con <use href="#id">: colore e spessore
-     arrivano dall'<svg> che le richiama. */}}
+{{/* 24x24 stroke icons, used with <use href="#id">: color and stroke width
+     come from the <svg> that references them. */}}
 {{define "icon_sprite"}}<svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
   <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14zM5 19l7-7"/></symbol>
   <symbol id="i-week" viewBox="0 0 24 24"><path d="M3 5h18v16H3zM3 10h18M8 3v4M16 3v4"/></symbol>

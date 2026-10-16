@@ -1,12 +1,12 @@
-// pwa.js — app installabile (#59).
+// pwa.js — installable app (#59).
 //
-// Registra il service worker (/sw.js: cache dei soli file in /static) e, in
-// Impostazioni, mostra il blocco «App sul telefono» giusto per il browser:
-//   installata  aperta dall'icona sulla schermata Home
-//   http        contesto non sicuro: niente installazione ne' fotocamera
-//   prompt      Chrome/Edge/Android: bottone «Installa l'app» (beforeinstallprompt)
-//   ios         iPhone/iPad: i passaggi in Safari, non c'e' un prompt
-//   altro       tutto il resto (e senza JS): installa dal menu del browser
+// Registers the service worker (/sw.js: caches only the files in /static)
+// and, in Settings, shows the «App sul telefono» block right for the browser:
+//   installata  opened from the icon on the Home screen
+//   http        insecure context: no install and no camera
+//   prompt      Chrome/Edge/Android: an «Installa l'app» button (beforeinstallprompt)
+//   ios         iPhone/iPad: the steps in Safari, there is no prompt
+//   altro       everything else (and without JS): install from the browser menu
 (function () {
   "use strict";
 
@@ -16,14 +16,14 @@
     });
   }
 
-  var deferred = null; // l'evento beforeinstallprompt, da usare al click
+  var deferred = null; // the beforeinstallprompt event, to use on click
 
   function standalone() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   }
   function ios() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); // iPad che si presenta come Mac
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); // an iPad presenting itself as a Mac
   }
 
   function state() {
@@ -58,8 +58,8 @@
     var ev = deferred;
     deferred = null;
     ev.prompt();
-    // Il prompt vale una volta sola: accettato arriva appinstalled, rifiutato
-    // resta l'indicazione del menu finche' il browser non ne manda un altro.
+    // The prompt works only once: accepted, appinstalled arrives; declined,
+    // the menu hint stays until the browser sends another one.
     ev.userChoice.then(render, render);
   });
 

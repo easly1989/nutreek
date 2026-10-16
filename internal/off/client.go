@@ -15,22 +15,22 @@ import (
 	"unicode"
 )
 
-// DefaultUserAgent identifica le chiamate verso OpenFoodFacts. OFF chiede
-// (https://wiki.openfoodfacts.org/API) di mettere un UA parlante con un
-// punto di contatto, anche per evitare rate-limit aggressivi.
+// DefaultUserAgent identifies the calls to OpenFoodFacts. OFF asks
+// (https://wiki.openfoodfacts.org/API) for a descriptive UA with a point of
+// contact, also to avoid aggressive rate limits.
 const DefaultUserAgent = "Nutreek/0.1 (+https://github.com/amon2126/nutreek)"
 
-// DefaultTimeout e' il timeout HTTP per le richieste OFF live. Usato solo
-// da GetByBarcode (lookup puntuale, veloce e affidabile). SearchByName
-// non chiama piu' OFF live: interroga off_products FTS5 in locale.
+// DefaultTimeout is the HTTP timeout for live OFF requests. Used only by
+// GetByBarcode (a single, fast and reliable lookup). SearchByName no longer
+// calls OFF live: it queries the off_products FTS5 locally.
 const DefaultTimeout = 10 * time.Second
 
-// ErrNotFound e' restituito da GetByBarcode quando il prodotto non esiste su OFF.
+// ErrNotFound is returned by GetByBarcode when the product does not exist on OFF.
 var ErrNotFound = errors.New("prodotto OFF non trovato")
 
-// Client interroga OpenFoodFacts. Search testuale → SQLite FTS5 locale
-// (popolata dal Syncer). Lookup per barcode → API live di OFF (puntuale
-// e affidabile, separato dalla ricerca search-as-you-type).
+// Client queries OpenFoodFacts. Text search → local SQLite FTS5 (filled by
+// the Syncer). Barcode lookup → OFF's live API (single and reliable,
+// separate from the search-as-you-type search).
 type Client struct {
 	DB         *sql.DB
 	BaseURL    string
@@ -40,9 +40,9 @@ type Client struct {
 	MaxResults int
 }
 
-// NewClient costruisce un client con i default sani. Il DB e' opzionale
-// in fase di costruzione (puo' essere settato successivamente) ma deve
-// essere presente prima di chiamare SearchByName.
+// NewClient builds a client with sane defaults. The DB is optional at
+// construction time (it can be set later) but must be there before
+// SearchByName is called.
 func NewClient(db *sql.DB, baseURL string, logger *slog.Logger) *Client {
 	if baseURL == "" {
 		baseURL = "https://world.openfoodfacts.org"
@@ -60,21 +60,21 @@ func NewClient(db *sql.DB, baseURL string, logger *slog.Logger) *Client {
 	}
 }
 
-// SearchByName interroga la tabella off_products via FTS5. Ricerca <50ms,
-// niente HTTP, niente timeout, niente 503. La tabella e' popolata dal
-// Syncer dal dump pubblico OFF (sottoinsieme italiano).
+// SearchByName queries the off_products table via FTS5. Search <50ms,
+// no HTTP, no timeouts, no 503s. The table is filled by the Syncer from
+// the public OFF dump (the Italian subset).
 //
-// Tokenizza la query e wrappa i token in `"token"*` per match prefisso
-// + AND implicito fra termini (default FTS5). Esempio:
+// It tokenizes the query and wraps the tokens in `"token"*` for a prefix
+// match + an implicit AND between terms (the FTS5 default). Example:
 //
-//	"grana pad" → `"grana"* "pad"*` → match per "Grana Padano DOP"
+//	"grana pad" → `"grana"* "pad"*` → matches "Grana Padano DOP"
 func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
 		return nil, nil
 	}
 	if c.DB == nil {
-		return nil, errors.New("OFF client: DB non configurato")
+		return nil, errors.New("OFF client: DB not configured")
 	}
 	match := buildFTSMatch(q)
 	if match == "" {
@@ -121,18 +121,18 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 	return out, nil
 }
 
-// buildFTSMatch trasforma una query utente in espressione MATCH FTS5
-// sicura: tokenizza in parole (alfanumeriche, supportando unicode), e
-// wrappa ogni token in doppi apici come stringa quotata + suffisso `*`
-// per il prefix match. Il wrap in apici neutralizza i metachar FTS5
-// (`*`, `(`, `:`, `^`, ecc.) e l'eventuale apostrofo del token.
+// buildFTSMatch turns a user query into a safe FTS5 MATCH expression: it
+// tokenizes into words (alphanumeric, unicode-aware), and wraps every token
+// in double quotes as a quoted string + a `*` suffix for the prefix match.
+// The quoting neutralizes the FTS5 metachars (`*`, `(`, `:`, `^`, etc.) and
+// any apostrophe in the token.
 //
 //	"grana padano" → `"grana"* "padano"*`
-//	"grana pad"    → `"grana"* "pad"*`     (prefix sull'ultimo termine)
-//	"all'avena"    → `"all"* "avena"*`     (tokenizza su apostrofo)
+//	"grana pad"    → `"grana"* "pad"*`     (prefix on the last term)
+//	"all'avena"    → `"all"* "avena"*`     (tokenizes on the apostrophe)
 //
-// AND implicito fra token = ogni parola deve matchare (default FTS5).
-// Doppi apici interni (rari, es. nomi prodotto) raddoppiati per escape.
+// Implicit AND between tokens = every word must match (the FTS5 default).
+// Inner double quotes (rare, e.g. product names) are doubled to escape them.
 func buildFTSMatch(q string) string {
 	tokens := tokenizeWords(q)
 	if len(tokens) == 0 {
@@ -146,9 +146,9 @@ func buildFTSMatch(q string) string {
 	return strings.Join(parts, " ")
 }
 
-// GetByBarcode prende il singolo prodotto da OFF live. Errore ErrNotFound
-// se OFF risponde 404 o status:0. Endpoint puntuale, veloce, affidabile —
-// usato solo on-import al primo utilizzo di un prodotto nuovo.
+// GetByBarcode fetches the single product from live OFF. ErrNotFound when OFF
+// answers 404 or status:0. A single, fast, reliable endpoint — used only on
+// import, the first time a new product is used.
 func (c *Client) GetByBarcode(ctx context.Context, code string) (*Product, error) {
 	code = strings.TrimSpace(code)
 	if code == "" {
@@ -170,8 +170,8 @@ func (c *Client) GetByBarcode(ctx context.Context, code string) (*Product, error
 	return &p, nil
 }
 
-// tokenizeWords spezza una query in parole "vere": separa su qualunque
-// carattere non-alfanumerico (whitespace, apostrofi, trattini, ecc.).
+// tokenizeWords splits a query into "real" words: it splits on any
+// non-alphanumeric character (whitespace, apostrophes, dashes, etc.).
 // "Müesli croccante all'avena" → ["Müesli", "croccante", "all", "avena"].
 func tokenizeWords(q string) []string {
 	return strings.FieldsFunc(q, func(r rune) bool {
@@ -179,7 +179,7 @@ func tokenizeWords(q string) []string {
 	})
 }
 
-// do esegue la GET per il lookup prodotto (barcode). UA Nutreek standard.
+// do runs the GET for the product lookup (barcode). Standard Nutreek UA.
 func (c *Client) do(ctx context.Context, endpoint string, target any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -193,7 +193,7 @@ func (c *Client) do(ctx context.Context, endpoint string, target any) error {
 		return fmt.Errorf("call OFF: %w", err)
 	}
 	defer res.Body.Close()
-	// L'API v2 risponde 404 (status:0 nel corpo) a un codice che non conosce.
+	// The v2 API answers 404 (status:0 in the body) to a code it does not know.
 	if res.StatusCode == http.StatusNotFound {
 		return ErrNotFound
 	}

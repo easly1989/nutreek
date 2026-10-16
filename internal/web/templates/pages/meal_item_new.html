@@ -1,6 +1,6 @@
 {{define "title"}}{{if .Cheat}}Sgarro{{else}}Aggiungi a {{.MealName}}{{end}} — Nutreek{{end}}
 {{define "content"}}
-{{/* Pagina intera: il ripiego senza JavaScript della finestra del picker. */}}
+{{/* Full page: the no-JavaScript fallback of the picker dialog. */}}
 <div class="flex flex-col gap-4 lg:gap-[18px] max-w-[640px]">
   <div>
     <a href="/?start={{.WeekStart}}" class="crumb">{{template "icon_sm" "i-chevron-left"}}Settimana</a>
@@ -14,8 +14,8 @@
 {{define "meal_picker_title"}}{{if .Cheat}}Registra uno sgarro a {{.MealName}}{{else}}Aggiungi a {{.MealName}}{{end}}{{end}}
 
 {{define "meal_picker_dialog"}}
-{{- /* La stessa cosa in una finestra sopra la settimana (foglio dal basso sul
-       telefono). Inserita in #modal-host da HTMX, aperta da modal.js. */ -}}
+{{- /* The same thing in a dialog over the week (a bottom sheet on the
+       phone). Inserted into #modal-host by HTMX, opened by modal.js. */ -}}
 <dialog data-modal class="dialog-panel" aria-label="{{template "meal_picker_title" .}}">
   <div class="flex items-start gap-3 pl-4 lg:pl-5 pr-4 pt-4 pb-3">
     <div class="grow min-w-0">
@@ -29,8 +29,8 @@
 {{end}}
 
 {{define "meal_picker_body"}}
-{{- /* Ricerca + risultati del picker. picker.js gestisce Ingrediente/Ricetta
-       e l'aggiornamento dopo «Nuovo ingrediente». */ -}}
+{{- /* The picker's search + results. picker.js handles Ingrediente/Ricetta
+       and the refresh after «Nuovo ingrediente». */ -}}
 {{- $extra := printf "start=%s" .WeekStart -}}
 {{- if .Cheat}}{{$extra = print $extra "&as=cheat"}}{{else}}{{$extra = print $extra "&meal_name=" (urlquery .MealName)}}{{end -}}
 {{- if .InDialog}}{{$extra = print $extra "&dialog=1"}}{{end -}}

@@ -1,13 +1,13 @@
-// dnd.js — abilita drag-and-drop su qualunque elemento
+// dnd.js — enables drag-and-drop on any element
 //   <ul data-sortable="meals" data-sort-url="/meals/reorder?...">
 //     <li data-id="42">...</li>
 //     ...
 //   </ul>
-// Al drop, raccoglie i data-id nell'ordine attuale e fa htmx.ajax POST
-// sull'endpoint dato (form-encoded `ids=12,9,15`). Se la risposta e' un
-// frammento HTML (es. day_card swappato dal server), htmx lo applica al
-// target indicato dall'header `HX-Target` o, in mancanza, al closest
-// container del sortable. Re-init e' automatico via htmx:afterSettle.
+// On drop, it collects the data-ids in the current order and does an
+// htmx.ajax POST to the given endpoint (form-encoded `ids=12,9,15`). When the
+// response is an HTML fragment (e.g. a day_card swapped by the server), htmx
+// applies it to the target named by the `HX-Target` header or, failing that,
+// to the sortable's closest container. Re-init is automatic via htmx:afterSettle.
 (function () {
   "use strict";
 
@@ -36,8 +36,8 @@
         if (!ids.length) return;
         var url = el.dataset.sortUrl;
         if (!url) return;
-        // Target dello swap di risposta: il container <section data-day> piu'
-        // vicino, se esiste; altrimenti il sortable stesso.
+        // Target of the response swap: the nearest <section data-day>
+        // container, when there is one; otherwise the sortable itself.
         var target = el.closest("section[data-day]") || el;
         htmx.ajax("POST", url, {
           target: target,
@@ -60,6 +60,6 @@
   }
   document.body.addEventListener("htmx:afterSettle", function (evt) {
     scan(evt.detail && evt.detail.elt ? evt.detail.elt : null);
-    scan(); // safety: anche fuori dall'elemento swappato
+    scan(); // safety: outside the swapped element too
   });
 })();

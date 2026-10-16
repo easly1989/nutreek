@@ -13,8 +13,8 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 )
 
-// openTestDB monta un DB SQLite temporaneo con tutte le migrazioni applicate.
-// Usato da tutti i test che interrogano off_products / FTS5.
+// openTestDB sets up a temporary SQLite DB with every migration applied.
+// Used by every test that queries off_products / FTS5.
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	store, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
@@ -28,8 +28,8 @@ func openTestDB(t *testing.T) *sql.DB {
 	return store.DB
 }
 
-// seedOFFProducts inserisce direttamente nella tabella off_products. I
-// trigger AFTER INSERT si occupano di popolare l'indice FTS5.
+// seedOFFProducts inserts directly into the off_products table. The
+// AFTER INSERT triggers take care of filling the FTS5 index.
 func seedOFFProducts(t *testing.T, sqldb *sql.DB, products []Product) {
 	t.Helper()
 	for _, p := range products {
@@ -66,7 +66,7 @@ func TestSearchByNameFTS5(t *testing.T) {
 	cases := []struct {
 		name      string
 		query     string
-		wantCode  string // primo risultato atteso
+		wantCode  string // the first result expected
 		wantCount int
 	}{
 		{"prefix match", "grana", "8000000000017", 1},
@@ -102,7 +102,7 @@ func TestSearchByNameEmpty(t *testing.T) {
 		t.Fatalf("SearchByName empty: %v", err)
 	}
 	if got != nil {
-		t.Errorf("query vuota deve ritornare nil, got %+v", got)
+		t.Errorf("an empty query must return nil, got %+v", got)
 	}
 }
 
@@ -110,7 +110,7 @@ func TestSearchByNameNoDB(t *testing.T) {
 	c := NewClient(nil, "", nil)
 	_, err := c.SearchByName(context.Background(), "grana")
 	if err == nil {
-		t.Fatal("atteso errore con DB nil")
+		t.Fatal("want an error with a nil DB")
 	}
 }
 
@@ -166,10 +166,10 @@ func TestClientGetByBarcode(t *testing.T) {
 	}
 	expectedKcal := 200.0 / 4.184
 	if diff := p.Kcal - expectedKcal; diff > 0.01 || diff < -0.01 {
-		t.Errorf("kcal da kJ: %v (expected ~%v)", p.Kcal, expectedKcal)
+		t.Errorf("kcal from kJ: %v (expected ~%v)", p.Kcal, expectedKcal)
 	}
 	if !p.HasFullNutrients {
-		t.Errorf("nutrienti dovrebbero risultare completi (kcal derivata da kJ)")
+		t.Errorf("nutrients should come out complete (kcal derived from kJ)")
 	}
 }
 
@@ -183,12 +183,12 @@ func TestClientGetByBarcodeNotFound(t *testing.T) {
 	c := NewClient(nil, srv.URL, nil)
 	_, err := c.GetByBarcode(context.Background(), "9999")
 	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("atteso ErrNotFound, got %v", err)
+		t.Fatalf("want ErrNotFound, got %v", err)
 	}
 }
 
-// L'API v2 oggi risponde 404 (con status:0 nel corpo) a un codice che non
-// conosce: e' «non trovato», non un guasto di OFF.
+// The v2 API today answers 404 (with status:0 in the body) to a code it does
+// not know: that is «not found», not an OFF failure.
 func TestClientGetByBarcodeNotFound404(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -200,6 +200,6 @@ func TestClientGetByBarcodeNotFound404(t *testing.T) {
 	c := NewClient(nil, srv.URL, nil)
 	_, err := c.GetByBarcode(context.Background(), "9999")
 	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("atteso ErrNotFound, got %v", err)
+		t.Fatalf("want ErrNotFound, got %v", err)
 	}
 }

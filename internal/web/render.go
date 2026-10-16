@@ -15,14 +15,14 @@ import (
 	"github.com/amon2126/nutreek/internal/off"
 )
 
-// Renderer mantiene i template parsati e offre Render per scriverli sulla
-// response. Ogni pagina e' una combinazione di layout base + file pagina.
+// Renderer keeps the parsed templates and offers Render to write them to the
+// response. Every page is a combination of the base layout + a page file.
 type Renderer struct {
 	pages map[string]*template.Template
 }
 
-// NewRenderer carica i template dal filesystem dato (tipicamente l'embed).
-// Cerca file in templates/layouts/*.html e templates/pages/*.html.
+// NewRenderer loads the templates from the given filesystem (usually the
+// embed). It looks for files in templates/layouts/*.html and templates/pages/*.html.
 func NewRenderer(tfs fs.FS) (*Renderer, error) {
 	layoutFiles, err := fs.Glob(tfs, "templates/layouts/*.html")
 	if err != nil {
@@ -53,13 +53,13 @@ func NewRenderer(tfs fs.FS) (*Renderer, error) {
 	return r, nil
 }
 
-// Render scrive la pagina con il layout "layout". Buffera prima di scrivere
-// sulla ResponseWriter cosi' che un errore di template non produca una
-// response mezza scritta (che andrebbe con un 200 inutilizzabile).
+// Render writes the page with the "layout" layout. It buffers before writing
+// to the ResponseWriter so a template error does not produce a half-written
+// response (which would go out with a useless 200).
 func (r *Renderer) Render(w http.ResponseWriter, status int, name string, data any) error {
 	tpl, ok := r.pages[name]
 	if !ok {
-		return fmt.Errorf("template %q non registrato", name)
+		return fmt.Errorf("template %q not registered", name)
 	}
 	var buf bytes.Buffer
 	if err := tpl.ExecuteTemplate(&buf, "layout", data); err != nil {
@@ -71,15 +71,15 @@ func (r *Renderer) Render(w http.ResponseWriter, status int, name string, data a
 	return err
 }
 
-// RenderPartial esegue un template definito (di solito un partial caricato
-// da templates/partials/*.html) senza wrappare nel layout. Usato per le
-// risposte HTMX che inseriscono frammenti nella pagina esistente. `page` e'
-// una qualunque pagina registrata: serve solo a localizzare il template,
-// dato che ParseFS condivide i partial fra tutte le pagine.
+// RenderPartial runs a defined template (usually a partial loaded from
+// templates/partials/*.html) without wrapping it in the layout. Used for the
+// HTMX responses that insert fragments into the existing page. `page` is any
+// registered page: it only serves to locate the template, since ParseFS
+// shares the partials among all the pages.
 func (r *Renderer) RenderPartial(w http.ResponseWriter, status int, page, partial string, data any) error {
 	tpl, ok := r.pages[page]
 	if !ok {
-		return fmt.Errorf("template %q non registrato", page)
+		return fmt.Errorf("template %q not registered", page)
 	}
 	var buf bytes.Buffer
 	if err := tpl.ExecuteTemplate(&buf, partial, data); err != nil {
@@ -115,14 +115,14 @@ func funcMap() template.FuncMap {
 			}
 			return "?"
 		},
-		// row passa a un template di riga la riga e la pagina che la
-		// contiene (CSRF, settimana): html/template non permette struct literal.
+		// row passes a row template the row and the page that holds it
+		// (CSRF, week): html/template does not allow struct literals.
 		"row": func(row, page any) RowCtx { return RowCtx{Row: row, Page: page} },
-		// neg restituisce il negativo di un float64. Usato nei template per
-		// invertire il segno senza eseguire operazioni aritmetiche inline.
+		// neg returns the negative of a float64. Used in templates to flip the
+		// sign without inline arithmetic.
 		"neg": func(v float64) float64 { return -v },
-		// deref dereferenzia un *int64 (0 se nil). Usato per confrontare
-		// id opzionali (es. piano assegnato) dentro i template.
+		// deref dereferences an *int64 (0 when nil). Used to compare optional
+		// ids (e.g. the assigned plan) inside templates.
 		"deref": func(p *int64) int64 {
 			if p == nil {
 				return 0
@@ -131,14 +131,14 @@ func funcMap() template.FuncMap {
 		},
 		"num": formatNum,
 		"dec": formatDec,
-		// list costruisce una lista di stringhe da usare in un range.
+		// list builds a list of strings to use in a range.
 		"list": func(v ...string) []string { return v },
 		"liters": func(ml int) string {
 			return formatDec(float64(ml)/1000, 2) + " l"
 		},
 		"sub": func(a, b float64) float64 { return a - b },
 		"ringDash": func(pct float64) string {
-			// Anello di progresso: cerchio r=44 (circonferenza 276,46).
+			// Progress ring: a circle with r=44 (circumference 276.46).
 			const c = 2 * math.Pi * 44
 			pct = math.Max(0, math.Min(pct, 100))
 			return fmt.Sprintf("%.1f %.1f", pct/100*c, c)
@@ -155,35 +155,35 @@ func funcMap() template.FuncMap {
 		"dayLetter": func(t time.Time) string {
 			return weekdaysIT[(int(t.Weekday())+6)%7][:1]
 		},
-		// mealCtx / itemCtx passano a meal_card e meal_item_row la vista del
-		// pasto (o della voce) insieme al contesto della card che serve ai
-		// form: html/template non permette struct literal.
+		// mealCtx / itemCtx pass meal_card and meal_item_row the view of the
+		// meal (or of the item) together with the card's context the forms
+		// need: html/template does not allow struct literals.
 		"mealCtx": func(meal any, weekStart, csrf string) MealCtx {
 			return MealCtx{Meal: meal, WeekStart: weekStart, CSRFToken: csrf}
 		},
 		"itemCtx": func(view any, struck, cheat bool, weekStart, csrf string) ItemCtx {
 			return ItemCtx{View: view, Struck: struck, Cheat: cheat, WeekStart: weekStart, CSRFToken: csrf}
 		},
-		// barcode: il codice normalizzato se q e' un codice a barre valido,
-		// altrimenti "". Con un codice i picker mostrano l'esito dello scanner.
+		// barcode: the normalized code when q is a valid barcode, otherwise
+		// "". With a code the pickers show the scanner's outcome.
 		"barcode": func(q string) string {
 			code, _ := off.NormalizeBarcode(q)
 			return code
 		},
-		// accentColor: il colore del tema per theme-color (#59).
+		// accentColor: the theme's color for theme-color (#59).
 		"accentColor": AccentColor,
-		// asset: URL di un file in /static con la versione degli statici. Il
-		// service worker li serve dalla cache: un URL nuovo a ogni rilascio
-		// evita CSS e JS vecchi sotto l'HTML nuovo.
+		// asset: the URL of a file in /static with the static assets' version.
+		// The service worker serves them from the cache: a new URL on every
+		// release avoids old CSS and JS under new HTML.
 		"asset": func(path string) string {
 			return "/static/" + path + "?v=" + StaticVersion()
 		},
-		// pickerRow passa a picker_row la riga insieme ai dati della lista
-		// (tipo di picker, id di destinazione, CSRF).
+		// pickerRow passes picker_row the row together with the list's data
+		// (picker kind, target id, CSRF).
 		"pickerRow": func(row, list any) PickerRowCtx {
 			return PickerRowCtx{Row: row, List: list}
 		},
-		// featureIcon sceglie l'icona di una funzionalita' premium dalla chiave.
+		// featureIcon picks the icon of a premium feature from its key.
 		"featureIcon": func(key string) string {
 			switch key {
 			case "auto_plan":
@@ -200,13 +200,13 @@ func funcMap() template.FuncMap {
 			return "i-star"
 		},
 		"navActive": navActive,
-		// nav costruisce una voce di navigazione della shell (sidebar e
-		// barra in basso): {{template "nav_link" (nav $.ActiveNav "/recipes" "Ricette" "i-recipes")}}.
+		// nav builds a navigation entry of the shell (sidebar and bottom
+		// bar): {{template "nav_link" (nav $.ActiveNav "/recipes" "Ricette" "i-recipes")}}.
 		"nav": func(cur, href, label, icon string) NavItem {
 			return NavItem{Href: href, Label: label, Icon: icon, Active: navActive(cur, href)}
 		},
-		// initial restituisce la prima lettera maiuscola di un nome, per
-		// l'avatar nella sidebar.
+		// initial returns the first letter of a name, uppercased, for the
+		// avatar in the sidebar.
 		"initial": func(s string) string {
 			for _, r := range strings.TrimSpace(s) {
 				return strings.ToUpper(string(r))
@@ -216,16 +216,16 @@ func funcMap() template.FuncMap {
 	}
 }
 
-// MealCtx e' il view-model di meal_card: Meal e' la vista del pasto
-// costruita dal pacchetto app.
+// MealCtx is the view model of meal_card: Meal is the meal's view built by
+// the app package.
 type MealCtx struct {
 	Meal      any
 	WeekStart string
 	CSRFToken string
 }
 
-// ItemCtx e' il view-model di meal_item_row. Struck = voce del piano
-// sostituita da uno sgarro (barrata); Cheat = voce dello sgarro.
+// ItemCtx is the view model of meal_item_row. Struck = a plan item replaced
+// by a cheat (struck through); Cheat = an item of the cheat.
 type ItemCtx struct {
 	View          any
 	Struck, Cheat bool
@@ -233,19 +233,19 @@ type ItemCtx struct {
 	CSRFToken     string
 }
 
-// PickerRowCtx e' il view-model di picker_row: Row e' la riga ingrediente,
-// List la lista del picker che la contiene.
+// PickerRowCtx is the view model of picker_row: Row is the ingredient row,
+// List the picker list that holds it.
 type PickerRowCtx struct {
 	Row, List any
 }
 
-// RowCtx e' il view-model generico di una riga ripetuta: Row e' la riga,
-// Page i dati della pagina.
+// RowCtx is the generic view model of a repeated row: Row is the row, Page
+// the page's data.
 type RowCtx struct {
 	Row, Page any
 }
 
-// NavItem e' il view-model di una voce di navigazione della shell.
+// NavItem is the view model of a navigation entry of the shell.
 type NavItem struct {
 	Href, Label, Icon string
 	Active            bool
@@ -256,13 +256,13 @@ var (
 	monthsIT   = [12]string{"gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"}
 )
 
-// FormatNum e FormatDec espongono la formattazione dei template ai frammenti
-// HTML scritti a mano dagli handler.
+// FormatNum and FormatDec expose the templates' formatting to the HTML
+// fragments the handlers write by hand.
 func FormatNum(v float64) string             { return formatNum(v) }
 func FormatDec(v float64, digits int) string { return formatDec(v, digits) }
 
-// formatNum arrotonda all'intero e separa le migliaia col punto, come si
-// scrive in italiano: 1636.4 -> "1.636".
+// formatNum rounds to the integer and separates thousands with a dot, as
+// Italian writes them: 1636.4 -> "1.636".
 func formatNum(v float64) string {
 	n := int64(math.Round(v))
 	sign := ""
@@ -276,8 +276,8 @@ func formatNum(v float64) string {
 	return sign + s
 }
 
-// formatDec scrive v con al massimo `digits` decimali, virgola decimale e
-// senza zeri finali: 1.5 -> "1,5", 2.0 -> "2", 1.25 -> "1,25".
+// formatDec writes v with at most `digits` decimals, a decimal comma and no
+// trailing zeros: 1.5 -> "1,5", 2.0 -> "2", 1.25 -> "1,25".
 func formatDec(v float64, digits int) string {
 	s := strconv.FormatFloat(v, 'f', digits, 64)
 	if strings.Contains(s, ".") {
@@ -286,12 +286,12 @@ func formatDec(v float64, digits int) string {
 	return strings.Replace(s, ".", ",", 1)
 }
 
-// weekRange descrive la settimana che inizia il lunedi' start:
+// weekRange describes the week starting on Monday start:
 // "12–18 ottobre", "29 settembre – 5 ottobre", "29 dicembre 2025 – 4 gennaio 2026".
 func weekRange(start time.Time) string { return weeksRange(start, 1) }
 
-// weeksRange descrive n settimane consecutive dal lunedi' start alla
-// domenica dell'ultima: "12 ottobre – 1 novembre".
+// weeksRange describes n consecutive weeks from Monday start to the Sunday
+// of the last one: "12 ottobre – 1 novembre".
 func weeksRange(start time.Time, n int) string {
 	end := start.AddDate(0, 0, 7*max(n, 1)-1)
 	switch {
@@ -304,9 +304,9 @@ func weeksRange(start time.Time, n int) string {
 	}
 }
 
-// navActive dice se il link href corrisponde alla pagina corrente cur:
-// "/" solo esatto, le altre sezioni anche sulle sottopagine
-// (/recipes/12 accende Ricette).
+// navActive says whether the link href matches the current page cur: "/"
+// only exactly, the other sections on their subpages too (/recipes/12 lights
+// up Ricette).
 func navActive(cur, href string) bool {
 	if href == "/" {
 		return cur == "/"
