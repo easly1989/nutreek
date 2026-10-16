@@ -327,6 +327,11 @@
   .mode-card { @apply flex flex-col gap-2 p-2.5 rounded-xl border border-border text-left text-[13px] font-semibold text-text hover:bg-surface-2; }
   .mode-card[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .mode-pv { @apply grid grid-cols-[30%_1fr] h-[52px] rounded-lg border border-border overflow-hidden; }
+  /* «App sul telefono» (#59): icona dell'app, passaggi numerati, tasti di Safari. */
+  .app-icon { @apply w-14 h-14 shrink-0 rounded-[14px] bg-accent text-accent-fg grid place-items-center; }
+  .step-n { @apply w-6 h-6 shrink-0 rounded-full bg-surface-2 grid place-items-center text-[12px] font-bold; }
+  .kbd { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-border bg-surface text-[13px] font-semibold align-middle; }
+  .kbd svg { @apply w-[15px] h-[15px] text-accent; }
 
   /* Pagine senza sessione e onboarding (#123): una colonna centrata. */
   .auth-box { @apply w-full max-w-[400px] mx-auto mt-4 lg:mt-14 flex flex-col gap-[18px]; }

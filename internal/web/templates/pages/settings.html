@@ -9,6 +9,7 @@
   <div class="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] items-start">
     <nav class="hidden lg:flex sticky top-6 flex-col gap-0.5" aria-label="Sezioni delle impostazioni">
       <a href="#aspetto" class="settings-toc" aria-current="true">Aspetto</a>
+      <a href="#app" class="settings-toc">App sul telefono</a>
       <a href="#account" class="settings-toc">Account</a>
       <a href="#dati" class="settings-toc">I tuoi dati</a>
       <a href="#token" class="settings-toc">Token API</a>
@@ -41,6 +42,46 @@
             <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Appearance.Accent "mare"}}"><span class="swatch-dot" style="background:#1D6FA5"></span>Mare</button>
             <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Appearance.Accent "tramonto"}}"><span class="swatch-dot" style="background:#B4511A"></span>Tramonto</button>
             <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Appearance.Accent "grafite"}}"><span class="swatch-dot" style="background:#3A4150"></span>Grafite</button>
+          </div>
+        </div>
+      </section>
+
+      {{/* App installabile (#59). Un solo blocco visibile, scelto da
+           static/js/pwa.js; senza JS resta quello generico. */}}
+      <section id="app" class="card scroll-mt-6">
+        <div class="settings-sec">
+          <div><h2 class="h2">App sul telefono</h2><p class="settings-d">Nutreek si apre a schermo intero come un'app, senza barra del browser, e carica più in fretta.</p></div>
+          <div data-pwa>
+            <div data-pwa-state="altro" class="flex items-center gap-3">
+              {{template "app_icon"}}
+              <div class="flex flex-col gap-0.5"><b>Nutreek</b><span class="text-[12.5px] text-muted">Dal menu del browser scegli «Installa app» o «Aggiungi a schermata Home». Non serve uno store.</span></div>
+            </div>
+            <div data-pwa-state="prompt" class="hidden flex flex-col gap-3">
+              <div class="flex items-center gap-3">
+                {{template "app_icon"}}
+                <div class="flex flex-col gap-0.5"><b>Nutreek</b><span class="text-[12.5px] text-muted">Si installa dal browser, non serve uno store.</span></div>
+              </div>
+              <button type="button" class="btn-primary self-start" data-pwa-install>{{template "icon_sm" "i-download"}}Installa l'app</button>
+            </div>
+            <div data-pwa-state="ios" class="hidden flex flex-col gap-3">
+              <div class="flex items-center gap-3">
+                {{template "app_icon"}}
+                <div class="flex flex-col gap-0.5"><b>Nutreek</b><span class="text-[12.5px] text-muted">Su iPhone e iPad si aggiunge da Safari.</span></div>
+              </div>
+              <ol class="flex flex-col gap-2.5">
+                <li class="flex items-center gap-2.5"><span class="step-n">1</span><span>Tocca <span class="kbd">{{template "icon_sm" "i-share"}}Condividi</span> nella barra di Safari</span></li>
+                <li class="flex items-center gap-2.5"><span class="step-n">2</span><span>Scegli <span class="kbd">{{template "icon_sm" "i-square-plus"}}Aggiungi alla schermata Home</span></span></li>
+                <li class="flex items-center gap-2.5"><span class="step-n">3</span><span>Conferma con <b>Aggiungi</b></span></li>
+              </ol>
+            </div>
+            <div data-pwa-state="installata" class="hidden flex items-center gap-3">
+              {{template "app_icon"}}
+              <div class="flex flex-col gap-0.5"><b>Già installata</b><span class="text-[12.5px] text-muted">Stai usando Nutreek come app. Per toglierla, tieni premuta l'icona sulla schermata Home.</span></div>
+            </div>
+            <div data-pwa-state="http" class="hidden flex items-start gap-3">
+              <span class="thumb">{{template "icon_sm" "i-lock"}}</span>
+              <div class="flex flex-col gap-0.5"><b>Serve una connessione sicura</b><span class="text-[12.5px] text-muted">L'installazione e la fotocamera funzionano solo se Nutreek è aperto in https. Chi gestisce questa istanza può attivarlo dal proxy (per esempio Traefik o Caddy).</span></div>
+            </div>
           </div>
         </div>
       </section>
@@ -127,6 +168,8 @@
   </div>
 </div>
 {{end}}
+
+{{define "app_icon"}}<span class="app-icon" aria-hidden="true"><svg class="w-[30px] h-[30px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-leaf"/></svg></span>{{end}}
 
 {{define "scripts"}}
 <script>
