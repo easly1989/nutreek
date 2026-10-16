@@ -2,7 +2,7 @@
 
 ## Panoramica progetto
 
-**Nutreek** è un'app web self-hosted per la gestione di piani nutrizionali settimanali, scritta interamente in italiano. Sviluppatore singolo (amon2126), licenza proprietaria, MVP attivo.
+**Nutreek** è un'app web self-hosted per la gestione di piani nutrizionali settimanali, scritta interamente in italiano. Sviluppatore singolo (amon2126), open source con licenza AGPL-3.0, MVP attivo. README in inglese (`README.md`), versione italiana in `README.it.md`: vanno tenuti allineati.
 
 Funzionalità principali: gestione ingredienti (integrazione OpenFoodFacts locale FTS5), ricette, template settimanali, piani pasto con calcolo macro (Kcal, Proteine, Carboidrati, Grassi), lista della spesa, tracciamento sgarri, TDEE adattivo, generazione automatica settimana, coach mode multi-cliente, REST API v1, admin panel con feature flag e sottoscrizioni premium.
 
