@@ -28,6 +28,7 @@ type authPageData struct {
 	Appearance Appearance
 	ActiveNav  string // URL path corrente, per evidenziare il link attivo nella sidebar
 	ShowTour   bool   // true se il tour guidato deve essere mostrato sulla dashboard
+	Bare       bool   // pagina senza barra laterale ne' barra in basso (onboarding)
 	IsOwner    bool   // true se l'utente corrente è l'owner dell'istanza
 	// Features mappa key→bool: indica se l'utente ha accesso alla feature.
 	// Quando PremiumEnabled=false è sempre tutto true (nessun gating).
