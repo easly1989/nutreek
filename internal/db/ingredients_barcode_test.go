@@ -36,7 +36,7 @@ func TestIngredientsLocalBarcode(t *testing.T) {
 	}
 
 	// Solo per i locali: un import OFF ha gia' il suo codice.
-	offID, _ := ings.CreateOFF(ctx, "96385074", "Latte", nil, domain.UnitMilliliter, 64, 3, 5, 3.6, nil, nil, nil, nil, nil)
+	offID, _ := ings.CreateOFF(ctx, "96385074", "Latte", nil, domain.UnitMilliliter, 64, 3, 5, 3.6, nil, nil, nil, nil, nil, nil)
 	if err := ings.SetLocalBarcode(ctx, offID, "036000291452"); !errors.Is(err, ErrIngredientNotFound) {
 		t.Errorf("su un OFF: atteso ErrIngredientNotFound, got %v", err)
 	}

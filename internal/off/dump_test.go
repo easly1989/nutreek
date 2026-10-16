@@ -37,7 +37,7 @@ func TestSyncerImport(t *testing.T) {
 	// Il dump JSONL reale usa chiavi bare (senza _100g): "proteins", non
 	// "proteins_100g". Usiamo questo formato nei test per rispecchiare la realtà.
 	dump := makeDumpGzip(t, []string{
-		`{"code":"8000000000017","product_name":"Grana Padano DOP","brands":"Consorzio","countries_tags":["en:italy"],"nutriments":{"energy-kcal":384,"proteins":33,"carbohydrates":0,"fat":28}}`,
+		`{"code":"8000000000017","product_name":"Grana Padano DOP","brands":"Consorzio","countries_tags":["en:italy"],"serving_quantity":30,"serving_quantity_unit":"g","nutriments":{"energy-kcal":384,"proteins":33,"carbohydrates":0,"fat":28}}`,
 		`{"code":"FR_PRODUCT","product_name":"Camembert","countries_tags":["en:france"]}`,
 		`{"code":"8000080002057","product_name":"Barrette Hero Light","brands":"Hero","countries_tags":["en:italy","en:germany"],"nutriments":{"proteins":7,"carbohydrates":60}}`,
 		`{"code":"","product_name":"Senza codice","countries_tags":["en:italy"]}`,
@@ -91,6 +91,16 @@ func TestSyncerImport(t *testing.T) {
 	_ = sqldb.QueryRow(`SELECT has_full_nutrients FROM off_products WHERE barcode = ?`, "8000080002057").Scan(&hasFull)
 	if hasFull != 0 {
 		t.Errorf("Barrette deve avere has_full_nutrients=0 (manca kcal/fat), got %d", hasFull)
+	}
+
+	// La porzione arriva fino alla lettura per codice (#136): 30 g per il
+	// Grana, ignota per le Barrette.
+	cl := &Client{DB: sqldb}
+	if p, err := cl.localByBarcode(context.Background(), "8000000000017"); err != nil || p == nil || p.ServingG == nil || *p.ServingG != 30 {
+		t.Errorf("Grana: porzione %v (err %v), attesa 30", p, err)
+	}
+	if p, err := cl.localByBarcode(context.Background(), "8000080002057"); err != nil || p == nil || p.ServingG != nil {
+		t.Errorf("Barrette: porzione %v (err %v), attesa nil", p, err)
 	}
 
 	// Stato persistito.
