@@ -1,5 +1,5 @@
-// Package profile contiene calcoli puri relativi al profilo utente:
-// BMI, BMR e la struttura MacroProgress usata dagli indicatori visivi.
+// Package profile holds pure calculations about the user profile:
+// BMI, BMR and the MacroProgress structure used by the visual indicators.
 package profile
 
 import (
@@ -9,13 +9,13 @@ import (
 	"github.com/amon2126/nutreek/internal/macros"
 )
 
-// BMI calcola l'indice di massa corporea (peso kg / altezza m²).
+// BMI computes the body mass index (weight kg / height m²).
 func BMI(weightKg, heightCm float64) float64 {
 	hm := heightCm / 100.0
 	return weightKg / (hm * hm)
 }
 
-// BMICategory ritorna la categoria testuale per un valore BMI.
+// BMICategory returns the text category for a BMI value.
 func BMICategory(bmi float64) string {
 	switch {
 	case bmi < 18.5:
@@ -29,8 +29,8 @@ func BMICategory(bmi float64) string {
 	}
 }
 
-// BMR calcola il metabolismo basale con la formula Mifflin-St Jeor.
-// sex deve essere "M" (maschio) o "F" (femmina).
+// BMR computes the basal metabolic rate with the Mifflin-St Jeor formula.
+// sex must be "M" (male) or "F" (female).
 func BMR(weightKg, heightCm float64, ageYears int, sex string) float64 {
 	base := 10*weightKg + 6.25*heightCm - 5*float64(ageYears)
 	if sex == "M" {
@@ -39,12 +39,12 @@ func BMR(weightKg, heightCm float64, ageYears int, sex string) float64 {
 	return base - 161
 }
 
-// AgeFromBirthYear calcola l'età in anni interi partendo dall'anno di nascita.
+// AgeFromBirthYear computes the age in whole years from the birth year.
 func AgeFromBirthYear(birthYear int) int {
 	return time.Now().Year() - birthYear
 }
 
-// activityFactors mappa i codici livello al moltiplicatore Harris-Benedict/Mifflin.
+// activityFactors maps the level codes to the Harris-Benedict/Mifflin multiplier.
 var activityFactors = map[string]float64{
 	"sedentary": 1.2,
 	"light":     1.375,
@@ -53,8 +53,8 @@ var activityFactors = map[string]float64{
 	"athlete":   1.9,
 }
 
-// ActivityFactor ritorna il moltiplicatore per il livello dato.
-// Ritorna 1.4 (stima generica) se il codice non è riconosciuto o è vuoto.
+// ActivityFactor returns the multiplier for the given level.
+// It returns 1.4 (a generic estimate) when the code is unknown or empty.
 func ActivityFactor(code string) float64 {
 	if f, ok := activityFactors[code]; ok {
 		return f
@@ -62,13 +62,13 @@ func ActivityFactor(code string) float64 {
 	return 1.4
 }
 
-// TDEE calcola il fabbisogno calorico giornaliero totale (BMR × fattore attività).
+// TDEE computes the total daily energy expenditure (BMR × activity factor).
 func TDEE(bmr, factor float64) float64 {
 	return bmr * factor
 }
 
-// CanComputeIndices verifica che tutti i dati fisici siano presenti
-// e plausibili per poter calcolare BMI e BMR.
+// CanComputeIndices checks that all the physical data is present and
+// plausible, so BMI and BMR can be computed.
 func CanComputeIndices(weightKg, heightCm *float64, birthYear *int, sex *string) bool {
 	if weightKg == nil || heightCm == nil || birthYear == nil || sex == nil {
 		return false
@@ -85,19 +85,19 @@ func CanComputeIndices(weightKg, heightCm *float64, birthYear *int, sex *string)
 
 // ---- Indicatori visivi -------------------------------------------------
 
-// MacroBar contiene i dati pre-calcolati per una singola barra di progresso.
+// MacroBar holds the precomputed data for a single progress bar.
 type MacroBar struct {
 	Label    string
-	Actual   float64 // valore effettivo (kcal o grammi)
-	Target   float64 // valore obiettivo (kcal o grammi)
-	Pct      float64 // 0..100, cappato a 100 per la larghezza della barra
-	Raw      float64 // percentuale reale (può superare 100)
-	Overflow bool    // true se supera il target (>100%)
+	Actual   float64 // actual value (kcal or grams)
+	Target   float64 // target value (kcal or grams)
+	Pct      float64 // 0..100, capped at 100 for the bar's width
+	Raw      float64 // the real percentage (can exceed 100)
+	Overflow bool    // true when over the target (>100%)
 }
 
-// MacroProgress raccoglie le quattro barre e il flag aggregato.
-// HasTarget è false se l'utente non ha impostato nessun obiettivo:
-// in quel caso i template non mostrano le barre.
+// MacroProgress collects the four bars and the aggregate flag.
+// HasTarget is false when the user has set no goal: then the templates do
+// not show the bars.
 type MacroProgress struct {
 	HasTarget  bool
 	Kcal       MacroBar
@@ -107,15 +107,15 @@ type MacroProgress struct {
 	AnyExceeds bool
 }
 
-// BuildMacroProgress calcola la MacroProgress a partire dai macro effettivi
-// del giorno e dai target dell'utente (pointer: nil = non impostato).
-// Se nessun target è impostato o tutti sono zero, ritorna MacroProgress{} con
+// BuildMacroProgress computes the MacroProgress from the day's actual macros
+// and the user's targets (pointers: nil = not set).
+// When no target is set or all are zero, it returns MacroProgress{} with
 // HasTarget=false.
 func BuildMacroProgress(actual macros.Macros, targetKcal, targetProtein, targetCarbs, targetFat *float64) MacroProgress {
 	if targetKcal == nil && targetProtein == nil && targetCarbs == nil && targetFat == nil {
 		return MacroProgress{}
 	}
-	// Almeno un target deve essere > 0 per mostrare qualcosa.
+	// At least one target must be > 0 to show anything.
 	t := func(p *float64) float64 {
 		if p == nil {
 			return 0
@@ -129,8 +129,8 @@ func BuildMacroProgress(actual macros.Macros, targetKcal, targetProtein, targetC
 
 	bar := func(label string, actual, target float64) MacroBar {
 		if target <= 0 {
-			// Target non impostato per questo macro: barra non visualizzabile;
-			// la mostriamo come "100%" neutra (non overflow, pct=0).
+			// No target set for this macro: the bar cannot be shown; we show
+			// it as a neutral "100%" (no overflow, pct=0).
 			return MacroBar{Label: label, Actual: actual}
 		}
 		raw := (actual / target) * 100

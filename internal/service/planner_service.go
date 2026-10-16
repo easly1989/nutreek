@@ -11,20 +11,20 @@ import (
 	"github.com/amon2126/nutreek/internal/planner"
 )
 
-// Errori di dominio del generatore automatico: il chiamante (handler) li
-// distingue per mostrare il messaggio giusto all'utente.
+// Domain errors of the automatic generator: the caller (handler) tells them
+// apart to show the user the right message.
 var (
-	// ErrNoTarget: target calorico non impostato, impossibile generare.
+	// ErrNoTarget: no calorie target set, generation is impossible.
 	ErrNoTarget = errors.New("target calorico non impostato")
-	// ErrNoNutritionistPool: nessuna variante utilizzabile nel piano nutrizionista.
+	// ErrNoNutritionistPool: no usable variation in the nutrition plan.
 	ErrNoNutritionistPool = errors.New("nessuna variante nel piano nutrizionista")
-	// ErrWeekNotEmpty: la settimana ha gia' dei pasti.
+	// ErrWeekNotEmpty: the week already has meals.
 	ErrWeekNotEmpty = errors.New("settimana gia' popolata")
 )
 
-// PlannerService genera automaticamente il piano settimanale pescando dal
-// pool di varianti del piano nutrizionista effettivo dell'utente (quello
-// assegnato dal coach, se presente, altrimenti il proprio piano attivo).
+// PlannerService generates the weekly plan automatically, drawing from the
+// pool of variations of the user's effective nutrition plan (the one assigned
+// by the coach, when present, otherwise their own active plan).
 type PlannerService struct {
 	WeeklyPlans       *db.WeeklyPlans
 	NutritionistPlans *db.NutritionistPlans
@@ -32,9 +32,9 @@ type PlannerService struct {
 	Coach             *db.CoachRepository
 }
 
-// EffectivePlanFull risolve il piano nutrizionista effettivo dell'utente:
-// il piano assegnato dal coach se presente, altrimenti il piano attivo
-// dell'utente (creato se mancante).
+// EffectivePlanFull resolves the user's effective nutrition plan: the plan
+// assigned by the coach when present, otherwise the user's active plan
+// (created when missing).
 func (s *PlannerService) EffectivePlanFull(ctx context.Context, userID int64) (*domain.NutritionistPlanFull, error) {
 	if s.Coach != nil {
 		assignment, err := s.Coach.GetAssignment(ctx, userID)
@@ -48,10 +48,10 @@ func (s *PlannerService) EffectivePlanFull(ctx context.Context, userID int64) (*
 	return s.NutritionistPlans.LoadPlanFull(ctx, userID)
 }
 
-// GenerateWeek riempie la settimana weekStart con pasti generati dal piano
-// nutrizionista, avvicinandosi ai target macro giornalieri. Rifiuta se la
-// settimana ha gia' pasti o se mancano pool/target. Ogni tipo pasto del piano
-// nutrizionista diventa uno slot replicato su tutti e 7 i giorni.
+// GenerateWeek fills the week weekStart with meals generated from the
+// nutrition plan, approaching the daily macro targets. It refuses when the
+// week already has meals or the pool/targets are missing. Every meal type of
+// the nutrition plan becomes a slot repeated on all 7 days.
 func (s *PlannerService) GenerateWeek(ctx context.Context, userID int64, weekStart time.Time, target planner.DayTarget) error {
 	if target.Kcal <= 0 {
 		return ErrNoTarget
@@ -73,22 +73,22 @@ func (s *PlannerService) GenerateWeek(ctx context.Context, userID int64, weekSta
 		return err
 	}
 
-	// Macro per-porzione delle ricette referenziate: LoadPlanFull non carica
-	// gli ingredienti delle ricette, quindi li risolviamo qui una volta sola.
+	// Per-serving macros of the referenced recipes: LoadPlanFull does not load
+	// the recipes' ingredients, so we resolve them here once.
 	recipePerServing, err := s.recipePerServing(ctx, userID, full)
 	if err != nil {
 		return err
 	}
 
-	// Costruisce gli slot (un tipo pasto = uno slot) e indicizza gli item per
-	// variante per poterli replicare a DB dopo la selezione.
+	// Build the slots (one meal type = one slot) and index the items by
+	// variation so they can be copied to the DB after the selection.
 	var slots []planner.Slot
 	itemsByVariation := make(map[int64][]domain.NutritionistItem)
 	for _, mt := range full.MealTypes {
 		var vars []planner.Variation
 		for _, v := range mt.Variations {
 			if len(v.Items) == 0 {
-				continue // varianti vuote non producono pasti
+				continue // empty variations produce no meals
 			}
 			itemsByVariation[v.ID] = v.Items
 			vars = append(vars, planner.Variation{
@@ -105,14 +105,14 @@ func (s *PlannerService) GenerateWeek(ctx context.Context, userID int64, weekSta
 		return ErrNoNutritionistPool
 	}
 
-	// Gli stessi slot valgono per tutti e 7 i giorni della settimana.
+	// The same slots apply to all 7 days of the week.
 	daySlots := make([][]planner.Slot, 7)
 	for d := range daySlots {
 		daySlots[d] = slots
 	}
 	days := planner.Generate(daySlots, target, weekStart.Unix())
 
-	// Traduce le selezioni in pasti + voci da inserire.
+	// Turn the selections into meals + items to insert.
 	var meals []db.GeneratedMeal
 	for _, day := range days {
 		for sortOrder, sel := range day.Selections {
@@ -136,16 +136,16 @@ func (s *PlannerService) GenerateWeek(ctx context.Context, userID int64, weekSta
 	if err := s.WeeklyPlans.CreateMeals(ctx, plan.ID, userID, meals); err != nil {
 		return err
 	}
-	// Freeze storico: registra quale piano nutrizionista ha generato la settimana.
+	// Historical freeze: record which nutrition plan generated the week.
 	if err := s.WeeklyPlans.SetSourcePlan(ctx, plan.ID, full.ID); err != nil {
 		return err
 	}
 	return nil
 }
 
-// recipePerServing risolve, per ogni ricetta referenziata nel piano, i macro
-// di una singola porzione. Una ricetta non accessibile contribuisce 0 (non
-// blocca la generazione).
+// recipePerServing resolves, for every recipe referenced in the plan, the
+// macros of a single serving. A recipe that cannot be accessed counts 0 (it
+// does not block the generation).
 func (s *PlannerService) recipePerServing(ctx context.Context, userID int64, full *domain.NutritionistPlanFull) (map[int64]macros.Macros, error) {
 	out := make(map[int64]macros.Macros)
 	for _, mt := range full.MealTypes {

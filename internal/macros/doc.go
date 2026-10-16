@@ -1,4 +1,4 @@
-// Package macros calcola i macronutrienti (Kcal, Proteine, Carboidrati,
-// Grassi) aggregando ingredienti, ricette, pasti, giorni e settimane.
-// E' puro: nessuna dipendenza su DB o rete, quindi interamente testabile.
+// Package macros computes the macronutrients (kcal, protein, carbs, fat) by
+// aggregating ingredients, recipes, meals, days and weeks.
+// It is pure: no dependency on the DB or the network, so fully testable.
 package macros

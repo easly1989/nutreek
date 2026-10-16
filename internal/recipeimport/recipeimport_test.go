@@ -37,7 +37,7 @@ func TestParseSingleRecipeObject(t *testing.T) {
 }
 
 func TestParseGraphArray(t *testing.T) {
-	// Molti siti (WordPress + Yoast) usano @graph con piu' nodi.
+	// Many sites (WordPress + Yoast) use @graph with several nodes.
 	html := `<script type="application/ld+json">
 	{"@context":"https://schema.org","@graph":[
 		{"@type":"WebSite","name":"Blog"},
@@ -75,14 +75,14 @@ func TestParseTopLevelArray(t *testing.T) {
 	if rec.Servings != 2 {
 		t.Errorf("servings: %d", rec.Servings)
 	}
-	// recipeIngredient stringa singola -> una riga.
+	// A single-string recipeIngredient -> one line.
 	if len(rec.Ingredients) != 1 || rec.Ingredients[0] != "320 g riso" {
 		t.Errorf("ingredients: %v", rec.Ingredients)
 	}
 }
 
 func TestParseHTMLEscapedJSON(t *testing.T) {
-	// Alcuni siti escapano le virgolette nel blocco script.
+	// Some sites escape the quotes in the script block.
 	html := `<script type='application/ld+json'>
 	{&quot;@type&quot;:&quot;Recipe&quot;,&quot;name&quot;:&quot;Insalata&quot;,&quot;recipeIngredient&quot;:[&quot;lattuga&quot;]}
 	</script>`
@@ -100,13 +100,13 @@ func TestParseNoRecipe(t *testing.T) {
 	html := `<html><body><p>nessun markup</p></body></html>`
 	_, err := Parse([]byte(html))
 	if !errors.Is(err, ErrNoRecipe) {
-		t.Fatalf("atteso ErrNoRecipe, got %v", err)
+		t.Fatalf("want ErrNoRecipe, got %v", err)
 	}
 
-	// JSON-LD presente ma non e' una ricetta.
+	// JSON-LD present but it is not a recipe.
 	html2 := `<script type="application/ld+json">{"@type":"Article","name":"x"}</script>`
 	if _, err := Parse([]byte(html2)); !errors.Is(err, ErrNoRecipe) {
-		t.Fatalf("atteso ErrNoRecipe per Article, got %v", err)
+		t.Fatalf("want ErrNoRecipe for Article, got %v", err)
 	}
 }
 
@@ -115,18 +115,18 @@ func TestValidatePublicURLScheme(t *testing.T) {
 		f := NewFetcher()
 		_, err := f.FetchAndParse(testCtx(), raw)
 		if !errors.Is(err, ErrInvalidURL) {
-			t.Errorf("%q: atteso ErrInvalidURL, got %v", raw, err)
+			t.Errorf("%q: want ErrInvalidURL, got %v", raw, err)
 		}
 	}
 }
 
 func TestValidatePublicURLBlocksLoopback(t *testing.T) {
 	f := NewFetcher()
-	// 127.0.0.1 e localhost devono essere bloccati (SSRF).
+	// 127.0.0.1 and localhost must be blocked (SSRF).
 	for _, raw := range []string{"http://127.0.0.1/admin", "http://localhost:8080/"} {
 		_, err := f.FetchAndParse(testCtx(), raw)
 		if !errors.Is(err, ErrInvalidURL) {
-			t.Errorf("%q: atteso ErrInvalidURL, got %v", raw, err)
+			t.Errorf("%q: want ErrInvalidURL, got %v", raw, err)
 		}
 	}
 }

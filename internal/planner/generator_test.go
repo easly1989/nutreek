@@ -12,8 +12,8 @@ func mk(id int64, kcal, prot, carbs, fat float64) Variation {
 	return Variation{ID: id, Macros: macros.Macros{Kcal: kcal, Protein: prot, Carbs: carbs, Fat: fat}}
 }
 
-// poolThreeSlots e' un pool sintetico con 3 slot, ognuno con varianti che
-// spaziano sopra e sotto la quota ideale (~667 kcal per slot su 2000).
+// poolThreeSlots is a synthetic pool with 3 slots, each with variations that
+// range above and below the ideal share (~667 kcal per slot out of 2000).
 func poolThreeSlots() []Slot {
 	return []Slot{
 		{Name: "Colazione", Variations: []Variation{
@@ -47,13 +47,13 @@ func TestGenerateDayHitsTargetWithinTolerance(t *testing.T) {
 	day := GenerateDay(poolThreeSlots(), target, 42)
 
 	if len(day.Selections) != 3 {
-		t.Fatalf("attese 3 selezioni, ottenute %d", len(day.Selections))
+		t.Fatalf("want 3 selections, got %d", len(day.Selections))
 	}
 	total := dayTotal(day)
 	// Tolleranza realistica: +/-20% sulle kcal.
 	lo, hi := target.Kcal*0.8, target.Kcal*1.2
 	if total.Kcal < lo || total.Kcal > hi {
-		t.Errorf("kcal totali %.0f fuori da [%.0f, %.0f]", total.Kcal, lo, hi)
+		t.Errorf("total kcal %.0f outside [%.0f, %.0f]", total.Kcal, lo, hi)
 	}
 }
 
@@ -65,27 +65,27 @@ func TestGenerateDeterministic(t *testing.T) {
 	a := Generate(daySlots, target, 123456)
 	b := Generate(daySlots, target, 123456)
 	if !reflect.DeepEqual(a, b) {
-		t.Fatal("stesso seed deve produrre lo stesso piano")
+		t.Fatal("the same seed must produce the same plan")
 	}
 	if len(a) != 7 {
-		t.Fatalf("attesi 7 giorni, ottenuti %d", len(a))
+		t.Fatalf("want 7 days, got %d", len(a))
 	}
 	for i, d := range a {
 		if d.DayOfWeek != i {
-			t.Errorf("giorno %d: DayOfWeek=%d", i, d.DayOfWeek)
+			t.Errorf("day %d: DayOfWeek=%d", i, d.DayOfWeek)
 		}
 	}
 }
 
 func TestGenerateDaySingleVariationForced(t *testing.T) {
-	// Con una sola variante per slot, la selezione e' obbligata.
+	// With a single variation per slot, the selection is forced.
 	slots := []Slot{
 		{Name: "A", Variations: []Variation{mk(1, 500, 30, 50, 15)}},
 		{Name: "B", Variations: []Variation{mk(2, 700, 50, 70, 20)}},
 	}
 	day := GenerateDay(slots, DayTarget{Kcal: 1200, Protein: 80, Carbs: 120, Fat: 35}, 7)
 	if len(day.Selections) != 2 {
-		t.Fatalf("attese 2 selezioni, ottenute %d", len(day.Selections))
+		t.Fatalf("want 2 selections, got %d", len(day.Selections))
 	}
 	if day.Selections[0].VariationID != 1 || day.Selections[1].VariationID != 2 {
 		t.Errorf("selezioni inattese: %+v", day.Selections)
@@ -99,27 +99,27 @@ func TestGenerateDaySkipsEmptySlots(t *testing.T) {
 	}
 	day := GenerateDay(slots, DayTarget{Kcal: 600, Protein: 40, Carbs: 60, Fat: 18}, 1)
 	if len(day.Selections) != 1 {
-		t.Fatalf("atteso 1 slot riempito, ottenuti %d", len(day.Selections))
+		t.Fatalf("want 1 filled slot, got %d", len(day.Selections))
 	}
 	if day.Selections[0].SlotName != "Pieno" {
-		t.Errorf("slot atteso 'Pieno', ottenuto %q", day.Selections[0].SlotName)
+		t.Errorf("want slot 'Pieno', got %q", day.Selections[0].SlotName)
 	}
 }
 
 func TestGenerateDayKcalOnlyTarget(t *testing.T) {
-	// Solo kcal impostate (protein/carbs/fat = 0): la selezione deve comunque
-	// avvicinarsi alle kcal target senza dividere per zero.
+	// Only kcal set (protein/carbs/fat = 0): the selection must still get
+	// close to the target kcal without dividing by zero.
 	target := DayTarget{Kcal: 1400}
 	day := GenerateDay(poolThreeSlots(), target, 99)
 	total := dayTotal(day)
 	if math.Abs(total.Kcal-target.Kcal) > target.Kcal*0.25 {
-		t.Errorf("kcal totali %.0f troppo lontane dal target %.0f", total.Kcal, target.Kcal)
+		t.Errorf("total kcal %.0f too far from the target %.0f", total.Kcal, target.Kcal)
 	}
 }
 
 func TestGenerateEmptyDaySlots(t *testing.T) {
 	day := GenerateDay(nil, DayTarget{Kcal: 2000}, 1)
 	if len(day.Selections) != 0 {
-		t.Errorf("nessuno slot => nessuna selezione, ottenute %d", len(day.Selections))
+		t.Errorf("no slots => no selections, got %d", len(day.Selections))
 	}
 }

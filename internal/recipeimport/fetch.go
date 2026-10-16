@@ -12,27 +12,27 @@ import (
 	"time"
 )
 
-// DefaultTimeout limita il fetch della pagina a 10s (l'utente attende inline).
+// DefaultTimeout limits the page fetch to 10s (the user waits inline).
 const DefaultTimeout = 10 * time.Second
 
-// maxBodyBytes limita la lettura del body a 5 MB: piu' che sufficiente per
-// qualsiasi pagina di ricetta, protegge da risposte gigantesche.
+// maxBodyBytes limits the body read to 5 MB: more than enough for any recipe
+// page, and it protects against huge responses.
 const maxBodyBytes = 5 << 20
 
-// userAgent identifica Nutreek; alcuni siti rifiutano richieste senza UA.
+// userAgent identifies Nutreek; some sites reject requests without a UA.
 const userAgent = "NutreekRecipeImporter/1.0 (+https://github.com/easly1989/nutreek)"
 
-// ErrInvalidURL indica uno schema non http/https o un host non pubblico.
+// ErrInvalidURL means a scheme other than http/https or a non-public host.
 var ErrInvalidURL = errors.New("URL non valido: usa http(s) verso un sito pubblico")
 
-// Fetcher scarica e interpreta una ricetta da una URL. Espone Parse via
-// FetchAndParse cosi' che il chiamante non gestisca direttamente l'HTTP.
+// Fetcher downloads and parses a recipe from a URL. It exposes Parse via
+// FetchAndParse so the caller does not handle the HTTP directly.
 type Fetcher struct {
 	HTTP *http.Client
 }
 
-// NewFetcher costruisce un Fetcher con timeout sano e protezione SSRF:
-// blocca i redirect verso host privati/loopback.
+// NewFetcher builds a Fetcher with a sane timeout and SSRF protection: it
+// blocks redirects to private/loopback hosts.
 func NewFetcher() *Fetcher {
 	return &Fetcher{
 		HTTP: &http.Client{
@@ -47,7 +47,7 @@ func NewFetcher() *Fetcher {
 	}
 }
 
-// FetchAndParse scarica la pagina e ne estrae la ricetta strutturata.
+// FetchAndParse downloads the page and extracts the structured recipe.
 func (f *Fetcher) FetchAndParse(ctx context.Context, rawURL string) (*ParsedRecipe, error) {
 	u, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil {
@@ -81,10 +81,10 @@ func (f *Fetcher) FetchAndParse(ctx context.Context, rawURL string) (*ParsedReci
 	return Parse(body)
 }
 
-// validatePublicURL accetta solo http/https verso host che non risolvono a
-// indirizzi privati/loopback/link-local. Difesa SSRF: anche se l'app e'
-// self-hosted single-user, un URL pubblico potrebbe redirigere verso la rete
-// interna dell'host.
+// validatePublicURL accepts only http/https to hosts that do not resolve to
+// private/loopback/link-local addresses. An SSRF defense: even though the app
+// is self-hosted and single-user, a public URL could redirect to the host's
+// internal network.
 func validatePublicURL(u *url.URL) error {
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return ErrInvalidURL
@@ -93,7 +93,7 @@ func validatePublicURL(u *url.URL) error {
 	if host == "" {
 		return ErrInvalidURL
 	}
-	// Risolvi e controlla tutti gli IP associati all'host.
+	// Resolve and check every IP associated with the host.
 	ips, err := net.LookupIP(host)
 	if err != nil {
 		return fmt.Errorf("host non risolvibile: %w", err)

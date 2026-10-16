@@ -1,3 +1,3 @@
-// Package auth raccoglie utilita per hashing password, gestione sessioni
-// e helper di autenticazione riusati dagli handler.
+// Package auth collects the utilities for password hashing, session handling
+// and authentication helpers reused by the handlers.
 package auth

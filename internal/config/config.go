@@ -1,4 +1,4 @@
-// Package config carica la configurazione runtime da variabili d'ambiente.
+// Package config loads the runtime configuration from environment variables.
 package config
 
 import (
@@ -39,17 +39,17 @@ type Config struct {
 	BackupInterval time.Duration
 	BackupKeep     int
 
-	// PremiumEnabled attiva il gating premium. Se false HasFeature() restituisce
-	// sempre true e le feature premium sono accessibili a tutti.
+	// PremiumEnabled turns premium gating on. When false HasFeature() always
+	// returns true and the premium features are available to everyone.
 	PremiumEnabled bool
 }
 
-// Load legge la configurazione dalle env var. Valida i vincoli di prod
-// (p.es. SessionKey obbligatoria) e genera una chiave ephemeral in dev.
+// Load reads the configuration from the env vars. It validates the prod
+// constraints (e.g. a required SessionKey) and generates an ephemeral key in dev.
 func Load() (*Config, error) {
 	env := Env(getenv("NUTREEK_ENV", string(EnvDev)))
 	if env != EnvDev && env != EnvProd {
-		return nil, fmt.Errorf("NUTREEK_ENV: valore non valido %q (attesi: dev, prod)", env)
+		return nil, fmt.Errorf("NUTREEK_ENV: invalid value %q (want: dev, prod)", env)
 	}
 
 	reconcileInterval, err := time.ParseDuration(getenv("NUTREEK_RECONCILE_INTERVAL", "24h"))
@@ -123,15 +123,15 @@ func Load() (*Config, error) {
 		}
 		cfg.SessionKey = key
 	case env == EnvProd:
-		return nil, errors.New("NUTREEK_SESSION_KEY e' obbligatoria in prod (es. openssl rand -hex 32)")
+		return nil, errors.New("NUTREEK_SESSION_KEY is required in prod (e.g. openssl rand -hex 32)")
 	default:
-		// dev fallback: chiave ephemeral rigenerata a ogni avvio
+		// dev fallback: an ephemeral key regenerated on every start
 		key := make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {
 			return nil, fmt.Errorf("generazione session key ephemeral: %w", err)
 		}
 		cfg.SessionKey = key
-		slog.Warn("NUTREEK_SESSION_KEY non impostata: uso chiave ephemeral (sessioni non sopravvivono al restart)")
+		slog.Warn("NUTREEK_SESSION_KEY not set: using an ephemeral key (sessions do not survive a restart)")
 	}
 
 	return cfg, nil

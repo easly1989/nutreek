@@ -8,17 +8,17 @@ import (
 func TestParseServingG(t *testing.T) {
 	cases := []struct {
 		name     string
-		quantity string // JSON grezzo di serving_quantity ("" = assente)
+		quantity string // raw JSON of serving_quantity ("" = missing)
 		unit     string
 		size     string
 		want     float64 // 0 = nil
 	}{
 		{"numero in grammi", `30`, "g", "30 g", 30},
-		{"numero senza unita'", `40`, "", "", 40},
+		{"number without a unit", `40`, "", "", 40},
 		{"stringa", `"25.5"`, "g", "", 25.5},
 		{"millilitri", `250`, "ml", "", 250},
 		{"unita' diversa, ripiega su serving_size", `1`, "piece", "1 biscotto (12,5 g)", 12.5},
-		{"solo serving_size", ``, "", "30g", 30},
+		{"serving_size only", ``, "", "30g", 30},
 		{"null", `null`, "", "", 0},
 		{"zero", `0`, "g", "", 0},
 		{"assurda", `5000`, "g", "", 0},
@@ -30,15 +30,15 @@ func TestParseServingG(t *testing.T) {
 			got := ParseServingG(json.RawMessage(c.quantity), c.unit, c.size)
 			switch {
 			case c.want == 0 && got != nil:
-				t.Fatalf("atteso nil, avuto %v", *got)
+				t.Fatalf("want nil, got %v", *got)
 			case c.want != 0 && (got == nil || *got != c.want):
-				t.Fatalf("atteso %v, avuto %v", c.want, got)
+				t.Fatalf("want %v, got %v", c.want, got)
 			}
 		})
 	}
 }
 
-// La risposta dell'API per codice porta la porzione nel prodotto.
+// The API's response by code carries the serving in the product.
 func TestToProductServing(t *testing.T) {
 	var resp productResponse
 	body := `{"status":1,"code":"8012345678907","product":{"code":"8012345678907","product_name":"Fiocchi d'avena","quantity":"500 g",` +
@@ -49,9 +49,9 @@ func TestToProductServing(t *testing.T) {
 	}
 	p := resp.Product.toProduct()
 	if p.ServingG == nil || *p.ServingG != 40 {
-		t.Fatalf("ServingG = %v, atteso 40", p.ServingG)
+		t.Fatalf("ServingG = %v, want 40", p.ServingG)
 	}
 	if p.UnitWeightG == nil || *p.UnitWeightG != 500 {
-		t.Fatalf("UnitWeightG = %v, atteso 500 (la confezione)", p.UnitWeightG)
+		t.Fatalf("UnitWeightG = %v, want 500 (the package)", p.UnitWeightG)
 	}
 }

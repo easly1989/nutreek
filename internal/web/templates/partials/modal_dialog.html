@@ -1,10 +1,10 @@
 {{define "modal_dialog"}}
 {{- /*
-  modal_dialog.html — wrapper generico per `<dialog>` HTML5.
-  view-model: modalDialogData { Title string, Inner string, InnerData any }
-  Inner = nome del partial da includere ("quick_ingredient_form" etc.).
-  Modal.js intercetta l'inserimento in #modal-host e chiama showModal().
-  Finestra centrata su desktop, foglio dal basso sul telefono (.dialog-panel).
+  modal_dialog.html — a generic wrapper for the HTML5 `<dialog>`.
+  view model: modalDialogData { Title string, Inner string, InnerData any }
+  Inner = name of the partial to include ("quick_ingredient_form" etc.).
+  Modal.js catches the insertion into #modal-host and calls showModal().
+  A centered dialog on desktop, a bottom sheet on the phone (.dialog-panel).
 */ -}}
 <dialog data-modal class="dialog-panel" aria-label="{{.Title}}">
   <div class="flex items-center gap-3 pl-5 pr-4 pt-4 pb-3">

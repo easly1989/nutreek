@@ -1,5 +1,5 @@
-# Setup dev su Windows senza GNU Make: scarica la CLI standalone di
-# Tailwind v3 in ./bin/tailwindcss.exe. Idempotente.
+# Windows dev setup without GNU Make: downloads Tailwind v3's standalone CLI
+# into ./bin/tailwindcss.exe. Idempotent.
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $bin = Join-Path $root "bin"
@@ -10,11 +10,11 @@ $twUrl = "https://github.com/tailwindlabs/tailwindcss/releases/download/$twVersi
 New-Item -ItemType Directory -Force -Path $bin | Out-Null
 
 if (Test-Path $twExe) {
-    Write-Host "tailwindcss.exe gia' presente ($([math]::Round((Get-Item $twExe).Length / 1MB, 1)) MB). Skip."
+    Write-Host "tailwindcss.exe already there ($([math]::Round((Get-Item $twExe).Length / 1MB, 1)) MB). Skip."
 } else {
-    Write-Host "Scarico Tailwind $twVersion da $twUrl..."
+    Write-Host "Downloading Tailwind $twVersion from $twUrl..."
     Invoke-WebRequest -Uri $twUrl -OutFile $twExe -UseBasicParsing
     Write-Host "OK: $twExe"
 }
 
-Write-Host "Setup completato."
+Write-Host "Setup done."

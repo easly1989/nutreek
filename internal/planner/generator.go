@@ -1,10 +1,10 @@
-// Package planner genera automaticamente un piano settimanale selezionando,
-// per ogni slot pasto di ogni giorno, una variante dal pool del piano
-// nutrizionista che avvicini il totale giornaliero ai target macro.
+// Package planner generates a weekly plan automatically by picking, for
+// every meal slot of every day, a variation from the nutrition plan's pool
+// that brings the daily total close to the macro targets.
 //
-// L'algoritmo e' greedy e deterministico: a parita' di seed (derivato dalla
-// data di inizio settimana) produce sempre lo stesso piano. Modulo puro:
-// dipende solo da internal/macros, completamente testabile senza DB.
+// The algorithm is greedy and deterministic: with the same seed (derived
+// from the week's start date) it always produces the same plan. A pure
+// module: it depends only on internal/macros, fully testable without a DB.
 package planner
 
 import (
@@ -14,22 +14,22 @@ import (
 	"github.com/amon2126/nutreek/internal/macros"
 )
 
-// Variation e' una variante candidata per uno slot, con i suoi macro totali
-// gia' calcolati dal chiamante.
+// Variation is a candidate variation for a slot, with its total macros
+// already computed by the caller.
 type Variation struct {
 	ID     int64
 	Name   string
 	Macros macros.Macros
 }
 
-// Slot e' un pasto da riempire (es. "Colazione") con le varianti disponibili.
+// Slot is a meal to fill (e.g. "Colazione") with the available variations.
 type Slot struct {
 	Name       string
 	Variations []Variation
 }
 
-// DayTarget sono i target macro giornalieri. Solo i campi > 0 contribuiscono
-// al punteggio di selezione (un utente puo' aver impostato solo le kcal).
+// DayTarget is the daily macro targets. Only the fields > 0 contribute to the
+// selection score (a user may have set only the kcal).
 type DayTarget struct {
 	Kcal    float64
 	Protein float64
@@ -37,22 +37,22 @@ type DayTarget struct {
 	Fat     float64
 }
 
-// VariationSelection e' la variante scelta per uno slot.
+// VariationSelection is the variation picked for a slot.
 type VariationSelection struct {
 	SlotName    string
 	VariationID int64
 	Macros      macros.Macros
 }
 
-// GeneratedDay raccoglie le selezioni di un giorno (una per slot riempito).
+// GeneratedDay collects the selections of a day (one per filled slot).
 type GeneratedDay struct {
 	DayOfWeek  int
 	Selections []VariationSelection
 }
 
-// Generate genera un piano per piu' giorni. daySlots[d] sono gli slot
-// applicabili al giorno d (indice 0 = lunedi'). Il seed rende il risultato
-// deterministico; ogni giorno usa seed+d cosi' giorni diversi possono variare.
+// Generate generates a plan for several days. daySlots[d] are the slots that
+// apply to day d (index 0 = Monday). The seed makes the result deterministic;
+// every day uses seed+d so different days can vary.
 func Generate(daySlots [][]Slot, target DayTarget, seed int64) []GeneratedDay {
 	out := make([]GeneratedDay, len(daySlots))
 	for d, slots := range daySlots {
@@ -63,15 +63,15 @@ func Generate(daySlots [][]Slot, target DayTarget, seed int64) []GeneratedDay {
 	return out
 }
 
-// GenerateDay seleziona una variante per ogni slot avvicinandosi al target
-// giornaliero. Strategia greedy: ad ogni slot calcola la "quota ideale"
-// (target residuo / slot rimanenti) e sceglie la variante con lo scarto
-// quadratico normalizzato minore rispetto a quella quota. L'ordine di
-// valutazione e' mescolato (rng da seed) per dare varieta' a parita' di scarto.
+// GenerateDay picks a variation for every slot, approaching the daily target.
+// Greedy strategy: for every slot it computes the "ideal share" (remaining
+// target / remaining slots) and picks the variation with the smallest
+// normalized squared deviation from that share. The evaluation order is
+// shuffled (an rng from the seed) to give variety among equal deviations.
 func GenerateDay(slots []Slot, target DayTarget, seed int64) GeneratedDay {
 	rng := rand.New(rand.NewSource(seed))
 
-	// Conta gli slot utilizzabili (con almeno una variante).
+	// Count the usable slots (with at least one variation).
 	slotsLeft := 0
 	for _, s := range slots {
 		if len(s.Variations) > 0 {
@@ -116,9 +116,9 @@ func GenerateDay(slots []Slot, target DayTarget, seed int64) GeneratedDay {
 	return GeneratedDay{Selections: selections}
 }
 
-// score misura quanto m si discosta dalla quota ideale share, normalizzando
-// per il target giornaliero cosi' i 4 macro sono comparabili. Le kcal pesano
-// di piu' (x4) perche' sono il vincolo primario.
+// score measures how far m is from the ideal share, normalizing by the daily
+// target so the 4 macros are comparable. The kcal weigh more (x4) because
+// they are the primary constraint.
 func score(m macros.Macros, share, target DayTarget) float64 {
 	var s float64
 	if target.Kcal > 0 {

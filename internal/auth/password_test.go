@@ -12,22 +12,22 @@ func TestHashAndVerify(t *testing.T) {
 		t.Fatalf("HashPassword: %v", err)
 	}
 	if hash == "" {
-		t.Fatal("hash vuoto")
+		t.Fatal("empty hash")
 	}
 	if err := VerifyPassword(hash, "correct horse battery staple"); err != nil {
 		t.Fatalf("VerifyPassword (match): %v", err)
 	}
 	err = VerifyPassword(hash, "wrong password")
 	if !errors.Is(err, ErrInvalidCredentials) {
-		t.Fatalf("atteso ErrInvalidCredentials, got %v", err)
+		t.Fatalf("want ErrInvalidCredentials, got %v", err)
 	}
 }
 
 func TestHashPasswordValidation(t *testing.T) {
 	if _, err := HashPassword("short"); err == nil {
-		t.Error("atteso errore su password troppo corta")
+		t.Error("want an error on a too short password")
 	}
 	if _, err := HashPassword(strings.Repeat("a", 73)); err == nil {
-		t.Error("atteso errore su password troppo lunga")
+		t.Error("want an error on a too long password")
 	}
 }

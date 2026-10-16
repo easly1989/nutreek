@@ -1,14 +1,14 @@
-// modal.js — gestisce i <dialog> caricati via HTMX negli host [data-modal-host]
-// (#modal-host e, per una finestra aperta da un'altra, #modal-host-2).
-// Convenzioni:
-//   - Il server inserisce <dialog data-modal>...</dialog> in un host. Lo
-//     script chiama showModal() automaticamente.
-//   - Bottoni con [data-modal-close] chiudono il loro dialog.
-//   - Form con [data-close-dialog] chiudono il loro dialog quando la
-//     richiesta HTMX va a buon fine (es. «Aggiungi» nel picker).
-//   - Eventi `ingredient-created` e `recipe-created` (dispatched via
-//     HX-Trigger header del server) chiudono il dialog che li ha generati e
-//     dispatchano un CustomEvent globale che i picker possono intercettare.
+// modal.js — handles the <dialog>s loaded via HTMX into the [data-modal-host]
+// hosts (#modal-host and, for a dialog opened from another, #modal-host-2).
+// Conventions:
+//   - The server inserts <dialog data-modal>...</dialog> into a host. The
+//     script calls showModal() automatically.
+//   - Buttons with [data-modal-close] close their dialog.
+//   - Forms with [data-close-dialog] close their dialog when the HTMX
+//     request succeeds (e.g. «Aggiungi» in the picker).
+//   - The `ingredient-created` and `recipe-created` events (dispatched via
+//     the server's HX-Trigger header) close the dialog that produced them and
+//     dispatch a global CustomEvent the pickers can listen for.
 (function () {
   "use strict";
 
@@ -19,7 +19,7 @@
     });
   }
 
-  // Chiude il dialog e svuota il suo host.
+  // Close the dialog and empty its host.
   function close(d) {
     if (!d) return;
     try { d.close(); } catch (e) { d.removeAttribute("open"); }
@@ -34,7 +34,7 @@
     if (host) openInserted(host);
   });
 
-  // Click su bottoni di chiusura interni al dialog
+  // Clicks on close buttons inside the dialog
   document.body.addEventListener("click", function (evt) {
     var btn = evt.target.closest && evt.target.closest("[data-modal-close]");
     if (btn) {
@@ -43,16 +43,16 @@
     }
   });
 
-  // Click sul backdrop del <dialog> chiude. Quando il browser propaga un
-  // click sul ::backdrop, il target dell'evento e' il <dialog> stesso (non
-  // un suo child). Sui programmatic .click() il target e' l'elemento clicked
-  // direttamente, quindi questa condizione non li intercetta per sbaglio.
+  // A click on the <dialog>'s backdrop closes it. When the browser propagates
+  // a click on ::backdrop, the event's target is the <dialog> itself (not one
+  // of its children). On programmatic .click() the target is the element
+  // clicked directly, so this condition does not catch those by mistake.
   document.body.addEventListener("click", function (evt) {
     if (evt.target.matches && evt.target.matches("dialog[data-modal][open]")) close(evt.target);
   });
 
-  // ESC: il <dialog> nativo gia' lo chiude col dispatch di "cancel"+"close",
-  // ripuliamo l'host quando il dialog e' chiuso.
+  // ESC: the native <dialog> already closes by dispatching "cancel"+"close";
+  // we clean up the host when the dialog is closed.
   document.body.addEventListener("close", function (evt) {
     var d = evt.target;
     if (d.matches && d.matches("dialog[data-modal]")) {
@@ -61,15 +61,15 @@
     }
   }, true);
 
-  // Form [data-close-dialog]: a richiesta riuscita il dialog si chiude.
+  // Form [data-close-dialog]: when the request succeeds the dialog closes.
   document.body.addEventListener("htmx:afterRequest", function (evt) {
     var elt = evt.detail && evt.detail.elt;
     if (!evt.detail.successful || !elt || !elt.matches || !elt.matches("[data-close-dialog]")) return;
     close(elt.closest("dialog[data-modal]"));
   });
 
-  // Eventi custom emessi via HX-Trigger del server: chiudi e ridispatcha
-  // su window cosi' i picker possono ricaricare i risultati.
+  // Custom events emitted via the server's HX-Trigger: close and re-dispatch
+  // on window so the pickers can reload their results.
   ["ingredient-created", "recipe-created"].forEach(function (ev) {
     document.body.addEventListener(ev, function (evt) {
       close(evt.target.closest && evt.target.closest("dialog[data-modal]"));

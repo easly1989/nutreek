@@ -1,10 +1,10 @@
 {{define "recipe_picker_results"}}
 {{- /*
-  recipe_picker_results.html — Picker ricette (pasto, sgarro, variante del
-  piano nutrizionale): ricette visibili all'utente filtrate per query. Come
-  picker_results, ogni riga e' un <details> che si apre sul form porzioni
-  con l'anteprima kcal (picker.js, data-kcal-each = kcal per porzione).
-  View-model: Recipes, Query, Kcal (kcal per porzione, per id), Cheat,
+  recipe_picker_results.html — recipe picker (meal, cheat, nutrition plan
+  variation): the recipes visible to the user filtered by query. Like
+  picker_results, every row is a <details> that opens on the servings form
+  with the kcal preview (picker.js, data-kcal-each = kcal per serving).
+  View model: Recipes, Query, Kcal (kcal per serving, by id), Cheat,
   MealID, WeekStart, VariationID.
 */ -}}
 {{if .Recipes}}
