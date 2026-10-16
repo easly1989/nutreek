@@ -147,7 +147,7 @@ func buildFTSMatch(q string) string {
 }
 
 // GetByBarcode prende il singolo prodotto da OFF live. Errore ErrNotFound
-// se OFF risponde status:0. Endpoint puntuale, veloce, affidabile —
+// se OFF risponde 404 o status:0. Endpoint puntuale, veloce, affidabile —
 // usato solo on-import al primo utilizzo di un prodotto nuovo.
 func (c *Client) GetByBarcode(ctx context.Context, code string) (*Product, error) {
 	code = strings.TrimSpace(code)
@@ -193,6 +193,10 @@ func (c *Client) do(ctx context.Context, endpoint string, target any) error {
 		return fmt.Errorf("call OFF: %w", err)
 	}
 	defer res.Body.Close()
+	// L'API v2 risponde 404 (status:0 nel corpo) a un codice che non conosce.
+	if res.StatusCode == http.StatusNotFound {
+		return ErrNotFound
+	}
 	if res.StatusCode/100 != 2 {
 		body, _ := io.ReadAll(io.LimitReader(res.Body, 512))
 		return fmt.Errorf("OFF status %d: %s", res.StatusCode, strings.TrimSpace(string(body)))

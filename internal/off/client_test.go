@@ -186,3 +186,20 @@ func TestClientGetByBarcodeNotFound(t *testing.T) {
 		t.Fatalf("atteso ErrNotFound, got %v", err)
 	}
 }
+
+// L'API v2 oggi risponde 404 (con status:0 nel corpo) a un codice che non
+// conosce: e' «non trovato», non un guasto di OFF.
+func TestClientGetByBarcodeNotFound404(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"code":"9999","status":0,"status_verbose":"product not found"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c := NewClient(nil, srv.URL, nil)
+	_, err := c.GetByBarcode(context.Background(), "9999")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("atteso ErrNotFound, got %v", err)
+	}
+}
