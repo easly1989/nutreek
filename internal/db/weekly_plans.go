@@ -538,6 +538,11 @@ func (r *WeeklyPlans) AddItem(
 	if quantity <= 0 {
 		return 0, fmt.Errorf("quantita' deve essere > 0")
 	}
+	if recipeID != nil {
+		if err := recipeVisibleTo(ctx, r.db, *recipeID, userID); err != nil {
+			return 0, err
+		}
+	}
 	var nextOrder int
 	if err := r.db.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(sort_order)+1, 0) FROM meal_items WHERE meal_id = ?`,

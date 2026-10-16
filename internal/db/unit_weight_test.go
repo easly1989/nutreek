@@ -105,10 +105,10 @@ func TestNutritionistPezziPortaPesoUnitario(t *testing.T) {
 	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
 	plan, _ := np.GetOrCreateActivePlan(ctx, alice)
 	mtID, _ := np.CreateMealType(ctx, plan.ID, "Spuntino")
-	varID, _ := np.CreateVariation(ctx, mtID, nil)
+	varID, _ := np.CreateVariation(ctx, plan.ID, mtID, nil)
 	peso := 150.0
 	mela, _ := ings.CreateLocal(ctx, "Mela", nil, "g", 52, 0.3, 13.8, 0.2, &alice, &peso, nil, nil, nil, nil, nil)
-	if _, err := np.AddItem(ctx, varID, nil, &mela, 1, "pz"); err != nil {
+	if _, err := np.AddItem(ctx, plan.ID, varID, nil, &mela, 1, "pz"); err != nil {
 		t.Fatal(err)
 	}
 
