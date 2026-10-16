@@ -181,6 +181,76 @@
   }
   .tab-link.is-active { @apply text-accent; }
 
+  /* Pagine di costruzione del piano (#122). */
+  .field-lg { @apply h-[42px] text-[15px]; }
+  textarea.field { @apply h-auto py-2; }
+  select.field { @apply pr-8; }
+  /* Campo con icona a sinistra: <label class="field-ico">{{icon}}<input class="field">. */
+  .field-ico { @apply relative block; }
+  .field-ico > svg { @apply absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none; }
+  .field-ico > .field { @apply pl-[38px]; }
+  /* Campo con unita' a destra: <span class="field-unit"><input class="field"><em>g</em></span>. */
+  .field-unit { @apply relative block; }
+  .field-unit > em { @apply absolute right-3 top-1/2 -translate-y-1/2 not-italic text-[13px] text-muted pointer-events-none; }
+  .field-unit > .field { @apply pr-11; }
+  .lab { @apply flex flex-col gap-1.5 text-[12.5px] font-semibold text-muted; }
+  .filter {
+    @apply inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-surface text-[13px] font-semibold text-text whitespace-nowrap hover:bg-surface-2 transition-colors;
+  }
+  .filter .cnt { @apply font-medium text-muted; }
+  .filter.is-on, .filter:has(input:checked) { @apply bg-accent-soft border-transparent text-accent; }
+  .filter.is-on .cnt { color: inherit; opacity: .75; }
+  /* Select e checkbox dei chip sono invisibili: il focus si vede sul chip. */
+  .filter:has(:focus-visible), .segmented > label:has(:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* Segmented fatto di link o radio, oltre ai button del menu Aspetto. */
+  .segmented { @apply grid-flow-col; }
+  .segmented > a, .segmented > label {
+    @apply grid place-items-center h-[30px] px-3.5 rounded-lg text-[12.5px] font-semibold text-text cursor-pointer whitespace-nowrap;
+  }
+  .segmented > a[aria-current="page"], .segmented > label:has(input:checked) {
+    @apply bg-surface; box-shadow: 0 1px 2px rgba(0,0,0,.15);
+  }
+  .segmented > label > input { @apply sr-only; }
+  .check { @apply w-[18px] h-[18px] shrink-0 rounded-[5px] cursor-pointer; accent-color: var(--accent); }
+  .chip-soft { @apply bg-accent-soft text-accent; }
+  .chip-n { @apply bg-surface-2 text-text; }
+  .chip-warn { @apply bg-warn-bg text-warn-fg; }
+  .chip-danger { @apply bg-danger-soft text-danger; }
+  .crumb { @apply inline-flex items-center gap-1 mb-1 text-[13px] font-semibold text-muted hover:text-text; }
+  .h1 { @apply text-xl lg:text-[22px] leading-tight font-bold; }
+  .h2 { @apply text-[15px] font-bold; }
+  .thumb { @apply w-9 h-9 shrink-0 rounded-lg bg-surface-2 grid place-items-center text-muted overflow-hidden; }
+  /* Interruttore su checkbox nativa: <input type="checkbox" class="toggle">. */
+  .toggle {
+    @apply relative w-[34px] h-5 shrink-0 rounded-full bg-track cursor-pointer appearance-none transition-colors;
+  }
+  .toggle::after {
+    content: ""; @apply absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-surface transition-all;
+    box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  }
+  .toggle:checked { @apply bg-accent; }
+  .toggle:checked::after { @apply left-4; }
+  .selbar { @apply flex items-center gap-3 py-2 pr-2 pl-4 rounded-xl bg-accent-soft text-accent font-semibold; }
+
+  /* Finestra centrata su desktop, foglio dal basso sul telefono (<dialog>). */
+  .dialog-panel {
+    @apply p-0 bg-surface text-text border border-border rounded-2xl w-[580px] max-w-[calc(100vw-2rem)];
+    max-height: calc(100vh - 7rem);
+    margin: 3.5rem auto auto;
+    box-shadow: var(--shadow);
+  }
+  .dialog-panel[open] { @apply flex flex-col; }
+  .dialog-panel::backdrop { background: rgba(10, 12, 16, 0.45); }
+  @media (max-width: 1023px) {
+    .dialog-panel {
+      @apply w-full max-w-none m-0 mt-auto rounded-b-none border-b-0;
+      max-height: calc(100vh - 4rem);
+    }
+  }
+
   /* Foglio dal basso (telefono), costruito su <dialog>. */
   .sheet {
     @apply w-full max-w-none m-0 mt-auto p-0 bg-surface text-text border-0 border-t border-border rounded-t-2xl;

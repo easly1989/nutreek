@@ -12,6 +12,7 @@
   <script src="/static/js/dnd.js" defer></script>
   <script src="/static/js/modal.js" defer></script>
   <script src="/static/js/ingredient_search.js" defer></script>
+  <script src="/static/js/picker.js" defer></script>
   <script src="/static/js/confirm.js" defer></script>
   {{if .ShowTour}}
   <link rel="stylesheet" href="/static/css/shepherd.css">
@@ -145,7 +146,10 @@
     </div>
   </main>
 
-  <div id="modal-host"></div>
+  {{/* Finestre aperte via HTMX (modal.js). La seconda ospita una finestra
+       aperta da un'altra, es. «Nuovo ingrediente» dentro il picker. */}}
+  <div id="modal-host" data-modal-host></div>
+  <div id="modal-host-2" data-modal-host></div>
   {{block "scripts" .}}{{end}}
 
   <!-- Toast errori HTMX (rete/server) -->
@@ -186,6 +190,7 @@
   </span>Nutreek</a>{{end}}
 
 {{define "icon"}}<svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#{{.}}"/></svg>{{end}}
+{{define "icon_sm"}}<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#{{.}}"/></svg>{{end}}
 {{define "icon_lg"}}<svg class="w-[22px] h-[22px] shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#{{.}}"/></svg>{{end}}
 
 {{define "nav_link"}}<li><a href="{{.Href}}" class="nav-link{{if .Active}} is-active{{end}}"{{if .Active}} aria-current="page"{{end}}>{{template "icon" .Icon}}{{.Label}}</a></li>{{end}}
@@ -240,4 +245,11 @@
   <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
   <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM20 20l-4-4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><path d="M9 9h11v11H9zM5 15H4V4h11v1"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="i-barcode" viewBox="0 0 24 24"><path d="M4 6v12M7 6v12M10 6v12M14 6v12M17 6v12M20 6v12"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
 </svg>{{end}}
