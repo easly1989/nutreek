@@ -11,7 +11,7 @@
     <label class="lab">Nome<input id="display_name" name="display_name" type="text" required autocomplete="given-name" value="{{.Form.DisplayName}}" class="field field-lg"></label>
     <label class="lab">Email<input id="email" name="email" type="email" required autocomplete="email" value="{{.Form.Email}}" class="field field-lg"></label>
     <label class="lab">Password
-      <input id="password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" aria-describedby="pwd-strength-label" class="field field-lg">
+      <span class="field-pw"><input id="password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" aria-describedby="pwd-strength-label" class="field field-lg">{{template "pw_toggle" "password"}}</span>
       <span class="h-1.5 rounded-full bg-track overflow-hidden" aria-hidden="true"><span id="pwd-strength-fill" class="block h-full rounded-full transition-all duration-300" style="width:0%"></span></span>
       <span id="pwd-strength-label" class="font-medium" aria-live="polite">Da 8 a 72 caratteri.</span>
     </label>

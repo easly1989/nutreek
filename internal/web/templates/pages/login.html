@@ -9,7 +9,7 @@
   <form method="post" action="/login" class="card">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <label class="lab">Email<input id="email" name="email" type="email" required autofocus autocomplete="email" value="{{.Form.Email}}" class="field field-lg"></label>
-    <label class="lab">Password<input id="password" name="password" type="password" required autocomplete="current-password" class="field field-lg"></label>
+    <label class="lab">Password<span class="field-pw"><input id="password" name="password" type="password" required autocomplete="current-password" class="field field-lg">{{template "pw_toggle" "password"}}</span></label>
     <button class="btn-primary btn-block">Entra</button>
   </form>
   <p class="text-center text-muted">Non hai un account? <a href="/register" class="text-accent font-semibold hover:underline">Registrati</a></p>

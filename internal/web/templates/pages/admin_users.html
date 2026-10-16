@@ -7,7 +7,7 @@
 
   <div class="flex flex-wrap items-center gap-2">
     <label class="field-ico flex-1 min-w-[220px] max-w-[420px]">{{template "icon" "i-search"}}<input id="user-search" type="search" class="field" placeholder="Cerca per nome o email" aria-label="Cerca per nome o email"></label>
-    <div class="flex gap-1.5" role="group" aria-label="Filtra gli utenti">
+    <div class="flex gap-2" role="group" aria-label="Filtra gli utenti">
       <button type="button" class="filter is-on" data-user-filter="" aria-pressed="true">Tutti <span class="cnt">{{len .Users}}</span></button>
       <button type="button" class="filter" data-user-filter="premium" aria-pressed="false">Premium <span class="cnt">{{.PremiumUsers}}</span></button>
       <button type="button" class="filter" data-user-filter="coach" aria-pressed="false">Coach <span class="cnt">{{.CoachUsers}}</span></button>
