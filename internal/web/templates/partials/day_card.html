@@ -166,7 +166,8 @@
     <div class="relative shrink-0">
       <button type="button" class="icon-action" data-popover="meal-menu-{{$m.Meal.ID}}" aria-expanded="false" aria-controls="meal-menu-{{$m.Meal.ID}}" aria-label="Azioni sul pasto {{$m.Meal.Name}}">{{template "icon" "i-dots"}}</button>
       <div id="meal-menu-{{$m.Meal.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
-        <a href="/meals/{{$m.Meal.ID}}/items/new?cheat=1&start={{$ws}}" class="nav-link">{{template "icon" "i-plus"}}Registra uno sgarro</a>
+        <a href="/meals/{{$m.Meal.ID}}/items/new?cheat=1&start={{$ws}}" class="nav-link"
+           hx-get="/meals/{{$m.Meal.ID}}/items/new?cheat=1&start={{$ws}}" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-plus"}}Registra uno sgarro</a>
         <form method="post" action="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}"
               hx-post="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
               hx-confirm="Eliminare il pasto «{{$m.Meal.Name}}»?">
@@ -201,7 +202,9 @@
   </div>
   {{end}}
 
-  <a href="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}&meal_name={{$m.Meal.Name}}"
+  {{/* Il picker si apre in una finestra sopra la settimana; senza JS e' una pagina. */}}
+  <a href="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}"
+     hx-get="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}" hx-target="#modal-host" hx-swap="innerHTML"
      class="flex items-center gap-1.5 min-h-[38px] px-4 mt-1 border-t border-border text-accent font-semibold text-[13px] rounded-b-xl hover:bg-accent-soft">
     {{template "icon" "i-plus"}}Aggiungi alimento
   </a>

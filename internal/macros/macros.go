@@ -39,6 +39,23 @@ func (m Macros) IsZero() bool {
 	return m.Kcal == 0 && m.Protein == 0 && m.Carbs == 0 && m.Fat == 0
 }
 
+// Shares e' la ripartizione percentuale dell'energia fra i tre macro.
+type Shares struct {
+	Protein, Carbs, Fat float64
+}
+
+// EnergyShares ripartisce l'energia dei macro (4 kcal/g proteine e
+// carboidrati, 9 kcal/g grassi) in percentuali che sommano a 100. Senza
+// macro ritorna Shares{}.
+func (m Macros) EnergyShares() Shares {
+	p, c, f := m.Protein*4, m.Carbs*4, m.Fat*9
+	tot := p + c + f
+	if tot <= 0 {
+		return Shares{}
+	}
+	return Shares{Protein: p / tot * 100, Carbs: c / tot * 100, Fat: f / tot * 100}
+}
+
 // FromIngredient calcola i macro per `quantity` (in g o ml a seconda dell'unita'
 // dell'ingrediente). I valori `_per_100` vengono divisi per 100 e moltiplicati
 // per la quantita'. Quantity negative o zero ritornano Macros{}.

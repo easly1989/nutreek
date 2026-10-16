@@ -10,15 +10,15 @@
       hx-post="/meal-items/{{.MealItemID}}/customize?start={{.WeekStart}}"
       hx-target="this" hx-swap="outerHTML"
       novalidate
-      class="space-y-3 text-sm">
+      class="flex flex-col gap-3">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
   {{if .Error}}
-    <p class="rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-xs">{{.Error}}</p>
+    <p class="rounded-xl bg-warn-bg text-warn-fg px-3 py-2" role="alert">{{.Error}}</p>
   {{end}}
 
   {{if .RecipeName}}
-    <p class="text-xs text-muted">
+    <p class="text-muted">
       Variazioni per <strong>{{.RecipeName}}</strong>. Modifica le quantità che hai
       effettivamente consumato. Lascia 0 per escludere un ingrediente.
       La ricetta originale rimane invariata.
@@ -26,22 +26,22 @@
   {{end}}
 
   {{if .Rows}}
-    <ul class="divide-y divide-border border border-border rounded">
+    <ul class="divide-y divide-border border border-border rounded-xl">
       {{range .Rows}}
         <li class="flex items-center justify-between gap-3 px-3 py-2">
-          <span class="flex-1 text-text">{{.Name}}</span>
+          <span class="flex-1">{{.Name}}</span>
           <div class="flex items-center gap-1 shrink-0">
             <input type="number" name="qty_{{.IngredientID}}"
                    value="{{printf "%.1f" .Quantity}}"
                    min="0" step="any"
-                   class="w-20 rounded border border-border bg-surface px-2 py-1 text-right text-xs">
-            <span class="text-xs text-muted w-4">{{.Unit}}</span>
+                   class="field w-[84px] text-right tabular-nums">
+            <span class="text-muted w-6">{{.Unit}}</span>
           </div>
         </li>
       {{end}}
     </ul>
   {{else}}
-    <p class="text-xs text-muted italic">Nessun ingrediente nella ricetta.</p>
+    <p class="text-muted">Nessun ingrediente nella ricetta.</p>
   {{end}}
 
   <div class="flex items-center justify-between gap-2 pt-2">
@@ -50,11 +50,10 @@
             hx-post="/meal-items/{{.MealItemID}}/customize/reset?start={{.WeekStart}}"
             hx-include="[name=csrf_token]"
             hx-target="#modal-host" hx-swap="innerHTML"
-            class="text-xs text-muted hover:text-danger hover:underline">Ripristina ricetta</button>
+            class="btn-ghost text-danger hover:bg-danger-soft -ml-3.5">Ripristina ricetta</button>
     <div class="flex items-center gap-2">
-      <button type="button" data-modal-close
-              class="text-xs text-muted hover:underline px-3 py-1">Annulla</button>
-      <button type="submit" class="bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90 text-sm">Salva</button>
+      <button type="button" data-modal-close class="btn-secondary">Annulla</button>
+      <button type="submit" class="btn-primary">Salva</button>
     </div>
   </div>
 </form>

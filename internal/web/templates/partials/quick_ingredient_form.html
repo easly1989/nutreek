@@ -1,67 +1,55 @@
 {{define "quick_ingredient_form"}}
 {{- /*
   quick_ingredient_form.html — view-model: quickIngredientData
-  Form compatto per creare un ingrediente locale al volo. Renderizzato
-  dentro <dialog> via partial modal_dialog. Submit POSTa /quick/ingredient
-  con HTMX: in caso di errore di validazione il server re-renderizza il
-  form (rimanendo nel dialog); in caso di success ritorna 204 + header
-  HX-Trigger=ingredient-created che modal.js intercetta per chiudere.
+  Form compatto per creare un ingrediente locale al volo, con le stesse
+  sezioni del form completo. Renderizzato dentro <dialog> via partial
+  modal_dialog. Submit POSTa /quick/ingredient con HTMX: in caso di errore
+  di validazione il server re-renderizza il form (rimanendo nel dialog); in
+  caso di success ritorna 204 + header HX-Trigger=ingredient-created che
+  modal.js intercetta per chiudere.
 */ -}}
+{{- $u := or .Form.Unit "g" -}}
 <form method="post" action="/quick/ingredient"
       hx-post="/quick/ingredient"
       hx-target="this"
       hx-swap="outerHTML"
-      class="space-y-3 text-sm">
+      class="flex flex-col gap-4">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-  {{if .Error}}
-    <p class="rounded border border-danger/30 bg-danger/10 text-danger px-3 py-2 text-xs">{{.Error}}</p>
-  {{end}}
+  {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2" role="alert">{{.Error}}</p>{{end}}
 
-  <div>
-    <label class="block text-xs text-muted mb-1" for="qi-name">Nome</label>
-    <input id="qi-name" name="name" required value="{{.Form.Name}}" autofocus maxlength="200"
-           class="w-full rounded border border-border bg-surface px-2 py-1"
-           oninput="document.getElementById('qi-name-cnt').textContent=this.value.length">
-    <p class="text-xs text-muted/60 text-right mt-0.5"><span id="qi-name-cnt">{{len .Form.Name}}</span>/200</p>
-  </div>
-  <div class="grid grid-cols-2 gap-2">
-    <div>
-      <label class="block text-xs text-muted mb-1" for="qi-brand">Marca <span class="text-muted/70">(opt)</span></label>
-      <input id="qi-brand" name="brand" value="{{.Form.Brand}}" class="w-full rounded border border-border bg-surface px-2 py-1">
-    </div>
-    <div>
-      <label class="block text-xs text-muted mb-1" for="qi-unit">Unita'</label>
-      <select id="qi-unit" name="unit" class="w-full rounded border border-border bg-surface px-2 py-1">
-        <option value="g" {{if eq .Form.Unit "g"}}selected{{end}}>g</option>
-        <option value="ml" {{if eq .Form.Unit "ml"}}selected{{end}}>ml</option>
-      </select>
+  <div class="grid grid-cols-2 gap-3">
+    <label class="lab col-span-2">Nome<input name="name" required maxlength="200" value="{{.Form.Name}}" autofocus class="field"></label>
+    <label class="lab">Marca (facoltativa)<input name="brand" value="{{.Form.Brand}}" class="field"></label>
+    <div class="lab">Si misura in
+      <span class="segmented w-max" role="radiogroup" aria-label="Unità"
+            onchange="this.closest('form').querySelectorAll('[data-unit-label]').forEach(function(e){e.textContent=event.target.value})">
+        <label><input type="radio" name="unit" value="g"{{if ne $u "ml"}} checked{{end}}>g</label>
+        <label><input type="radio" name="unit" value="ml"{{if eq $u "ml"}} checked{{end}}>ml</label>
+      </span>
     </div>
   </div>
-  <fieldset class="grid grid-cols-4 gap-2">
-    <legend class="text-xs text-muted col-span-4 mb-1">Macro per 100 {{if eq .Form.Unit "ml"}}ml{{else}}g{{end}}</legend>
-    <div>
-      <label class="block text-xs text-muted mb-1">Kcal</label>
-      <input name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="w-full rounded border border-border bg-surface px-2 py-1">
-    </div>
-    <div>
-      <label class="block text-xs text-muted mb-1">P</label>
-      <input name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="w-full rounded border border-border bg-surface px-2 py-1">
-    </div>
-    <div>
-      <label class="block text-xs text-muted mb-1">C</label>
-      <input name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="w-full rounded border border-border bg-surface px-2 py-1">
-    </div>
-    <div>
-      <label class="block text-xs text-muted mb-1">F</label>
-      <input name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="w-full rounded border border-border bg-surface px-2 py-1">
+
+  <fieldset class="flex flex-col gap-2 pt-3 border-t border-border">
+    <legend class="contents"><span class="h2 mb-1">Valori per 100 <span data-unit-label>{{$u}}</span></span></legend>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <label class="lab">Calorie<span class="field-unit"><input name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="field tabular-nums"><em>kcal</em></span></label>
+      <label class="lab"><span><b class="text-prot">●</b> Proteine</span><span class="field-unit"><input name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="field tabular-nums"><em>g</em></span></label>
+      <label class="lab"><span><b class="text-carb">●</b> Carboidrati</span><span class="field-unit"><input name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="field tabular-nums"><em>g</em></span></label>
+      <label class="lab"><span><b class="text-fat">●</b> Grassi</span><span class="field-unit"><input name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="field tabular-nums"><em>g</em></span></label>
     </div>
   </fieldset>
 
-  <div class="flex items-center justify-end gap-2 pt-2">
-    <button type="button" data-modal-close
-            class="text-xs text-muted hover:underline px-3 py-1">Annulla</button>
-    <button class="bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90 text-sm">Crea</button>
+  <label class="lab pt-3 border-t border-border">Peso di un pezzo (facoltativo, per aggiungerlo a pezzi)
+    <span class="field-unit sm:w-1/2"><input name="unit_weight_g" inputmode="decimal" value="{{.Form.UnitWeightG}}" placeholder="es. 150" class="field tabular-nums"><em>g</em></span>
+  </label>
+
+  <div class="flex items-center justify-between gap-2">
+    <a href="/ingredients/new" class="text-[12.5px] text-muted hover:text-text underline">Form completo</a>
+    <span class="flex gap-2">
+      <button type="button" data-modal-close class="btn-secondary">Annulla</button>
+      <button class="btn-primary">Crea ingrediente</button>
+    </span>
   </div>
 </form>
 {{end}}

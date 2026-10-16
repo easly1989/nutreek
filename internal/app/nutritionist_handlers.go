@@ -9,6 +9,7 @@ import (
 	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/macros"
 )
 
 func (a *App) handleNutritionistPage(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +32,30 @@ type pianoNutrizionaleData struct {
 	HasActiveTemplate bool
 	ReadOnly          bool   // true se il piano mostrato e' assegnato dal coach
 	CoachName         string // nome del coach che ha assegnato il piano
+	ActiveTemplate    string // nome del template attivo da cui vengono i pasti
+
+	// Kcal delle varianti e delle singole voci, per id.
+	VariationKcal map[int64]float64
+	ItemKcal      map[int64]float64
+}
+
+// planKcal calcola le kcal di ogni variante e di ogni voce del piano. Le
+// ricette valgono porzioni × kcal per porzione (perServing, per id ricetta).
+func planKcal(plan *domain.NutritionistPlanFull, perServing map[int64]macros.Macros) (variations, items map[int64]float64) {
+	variations = make(map[int64]float64)
+	items = make(map[int64]float64)
+	if plan == nil {
+		return variations, items
+	}
+	for _, mt := range plan.MealTypes {
+		for _, v := range mt.Variations {
+			variations[v.ID] = macros.ForNutritionistVariation(v.Items, perServing).Kcal
+			for _, it := range v.Items {
+				items[it.ID] = macros.ForNutritionistVariation([]domain.NutritionistItem{it}, perServing).Kcal
+			}
+		}
+	}
+	return variations, items
 }
 
 func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
@@ -110,6 +135,26 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	perServing, err := a.Recipes.PerServingByRecipe(ctx, user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	// Il piano del coach puo' usare ricette private del coach: senza le sue
+	// quelle voci varrebbero 0 kcal.
+	if readOnly {
+		coachRecipes, err := a.Recipes.PerServingByRecipe(ctx, assignment.CoachID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		for id, m := range coachRecipes {
+			if _, ok := perServing[id]; !ok {
+				perServing[id] = m
+			}
+		}
+	}
+	varKcal, itemKcal := planKcal(plan, perServing)
 	data := pianoNutrizionaleData{
 		authPageData:      a.baseData(r),
 		Plan:              plan,
@@ -119,6 +164,11 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 		HasActiveTemplate: hasActiveTemplate,
 		ReadOnly:          readOnly,
 		CoachName:         coachName,
+		VariationKcal:     varKcal,
+		ItemKcal:          itemKcal,
+	}
+	if hasActiveTemplate {
+		data.ActiveTemplate = tpls[0].Name
 	}
 	if err := a.Render.Render(w, http.StatusOK, "piano_nutrizionale", data); err != nil {
 		a.serverError(w, r, err)
@@ -209,7 +259,6 @@ func (a *App) handleNutritionistDeleteVariation(w http.ResponseWriter, r *http.R
 // handleNutritionistPicker GET /nutrizionista/picker — live search per il picker
 // inline nel tab Piano Pasti. Supporta kind=ingredient|recipe.
 func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
-	user := userFromContext(r.Context())
 	variationIDStr := r.URL.Query().Get("variation_id")
 	variationID, err := strconv.ParseInt(variationIDStr, 10, 64)
 	if err != nil || variationID <= 0 {
@@ -241,35 +290,12 @@ func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, err)
 		}
 	case "recipe":
-		recipes, err := a.Recipes.ListVisible(r.Context(), user.ID)
+		data, err := a.recipePicker(r, q)
 		if err != nil {
 			a.serverError(w, r, err)
 			return
 		}
-		if q != "" {
-			ql := strings.ToLower(q)
-			filtered := make([]*domain.Recipe, 0, len(recipes))
-			for _, rc := range recipes {
-				if strings.Contains(strings.ToLower(rc.Name), ql) {
-					filtered = append(filtered, rc)
-				}
-			}
-			recipes = filtered
-		}
-		data := struct {
-			authPageData
-			Recipes     []*domain.Recipe
-			Query       string
-			VariationID int64
-			Cheat       bool
-			MealID      int64
-			WeekStart   string
-		}{
-			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
-			Recipes:      recipes,
-			Query:        q,
-			VariationID:  variationID,
-		}
+		data.VariationID = variationID
 		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "recipe_picker_results", data); err != nil {
 			a.serverError(w, r, err)
 		}

@@ -175,6 +175,7 @@ func funcMap() template.FuncMap {
 		"dayShort": func(t time.Time) string {
 			return weekdaysIT[(int(t.Weekday())+6)%7][:3] + " " + strconv.Itoa(t.Day())
 		},
+		"monthName": func(t time.Time) string { return monthsIT[t.Month()-1] },
 		"dayLetter": func(t time.Time) string {
 			return weekdaysIT[(int(t.Weekday())+6)%7][:1]
 		},
@@ -186,6 +187,11 @@ func funcMap() template.FuncMap {
 		},
 		"itemCtx": func(view any, struck, cheat bool, weekStart, csrf string) ItemCtx {
 			return ItemCtx{View: view, Struck: struck, Cheat: cheat, WeekStart: weekStart, CSRFToken: csrf}
+		},
+		// pickerRow passa a picker_row la riga insieme ai dati della lista
+		// (tipo di picker, id di destinazione, CSRF).
+		"pickerRow": func(row, list any) PickerRowCtx {
+			return PickerRowCtx{Row: row, List: list}
 		},
 		"navActive": navActive,
 		// nav costruisce una voce di navigazione della shell (sidebar e
@@ -221,6 +227,12 @@ type ItemCtx struct {
 	CSRFToken     string
 }
 
+// PickerRowCtx e' il view-model di picker_row: Row e' la riga ingrediente,
+// List la lista del picker che la contiene.
+type PickerRowCtx struct {
+	Row, List any
+}
+
 // NavItem e' il view-model di una voce di navigazione della shell.
 type NavItem struct {
 	Href, Label, Icon string
@@ -231,6 +243,11 @@ var (
 	weekdaysIT = [7]string{"Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"}
 	monthsIT   = [12]string{"gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"}
 )
+
+// FormatNum e FormatDec espongono la formattazione dei template ai frammenti
+// HTML scritti a mano dagli handler.
+func FormatNum(v float64) string             { return formatNum(v) }
+func FormatDec(v float64, digits int) string { return formatDec(v, digits) }
 
 // formatNum arrotonda all'intero e separa le migliaia col punto, come si
 // scrive in italiano: 1636.4 -> "1.636".

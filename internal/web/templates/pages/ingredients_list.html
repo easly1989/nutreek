@@ -1,49 +1,63 @@
 {{define "title"}}Ingredienti — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-3xl">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-3xl font-semibold">Ingredienti</h1>
-    <a href="/ingredients/new" class="inline-block bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Nuovo</a>
+{{- $f := .Filter -}}
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="h1">Ingredienti</h1>
+      <p class="text-muted">I tuoi ingredienti e il catalogo OpenFoodFacts</p>
+    </div>
+    <a href="/ingredients/new" class="btn-primary">{{template "icon" "i-plus"}}Nuovo ingrediente</a>
   </div>
 
-  <div class="mb-3">
-    <input
-      type="search"
-      name="q"
-      value="{{.Query}}"
-      placeholder="Cerca per nome..."
-      class="w-full rounded border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"
-      data-ingredient-search
-      data-search-url="/ingredients/search"
-      data-search-target="#ingredient-results"
-      data-search-spinner="#ingredient-search-spinner"
-      {{if gt .SelectedAllergenID 0}}data-search-extra="allergen={{.SelectedAllergenID}}"{{end}}
-      autocomplete="off"
-      autofocus
-    >
-  </div>
-
-  {{if .AllAllergens}}
-  <form method="get" action="/ingredients" class="mb-3 flex items-center gap-2">
-    <input type="hidden" name="q" value="{{.Query}}">
-    <label for="allergen-filter" class="text-sm text-muted shrink-0">Filtra allergene:</label>
-    <select id="allergen-filter" name="allergen" onchange="this.form.submit()"
-            class="rounded border border-border bg-surface px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-      <option value="">Tutti</option>
-      {{range .AllAllergens}}
-      <option value="{{.ID}}" {{if eq $.SelectedAllergenID .ID}}selected{{end}}>{{.Name}}</option>
+  {{/* I filtri sono un form GET: senza JS si applicano con Invio o al cambio
+       dei menu. La ricerca live (ingredient_search.js) porta con se' i
+       filtri attivi tramite data-search-extra. */}}
+  <form method="get" action="/ingredients" class="flex flex-col gap-3" role="search">
+    {{with $f.Src}}<input type="hidden" name="src" value="{{.}}">{{end}}
+    <label class="field-ico">
+      {{template "icon" "i-search"}}
+      <input type="search" name="q" value="{{.Query}}" placeholder="Cerca tra i tuoi ingredienti e su OpenFoodFacts" aria-label="Cerca un ingrediente"
+             class="field field-lg" autocomplete="off" autofocus
+             data-ingredient-search
+             data-search-url="/ingredients/search"
+             data-search-target="#ingredient-results"
+             data-search-spinner="#ingredient-search-spinner"
+             {{with $f.Query}}data-search-extra="{{.}}"{{end}}
+             {{if not $f.WantsOFF}}data-search-no-off="1"{{end}}>
+    </label>
+    <div class="flex flex-wrap items-center gap-2">
+      <nav class="segmented" aria-label="Provenienza">
+        <a href="{{($f.WithSrc "").Href .Query}}"{{if eq $f.Src ""}} aria-current="page"{{end}}>Tutti</a>
+        <a href="{{($f.WithSrc "mine").Href .Query}}"{{if eq $f.Src "mine"}} aria-current="page"{{end}}>I miei</a>
+        <a href="{{($f.WithSrc "off").Href .Query}}"{{if eq $f.Src "off"}} aria-current="page"{{end}}>OpenFoodFacts</a>
+      </nav>
+      {{if .AllCategories}}
+      <label class="filter relative pr-8{{if $f.CategoryID}} is-on{{end}}">
+        <select name="category" onchange="this.form.requestSubmit()" aria-label="Categoria" class="absolute inset-0 opacity-0 cursor-pointer">
+          <option value="">Categoria: tutte</option>
+          {{range .AllCategories}}<option value="{{.ID}}"{{if eq $f.CategoryID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+        {{if $f.CategoryID}}{{range .AllCategories}}{{if eq $f.CategoryID .ID}}{{.Name}}{{end}}{{end}}{{else}}Categoria: tutte{{end}}
+        <span class="absolute right-2.5">{{template "icon_sm" "i-chevron-down"}}</span>
+      </label>
       {{end}}
-    </select>
-    {{if gt .SelectedAllergenID 0}}
-    <a href="/ingredients{{if .Query}}?q={{.Query}}{{end}}" class="text-xs text-muted hover:text-text hover:underline">Azzera</a>
-    {{end}}
+      {{if .AllAllergens}}
+      <label class="filter relative pr-8{{if $f.AllergenID}} is-on{{end}}">
+        <select name="allergen" onchange="this.form.requestSubmit()" aria-label="Allergene" class="absolute inset-0 opacity-0 cursor-pointer">
+          <option value="">Allergene: tutti</option>
+          {{range .AllAllergens}}<option value="{{.ID}}"{{if eq $f.AllergenID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+        {{if $f.AllergenID}}Contiene {{range .AllAllergens}}{{if eq $f.AllergenID .ID}}{{.Name}}{{end}}{{end}}{{else}}Allergene: tutti{{end}}
+        <span class="absolute right-2.5">{{template "icon_sm" "i-chevron-down"}}</span>
+      </label>
+      {{end}}
+      {{if or $f.CategoryID $f.AllergenID}}<a href="{{$f.WithoutTags.Href .Query}}" class="btn-ghost h-8 px-2.5">Azzera filtri</a>{{end}}
+      <noscript><button class="btn-secondary h-8">Applica</button></noscript>
+    </div>
   </form>
-  {{end}}
 
-  <div id="ingredient-search-spinner" class="hidden mb-3 flex items-center gap-2 text-xs text-muted px-1">
-    <span class="inline-block h-3 w-3 rounded-full border-2 border-muted border-t-transparent animate-spin" aria-hidden="true"></span>
-    <span>Cerco anche su OpenFoodFacts…</span>
-  </div>
+  <p id="ingredient-search-spinner" class="hidden text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco anche su OpenFoodFacts…</p>
 
   <div id="ingredient-results">
     {{template "ingredient_results" .}}
