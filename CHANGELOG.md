@@ -8,6 +8,10 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
 ## [Non rilasciato]
 
+### Corretto
+- Sicurezza: i dati di un ingrediente (nome, marca, unità, macro, micronutrienti, porzione, allergeni) li modifica solo chi l'ha creato, o l'owner; gli altri lo vedono in sola lettura, con «di Bob» in lista. Un prodotto OpenFoodFacts importato ha come autore chi l'ha importato; quelli senza autore li modifica l'owner, o chiunque se l'istanza non ne ha uno (#143)
+- La categoria di un ingrediente è di ogni utente: mettere un ingrediente condiviso in una propria categoria non cambia più quella degli altri, e una categoria di un altro utente viene rifiutata. Le assegnazioni esistenti restano a chi possiede la categoria (migrazione 0028) (#143)
+
 ---
 
 ## [2.0.0] — 2026-10-16
