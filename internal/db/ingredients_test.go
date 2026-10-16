@@ -119,7 +119,7 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 
 	brand := "Consorzio"
 	pack, serving := 500.0, 30.0
-	id, err := ings.CreateOFF(ctx, "8000000000017", "Grana Padano", &brand, domain.UnitGram, 384, 33, 0, 28, &pack, &serving, nil, nil, nil, nil)
+	id, err := ings.CreateOFF(ctx, "8000000000017", "Grana Padano", &brand, domain.UnitGram, 384, 33, 0, 28, nil, &pack, &serving, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateOFF: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	}
 
 	// Duplicate barcode -> ErrBarcodeAlreadyUsed
-	_, err = ings.CreateOFF(ctx, "8000000000017", "Altro", nil, domain.UnitGram, 1, 1, 1, 1, nil, nil, nil, nil, nil, nil)
+	_, err = ings.CreateOFF(ctx, "8000000000017", "Altro", nil, domain.UnitGram, 1, 1, 1, 1, nil, nil, nil, nil, nil, nil, nil)
 	if !errors.Is(err, ErrBarcodeAlreadyUsed) {
 		t.Fatalf("atteso ErrBarcodeAlreadyUsed, got %v", err)
 	}
@@ -208,7 +208,7 @@ func TestIngredientsReconcileHelpers(t *testing.T) {
 	idB, _ := ings.CreateLocal(ctx, "B", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil, nil)
 	idC, _ := ings.CreateLocal(ctx, "C", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil, nil)
 	// Un OFF (non deve apparire fra i candidati).
-	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil)
+	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,4 +274,26 @@ func names(in []*domain.Ingredient) []string {
 		out[i] = x.Name
 	}
 	return out
+}
+
+// Un prodotto OFF importato da un utente ha lui come autore (#143); il
+// reconciler passa nil.
+func TestCreateOFFCreatedBy(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	ings := NewIngredients(store.DB)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	id, err := ings.CreateOFF(ctx, "8000000000024", "Ceci", nil, domain.UnitGram, 120, 7, 16, 2, &alice, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := ings.GetByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CreatedBy == nil || *got.CreatedBy != alice {
+		t.Errorf("CreatedBy = %v, atteso %d", got.CreatedBy, alice)
+	}
 }

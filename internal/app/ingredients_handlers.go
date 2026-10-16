@@ -31,6 +31,11 @@ type ingredientRow struct {
 	// i template li mostrano come chip nel picker e nella lista.
 	Allergens []domain.AllergenTag
 	Category  *domain.IngredientCategory
+
+	// CanEdit dice se chi guarda puo' modificare i dati dell'ingrediente;
+	// Author e' il nome di chi l'ha creato, mostrato quando non e' lui (#143).
+	CanEdit bool
+	Author  string
 }
 
 // IsOFF e' usato dal template per decidere se mostrare il pulsante Importa.
@@ -314,6 +319,7 @@ type ingredientsNewData struct {
 	Categories        []domain.IngredientCategory
 	Allergens         []domain.AllergenTag
 	SelectedAllergens map[int64]bool
+	ReadOnly          bool // sempre false: il partial ingredient_fields lo legge
 }
 
 // ingredientForm cattura i campi del form "nuovo/modifica ingrediente" per poter
@@ -577,9 +583,10 @@ func (a *App) searchBarcode(ctx context.Context, code string, live bool) ([]ingr
 	return []ingredientRow{{OFF: p}}, "", nil
 }
 
-// attachTags carica in batch allergeni e categoria delle righe locali e li
-// assegna in-place, cosi' il picker e la lista possono mostrarli senza query
-// N+1. Le righe OFF non importate non hanno ne' allergeni ne' categoria.
+// attachTags carica in batch allergeni e categoria (quella di chi guarda)
+// delle righe locali e li assegna in-place, cosi' il picker e la lista possono
+// mostrarli senza query N+1; segna anche chi puo' modificarle e di chi sono.
+// Le righe OFF non importate non hanno ne' allergeni ne' categoria.
 func (a *App) attachTags(ctx context.Context, rows []ingredientRow) {
 	if a.Categories == nil {
 		return
@@ -593,14 +600,19 @@ func (a *App) attachTags(ctx context.Context, rows []ingredientRow) {
 	if len(ids) == 0 {
 		return
 	}
+	viewer := userFromContext(ctx)
 	byIng, err := a.Categories.AllergensForIngredients(ctx, ids)
 	if err != nil {
 		a.Logger.Warn("attach allergens failed", "err", err)
 	}
-	cats, err := a.Categories.CategoriesForIngredients(ctx, ids)
-	if err != nil {
-		a.Logger.Warn("attach categories failed", "err", err)
+	var cats map[int64]domain.IngredientCategory
+	if viewer != nil {
+		cats, err = a.Categories.CategoriesForIngredients(ctx, viewer.ID, ids)
+		if err != nil {
+			a.Logger.Warn("attach categories failed", "err", err)
+		}
 	}
+	authors := map[int64]string{}
 	for i := range rows {
 		if rows[i].Local == nil {
 			continue
@@ -609,7 +621,70 @@ func (a *App) attachTags(ctx context.Context, rows []ingredientRow) {
 		if c, ok := cats[rows[i].Local.ID]; ok {
 			rows[i].Category = &c
 		}
+		rows[i].CanEdit = a.canEditIngredient(viewer, rows[i].Local)
+		if !rows[i].CanEdit {
+			rows[i].Author = a.ingredientAuthor(ctx, rows[i].Local, authors)
+		}
 	}
+}
+
+// canEditIngredient dice se u puo' modificare i dati dell'ingrediente (#143):
+// li modifica chi l'ha creato, o l'owner. Un ingrediente senza autore (creato
+// prima di #143, o dal reconciler) lo modifica l'owner; se l'istanza non ha
+// un owner, chiunque, come prima.
+func (a *App) canEditIngredient(u *domain.User, ing *domain.Ingredient) bool {
+	if u == nil || ing == nil {
+		return false
+	}
+	if a.isOwner(u) {
+		return true
+	}
+	if ing.CreatedBy != nil {
+		return *ing.CreatedBy == u.ID
+	}
+	return a.Cfg.OwnerEmail == ""
+}
+
+// ingredientAuthor ritorna il nome di chi ha creato l'ingrediente, "" se non
+// ha autore. cache evita di rileggere lo stesso utente in una lista.
+func (a *App) ingredientAuthor(ctx context.Context, ing *domain.Ingredient, cache map[int64]string) string {
+	if ing.CreatedBy == nil {
+		return ""
+	}
+	id := *ing.CreatedBy
+	if name, ok := cache[id]; ok {
+		return name
+	}
+	name := ""
+	if u, err := a.Users.GetByID(ctx, id); err == nil {
+		name = u.DisplayName
+	}
+	if cache != nil {
+		cache[id] = name
+	}
+	return name
+}
+
+// ownCategory interpreta il category_id di un form: nil se vuoto, errore se
+// non e' una categoria di userID (anche un id inventato o altrui).
+func (a *App) ownCategory(ctx context.Context, userID int64, raw string) (*int64, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		return nil, db.ErrCategoryNotFound
+	}
+	cats, err := a.Categories.ListCategories(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range cats {
+		if c.ID == id {
+			return &id, nil
+		}
+	}
+	return nil, db.ErrCategoryNotFound
 }
 
 // allergenIDSet converte una slice di ID in un set per il rendering dei
@@ -706,9 +781,14 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	user := userFromContext(r.Context())
 	var creatorID *int64
+	var categoryID *int64
 	if user != nil {
 		id := user.ID
 		creatorID = &id
+		if categoryID, err = a.ownCategory(r.Context(), user.ID, form.CategoryID); err != nil {
+			a.renderIngredientError(w, r, form, "Categoria non valida: scegline una delle tue.")
+			return
+		}
 	}
 
 	// unit_weight_g opzionale: peso per unità (es. 150 per una banana da 150g).
@@ -735,11 +815,9 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Salva categoria (opzionale).
-	if form.CategoryID != "" {
-		if catID, err2 := strconv.ParseInt(form.CategoryID, 10, 64); err2 == nil && catID > 0 {
-			_ = a.Categories.SetIngredientCategory(r.Context(), ingID, &catID)
-		}
+	// Salva categoria (opzionale), di chi crea.
+	if categoryID != nil {
+		_ = a.Categories.SetIngredientCategory(r.Context(), user.ID, ingID, categoryID)
 	}
 	// Salva allergeni (opzionale).
 	if len(form.AllergenIDs) > 0 {
@@ -800,6 +878,7 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 		product.Code, product.Name, brandPtr,
 		domain.UnitGram,
 		product.Kcal, product.Protein, product.Carbs, product.Fat,
+		importerID(r.Context()),
 		product.UnitWeightG, product.ServingG,
 		product.Fiber, product.Sugars, product.SaturatedFat, product.Sodium,
 	); err != nil && !errors.Is(err, db.ErrBarcodeAlreadyUsed) {
@@ -853,6 +932,7 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 		product.Code, product.Name, brandPtr,
 		domain.UnitGram,
 		product.Kcal, product.Protein, product.Carbs, product.Fat,
+		importerID(ctx),
 		product.UnitWeightG, product.ServingG,
 		product.Fiber, product.Sugars, product.SaturatedFat, product.Sodium,
 	)
@@ -868,6 +948,16 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 		return got.ID, nil
 	}
 	return 0, err
+}
+
+// importerID e' l'autore di un prodotto OFF importato: l'utente della
+// richiesta, nil fuori da una richiesta autenticata.
+func importerID(ctx context.Context) *int64 {
+	if u := userFromContext(ctx); u != nil {
+		id := u.ID
+		return &id
+	}
+	return nil
 }
 
 // handleOFFMacroCheck verifica i macro di un singolo prodotto OFF tramite
@@ -917,6 +1007,10 @@ type ingredientEditData struct {
 	Categories        []domain.IngredientCategory
 	Allergens         []domain.AllergenTag
 	SelectedAllergens map[int64]bool
+	// ReadOnly: chi guarda non puo' modificare i dati, solo la sua categoria
+	// (#143). Author e' il nome di chi l'ha creato ("" se senza autore).
+	ReadOnly bool
+	Author   string
 }
 
 func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
@@ -935,6 +1029,37 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	allergens, _ := a.Categories.ListAllergens(r.Context())
 	selected, _ := a.Categories.GetIngredientAllergenIDs(r.Context(), id)
 
+	form := ingredientFormFrom(ing)
+	// Senza questa pre-selezione il salvataggio azzerava la categoria.
+	current, err := a.Categories.CategoriesForIngredients(r.Context(), user.ID, []int64{id})
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if c, ok := current[id]; ok {
+		form.CategoryID = strconv.FormatInt(c.ID, 10)
+	}
+
+	data := ingredientEditData{
+		authPageData:      a.baseData(r),
+		Form:              form,
+		IngredientID:      id,
+		IsOFF:             ing.Source == domain.IngredientSourceOFF,
+		Categories:        cats,
+		Allergens:         allergens,
+		SelectedAllergens: selected,
+		ReadOnly:          !a.canEditIngredient(user, ing),
+	}
+	if data.ReadOnly {
+		data.Author = a.ingredientAuthor(r.Context(), ing, nil)
+	}
+	if err := a.Render.Render(w, http.StatusOK, "ingredient_edit", data); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
+// ingredientFormFrom riempie il form di modifica con i dati salvati.
+func ingredientFormFrom(ing *domain.Ingredient) ingredientForm {
 	form := ingredientForm{
 		Name:    ing.Name,
 		Unit:    string(ing.Unit),
@@ -945,15 +1070,6 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	}
 	if ing.Brand != nil {
 		form.Brand = *ing.Brand
-	}
-	// Senza questa pre-selezione il salvataggio azzerava la categoria.
-	current, err := a.Categories.CategoriesForIngredients(r.Context(), []int64{id})
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	if c, ok := current[id]; ok {
-		form.CategoryID = strconv.FormatInt(c.ID, 10)
 	}
 	if ing.UnitWeightG != nil {
 		form.UnitWeightG = strconv.FormatFloat(*ing.UnitWeightG, 'f', -1, 64)
@@ -973,19 +1089,7 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	if ing.SodiumPer100 != nil {
 		form.Sodium = strconv.FormatFloat(*ing.SodiumPer100, 'f', -1, 64)
 	}
-
-	data := ingredientEditData{
-		authPageData:      a.baseData(r),
-		Form:              form,
-		IngredientID:      id,
-		IsOFF:             ing.Source == domain.IngredientSourceOFF,
-		Categories:        cats,
-		Allergens:         allergens,
-		SelectedAllergens: selected,
-	}
-	if err := a.Render.Render(w, http.StatusOK, "ingredient_edit", data); err != nil {
-		a.serverError(w, r, err)
-	}
+	return form
 }
 
 func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
@@ -998,6 +1102,11 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 	ing, err := a.Ingredients.GetByID(r.Context(), id)
 	if err != nil {
 		a.notFound(w, r)
+		return
+	}
+	user := userFromContext(r.Context())
+	if !a.canEditIngredient(user, ing) {
+		a.saveIngredientCategoryOnly(w, r, ing)
 		return
 	}
 
@@ -1026,7 +1135,6 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderEditErr := func(msg string) {
-		user := userFromContext(r.Context())
 		cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
 		allergens, _ := a.Categories.ListAllergens(r.Context())
 		data := ingredientEditData{
@@ -1094,6 +1202,11 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 			defaultQuantity = &v
 		}
 	}
+	categoryID, err := a.ownCategory(r.Context(), user.ID, form.CategoryID)
+	if err != nil {
+		renderEditErr("Categoria non valida: scegline una delle tue.")
+		return
+	}
 
 	if err := a.Ingredients.Update(r.Context(), id, form.Name, brandPtr, unit, kcal, protein, carbs, fat, unitWeightG, defaultQuantity,
 		parseOptionalFloat(form.Fiber), parseOptionalFloat(form.Sugars),
@@ -1102,19 +1215,49 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Aggiorna categoria.
-	if form.CategoryID != "" {
-		if catID, err2 := strconv.ParseInt(form.CategoryID, 10, 64); err2 == nil && catID > 0 {
-			_ = a.Categories.SetIngredientCategory(r.Context(), id, &catID)
-		}
-	} else {
-		_ = a.Categories.SetIngredientCategory(r.Context(), id, nil)
-	}
+	// Aggiorna la categoria di chi salva.
+	_ = a.Categories.SetIngredientCategory(r.Context(), user.ID, id, categoryID)
 
 	// Aggiorna allergeni (replace: lista vuota = rimuove tutti i tag).
 	_ = a.Categories.SetIngredientAllergens(r.Context(), id, form.AllergenIDs)
 
 	a.Sessions.Put(r.Context(), "flash", "Ingrediente aggiornato.")
+	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
+}
+
+// saveIngredientCategoryOnly e' il salvataggio di chi non puo' modificare
+// l'ingrediente (#143): vale solo la sua categoria, gli altri campi del POST
+// sono ignorati.
+func (a *App) saveIngredientCategoryOnly(w http.ResponseWriter, r *http.Request, ing *domain.Ingredient) {
+	user := userFromContext(r.Context())
+	raw := strings.TrimSpace(r.PostFormValue("category_id"))
+	categoryID, err := a.ownCategory(r.Context(), user.ID, raw)
+	if err != nil {
+		cats, _ := a.Categories.ListCategories(r.Context(), user.ID)
+		allergens, _ := a.Categories.ListAllergens(r.Context())
+		selected, _ := a.Categories.GetIngredientAllergenIDs(r.Context(), ing.ID)
+		form := ingredientFormFrom(ing)
+		form.CategoryID = raw
+		data := ingredientEditData{
+			authPageData:      a.baseData(r),
+			Form:              form,
+			Error:             "Categoria non valida: scegline una delle tue.",
+			IngredientID:      ing.ID,
+			IsOFF:             ing.Source == domain.IngredientSourceOFF,
+			Categories:        cats,
+			Allergens:         allergens,
+			SelectedAllergens: selected,
+			ReadOnly:          true,
+			Author:            a.ingredientAuthor(r.Context(), ing, nil),
+		}
+		_ = a.Render.Render(w, http.StatusUnprocessableEntity, "ingredient_edit", data)
+		return
+	}
+	if err := a.Categories.SetIngredientCategory(r.Context(), user.ID, ing.ID, categoryID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.Sessions.Put(r.Context(), "flash", "Categoria salvata.")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 

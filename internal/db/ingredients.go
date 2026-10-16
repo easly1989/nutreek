@@ -131,13 +131,15 @@ func (r *Ingredients) GetByBarcode(ctx context.Context, barcode string) (*domain
 // `last_verified_at = CURRENT_TIMESTAMP` perche' il dato e' appena stato
 // preso da OFF. Se il barcode esiste gia' ritorna ErrBarcodeAlreadyUsed.
 // servingG (la porzione OFF in g/ml, nil se ignota) diventa la quantita'
-// proposta nel picker (#136).
+// proposta nel picker (#136). createdBy e' chi l'ha importato (nil per il
+// reconciler): ne diventa l'autore, l'unico che lo modifica (#143).
 func (r *Ingredients) CreateOFF(
 	ctx context.Context,
 	barcode, name string,
 	brand *string,
 	unit domain.IngredientUnit,
 	kcal, protein, carbs, fat float64,
+	createdBy *int64,
 	unitWeightG, servingG *float64,
 	fiber, sugars, saturatedFat, sodium *float64,
 ) (int64, error) {
@@ -145,12 +147,12 @@ func (r *Ingredients) CreateOFF(
 		INSERT INTO ingredients (
 			source, off_barcode, name, brand, unit,
 			kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-			unit_weight_g, default_quantity, last_verified_at,
+			created_by, unit_weight_g, default_quantity, last_verified_at,
 			fiber_per_100, sugars_per_100, saturated_fat_per_100, sodium_per_100
-		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
+		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
 	`,
 		strings.TrimSpace(barcode), strings.TrimSpace(name), brand, string(unit),
-		kcal, protein, carbs, fat, unitWeightG, servingG,
+		kcal, protein, carbs, fat, createdBy, unitWeightG, servingG,
 		fiber, sugars, saturatedFat, sodium,
 	)
 	if err != nil {
