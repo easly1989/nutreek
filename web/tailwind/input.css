@@ -300,6 +300,13 @@
   .mode-card[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .mode-pv { @apply grid grid-cols-[30%_1fr] h-[52px] rounded-lg border border-border overflow-hidden; }
 
+  /* Pagine senza sessione e onboarding (#123): una colonna centrata. */
+  .auth-box { @apply w-full max-w-[400px] mx-auto mt-4 lg:mt-14 flex flex-col gap-[18px]; }
+  .auth-box .card { @apply p-6 flex flex-col gap-3.5; }
+  /* Chip scelto dentro un riquadro accent-soft: il verde chiaro sparirebbe. */
+  .on-soft .filter.is-on { @apply bg-accent text-accent-fg; }
+  .btn-block { @apply w-full h-[42px] text-[14px]; }
+
   /* Foglio dal basso (telefono), costruito su <dialog>. */
   .sheet {
     @apply w-full max-w-none m-0 mt-auto p-0 bg-surface text-text border-0 border-t border-border rounded-t-2xl;

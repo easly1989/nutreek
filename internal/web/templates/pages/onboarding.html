@@ -1,25 +1,19 @@
 {{define "title"}}Configurazione iniziale — Nutreek{{end}}
-{{define "content"}}
-<div class="max-w-lg mx-auto">
-  <h1 class="text-3xl font-semibold mb-1">Configurazione iniziale</h1>
-  <p class="text-sm text-muted mb-6">
-    {{if .Restart}}Aggiorna la tua configurazione base.{{else}}Benvenuto! Compila i tuoi dati per iniziare.{{end}}
-  </p>
 
-  {{/* Stepper visivo */}}
-  <div class="flex items-center mb-8" aria-label="Progresso wizard">
-    {{$step := .Step}}
-    {{range .Steps}}
-    <div class="flex items-center {{if lt . 5}}flex-1{{end}}">
-      <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0
-                  {{if eq . $step}}bg-accent text-accent-fg ring-2 ring-accent/40
-                  {{else if lt . $step}}bg-accent/20 text-accent
-                  {{else}}bg-surface-2 text-muted{{end}}">{{.}}</div>
-      {{if lt . 5}}
-        <div class="flex-1 h-px mx-1 {{if lt . $step}}bg-accent/40{{else}}bg-border{{end}}"></div>
-      {{end}}
+{{define "topbar_actions"}}<a href="/" class="btn-ghost">Salta, lo faccio dopo</a>{{end}}
+
+{{define "content"}}
+<div class="auth-box max-w-[520px]">
+  <div class="flex flex-col gap-2">
+    <div class="flex items-baseline gap-2 text-[12.5px]">
+      <span class="font-semibold text-muted">Passo {{.Step}} di 5</span>
+      <span class="ml-auto hidden sm:block text-muted">
+        {{- range $i, $n := list "Dati fisici" "Obiettivi" "Template" "Settimana" "Fatto"}}{{if $i}} · {{end}}{{if eq (add $i 1) $.Step}}<b class="text-text">{{$n}}</b>{{else}}{{$n}}{{end}}{{end -}}
+      </span>
     </div>
-    {{end}}
+    <div class="grid grid-cols-5 gap-1.5" role="progressbar" aria-label="Configurazione iniziale" aria-valuemin="1" aria-valuemax="5" aria-valuenow="{{.Step}}">
+      {{range .Steps}}<span class="h-1 rounded-full {{if le . $.Step}}bg-accent{{else}}bg-track{{end}}"></span>{{end}}
+    </div>
   </div>
 
   {{if eq .Step 1}}{{template "onboarding_step1" .}}{{end}}
@@ -30,208 +24,151 @@
 </div>
 {{end}}
 
-{{/* ===================== STEP 1: Dati fisici ===================== */}}
+{{/* Indietro / Avanti, comune ai passi 2-4. */}}
+{{define "onboarding_nav"}}
+<div class="flex items-center">
+  <a href="/onboarding?step={{add .Step -1}}{{if .Restart}}&restart=true{{end}}" class="btn-ghost">{{template "icon_sm" "i-chevron-left"}}Indietro</a>
+  <button class="btn-primary ml-auto">Avanti</button>
+</div>
+{{end}}
+
+{{define "onboarding_hidden"}}
+<input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+<input type="hidden" name="step" value="{{.Step}}">
+{{if .Restart}}<input type="hidden" name="restart" value="true">{{end}}
+{{end}}
+
+{{/* ===================== PASSO 1: dati fisici ===================== */}}
 {{define "onboarding_step1"}}
-<form method="post" action="/onboarding" class="space-y-4">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <input type="hidden" name="step" value="1">
-  {{if .Restart}}<input type="hidden" name="restart" value="true">{{end}}
-
-  <div class="bg-surface border border-border rounded p-6 space-y-5">
-    <div>
-      <h2 class="font-semibold text-base mb-0.5">Dati fisici</h2>
-      <p class="text-xs text-muted">Usati per calcolare il tuo fabbisogno calorico (BMR). Tutti opzionali.</p>
+<form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
+  {{template "onboarding_hidden" .}}
+  <div class="card">
+    <div><h1 class="h1">Parliamo di te</h1><p class="text-muted mt-1">Servono a stimare quanto ti serve in un giorno. Puoi lasciare vuoto quello che preferisci.</p></div>
+    <div class="grid grid-cols-2 gap-3.5">
+      <label class="lab">Peso<span class="field-unit"><input id="ob-weight" name="weight_kg" inputmode="decimal" value="{{.Form.WeightKg}}" placeholder="72,5" class="field"><em>kg</em></span></label>
+      <label class="lab">Altezza<span class="field-unit"><input id="ob-height" name="height_cm" inputmode="decimal" value="{{.Form.HeightCm}}" placeholder="175" class="field"><em>cm</em></span></label>
+      <label class="lab">Anno di nascita<input id="ob-birth" name="birth_year" inputmode="numeric" value="{{.Form.BirthYear}}" placeholder="1990" class="field"></label>
     </div>
-
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1" for="ob-weight">Peso</label>
-        <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-          <input id="ob-weight" name="weight_kg" inputmode="decimal"
-                 value="{{.Form.WeightKg}}" placeholder="es. 72.5"
-                 class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none text-sm">
-          <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">kg</span>
-        </div>
+    <fieldset class="lab">
+      <legend class="mb-1.5">Sesso biologico</legend>
+      <div class="segmented grid-cols-3">
+        <label><input type="radio" name="sex" value="M"{{if eq .Form.Sex "M"}} checked{{end}}>Uomo</label>
+        <label><input type="radio" name="sex" value="F"{{if eq .Form.Sex "F"}} checked{{end}}>Donna</label>
+        <label><input type="radio" name="sex" value=""{{if eq .Form.Sex ""}} checked{{end}}>Non lo dico</label>
       </div>
-      <div>
-        <label class="block text-sm font-medium mb-1" for="ob-height">Altezza</label>
-        <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-          <input id="ob-height" name="height_cm" inputmode="decimal"
-                 value="{{.Form.HeightCm}}" placeholder="es. 175"
-                 class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none text-sm">
-          <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">cm</span>
-        </div>
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1" for="ob-birth">Anno di nascita</label>
-        <input id="ob-birth" name="birth_year" inputmode="numeric"
-               value="{{.Form.BirthYear}}" placeholder="es. 1990"
-               class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-      </div>
-      <div>
-        <span class="block text-sm font-medium mb-1">Sesso biologico</span>
-        <div class="flex items-center gap-4 pt-2">
-          <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
-            <input type="radio" name="sex" value="M" {{if eq .Form.Sex "M"}}checked{{end}} class="accent-accent"> Uomo
-          </label>
-          <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
-            <input type="radio" name="sex" value="F" {{if eq .Form.Sex "F"}}checked{{end}} class="accent-accent"> Donna
-          </label>
-          <label class="inline-flex items-center gap-1.5 text-sm text-muted cursor-pointer">
-            <input type="radio" name="sex" value="" {{if eq .Form.Sex ""}}checked{{end}} class="accent-accent"> —
-          </label>
-        </div>
-      </div>
-      <div class="col-span-2">
-        <label class="block text-sm font-medium mb-1" for="ob-activity">Livello di attività</label>
-        <select id="ob-activity" name="activity_level"
-                class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-          <option value=""          {{if eq .Form.ActivityLevel ""}}selected{{end}}>Non specificato</option>
-          <option value="sedentary" {{if eq .Form.ActivityLevel "sedentary"}}selected{{end}}>Sedentario — solo vita quotidiana</option>
-          <option value="light"     {{if eq .Form.ActivityLevel "light"}}selected{{end}}>Leggera — 1–3 allenamenti/settimana</option>
-          <option value="moderate"  {{if eq .Form.ActivityLevel "moderate"}}selected{{end}}>Moderata — 3–5 allenamenti/settimana</option>
-          <option value="active"    {{if eq .Form.ActivityLevel "active"}}selected{{end}}>Intensa — 6–7 allenamenti/settimana</option>
-          <option value="athlete"   {{if eq .Form.ActivityLevel "athlete"}}selected{{end}}>Atleta — allenamento quotidiano intenso</option>
-        </select>
-      </div>
-    </div>
+    </fieldset>
+    <label class="lab">Attività fisica
+      <select id="ob-activity" name="activity_level" class="field">
+        <option value=""{{if eq .Form.ActivityLevel ""}} selected{{end}}>Non specificata</option>
+        <option value="sedentary"{{if eq .Form.ActivityLevel "sedentary"}} selected{{end}}>Sedentaria: solo vita quotidiana</option>
+        <option value="light"{{if eq .Form.ActivityLevel "light"}} selected{{end}}>Leggera: 1–3 allenamenti a settimana</option>
+        <option value="moderate"{{if eq .Form.ActivityLevel "moderate"}} selected{{end}}>Moderata: 3–5 allenamenti a settimana</option>
+        <option value="active"{{if eq .Form.ActivityLevel "active"}} selected{{end}}>Intensa: 6–7 allenamenti a settimana</option>
+        <option value="athlete"{{if eq .Form.ActivityLevel "athlete"}} selected{{end}}>Atleta: allenamento intenso ogni giorno</option>
+      </select>
+    </label>
   </div>
-
-  <div class="flex items-center justify-between">
-    <a href="/" class="text-sm text-muted hover:underline">Salta (configura dopo dal profilo)</a>
-    <button class="bg-accent text-accent-fg rounded px-6 py-2 text-sm hover:bg-accent/90 transition">Avanti →</button>
-  </div>
+  <div class="flex"><button class="btn-primary ml-auto">Avanti</button></div>
 </form>
 {{end}}
 
-{{/* ===================== STEP 2: Obiettivi macro ===================== */}}
+{{/* ===================== PASSO 2: obiettivi ===================== */}}
 {{define "onboarding_step2"}}
-<form method="post" action="/onboarding" class="space-y-4">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <input type="hidden" name="step" value="2">
-  {{if .Restart}}<input type="hidden" name="restart" value="true">{{end}}
-
-  <div class="bg-surface border border-border rounded p-6 space-y-5">
-    <div>
-      <h2 class="font-semibold text-base mb-0.5">Obiettivi nutrizionali</h2>
-      <p class="text-xs text-muted">Imposta i macro target giornalieri. Lasciali vuoti per ometterli.</p>
-    </div>
-
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1" for="ob-kcal">Calorie (kcal/g)</label>
-        <input id="ob-kcal" name="target_kcal" inputmode="decimal"
-               value="{{.Form.TargetKcal}}" placeholder="es. 2000"
-               class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1" for="ob-protein">Proteine (g/g)</label>
-        <input id="ob-protein" name="target_protein" inputmode="decimal"
-               value="{{.Form.TargetProtein}}" placeholder="es. 150"
-               class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1" for="ob-carbs">Carboidrati (g/g)</label>
-        <input id="ob-carbs" name="target_carbs" inputmode="decimal"
-               value="{{.Form.TargetCarbs}}" placeholder="es. 200"
-               class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1" for="ob-fat">Grassi (g/g)</label>
-        <input id="ob-fat" name="target_fat" inputmode="decimal"
-               value="{{.Form.TargetFat}}" placeholder="es. 65"
-               class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+<form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
+  {{template "onboarding_hidden" .}}
+  <div class="card">
+    <div><h1 class="h1">I tuoi obiettivi</h1><p class="text-muted mt-1">Quanto vuoi mangiare in un giorno. Puoi lasciare vuoto quello che non ti interessa.</p></div>
+    {{if gt .TDEE 0.0}}
+    <div class="on-soft rounded-xl bg-accent-soft p-3 flex flex-col gap-2" id="ob-presets" data-tdee="{{printf "%.0f" .TDEE}}" data-weight="{{.Weight}}">
+      <p>Dai tuoi dati il fabbisogno è di circa <b>{{num .TDEE}} kcal</b>. Parti da un modello:</p>
+      <div class="flex flex-wrap gap-1.5">
+        <button type="button" class="filter" data-preset="maintenance" aria-pressed="false">Mantenimento</button>
+        <button type="button" class="filter" data-preset="cut" aria-pressed="false">Dimagrimento</button>
+        <button type="button" class="filter" data-preset="bulk" aria-pressed="false">Massa</button>
       </div>
     </div>
+    {{end}}
+    <div class="grid grid-cols-2 gap-3.5">
+      <label class="lab">Calorie<span class="field-unit"><input id="ob-kcal" name="target_kcal" inputmode="decimal" value="{{.Form.TargetKcal}}" placeholder="2000" class="field"><em>kcal</em></span></label>
+      <label class="lab">Proteine<span class="field-unit"><input id="ob-protein" name="target_protein" inputmode="decimal" value="{{.Form.TargetProtein}}" placeholder="120" class="field"><em>g</em></span></label>
+      <label class="lab">Carboidrati<span class="field-unit"><input id="ob-carbs" name="target_carbs" inputmode="decimal" value="{{.Form.TargetCarbs}}" placeholder="250" class="field"><em>g</em></span></label>
+      <label class="lab">Grassi<span class="field-unit"><input id="ob-fat" name="target_fat" inputmode="decimal" value="{{.Form.TargetFat}}" placeholder="70" class="field"><em>g</em></span></label>
+    </div>
   </div>
-
-  <div class="flex items-center justify-between">
-    <a href="/onboarding?step=1{{if .Restart}}&restart=true{{end}}" class="text-sm text-muted hover:underline">← Indietro</a>
-    <button class="bg-accent text-accent-fg rounded px-6 py-2 text-sm hover:bg-accent/90 transition">Avanti →</button>
-  </div>
+  {{template "onboarding_nav" .}}
 </form>
 {{end}}
 
-{{/* ===================== STEP 3: Template settimanale ===================== */}}
+{{/* ===================== PASSO 3: template ===================== */}}
 {{define "onboarding_step3"}}
-<form method="post" action="/onboarding" class="space-y-4">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <input type="hidden" name="step" value="3">
-  {{if .Restart}}<input type="hidden" name="restart" value="true">{{end}}
-
-  <div class="bg-surface border border-border rounded p-6 space-y-4">
-    <div>
-      <h2 class="font-semibold text-base mb-0.5">Template settimanale</h2>
-      <p class="text-xs text-muted">Dai un nome al tuo schema di pasti (es. "Standard", "Massa"). Puoi aggiungere gli slot Colazione/Pranzo/Cena dopo dalla pagina Piano Nutrizionale.</p>
-    </div>
-    <div>
-      <label class="block text-sm font-medium mb-1" for="ob-tpl-name">Nome template <span class="text-muted font-normal">(opzionale)</span></label>
-      <input id="ob-tpl-name" name="template_name" type="text" maxlength="200"
-             placeholder="es. Standard"
-             class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-    </div>
+<form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
+  {{template "onboarding_hidden" .}}
+  <div class="card">
+    <div><h1 class="h1">Il tuo schema di pasti</h1><p class="text-muted mt-1">Un template è la struttura di una giornata tipo (colazione, pranzo, cena…). Dagli un nome: i pasti li aggiungi dopo, in Piano nutrizionale.</p></div>
+    <label class="lab">Nome del template<input id="ob-tpl-name" name="template_name" maxlength="200" placeholder="Standard" class="field"><span class="font-medium">Facoltativo.</span></label>
   </div>
-
-  <div class="flex items-center justify-between">
-    <a href="/onboarding?step=2{{if .Restart}}&restart=true{{end}}" class="text-sm text-muted hover:underline">← Indietro</a>
-    <button class="bg-accent text-accent-fg rounded px-6 py-2 text-sm hover:bg-accent/90 transition">Avanti →</button>
-  </div>
+  {{template "onboarding_nav" .}}
 </form>
 {{end}}
 
-{{/* ===================== STEP 4: Applica template ===================== */}}
+{{/* ===================== PASSO 4: settimana ===================== */}}
 {{define "onboarding_step4"}}
-<form method="post" action="/onboarding" class="space-y-4">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <input type="hidden" name="step" value="4">
-  {{if .Restart}}<input type="hidden" name="restart" value="true">{{end}}
-
-  <div class="bg-surface border border-border rounded p-6 space-y-4">
-    <div>
-      <h2 class="font-semibold text-base mb-0.5">Applica template alla settimana corrente</h2>
-      <p class="text-xs text-muted">Struttura i pasti di questa settimana in base al template scelto. Puoi farlo anche in seguito dalla dashboard.</p>
-    </div>
+<form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
+  {{template "onboarding_hidden" .}}
+  <div class="card">
+    <div><h1 class="h1">La prima settimana</h1><p class="text-muted mt-1">Applica un template alla settimana in corso per trovarla già impostata. Puoi farlo anche dopo.</p></div>
     {{if .Templates}}
-      <div>
-        <label class="block text-sm font-medium mb-1" for="ob-tpl">Template</label>
-        <select id="ob-tpl" name="template_id"
-                class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-          <option value="">— non applicare ora —</option>
-          {{range .Templates}}
-            <option value="{{.ID}}" {{if .IsActive}}selected{{end}}>{{.Name}}{{if .IsActive}} (attivo){{end}}</option>
-          {{end}}
-        </select>
-      </div>
+    <label class="lab">Template
+      <select id="ob-tpl" name="template_id" class="field">
+        <option value="">Non applicare ora</option>
+        {{range .Templates}}<option value="{{.ID}}"{{if .IsActive}} selected{{end}}>{{.Name}}</option>{{end}}
+      </select>
+    </label>
     {{else}}
-      <p class="text-sm text-muted italic">Nessun template disponibile — puoi crearne uno da <a href="/piano-nutrizionale?tab=template" class="underline text-accent">Piano Nutrizionale → Template</a>.</p>
-      <input type="hidden" name="template_id" value="">
+    <p class="text-muted">Non hai ancora template: puoi crearne uno in <a href="/piano-nutrizionale" class="text-accent font-semibold hover:underline">Piano nutrizionale</a>.</p>
+    <input type="hidden" name="template_id" value="">
     {{end}}
   </div>
-
-  <div class="flex items-center justify-between">
-    <a href="/onboarding?step=3{{if .Restart}}&restart=true{{end}}" class="text-sm text-muted hover:underline">← Indietro</a>
-    <button class="bg-accent text-accent-fg rounded px-6 py-2 text-sm hover:bg-accent/90 transition">Avanti →</button>
-  </div>
+  {{template "onboarding_nav" .}}
 </form>
 {{end}}
 
-{{/* ===================== STEP 5: Done ===================== */}}
+{{/* ===================== PASSO 5: fatto ===================== */}}
 {{define "onboarding_step5"}}
-<form method="post" action="/onboarding" class="space-y-4">
-  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-  <input type="hidden" name="step" value="5">
-
-  <div class="bg-surface border border-border rounded p-8 text-center space-y-3">
-    <div class="text-6xl mb-2">✓</div>
-    <h2 class="font-semibold text-xl">Tutto pronto!</h2>
-    <p class="text-sm text-muted leading-relaxed">
-      Il tuo profilo è configurato. Puoi modificare i dati in qualsiasi momento dalla pagina
-      <a href="/profile" class="underline text-accent">Profilo</a>.
-    </p>
+<form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
+  {{template "onboarding_hidden" .}}
+  <div class="card items-center text-center">
+    <span class="w-14 h-14 rounded-2xl bg-accent-soft text-accent grid place-items-center">{{template "icon_lg" "i-check"}}</span>
+    <h1 class="h1">Tutto pronto</h1>
+    <p class="text-muted max-w-sm">Puoi cambiare questi dati quando vuoi dal <a href="/profile" class="text-accent font-semibold hover:underline">Profilo</a>.</p>
   </div>
-
-  <div class="flex justify-center mt-2">
-    <button class="bg-accent text-accent-fg rounded px-8 py-2 text-sm hover:bg-accent/90 transition font-medium">Vai alla dashboard →</button>
-  </div>
+  <button class="btn-primary btn-block">Vai alla settimana</button>
 </form>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// Passo 2: i modelli partono dal fabbisogno, come nel Profilo.
+(function () {
+  var box = document.getElementById("ob-presets");
+  if (!box) return;
+  var tdee = parseFloat(box.dataset.tdee), weight = parseFloat(box.dataset.weight) || 0;
+  var S = { maintenance: [1.0, 1.6, 0.28], cut: [0.8, 2.0, 0.25], bulk: [1.1, 1.8, 0.25] };
+  box.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-preset]");
+    if (!b) return;
+    var s = S[b.dataset.preset], kcal = Math.round(tdee * s[0]);
+    var prot = weight ? Math.round(weight * s[1]) : Math.round(kcal * 0.2 / 4);
+    var fat = Math.round(kcal * s[2] / 9), carbs = Math.max(0, Math.round((kcal - prot * 4 - fat * 9) / 4));
+    document.getElementById("ob-kcal").value = kcal;
+    document.getElementById("ob-protein").value = prot;
+    document.getElementById("ob-carbs").value = carbs;
+    document.getElementById("ob-fat").value = fat;
+    box.querySelectorAll("[data-preset]").forEach(function (o) {
+      o.classList.toggle("is-on", o === b);
+      o.setAttribute("aria-pressed", String(o === b));
+    });
+  });
+})();
+</script>
 {{end}}

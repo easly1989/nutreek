@@ -1,0 +1,13 @@
+{{define "error_page"}}
+{{/* Pagina d'errore: list "codice" "titolo" "spiegazione" "icona". */}}
+<div class="max-w-[460px] mx-auto mt-10 lg:mt-[72px] flex flex-col items-center gap-3.5 text-center">
+  <span class="w-14 h-14 rounded-2xl bg-accent-soft text-accent grid place-items-center">{{template "icon_lg" (index . 3)}}</span>
+  <span class="text-[13px] font-bold text-muted">Errore {{index . 0}}</span>
+  <h1 class="h1">{{index . 1}}</h1>
+  <p class="text-muted">{{index . 2}}</p>
+  <div class="flex flex-wrap justify-center gap-2">
+    <a href="/" class="btn-primary">{{template "icon_sm" "i-week"}}Torna alla settimana</a>
+    <button type="button" class="btn-secondary" onclick="history.back()">Indietro</button>
+  </div>
+</div>
+{{end}}

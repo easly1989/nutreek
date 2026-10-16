@@ -1,24 +1,17 @@
-{{define "title"}}Login - Nutreek{{end}}
+{{define "title"}}Accedi — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-md mx-auto">
-  <h1 class="text-2xl font-semibold mb-6">Accedi</h1>
-  {{if .Error}}
-    <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
-  {{end}}
-  <form method="post" action="/login" class="space-y-4 bg-surface p-6 rounded border border-border">
+<div class="auth-box">
+  <div class="text-center">
+    <h1 class="h1">Accedi</h1>
+    <p class="text-muted mt-1">La tua settimana di pasti ti aspetta.</p>
+  </div>
+  {{if .Error}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>{{end}}
+  <form method="post" action="/login" class="card">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <div>
-      <label class="block text-sm font-medium mb-1" for="email">Email</label>
-      <input id="email" name="email" type="email" required autofocus value="{{.Form.Email}}"
-             class="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-    </div>
-    <div>
-      <label class="block text-sm font-medium mb-1" for="password">Password</label>
-      <input id="password" name="password" type="password" required
-             class="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-    </div>
-    <button type="submit" class="w-full bg-accent text-accent-fg rounded py-2 hover:bg-accent/90">Entra</button>
+    <label class="lab">Email<input id="email" name="email" type="email" required autofocus autocomplete="email" value="{{.Form.Email}}" class="field field-lg"></label>
+    <label class="lab">Password<input id="password" name="password" type="password" required autocomplete="current-password" class="field field-lg"></label>
+    <button class="btn-primary btn-block">Entra</button>
   </form>
-  <p class="text-sm text-muted mt-4 text-center">Non hai un account? <a href="/register" class="underline">Registrati</a></p>
+  <p class="text-center text-muted">Non hai un account? <a href="/register" class="text-accent font-semibold hover:underline">Registrati</a></p>
 </div>
 {{end}}

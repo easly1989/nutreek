@@ -23,7 +23,7 @@
 <body class="bg-bg text-text min-h-screen"{{if .ShowTour}} data-show-tour="1"{{end}}>
   {{template "icon_sprite"}}
 
-  {{if .User}}
+  {{if and .User (not .Bare)}}
   {{- $p := .ActiveNav -}}
 
   {{/* Sidebar: solo da desktop (lg). Sul telefono la sostituisce la barra in basso. */}}
@@ -118,16 +118,19 @@
     </form>
   </dialog>
   {{else}}
-  <header class="h-14 flex items-center gap-3 px-4 bg-surface border-b border-border">
+  <header class="h-[60px] flex items-center gap-3 px-4 lg:px-6 bg-surface border-b border-border">
     {{template "brand"}}
     <div class="ml-auto flex items-center gap-2">
-      <a href="/login" class="btn-ghost">Accedi</a>
-      <a href="/register" class="btn-primary">Registrati</a>
+      {{block "topbar_actions" .}}
+      {{if eq .ActiveNav "/login"}}<a href="/register" class="btn-ghost">Registrati</a>
+      {{else if eq .ActiveNav "/register"}}<a href="/login" class="btn-ghost">Accedi</a>
+      {{else if not .User}}<a href="/login" class="btn-ghost">Accedi</a><a href="/register" class="btn-primary">Registrati</a>{{end}}
+      {{end}}
     </div>
   </header>
   {{end}}
 
-  <main id="main-content" class="min-h-screen{{if .User}} lg:pl-[220px] pb-24 lg:pb-0{{end}}">
+  <main id="main-content" class="{{if and .User (not .Bare)}}min-h-screen lg:pl-[220px] pb-24 lg:pb-0{{else}}min-h-[calc(100vh-60px)]{{end}}">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 lg:py-6">
       {{if .Flash}}
         <div id="flash-msg" role="status" class="mb-4 rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-center justify-between gap-3">
