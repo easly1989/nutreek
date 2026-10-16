@@ -69,6 +69,11 @@
   --carb: #C98A12;
   --fat: #23897D;
   --shadow: 0 12px 32px rgba(15, 20, 30, 0.14);
+  /* Macro nei grafici: piu' saturi delle lettere P/C/G, controllati per
+     daltonismo e contrasto sul fondo (#123). */
+  --ch-prot: #6B5BD2;
+  --ch-carb: #B47A0C;
+  --ch-fat: #0A8F7E;
 }
 
 /* Scuro: grigio-blu neutro, non quasi nero. Ripetuto per "sistema" sotto. */
@@ -92,6 +97,9 @@
   --carb: #E9B851;
   --fat: #5CC9BB;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --ch-prot: #8576DC;
+  --ch-carb: #BE8A26;
+  --ch-fat: #289C8E;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-mode="sistema"] {
@@ -114,6 +122,9 @@
     --carb: #E9B851;
     --fat: #5CC9BB;
     --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --ch-prot: #8576DC;
+  --ch-carb: #BE8A26;
+  --ch-fat: #289C8E;
   }
 }
 
@@ -265,6 +276,15 @@
   .shop-item[aria-pressed="true"] .shop-name,
   .shop-item[aria-pressed="true"] .shop-qty b { @apply text-muted line-through; }
 
+  /* Statistiche (#123): card di sintesi, legende e grafici SVG (static/js/charts.js). */
+  .tile { @apply card px-3.5 py-3 flex flex-col gap-0.5 min-w-0; }
+  .tile-k { @apply text-[12.5px] font-semibold text-muted; }
+  .tile-v { @apply text-[22px] leading-tight font-bold tabular-nums; }
+  .tile-v small { @apply text-[13px] font-medium text-muted; }
+  .tile-s { @apply text-[12.5px] text-muted; }
+  .legend { @apply flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12.5px] text-muted; }
+  .legend i { @apply inline-block w-2.5 h-2.5 rounded-[3px] mr-1.5 align-[-1px]; }
+
   /* Foglio dal basso (telefono), costruito su <dialog>. */
   .sheet {
     @apply w-full max-w-none m-0 mt-auto p-0 bg-surface text-text border-0 border-t border-border rounded-t-2xl;
@@ -273,6 +293,27 @@
   }
   .sheet::backdrop { background: rgba(10, 12, 16, 0.45); }
 }
+
+/* ---- Grafici SVG -------------------------------------------------------- */
+[data-chart] { position: relative; min-height: 40px; }
+.chart { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.chart text { font: 500 12px "Figtree", system-ui, sans-serif; fill: var(--muted); }
+.chart .ch-value { fill: var(--text); font-weight: 700; }
+.chart .ch-grid { stroke: var(--track); stroke-width: 1; }
+.chart .ch-target { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.chart .ch-hover { stroke: var(--muted); stroke-width: 1; }
+.chart .is-dim { opacity: .45; }
+.ch-tip {
+  position: absolute; top: 0; z-index: 10; pointer-events: none;
+  display: flex; flex-direction: column; gap: 3px; min-width: 150px;
+  padding: 8px 10px; border-radius: 10px; font-size: 12.5px;
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.ch-tip[hidden] { display: none; }
+.ch-tip-row { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.ch-tip-row i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.ch-tip-row b { margin-left: auto; padding-left: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
+.ch-tip-total { border-top: 1px solid var(--border); padding-top: 3px; }
 
 /* ---- HTMX loading indicators ------------------------------------------- */
 .htmx-indicator { display: none; }

@@ -1,434 +1,178 @@
 {{define "title"}}Statistiche — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-3xl">
-  <h1 class="text-3xl font-semibold mb-1">Statistiche</h1>
-  <p class="text-sm text-muted mb-6">Riepilogo settimanale delle ultime 12 settimane.</p>
+{{- $v := .View -}}
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  <header>
+    <h1 class="h1">Statistiche</h1>
+    <p class="text-muted mt-0.5">Le ultime 12 settimane, dal {{.From.Day}} {{monthName .From}} al {{.To.Day}} {{monthName .To}}.</p>
+  </header>
 
-  {{if not .HasData}}
-  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
-    <p class="text-sm">Nessun dato disponibile. Inizia a pianificare i pasti per vedere le statistiche.</p>
-    <a href="/" class="mt-3 inline-block text-accent hover:underline text-sm">Vai al piano settimanale →</a>
+  {{if not $v.HasMacro}}
+  <div class="card px-4 py-8 flex flex-col items-center gap-3 text-center">
+    <span class="thumb w-12 h-12 rounded-xl bg-accent-soft text-accent">{{template "icon_lg" "i-stats"}}</span>
+    <p class="font-semibold">Ancora niente da mostrare</p>
+    <p class="text-muted max-w-sm">Le statistiche nascono dai pasti della settimana: comincia a pianificarli e qui vedrai calorie, macro e aderenza.</p>
+    <a href="/" class="btn-secondary">{{template "icon" "i-week"}}Vai alla settimana</a>
   </div>
   {{else}}
 
-  {{/* Media settimanale — 6 card */}}
-  <section class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
-    <div class="bg-surface border border-border rounded px-4 py-3">
-      <div class="text-xs text-muted mb-1">Media kcal/sett.</div>
-      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Kcal}}</div>
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 [&>:last-child:nth-child(odd)]:col-span-2 lg:[&>:last-child:nth-child(odd)]:col-span-1">
+    {{range $v.Tiles}}
+    <div class="tile">
+      <span class="tile-k">{{.Label}}</span>
+      <span class="tile-v">{{.Value}}{{if ne .Value "—"}} <small>{{.Unit}}</small>{{end}}</span>
+      {{with .Sub}}<span class="tile-s">{{.}}</span>{{end}}
     </div>
-    <div class="bg-surface border border-border rounded px-4 py-3">
-      <div class="text-xs text-muted mb-1">Media prot. (g)</div>
-      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Protein}}</div>
+    {{end}}
+  </div>
+
+  {{with .TDEEReport}}
+  <section class="card p-4 lg:p-5 grid gap-5{{if $v.HasTDEEChart}} lg:grid-cols-[300px_minmax(0,1fr)]{{end}}">
+    <div class="flex flex-col gap-3{{if not $v.HasTDEEChart}} max-w-md{{end}}">
+      <div>
+        <h2 class="h2">Fabbisogno stimato</h2>
+        <p class="text-[12.5px] text-muted mt-0.5">{{if .HasEnoughData}}Dal tuo peso e da quanto hai mangiato, affidabilità {{.Confidence}}%.{{else}}Dal tuo peso e da quanto hai mangiato.{{end}}</p>
+      </div>
+      {{if .HasEnoughData}}
+      <div><span class="text-[34px] leading-none font-bold tabular-nums">{{num .EstimatedTDEE}}</span> <span class="text-muted">kcal al giorno</span></div>
+      <dl class="flex flex-col gap-1 text-[13px]">
+        {{if gt .FormulaBasedTDEE 0.0}}<div class="flex justify-between"><dt class="text-muted">Dalla formula</dt><dd class="tabular-nums">{{num .FormulaBasedTDEE}} kcal</dd></div>{{end}}
+        {{if gt $.TargetKcal 0.0}}<div class="flex justify-between"><dt class="text-muted">Obiettivo attuale</dt><dd class="tabular-nums">{{num $.TargetKcal}} kcal</dd></div>{{end}}
+      </dl>
+      {{$diff := .SuggestionDiff}}
+      {{if or (gt $diff 100.0) (lt $diff -100.0)}}
+      <form method="post" action="/tdee/accept" class="rounded-xl bg-accent-soft p-3 flex flex-col gap-2">
+        <p>Ti servono circa <b>{{if gt $diff 0.0}}{{num $diff}} kcal in più{{else}}{{num (neg $diff)}} kcal in meno{{end}}</b> al giorno rispetto all'obiettivo.</p>
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <input type="hidden" name="estimated_tdee" value="{{printf "%.0f" .EstimatedTDEE}}">
+        <div class="flex items-center gap-2">
+          <button class="btn-primary">Porta l'obiettivo a {{num .EstimatedTDEE}}</button>
+          {{if not (index $.Features "tdee_adaptive")}}<span class="chip chip-warn">Premium</span>{{end}}
+        </div>
+      </form>
+      {{end}}
+      {{else}}
+      <p class="text-muted">Servono almeno <b class="text-text">2 settimane di pasti</b> e <b class="text-text">2 pesate</b> per stimarlo.</p>
+      {{end}}
     </div>
-    <div class="bg-surface border border-border rounded px-4 py-3">
-      <div class="text-xs text-muted mb-1">Media carbs (g)</div>
-      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Carbs}}</div>
-    </div>
-    <div class="bg-surface border border-border rounded px-4 py-3">
-      <div class="text-xs text-muted mb-1">Media grassi (g)</div>
-      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .Averages.Fat}}</div>
-    </div>
-    <div class="bg-surface border border-border rounded px-4 py-3">
-      <div class="text-xs text-muted mb-1">Media allenamenti/sett.</div>
-      <div class="text-xl font-semibold tabular-nums">{{printf "%.1f" .AvgWorkouts}}</div>
-    </div>
-    <div class="bg-surface border border-border rounded px-4 py-3">
-      <div class="text-xs text-muted mb-1">Media sgarri/sett.</div>
-      <div class="text-xl font-semibold tabular-nums">{{printf "%.1f" .AvgCheats}}</div>
-    </div>
-    <div class="bg-surface border border-border rounded px-4 py-3">
-      <div class="text-xs text-muted mb-1">💧 Media idratazione (ml/g)</div>
-      <div class="text-xl font-semibold tabular-nums">{{printf "%.0f" .AvgWaterML}}</div>
-    </div>
-    {{if .HasAdherenceData}}
-    <div class="bg-surface border border-border rounded px-4 py-3">
-      <div class="text-xs text-muted mb-1">🔥 Streak senza sgarri</div>
-      <div class="text-xl font-semibold tabular-nums">{{.StreakDays}} <span class="text-sm font-normal text-muted">giorni</span></div>
+    {{if $v.HasTDEEChart}}
+    <div class="flex flex-col gap-2 min-w-0">
+      <div class="legend"><span><i class="bg-accent"></i>Fabbisogno stimato</span>{{if gt $.TargetKcal 0.0}}<span><i class="!h-0.5 !w-3.5 !rounded-none bg-muted"></i>Obiettivo</span>{{end}}</div>
+      <div data-chart="tdee"></div>
     </div>
     {{end}}
   </section>
+  {{end}}
 
-  {{/* ===== TDEE Adattivo ===== */}}
-  {{if .TDEEReport}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2 flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-muted">Fabbisogno stimato (TDEE adattivo)</h2>
-      {{if .TDEEReport.HasEnoughData}}
-      <span class="text-xs text-muted">Confidenza: <strong class="text-text">{{.TDEEReport.Confidence}}%</strong></span>
+  <div class="grid gap-4 lg:gap-[18px] lg:grid-cols-2">
+    <section class="card p-4 flex flex-col gap-2 min-w-0">
+      <div class="flex items-baseline justify-between"><h2 class="h2">Calorie e macro</h2><span class="text-[12.5px] text-muted">media al giorno</span></div>
+      <div class="legend"><span><i style="background:var(--ch-prot)"></i>Proteine</span><span><i style="background:var(--ch-carb)"></i>Carboidrati</span><span><i style="background:var(--ch-fat)"></i>Grassi</span>{{if gt .TargetKcal 0.0}}<span><i class="!h-0.5 !w-3.5 !rounded-none bg-muted"></i>Obiettivo</span>{{end}}</div>
+      <div data-chart="macro"></div>
+    </section>
+    <section class="card p-4 flex flex-col gap-2 min-w-0">
+      <div class="flex items-baseline justify-between"><h2 class="h2">Peso</h2><span class="text-[12.5px] text-muted">kg</span></div>
+      {{if $v.HasWeight}}
+      <div class="legend"><span>{{len $v.Charts.Weight}} pesate</span></div>
+      <div data-chart="weight"></div>
+      {{else}}
+      <p class="text-muted py-6 text-center">Con almeno due pesate qui vedi l'andamento.</p>
+      <a href="/profile/peso" class="btn-secondary self-center">{{template "icon" "i-weight"}}Registra una pesata</a>
       {{end}}
-    </div>
-    <div class="px-4 py-4">
-    {{if .TDEEReport.HasEnoughData}}
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-        <div>
-          <div class="text-xs text-muted mb-1">TDEE stimato</div>
-          <div class="text-2xl font-bold tabular-nums text-accent">{{printf "%.0f" .TDEEReport.EstimatedTDEE}}</div>
-          <div class="text-xs text-muted">kcal/giorno</div>
-        </div>
-        {{if gt .TDEEReport.FormulaBasedTDEE 0.0}}
-        <div>
-          <div class="text-xs text-muted mb-1">TDEE da formula</div>
-          <div class="text-2xl font-bold tabular-nums tabular-nums">{{printf "%.0f" .TDEEReport.FormulaBasedTDEE}}</div>
-          <div class="text-xs text-muted">kcal/giorno</div>
-        </div>
-        {{end}}
-        {{if gt .UserTargetKcal 0.0}}
-        <div>
-          <div class="text-xs text-muted mb-1">Target attuale</div>
-          <div class="text-2xl font-bold tabular-nums">{{printf "%.0f" .UserTargetKcal}}</div>
-          <div class="text-xs text-muted">kcal/giorno</div>
-        </div>
-        {{end}}
-      </div>
+    </section>
+  </div>
 
-      {{$diff := .TDEEReport.SuggestionDiff}}
-      {{if gt $diff 100.0}}
-      <div class="rounded border border-border bg-surface-2 px-4 py-3 flex items-center justify-between gap-4">
-        <p class="text-sm text-text">
-          Il tuo fabbisogno reale sembra <strong>{{printf "%.0f" $diff}} kcal/giorno in più</strong> del target attuale.
-          Vuoi aggiornare?
-        </p>
-        <form method="post" action="/tdee/accept" class="shrink-0 flex items-center gap-2">
-          {{if not (index .Features "tdee_adaptive")}}
-            <span class="inline-flex items-center text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded px-1.5 py-0.5 font-medium">Premium</span>
-          {{end}}
-          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <input type="hidden" name="estimated_tdee" value="{{printf "%.0f" $.TDEEReport.EstimatedTDEE}}">
-          <button class="text-sm bg-accent text-accent-fg rounded px-4 py-1.5 hover:bg-accent/90 transition whitespace-nowrap">Aggiorna target</button>
-        </form>
-      </div>
-      {{else if lt $diff -100.0}}
-      <div class="rounded border border-border bg-surface-2 px-4 py-3 flex items-center justify-between gap-4">
-        <p class="text-sm text-text">
-          Il tuo fabbisogno reale sembra <strong>{{printf "%.0f" (neg $diff)}} kcal/giorno in meno</strong> del target attuale.
-          Vuoi aggiornare?
-        </p>
-        <form method="post" action="/tdee/accept" class="shrink-0 flex items-center gap-2">
-          {{if not (index .Features "tdee_adaptive")}}
-            <span class="inline-flex items-center text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded px-1.5 py-0.5 font-medium">Premium</span>
-          {{end}}
-          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <input type="hidden" name="estimated_tdee" value="{{printf "%.0f" $.TDEEReport.EstimatedTDEE}}">
-          <button class="text-sm bg-accent text-accent-fg rounded px-4 py-1.5 hover:bg-accent/90 transition whitespace-nowrap">Aggiorna target</button>
-        </form>
-      </div>
-      {{end}}
-
-      {{if gt (len .TDEEReport.WeeklyData) 1}}
-      <div class="mt-4">
-        <canvas id="chart-tdee" height="120"></canvas>
-      </div>
-      {{end}}
-
-    {{else}}
-      <p class="text-sm text-muted">Inserisci almeno <strong>2 settimane di pasti</strong> e <strong>2 pesate</strong> per ottenere la stima del fabbisogno reale.</p>
-    {{end}}
-    </div>
-  </section>
-  {{end}}
-
-  {{/* ===== Grafici ===== */}}
-
-  {{if .HasWeightData}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">Andamento peso (kg)</h2>
-    </div>
-    <div class="px-4 py-4">
-      <canvas id="chart-weight" height="120"></canvas>
-    </div>
-  </section>
-  {{end}}
-
-  {{if .HasWorkoutData}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">Kcal bruciate per settimana</h2>
-    </div>
-    <div class="px-4 py-4">
-      <canvas id="chart-workout" height="120"></canvas>
-    </div>
-  </section>
-  {{end}}
-
-  {{if .HasCheatData}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">Sgarri per settimana (n. pasti)</h2>
-    </div>
-    <div class="px-4 py-4">
-      <canvas id="chart-cheats" height="120"></canvas>
-    </div>
-  </section>
-  {{end}}
-
-  {{if .HasWaterData}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">💧 Idratazione media per settimana (ml/giorno)</h2>
-    </div>
-    <div class="px-4 py-4">
-      <div class="flex items-end gap-1 h-28">
-        {{range .WaterWeeks}}
-        <div class="flex-1 flex flex-col items-center justify-end h-full" title="{{.WeekLabel}}: {{printf "%.0f" .AvgML}} ml/g">
-          <div class="w-full rounded-t bg-accent transition-all" style="height:{{printf "%.0f" .BarPct}}%"></div>
-        </div>
-        {{end}}
-      </div>
-      <div class="flex gap-1 mt-1">
-        {{range .WaterWeeks}}
-        <div class="flex-1 text-center text-[10px] text-muted truncate">{{.WeekLabel}}</div>
-        {{end}}
-      </div>
-    </div>
-  </section>
-  {{end}}
-
-  {{/* ===== Aderenza al piano ===== */}}
-  {{if .HasAdherenceData}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">Aderenza al piano per settimana (%)</h2>
-    </div>
-    <div class="px-4 py-4">
-      <canvas id="chart-adherence" height="120"></canvas>
-      <p class="text-xs text-muted mt-2">100% = nessuno sgarro. Il punteggio scende in proporzione allo scostamento calorico fra pianificato ed effettivo.</p>
-    </div>
-  </section>
-
-  {{if .SlotAdherence}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">Aderenza per pasto</h2>
-    </div>
-    <div class="overflow-x-auto">
-    <table class="w-full text-sm min-w-[480px]">
-      <thead>
-        <tr class="border-b border-border">
-          <th class="text-left px-4 py-2 font-medium text-muted">Pasto</th>
-          <th class="text-left px-4 py-2 font-medium text-muted">Aderenza media</th>
-          <th class="text-right px-4 py-2 font-medium text-muted">Giorni</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-border">
+  {{if $v.HasAdherence}}
+  <div class="grid gap-4 lg:gap-[18px] lg:grid-cols-2">
+    <section class="card p-4 flex flex-col gap-2 min-w-0">
+      <div class="flex items-baseline justify-between"><h2 class="h2">Aderenza al piano</h2><span class="text-[12.5px] text-muted">%</span></div>
+      <p class="text-[12.5px] text-muted">100% vuol dire nessuno sgarro; scende con la differenza di calorie tra previsto e mangiato.</p>
+      <div data-chart="adherence"></div>
+    </section>
+    {{if .SlotAdherence}}
+    <section class="card p-4 flex flex-col gap-2">
+      <h2 class="h2">Aderenza per pasto</h2>
+      <ul class="flex flex-col">
         {{range .SlotAdherence}}
-        <tr class="hover:bg-surface-2 transition">
-          <td class="px-4 py-2 font-medium text-text">{{.SlotName}}</td>
-          <td class="px-4 py-2">
-            <div class="flex items-center gap-2">
-              <div class="h-2 w-24 rounded-full bg-surface-2 overflow-hidden">
-                <div class="h-full rounded-full {{if lt .AvgScore 80.0}}bg-danger{{else}}bg-accent{{end}}" style="width:{{printf "%.0f" .AvgScore}}%"></div>
-              </div>
-              <span class="tabular-nums text-muted">{{printf "%.0f" .AvgScore}}%</span>
-            </div>
-          </td>
-          <td class="px-4 py-2 text-right tabular-nums text-muted">{{.Count}}</td>
-        </tr>
+        <li class="grid grid-cols-[90px_minmax(0,1fr)_44px] gap-2.5 items-center min-h-[34px]">
+          <span class="truncate">{{.SlotName}}</span>
+          <span class="h-1.5 rounded-full bg-track overflow-hidden"><span class="block h-full rounded-full {{if lt .AvgScore 80.0}}bg-danger{{else}}bg-accent{{end}}" style="width: {{printf "%.0f" .AvgScore}}%"></span></span>
+          <span class="text-right tabular-nums">{{printf "%.0f" .AvgScore}}%</span>
+        </li>
         {{end}}
-      </tbody>
-    </table>
-    </div>
-  </section>
-  {{end}}
+      </ul>
+      <p class="text-[12.5px] text-muted mt-1">Sotto l'80% la barra diventa rossa.</p>
+    </section>
+    {{end}}
+  </div>
   {{end}}
 
-  {{/* Tabella storico — in fondo */}}
-  <section class="bg-surface border border-border rounded overflow-hidden mb-6">
-    <div class="px-4 py-3 border-b border-border bg-surface-2">
-      <h2 class="text-sm font-semibold text-muted">Dettaglio per settimana</h2>
-    </div>
+  {{if or $v.HasWorkout $v.HasCheats $v.HasWater}}
+  <div class="grid gap-4 lg:gap-[18px] lg:grid-cols-3">
+    {{if $v.HasWorkout}}<section class="card p-4 flex flex-col gap-2 min-w-0"><div class="flex items-baseline justify-between"><h2 class="h2">Allenamenti</h2><span class="text-[12.5px] text-muted">kcal a settimana</span></div><div data-chart="workout"></div></section>{{end}}
+    {{if $v.HasCheats}}<section class="card p-4 flex flex-col gap-2 min-w-0"><div class="flex items-baseline justify-between"><h2 class="h2">Sgarri</h2><span class="text-[12.5px] text-muted">pasti a settimana</span></div><div data-chart="cheats"></div></section>{{end}}
+    {{if $v.HasWater}}<section class="card p-4 flex flex-col gap-2 min-w-0"><div class="flex items-baseline justify-between"><h2 class="h2">Acqua</h2><span class="text-[12.5px] text-muted">l al giorno</span></div><div data-chart="water"></div></section>{{end}}
+  </div>
+  {{end}}
+
+  <section class="card overflow-hidden">
+    <h2 class="h2 px-4 py-3.5">Settimana per settimana</h2>
     <div class="overflow-x-auto">
-    <table class="w-full text-sm min-w-[480px]">
-      <thead>
-        <tr class="border-b border-border">
-          <th class="text-left px-4 py-2 font-medium text-muted">Settimana</th>
-          <th class="text-right px-4 py-2 font-medium text-muted">Kcal</th>
-          <th class="text-right px-4 py-2 font-medium text-muted hidden sm:table-cell">Prot.</th>
-          <th class="text-right px-4 py-2 font-medium text-muted hidden sm:table-cell">Carbs</th>
-          <th class="text-right px-4 py-2 font-medium text-muted hidden sm:table-cell">Grassi</th>
-          <th class="text-right px-4 py-2 font-medium text-muted">Giorni</th>
-          <th class="px-4 py-2 hidden md:table-cell"></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-border">
-        {{range .Weeks}}
-        <tr class="hover:bg-surface-2 transition">
-          <td class="px-4 py-2 tabular-nums">
-            {{.WeekStart.Format "02/01"}} – {{(.WeekStart.AddDate 0 0 6).Format "02/01/2006"}}
-          </td>
-          <td class="px-4 py-2 text-right tabular-nums font-semibold">
-            {{if gt .Total.Kcal 0.0}}{{printf "%.0f" .Total.Kcal}}{{else}}<span class="text-muted">—</span>{{end}}
-          </td>
-          <td class="px-4 py-2 text-right tabular-nums text-muted hidden sm:table-cell">
-            {{if gt .Total.Protein 0.0}}{{printf "%.0f" .Total.Protein}}g{{else}}—{{end}}
-          </td>
-          <td class="px-4 py-2 text-right tabular-nums text-muted hidden sm:table-cell">
-            {{if gt .Total.Carbs 0.0}}{{printf "%.0f" .Total.Carbs}}g{{else}}—{{end}}
-          </td>
-          <td class="px-4 py-2 text-right tabular-nums text-muted hidden sm:table-cell">
-            {{if gt .Total.Fat 0.0}}{{printf "%.0f" .Total.Fat}}g{{else}}—{{end}}
-          </td>
-          <td class="px-4 py-2 text-right tabular-nums text-muted">{{.DaysLogged}}/7</td>
-          <td class="px-4 py-2 hidden md:table-cell">
-            {{if gt .KcalBarPct 0.0}}
-            <div class="h-2 w-24 rounded-full bg-surface-2 overflow-hidden">
-              <div class="h-full rounded-full bg-accent" style="width:{{printf "%.0f" .KcalBarPct}}%"></div>
-            </div>
+      <table class="w-full text-[13.5px] tabular-nums">
+        <thead class="text-[12.5px] text-muted">
+          <tr class="border-y border-border">
+            <th class="text-left font-semibold px-4 py-2">Settimana</th>
+            <th class="text-right font-semibold px-3 py-2">kcal/giorno</th>
+            <th class="text-right font-semibold px-3 py-2 hidden sm:table-cell" title="Proteine al giorno">P</th>
+            <th class="text-right font-semibold px-3 py-2 hidden sm:table-cell" title="Carboidrati al giorno">C</th>
+            <th class="text-right font-semibold px-3 py-2 hidden sm:table-cell" title="Grassi al giorno">G</th>
+            <th class="text-right font-semibold px-3 py-2">Giorni</th>
+            <th class="text-right font-semibold px-4 py-2">Aderenza</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {{range $i, $r := $v.Rows}}
+          <tr{{if ge $i 5}} data-week-more hidden{{end}}>
+            <td class="px-4 py-2.5">{{weekRange $r.Start}}</td>
+            {{if $r.DaysLogged}}
+            <td class="px-3 py-2.5 text-right font-bold">{{num $r.PerDay.Kcal}}</td>
+            <td class="px-3 py-2.5 text-right hidden sm:table-cell">{{num $r.PerDay.Protein}} g</td>
+            <td class="px-3 py-2.5 text-right hidden sm:table-cell">{{num $r.PerDay.Carbs}} g</td>
+            <td class="px-3 py-2.5 text-right hidden sm:table-cell">{{num $r.PerDay.Fat}} g</td>
+            {{else}}
+            <td class="px-3 py-2.5 text-right text-muted">—</td>
+            <td class="hidden sm:table-cell"></td><td class="hidden sm:table-cell"></td><td class="hidden sm:table-cell"></td>
             {{end}}
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
+            <td class="px-3 py-2.5 text-right text-muted">{{$r.DaysLogged}}/7</td>
+            <td class="px-4 py-2.5 text-right">{{if $r.HasAdherence}}{{printf "%.0f" $r.Adherence}}%{{else}}<span class="text-muted">—</span>{{end}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
     </div>
+    {{if gt (len $v.Rows) 5}}
+    <button type="button" id="weeks-toggle" aria-expanded="false" class="w-full px-4 py-3 border-t border-border text-left text-accent font-semibold hover:bg-surface-2">Mostra tutte e {{len $v.Rows}}</button>
+    {{end}}
   </section>
-
   {{end}}
 </div>
 {{end}}
 
 {{define "scripts"}}
-{{/* Le canvas esistono solo con .HasData: senza, Chart.js non trova il context. */}}
-{{if and .HasData (or .HasAdherenceData (or .HasWeightData (or .HasWorkoutData (or .HasCheatData (and .TDEEReport .TDEEReport.HasEnoughData)))))}}
-<script src="/static/js/chart.umd.min.js"></script>
+{{if .View.HasMacro}}
+<script type="application/json" id="stats-data">{{.View.Charts}}</script>
+<script src="/static/js/charts.js"></script>
 <script>
 (function () {
-  var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6366f1';
-  var danger = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim() || '#ef4444';
-  var muted  = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim()  || '#6b7280';
-
-  Chart.defaults.color = muted;
-  Chart.defaults.borderColor = 'rgba(128,128,128,0.15)';
-  Chart.defaults.font.size = 11;
-
-  var lineOpts = {
-    responsive: true,
-    plugins: { legend: { display: false } },
-    scales: { y: { beginAtZero: false } },
-  };
-
-  {{if .HasWeightData}}
-  var weightLabels = [{{range .WeightPoints}}"{{.Date}}",{{end}}];
-  var weightValues = [{{range .WeightPoints}}{{.Weight}},{{end}}];
-  new Chart(document.getElementById('chart-weight'), {
-    type: 'line',
-    data: {
-      labels: weightLabels,
-      datasets: [{
-        label: 'Peso (kg)',
-        data: weightValues,
-        borderColor: accent,
-        backgroundColor: accent + '22',
-        tension: 0.3,
-        fill: true,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      }]
-    },
-    options: lineOpts,
+  var b = document.getElementById("weeks-toggle");
+  if (!b) return;
+  var label = b.textContent;
+  b.addEventListener("click", function () {
+    var open = b.getAttribute("aria-expanded") !== "true";
+    document.querySelectorAll("[data-week-more]").forEach(function (r) { r.hidden = !open; });
+    b.setAttribute("aria-expanded", open);
+    b.textContent = open ? "Mostra solo le ultime 5" : label;
   });
-  {{end}}
-
-  {{if .HasWorkoutData}}
-  var workoutLabels = [{{range .WorkoutWeeks}}"{{.WeekLabel}}",{{end}}];
-  var workoutValues = [{{range .WorkoutWeeks}}{{printf "%.0f" .KcalBurned}},{{end}}];
-  new Chart(document.getElementById('chart-workout'), {
-    type: 'line',
-    data: {
-      labels: workoutLabels,
-      datasets: [{
-        label: 'Kcal bruciate',
-        data: workoutValues,
-        borderColor: accent,
-        backgroundColor: accent + '22',
-        tension: 0.3,
-        fill: true,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      }]
-    },
-    options: Object.assign({}, lineOpts, { scales: { y: { beginAtZero: true } } }),
-  });
-  {{end}}
-
-  {{if and .TDEEReport .TDEEReport.HasEnoughData (gt (len .TDEEReport.WeeklyData) 1)}}
-  var tdeeLabels = [{{range .TDEEReport.WeeklyData}}"{{.WeekLabel}}",{{end}}];
-  var tdeeValues = [{{range .TDEEReport.WeeklyData}}{{if gt .EstimatedKcal 0.0}}{{printf "%.0f" .EstimatedKcal}},{{else}}null,{{end}}{{end}}];
-  var tdeeChartEl = document.getElementById('chart-tdee');
-  if (tdeeChartEl) {
-    new Chart(tdeeChartEl, {
-      type: 'line',
-      data: {
-        labels: tdeeLabels,
-        datasets: [{
-          label: 'TDEE stimato (kcal/g)',
-          data: tdeeValues,
-          borderColor: accent,
-          backgroundColor: accent + '22',
-          tension: 0.3,
-          fill: true,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          spanGaps: true,
-        }]
-      },
-      options: Object.assign({}, lineOpts, { scales: { y: { beginAtZero: false } } }),
-    });
-  }
-  {{end}}
-
-  {{if .HasAdherenceData}}
-  var adhLabels = [{{range .AdherenceWeeks}}"{{.WeekLabel}}",{{end}}];
-  var adhValues = [{{range .AdherenceWeeks}}{{if .HasData}}{{printf "%.0f" .Score}},{{else}}null,{{end}}{{end}}];
-  var adhChartEl = document.getElementById('chart-adherence');
-  if (adhChartEl) {
-    new Chart(adhChartEl, {
-      type: 'line',
-      data: {
-        labels: adhLabels,
-        datasets: [{
-          label: 'Aderenza (%)',
-          data: adhValues,
-          borderColor: accent,
-          backgroundColor: accent + '22',
-          tension: 0.3,
-          fill: true,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          spanGaps: true,
-        }]
-      },
-      options: Object.assign({}, lineOpts, {
-        scales: { y: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } },
-      }),
-    });
-  }
-  {{end}}
-
-  {{if .HasCheatData}}
-  var cheatLabels = [{{range .CheatWeeks}}"{{.WeekLabel}}",{{end}}];
-  var cheatValues = [{{range .CheatWeeks}}{{.Count}},{{end}}];
-  new Chart(document.getElementById('chart-cheats'), {
-    type: 'line',
-    data: {
-      labels: cheatLabels,
-      datasets: [{
-        label: 'Sgarri',
-        data: cheatValues,
-        borderColor: danger,
-        backgroundColor: danger + '22',
-        tension: 0.3,
-        fill: true,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      }]
-    },
-    options: Object.assign({}, lineOpts, {
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
-    }),
-  });
-  {{end}}
 })();
 </script>
 {{end}}
