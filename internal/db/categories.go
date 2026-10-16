@@ -179,24 +179,26 @@ func (c *Categories) AllergensForIngredients(ctx context.Context, ingredientIDs 
 	return out, rows.Err()
 }
 
-// CategoriesForIngredients carica in batch la categoria di piu' ingredienti:
-// ingredient_id -> categoria. Gli ingredienti senza categoria non compaiono.
-func (c *Categories) CategoriesForIngredients(ctx context.Context, ingredientIDs []int64) (map[int64]domain.IngredientCategory, error) {
+// CategoriesForIngredients carica in batch la categoria che userID ha dato a
+// piu' ingredienti: ingredient_id -> categoria. Gli ingredienti senza
+// categoria per quell'utente non compaiono; le scelte degli altri non contano.
+func (c *Categories) CategoriesForIngredients(ctx context.Context, userID int64, ingredientIDs []int64) (map[int64]domain.IngredientCategory, error) {
 	out := make(map[int64]domain.IngredientCategory)
 	if len(ingredientIDs) == 0 {
 		return out, nil
 	}
 	placeholders := make([]string, len(ingredientIDs))
-	args := make([]any, len(ingredientIDs))
+	args := make([]any, 0, len(ingredientIDs)+1)
+	args = append(args, userID)
 	for i, id := range ingredientIDs {
 		placeholders[i] = "?"
-		args[i] = id
+		args = append(args, id)
 	}
 	rows, err := c.db.QueryContext(ctx,
-		`SELECT i.id, ic.id, ic.user_id, ic.name, ic.sort_order
-		   FROM ingredients i
-		   JOIN ingredient_categories ic ON ic.id = i.category_id
-		  WHERE i.id IN (`+strings.Join(placeholders, ",")+`)`,
+		`SELECT uc.ingredient_id, ic.id, ic.user_id, ic.name, ic.sort_order
+		   FROM ingredient_user_categories uc
+		   JOIN ingredient_categories ic ON ic.id = uc.category_id
+		  WHERE uc.user_id = ? AND uc.ingredient_id IN (`+strings.Join(placeholders, ",")+`)`,
 		args...,
 	)
 	if err != nil {
@@ -236,13 +238,30 @@ func (c *Categories) IngredientIDsByAllergen(ctx context.Context, allergenID int
 	return ids, rows.Err()
 }
 
-// SetIngredientCategory aggiorna la categoria di un ingrediente (NULL per rimuoverla).
-func (c *Categories) SetIngredientCategory(ctx context.Context, ingredientID int64, categoryID *int64) error {
-	_, err := c.db.ExecContext(ctx,
-		`UPDATE ingredients SET category_id = ? WHERE id = ?`, categoryID, ingredientID,
+// SetIngredientCategory mette un ingrediente in una categoria di userID (nil
+// per toglierla). Vale solo per quell'utente; una categoria che non e' sua
+// risponde ErrCategoryNotFound e non cambia nulla.
+func (c *Categories) SetIngredientCategory(ctx context.Context, userID, ingredientID int64, categoryID *int64) error {
+	if categoryID == nil {
+		if _, err := c.db.ExecContext(ctx,
+			`DELETE FROM ingredient_user_categories WHERE user_id = ? AND ingredient_id = ?`,
+			userID, ingredientID,
+		); err != nil {
+			return fmt.Errorf("clear ingredient category: %w", err)
+		}
+		return nil
+	}
+	res, err := c.db.ExecContext(ctx,
+		`INSERT INTO ingredient_user_categories (user_id, ingredient_id, category_id)
+		 SELECT ?, ?, id FROM ingredient_categories WHERE id = ? AND user_id = ?
+		 ON CONFLICT (user_id, ingredient_id) DO UPDATE SET category_id = excluded.category_id`,
+		userID, ingredientID, *categoryID, userID,
 	)
 	if err != nil {
 		return fmt.Errorf("set ingredient category: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrCategoryNotFound
 	}
 	return nil
 }

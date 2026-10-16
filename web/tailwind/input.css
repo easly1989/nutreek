@@ -212,6 +212,13 @@
   .filter {
     @apply inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-surface text-[13px] font-semibold text-text whitespace-nowrap hover:bg-surface-2 transition-colors;
   }
+  /* Campi in sola lettura (ingrediente altrui, #143): leggibili, non attivi. */
+  .field:disabled { @apply bg-surface-2 border-transparent cursor-default; }
+  .field:disabled::placeholder { color: transparent; }
+  .segmented > label:has(:disabled) { @apply cursor-default; }
+  .segmented > label:has(:disabled:not(:checked)) { opacity: .5; }
+  .filter:has(:disabled) { @apply cursor-default hover:bg-surface; }
+  .filter:has(:disabled:not(:checked)) { opacity: .6; }
   .filter .cnt { @apply font-medium text-muted; }
   .filter.is-on, .filter:has(input:checked) { @apply bg-accent-soft border-transparent text-accent; }
   .filter.is-on .cnt { color: inherit; opacity: .75; }

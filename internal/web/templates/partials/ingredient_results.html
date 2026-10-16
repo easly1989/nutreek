@@ -43,7 +43,7 @@
     {{if $r.IsOFF}}{{template "off_thumb" $r.ImageURL}}{{else}}{{template "icon_sm" "i-ingredients"}}{{end}}
   </span>
   <div class="flex flex-col gap-1 min-w-0">
-    <span class="truncate"><b class="font-semibold">{{$r.Name}}</b>{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
+    <span class="truncate"><b class="font-semibold">{{$r.Name}}</b>{{if and (not $r.IsOFF) (not $r.CanEdit) $r.Author}} <span class="text-muted text-[12.5px]">di {{$r.Author}}</span>{{end}}{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
     {{if or $r.Category $r.Allergens $r.IsOFF}}
     <span class="flex flex-wrap gap-1">
       {{if $r.IsOFF}}<span class="chip chip-soft">OpenFoodFacts</span>{{end}}
@@ -75,7 +75,8 @@
         <button class="btn-secondary h-[30px] px-3 text-[12.5px]">Importa</button>
       </form>
     {{else}}
-      <a href="/ingredients/{{$r.LocalID}}/edit" class="btn-ghost h-[30px] px-3 text-[12.5px]">Modifica</a>
+      {{if $r.CanEdit}}<a href="/ingredients/{{$r.LocalID}}/edit" class="btn-ghost h-[30px] px-3 text-[12.5px]">Modifica</a>
+      {{else}}<a href="/ingredients/{{$r.LocalID}}/edit" class="btn-ghost h-[30px] px-3 text-[12.5px]" aria-label="Scegli la tua categoria per {{$r.Name}}">Categoria</a>{{end}}
     {{end}}
   </span>
 </div>
