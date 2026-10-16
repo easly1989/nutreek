@@ -19,16 +19,85 @@ import (
 
 type recipesListData struct {
 	authPageData
-	Mine   []recipeListRow
-	Others []*domain.Recipe // pubbliche di altri utenti
+	Rows    []recipeListRow // righe del filtro corrente, gia' filtrate per Query
+	Filter  string          // mine | others | used | public
+	Query   string
+	Filters []recipeFilter
+	MineN   int // totali per il sottotitolo
+	OthersN int
 }
 
-// recipeListRow è una riga della lista "Le mie" con il conteggio degli usi
-// nei piani settimanali. Serve a mostrare un warning informato nella conferma
-// di eliminazione (es. "Usata in 3 pasti — saranno aggiornati").
+// recipeFilter e' un chip filtro dell'elenco ricette con il suo conteggio.
+type recipeFilter struct {
+	Key, Label string
+	Count      int
+	On         bool
+}
+
+// recipeListRow è una riga dell'elenco: la ricetta, i macro per porzione e,
+// per le proprie, il conteggio degli usi nei piani settimanali (serve a
+// mostrare un warning informato nella conferma di eliminazione).
 type recipeListRow struct {
-	Recipe *domain.Recipe
-	Usages int
+	Recipe     *domain.Recipe
+	Mine       bool
+	Usages     int
+	PerServing macros.Macros
+}
+
+// recipeFilters elenca i filtri dell'elenco ricette, nell'ordine dei chip.
+var recipeFilters = []struct{ Key, Label string }{
+	{"mine", "Le mie"},
+	{"others", "Pubbliche di altri"},
+	{"used", "In uso nei piani"},
+	{"public", "Rese pubbliche"},
+}
+
+// matchRecipeFilter dice se la riga appartiene al filtro key.
+func matchRecipeFilter(key string, row recipeListRow) bool {
+	switch key {
+	case "others":
+		return !row.Mine
+	case "used":
+		return row.Mine && row.Usages > 0
+	case "public":
+		return row.Mine && row.Recipe.IsPublic
+	default: // mine
+		return row.Mine
+	}
+}
+
+// buildRecipesList filtra le righe per filtro e ricerca (case-insensitive sul
+// nome) e conta le ricette di ogni filtro, ricerca esclusa.
+func buildRecipesList(all []recipeListRow, filter, query string) recipesListData {
+	valid := false
+	for _, f := range recipeFilters {
+		valid = valid || f.Key == filter
+	}
+	if !valid {
+		filter = "mine"
+	}
+	data := recipesListData{Filter: filter, Query: query}
+	q := strings.ToLower(query)
+	for _, f := range recipeFilters {
+		rf := recipeFilter{Key: f.Key, Label: f.Label, On: f.Key == filter}
+		for _, row := range all {
+			if matchRecipeFilter(f.Key, row) {
+				rf.Count++
+			}
+		}
+		data.Filters = append(data.Filters, rf)
+	}
+	for _, row := range all {
+		if row.Mine {
+			data.MineN++
+		} else {
+			data.OthersN++
+		}
+		if matchRecipeFilter(filter, row) && strings.Contains(strings.ToLower(row.Recipe.Name), q) {
+			data.Rows = append(data.Rows, row)
+		}
+	}
+	return data
 }
 
 type recipeNewData struct {
@@ -67,6 +136,9 @@ type recipeEditData struct {
 	CanEdit     bool                 // true se l'utente loggato e' l'autore
 	Total       macros.Macros        // totale ricetta
 	PerServing  macros.Macros        // per-serving
+	Shares      macros.Shares        // ripartizione energetica per porzione
+	ItemKcal    map[int64]float64    // kcal di ogni voce (per id voce)
+	Usages      int                  // voci dei piani settimanali che la usano
 	Ingredients []*domain.Ingredient // pool per il select del nuovo item
 	NewItemQty  string               // valore nel form item dopo errore
 	NewItemIng  string               // ingredient_id selezionato
@@ -90,13 +162,29 @@ func (a *App) handleRecipesList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	data := recipesListData{authPageData: a.baseData(r)}
+	perServing, err := a.Recipes.PerServingByRecipe(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	rows := make([]recipeListRow, 0, len(all))
 	for _, rec := range all {
-		if rec.UserID == user.ID {
-			data.Mine = append(data.Mine, recipeListRow{Recipe: rec, Usages: usages[rec.ID]})
-		} else {
-			data.Others = append(data.Others, rec)
+		rows = append(rows, recipeListRow{
+			Recipe:     rec,
+			Mine:       rec.UserID == user.ID,
+			Usages:     usages[rec.ID],
+			PerServing: perServing[rec.ID],
+		})
+	}
+	q := r.URL.Query()
+	data := buildRecipesList(rows, q.Get("f"), strings.TrimSpace(q.Get("q")))
+	data.authPageData = a.baseData(r)
+	// La ricerca live (HTMX) sostituisce solo i risultati.
+	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "recipe-results" {
+		if err := a.Render.RenderPartial(w, http.StatusOK, "recipes_list", "recipe_results", data); err != nil {
+			a.serverError(w, r, err)
 		}
+		return
 	}
 	if err := a.Render.Render(w, http.StatusOK, "recipes_list", data); err != nil {
 		a.serverError(w, r, err)
@@ -256,10 +344,13 @@ func (a *App) renderRecipeEdit(
 
 	// Calcolo macro: somma item per item, poi per-serving.
 	items := make([]macros.IngredientItem, 0, len(rec.Items))
+	itemKcal := make(map[int64]float64, len(rec.Items))
 	for _, it := range rec.Items {
 		items = append(items, macros.IngredientItem{Ingredient: it.Ingredient, Quantity: it.Quantity})
+		itemKcal[it.ID] = macros.FromIngredient(it.Ingredient, it.Quantity).Kcal
 	}
 	total := macros.ForRecipe(items)
+	perServing := macros.PerServing(total, rec.Servings)
 
 	desc := ""
 	if rec.Description != nil {
@@ -278,11 +369,19 @@ func (a *App) renderRecipeEdit(
 		ItemError:  itemError,
 		CanEdit:    canEdit,
 		Total:      total,
-		PerServing: macros.PerServing(total, rec.Servings),
+		PerServing: perServing,
+		Shares:     perServing.EnergyShares(),
+		ItemKcal:   itemKcal,
 		NewItemQty: newItemQty,
 		NewItemIng: newItemIng,
 	}
 	if canEdit {
+		usages, err := a.Recipes.CountMealUsages(r.Context(), rec.ID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		data.Usages = usages
 		// Carichiamo gli ingredienti per il select solo se l'utente puo' editare.
 		ings, err := a.Ingredients.ListActive(r.Context(), 0, 200)
 		if err != nil {
@@ -728,6 +827,49 @@ func pluralize(n int, singular, plural string) string {
 		return singular
 	}
 	return plural
+}
+
+// ---- picker ricette --------------------------------------------------------
+
+// recipePickerData e' il view-model di recipe_picker_results, il picker
+// ricette di pasti, sgarri e varianti del piano nutrizionale.
+type recipePickerData struct {
+	authPageData
+	Recipes     []*domain.Recipe
+	Query       string
+	Kcal        map[int64]float64 // kcal per porzione, per id ricetta
+	VariationID int64             // > 0: variante del piano nutrizionale
+	Cheat       bool              // sgarro invece di voce del pasto
+	MealID      int64
+	WeekStart   string
+	InDialog    bool // picker nella finestra sopra la settimana (form HTMX)
+}
+
+// recipePicker carica le ricette visibili all'utente il cui nome contiene q
+// (senza distinguere maiuscole), con le kcal per porzione.
+func (a *App) recipePicker(r *http.Request, q string) (recipePickerData, error) {
+	user := userFromContext(r.Context())
+	recipes, err := a.Recipes.ListVisible(r.Context(), user.ID)
+	if err != nil {
+		return recipePickerData{}, err
+	}
+	perServing, err := a.Recipes.PerServingByRecipe(r.Context(), user.ID)
+	if err != nil {
+		return recipePickerData{}, err
+	}
+	ql := strings.ToLower(q)
+	data := recipePickerData{
+		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+		Query:        q,
+		Kcal:         make(map[int64]float64, len(recipes)),
+	}
+	for _, rc := range recipes {
+		if strings.Contains(strings.ToLower(rc.Name), ql) {
+			data.Recipes = append(data.Recipes, rc)
+			data.Kcal[rc.ID] = perServing[rc.ID].Kcal
+		}
+	}
+	return data, nil
 }
 
 // ---- helpers ---------------------------------------------------------------

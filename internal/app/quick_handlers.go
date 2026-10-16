@@ -57,14 +57,13 @@ func (a *App) renderQuickIngredientModal(w http.ResponseWriter, r *http.Request,
 func (a *App) renderQuickIngredientFormOnly(w http.ResponseWriter, r *http.Request, form ingredientForm, errMsg string) {
 	// Per re-render dopo errore di validazione: ritorniamo solo il form
 	// (hx-target=this hx-swap=outerHTML lo sostituisce dentro il dialog,
-	// che resta aperto).
+	// che resta aperto). 200 e non 422: HTMX 1.x fa swap solo sui 2xx.
 	data := quickIngredientData{
 		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
 		Form:         form,
 		Error:        errMsg,
 	}
-	w.WriteHeader(http.StatusUnprocessableEntity)
-	if err := a.Render.RenderPartial(w, http.StatusUnprocessableEntity, "ingredients_list", "quick_ingredient_form", data); err != nil {
+	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "quick_ingredient_form", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -82,6 +81,8 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 		Protein: strings.TrimSpace(r.PostFormValue("protein")),
 		Carbs:   strings.TrimSpace(r.PostFormValue("carbs")),
 		Fat:     strings.TrimSpace(r.PostFormValue("fat")),
+
+		UnitWeightG: strings.TrimSpace(r.PostFormValue("unit_weight_g")),
 	}
 	if form.Name == "" {
 		a.renderQuickIngredientFormOnly(w, r, form, "Nome obbligatorio.")
@@ -121,8 +122,18 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 	if form.Brand != "" {
 		brandPtr = &form.Brand
 	}
+	// Peso di un pezzo facoltativo: permette di aggiungerlo subito in «pz».
+	var unitWeightG *float64
+	if form.UnitWeightG != "" {
+		v, err := parseNonNegFloat(form.UnitWeightG)
+		if err != nil || v == 0 {
+			a.renderQuickIngredientFormOnly(w, r, form, "Peso di un pezzo non valido.")
+			return
+		}
+		unitWeightG = &v
+	}
 	creator := user.ID
-	id, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, &creator, nil, nil, nil, nil, nil, nil)
+	id, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, &creator, unitWeightG, nil, nil, nil, nil, nil)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -165,7 +176,8 @@ func (a *App) renderQuickRecipeFormOnly(w http.ResponseWriter, r *http.Request, 
 		Form:         form,
 		Error:        errMsg,
 	}
-	if err := a.Render.RenderPartial(w, http.StatusUnprocessableEntity, "ingredients_list", "quick_recipe_form", data); err != nil {
+	// 200 e non 422: HTMX 1.x fa swap solo sui 2xx.
+	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "quick_recipe_form", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }

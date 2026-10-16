@@ -1,182 +1,94 @@
 {{define "picker_results"}}
-{{/* Renderizza una lista di righe ingrediente cliccabili per aggiungere
-     a un meal o a una ricetta. A differenza di ingredient_results
-     (display-only sulla pagina /ingredients), qui ogni riga ha un form
-     "Aggiungi" che POSTa direttamente. Per gli OFF non importati,
-     passiamo il barcode al posto di ingredient_id e il server fa
-     l'auto-import in modo idempotente.
+{{/* Risultati del picker ingredienti (ricetta, pasto, sgarro, variante del
+     piano nutrizionale). Ogni riga e' un <details>: toccandola si apre il
+     form con quantita', unita' (g/ml o pezzi) e anteprima kcal (picker.js).
+     Per gli OFF non importati il form passa il barcode al posto dell'id e il
+     server fa l'auto-import in modo idempotente.
 
-     La ricerca OFF e' ora locale (SQLite FTS5 popolata dal dump): risultati
-     locali + OFF arrivano insieme in una sola response sotto i 50ms. */}}
+     Sezioni: suggeriti dal piano nutrizionale, ingredienti nel database,
+     prodotti OpenFoodFacts. */}}
 {{if .OFFWarning}}
-  <div class="mb-3 rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-xs">{{.OFFWarning}}</div>
+  <p class="mx-4 lg:mx-5 my-2 rounded-xl bg-warn-bg text-warn-fg px-3 py-2 text-[13px]">{{.OFFWarning}}</p>
 {{end}}
+{{- $locals := 0 -}}{{- $offs := 0 -}}
+{{- range .Rows}}{{if .IsOFF}}{{$offs = add $offs 1}}{{else}}{{$locals = add $locals 1}}{{end}}{{end -}}
 {{if .NutritionistItems}}
-  <p class="text-xs text-muted px-2 mb-1 font-medium">Suggeriti dal nutrizionista</p>
-  <ul class="divide-y divide-border rounded border border-accent/30 bg-surface mb-3">
-    {{range .NutritionistItems}}
-    <li class="px-4 py-3 flex items-center justify-between gap-3">
-      <div class="min-w-0 flex-1">
-        <p class="font-medium text-text truncate">{{.Name}}</p>
-        <p class="text-xs text-muted">
-          <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>
-          <span class="text-muted">{{.SourceLabel}}</span>
-          · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
-        </p>
-      </div>
-      {{if eq $.PickerKind "meal_item"}}
-        <form method="post" action="/meals/{{$.MealID}}/items?start={{$.WeekStart}}" class="shrink-0 flex items-center gap-2">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <input type="hidden" name="kind" value="ingredient">
-          <input type="hidden" name="ref_id" value="{{.Local.ID}}">
-          <input name="quantity" required inputmode="decimal" placeholder="{{.Unit}}" class="w-16 rounded border border-border px-2 py-1 text-xs">
-          <input type="hidden" name="qty_unit" value="{{.Unit}}">
-          <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
-        </form>
-      {{else if eq $.PickerKind "nutritionist_item"}}
-        <form method="post" action="/nutrizionista/items" class="shrink-0 flex items-center gap-2">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <input type="hidden" name="variation_id" value="{{$.VariationID}}">
-          <input type="hidden" name="ingredient_id" value="{{.Local.ID}}">
-          <input name="quantity" required inputmode="decimal" placeholder="{{.Unit}}" class="w-16 rounded border border-border px-2 py-1 text-xs">
-          <input type="hidden" name="qty_unit" value="{{.Unit}}">
-          <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
-        </form>
-      {{end}}
-    </li>
-    {{end}}
-  </ul>
+  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">Suggeriti dal piano nutrizionale</p>
+  <div class="divide-y divide-border">
+    {{range .NutritionistItems}}{{template "picker_row" (pickerRow . $)}}{{end}}
+  </div>
 {{end}}
-{{if .Rows}}
-  <ul class="divide-y divide-border rounded border border-border bg-surface">
-    {{range .Rows}}
-      <li class="px-4 py-3 flex items-center justify-between gap-3">
-        {{if .IsOFF}}
-          <div class="w-10 h-10 rounded shrink-0 bg-surface-2 overflow-hidden">
-            {{if .ImageURL}}<img src="{{.ImageURL}}" alt="" loading="lazy" onerror="this.style.display='none'" class="w-full h-full object-contain">{{end}}
-          </div>
-        {{end}}
-        <div class="min-w-0 flex-1">
-          <p class="font-medium text-text truncate">
-            {{.Name}}{{with .Brand}} <span class="text-muted font-normal">— {{.}}</span>{{end}}
-          </p>
-          {{if .Allergens}}
-            <p class="mt-0.5 flex flex-wrap gap-1">
-              {{range .Allergens}}
-              <span class="inline-flex items-center gap-0.5 rounded bg-warn-bg text-warn-fg text-[10px] font-medium px-1.5 py-0.5">⚠ {{.Name}}</span>
-              {{end}}
-            </p>
-          {{end}}
-          <p class="text-xs text-muted">
-            {{if .HasFullNutrients}}
-              <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>
-            {{else if .IsOFF}}
-              <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent/40"></span>
-            {{else}}
-              <span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>
-            {{end}}
-            <span class="{{if .IsOFF}}text-accent{{else}}text-muted{{end}}">{{.SourceLabel}}</span>
-            {{if .IsOFF}}<span class="text-muted/70"> · {{.Barcode}}</span>{{end}}
-            {{if .HasFullNutrients}}
-              · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
-            {{else if not .IsOFF}}
-              · {{printf "%.0f" .Kcal}} kcal · P {{printf "%.1f" .Protein}}g · C {{printf "%.1f" .Carbs}}g · F {{printf "%.1f" .Fat}}g (per 100{{.Unit}})
-            {{end}}
-          </p>
-        </div>
-        {{/* Form "Aggiungi": locali sempre OK; OFF tentano l'auto-import
-             via GetByBarcode (live API) — fallisce solo se anche l'API non
-             ha i macro, in quel caso l'utente vede l'errore inline. */}}
-        {{if or (not .IsOFF) .Importable}}
-          {{if eq $.PickerKind "recipe_item"}}
-            <form method="post" action="/recipes/{{$.RecipeID}}/items" class="shrink-0 flex items-center gap-2">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              {{if .IsOFF}}
-                <input type="hidden" name="barcode" value="{{.Barcode}}">
-              {{else}}
-                <input type="hidden" name="ingredient_id" value="{{.Local.ID}}">
-              {{end}}
-              <input name="quantity" required inputmode="decimal" placeholder="{{if gt .UnitWeightG 0.0}}qta{{else}}{{.Unit}}{{end}}" {{if gt .DefaultQuantity 0.0}}value="{{printf "%.4g" .DefaultQuantity}}"{{end}} class="w-16 rounded border border-border px-2 py-1 text-xs">
-              {{if gt .UnitWeightG 0.0}}
-                <select name="qty_unit" class="rounded border border-border px-1 py-1 text-xs" title="Unita': g, ml o pezzi (1 pz ~ {{printf "%.0f" .UnitWeightG}}g)">
-                  <option value="{{.Unit}}">{{.Unit}}</option>
-                  <option value="pz">pz</option>
-                </select>
-              {{else}}
-                <input type="hidden" name="qty_unit" value="{{.Unit}}">
-              {{end}}
-              <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
-            </form>
-          {{else if eq $.PickerKind "meal_item"}}
-            <form method="post" action="/meals/{{$.MealID}}/items?start={{$.WeekStart}}" class="shrink-0 flex items-center gap-2">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="kind" value="ingredient">
-              {{if .IsOFF}}
-                <input type="hidden" name="barcode" value="{{.Barcode}}">
-              {{else}}
-                <input type="hidden" name="ref_id" value="{{.Local.ID}}">
-              {{end}}
-              <input name="quantity" required inputmode="decimal" placeholder="{{if gt .UnitWeightG 0.0}}qta{{else}}{{.Unit}}{{end}}" {{if gt .DefaultQuantity 0.0}}value="{{printf "%.4g" .DefaultQuantity}}"{{end}} class="w-16 rounded border border-border px-2 py-1 text-xs">
-              {{if gt .UnitWeightG 0.0}}
-                <select name="qty_unit" class="rounded border border-border px-1 py-1 text-xs" title="Unita': g, ml o pezzi (1 pz ~ {{printf "%.0f" .UnitWeightG}}g)">
-                  <option value="{{.Unit}}">{{.Unit}}</option>
-                  <option value="pz">pz</option>
-                </select>
-              {{else}}
-                <input type="hidden" name="qty_unit" value="{{.Unit}}">
-              {{end}}
-              <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
-            </form>
-          {{else if eq $.PickerKind "meal_cheat"}}
-            <form method="post" action="/meals/{{$.MealID}}/cheat/items?start={{$.WeekStart}}" class="shrink-0 flex items-center gap-2">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="kind" value="ingredient">
-              {{if .IsOFF}}
-                <input type="hidden" name="barcode" value="{{.Barcode}}">
-              {{else}}
-                <input type="hidden" name="ref_id" value="{{.Local.ID}}">
-              {{end}}
-              <input name="quantity" required inputmode="decimal" placeholder="{{if gt .UnitWeightG 0.0}}qta{{else}}{{.Unit}}{{end}}" {{if gt .DefaultQuantity 0.0}}value="{{printf "%.4g" .DefaultQuantity}}"{{end}} class="w-16 rounded border border-border px-2 py-1 text-xs">
-              {{if gt .UnitWeightG 0.0}}
-                <select name="qty_unit" class="rounded border border-border px-1 py-1 text-xs" title="Unita': g, ml o pezzi (1 pz ~ {{printf "%.0f" .UnitWeightG}}g)">
-                  <option value="{{.Unit}}">{{.Unit}}</option>
-                  <option value="pz">pz</option>
-                </select>
-              {{else}}
-                <input type="hidden" name="qty_unit" value="{{.Unit}}">
-              {{end}}
-              <button class="text-xs bg-danger text-white rounded px-3 py-1 hover:bg-danger/90">Sgarro</button>
-            </form>
-          {{else if eq $.PickerKind "nutritionist_item"}}
-            <form method="post" action="/nutrizionista/items" class="shrink-0 flex items-center gap-2">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="variation_id" value="{{$.VariationID}}">
-              {{if .IsOFF}}
-                <input type="hidden" name="barcode" value="{{.Barcode}}">
-              {{else}}
-                <input type="hidden" name="ingredient_id" value="{{.Local.ID}}">
-              {{end}}
-              <input name="quantity" required inputmode="decimal" placeholder="{{if gt .UnitWeightG 0.0}}qta{{else}}{{.Unit}}{{end}}" {{if gt .DefaultQuantity 0.0}}value="{{printf "%.4g" .DefaultQuantity}}"{{end}} class="w-16 rounded border border-border px-2 py-1 text-xs">
-              {{if gt .UnitWeightG 0.0}}
-                <select name="qty_unit" class="rounded border border-border px-1 py-1 text-xs" title="Unita': g, ml o pezzi (1 pz ~ {{printf "%.0f" .UnitWeightG}}g)">
-                  <option value="{{.Unit}}">{{.Unit}}</option>
-                  <option value="pz">pz</option>
-                </select>
-              {{else}}
-                <input type="hidden" name="qty_unit" value="{{.Unit}}">
-              {{end}}
-              <button class="text-xs bg-accent text-white rounded px-3 py-1 hover:bg-accent">Aggiungi</button>
-            </form>
-          {{end}}
-        {{else}}
-          <span class="text-xs text-muted shrink-0">macro incompleti</span>
-        {{end}}
-      </li>
-    {{end}}
-  </ul>
-{{else}}
-  <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
-    {{if .Query}}Nessun ingrediente trovato per &laquo;{{.Query}}&raquo;.{{else}}Inizia a digitare per cercare un ingrediente locale o su OpenFoodFacts.{{end}}
+{{if gt $locals 0}}
+  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">I tuoi ingredienti</p>
+  <div class="divide-y divide-border">
+    {{range .Rows}}{{if not .IsOFF}}{{template "picker_row" (pickerRow . $)}}{{end}}{{end}}
+  </div>
+{{end}}
+{{if gt $offs 0}}
+  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">Da OpenFoodFacts <span class="font-medium">(importati al primo uso)</span></p>
+  <div class="divide-y divide-border">
+    {{range .Rows}}{{if .IsOFF}}{{template "picker_row" (pickerRow . $)}}{{end}}{{end}}
+  </div>
+{{end}}
+{{if and (not .Rows) (not .NutritionistItems)}}
+  <p class="px-5 py-8 text-center text-muted">
+    {{if .Query}}Nessun ingrediente trovato per «{{.Query}}».{{else}}Scrivi per cercare tra i tuoi ingredienti e su OpenFoodFacts.{{end}}
   </p>
 {{end}}
+{{end}}
+
+{{define "picker_row"}}
+{{- /* Una riga del picker. View-model: web.PickerRowCtx {Row, List}. */ -}}
+{{- $r := .Row -}}{{- $d := .List -}}
+{{- $cheat := eq $d.PickerKind "meal_cheat" -}}
+<details class="group" data-picker-row>
+  <summary class="flex items-center gap-3 min-h-[52px] py-1.5 pl-4 lg:pl-5 pr-4 cursor-pointer list-none hover:bg-surface-2 group-open:bg-accent-soft [&::-webkit-details-marker]:hidden">
+    {{if $r.IsOFF}}
+      <span class="thumb">{{if $r.ImageURL}}<img src="{{$r.ImageURL}}" alt="" loading="lazy" onerror="this.remove()" class="w-full h-full object-contain">{{else}}{{template "icon_sm" "i-barcode"}}{{end}}</span>
+    {{end}}
+    <span class="grow min-w-0">
+      <span class="block truncate"><b class="font-semibold">{{$r.Name}}</b>{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
+      {{if $r.Allergens}}<span class="flex flex-wrap gap-1 mt-0.5">{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px]">{{.Name}}</span>{{end}}</span>{{end}}
+    </span>
+    <span class="text-right leading-tight tabular-nums whitespace-nowrap">
+      {{if $r.HasFullNutrients}}<b>{{num $r.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal / 100 {{$r.Unit}}</span>{{else}}<span class="text-[12.5px] text-muted">macro da OFF</span>{{end}}
+    </span>
+    <span class="w-8 h-8 shrink-0 grid place-items-center rounded-full border border-border bg-surface text-accent group-open:rotate-45 transition-transform" aria-hidden="true">{{template "icon_sm" "i-plus"}}</span>
+  </summary>
+  {{if or (not $r.IsOFF) $r.Importable}}
+  {{- $action := "/nutrizionista/items" -}}
+  {{- if eq $d.PickerKind "recipe_item"}}{{$action = printf "/recipes/%d/items" $d.RecipeID}}
+  {{- else if eq $d.PickerKind "meal_item"}}{{$action = printf "/meals/%d/items?start=%s" $d.MealID $d.WeekStart}}
+  {{- else if $cheat}}{{$action = printf "/meals/%d/cheat/items?start=%s" $d.MealID $d.WeekStart}}{{end}}
+  <form method="post" action="{{$action}}" class="flex flex-wrap items-center gap-2 pl-4 lg:pl-5 pr-4 pt-1 pb-3 bg-accent-soft"
+        {{if $d.InDialog}}hx-post="{{$action}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog{{end}}
+        data-kcal100="{{if $r.HasFullNutrients}}{{$r.Kcal}}{{end}}" data-unit-weight="{{$r.UnitWeightG}}">
+    <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
+    {{if eq $d.PickerKind "nutritionist_item"}}<input type="hidden" name="variation_id" value="{{$d.VariationID}}">{{end}}
+    {{if or (eq $d.PickerKind "meal_item") $cheat}}<input type="hidden" name="kind" value="ingredient">{{end}}
+    {{if $r.IsOFF}}
+      <input type="hidden" name="barcode" value="{{$r.Barcode}}">
+    {{else if or (eq $d.PickerKind "meal_item") $cheat}}
+      <input type="hidden" name="ref_id" value="{{$r.LocalID}}">
+    {{else}}
+      <input type="hidden" name="ingredient_id" value="{{$r.LocalID}}">
+    {{end}}
+    <input name="quantity" required inputmode="decimal" aria-label="Quantità" class="field w-[76px] text-right tabular-nums"
+           {{if gt $r.DefaultQuantity 0.0}}value="{{dec $r.DefaultQuantity 2}}"{{else if gt $r.UnitWeightG 0.0}}value="1"{{else}}placeholder="{{$r.Unit}}"{{end}}>
+    {{if gt $r.UnitWeightG 0.0}}
+      {{/* La quantita' proposta non dice l'unita': oltre 10 la leggiamo in
+           g/ml, fino a 10 (o assente) in pezzi. */}}
+      <span class="segmented" role="radiogroup" aria-label="Unità">
+        <label><input type="radio" name="qty_unit" value="{{$r.Unit}}"{{if gt $r.DefaultQuantity 10.0}} checked{{end}}>{{$r.Unit}}</label>
+        <label><input type="radio" name="qty_unit" value="pz"{{if not (gt $r.DefaultQuantity 10.0)}} checked{{end}}>pz</label>
+      </span>
+      <span class="hidden sm:inline text-[12.5px] text-muted">1 pz = {{num $r.UnitWeightG}} {{$r.Unit}}</span>
+    {{else}}
+      <input type="hidden" name="qty_unit" value="{{$r.Unit}}"><span class="text-muted">{{$r.Unit}}</span>
+    {{end}}
+    <span class="ml-auto font-bold tabular-nums whitespace-nowrap" data-kcal-preview></span>
+    <button class="btn h-[30px] px-3 text-[12.5px] {{if $cheat}}bg-danger text-surface hover:opacity-90{{else}}btn-primary{{end}}">{{if $cheat}}Registra sgarro{{else}}Aggiungi{{end}}</button>
+  </form>
+  {{end}}
+</details>
 {{end}}

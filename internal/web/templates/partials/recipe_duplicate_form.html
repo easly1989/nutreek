@@ -10,27 +10,24 @@
       hx-target="this"
       hx-swap="outerHTML"
       novalidate
-      class="space-y-3 text-sm">
+      class="flex flex-col gap-3">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
   {{if .SrcName}}
-    <p class="text-xs text-muted">Stai duplicando <strong>{{.SrcName}}</strong>. Tutti gli ingredienti verranno copiati. Cambia il nome per salvare.</p>
+    <p class="text-muted">Stai duplicando <strong class="text-text">{{.SrcName}}</strong>: tutti gli ingredienti vengono copiati.</p>
   {{end}}
 
   {{if .Error}}
-    <p class="rounded border border-warn-fg/30 bg-warn-bg text-warn-fg px-3 py-2 text-xs">{{.Error}}</p>
+    <p class="rounded-xl bg-warn-bg text-warn-fg px-3 py-2">{{.Error}}</p>
   {{end}}
 
-  <div>
-    <label class="block text-xs text-muted mb-1" for="rd-name">Nuovo nome</label>
-    <input id="rd-name" name="new_name" value="{{.NewName}}" autofocus
-           class="w-full rounded border border-border bg-surface px-2 py-1">
-  </div>
+  <label class="lab">Nome della copia
+    <input name="new_name" value="{{.NewName}}" autofocus class="field">
+  </label>
 
-  <div class="flex items-center justify-end gap-2 pt-2">
-    <button type="button" data-modal-close
-            class="text-xs text-muted hover:underline px-3 py-1">Annulla</button>
-    <button class="bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90 text-sm">Duplica</button>
+  <div class="flex items-center justify-end gap-2 pt-1">
+    <button type="button" data-modal-close class="btn-secondary">Annulla</button>
+    <button class="btn-primary">{{template "icon_sm" "i-copy"}}Duplica</button>
   </div>
 </form>
 {{end}}

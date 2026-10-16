@@ -463,6 +463,32 @@ func (r *WeeklyPlans) AddMeal(ctx context.Context, planID, userID int64, day int
 	return res.LastInsertId()
 }
 
+// MealInfo ritorna nome e data di un pasto dell'utente. ErrMealNotFound se
+// il pasto non esiste o appartiene a un altro utente.
+func (r *WeeklyPlans) MealInfo(ctx context.Context, mealID, userID int64) (string, time.Time, error) {
+	var (
+		name, weekStart string
+		day             int
+	)
+	err := r.db.QueryRowContext(ctx, `
+		SELECT m.name, m.day_of_week, wp.week_start
+		FROM meals m
+		JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
+		WHERE m.id = ? AND wp.user_id = ?
+	`, mealID, userID).Scan(&name, &day, &weekStart)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", time.Time{}, ErrMealNotFound
+	}
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("meal info: %w", err)
+	}
+	start, err := time.Parse("2006-01-02", strings.Split(weekStart, "T")[0])
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("meal info week_start: %w", err)
+	}
+	return name, start.AddDate(0, 0, day), nil
+}
+
 // RemoveMeal cancella un pasto (e items via CASCADE).
 func (r *WeeklyPlans) RemoveMeal(ctx context.Context, mealID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `

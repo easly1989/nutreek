@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/off"
+	"github.com/amon2126/nutreek/internal/web"
 )
 
 // ---- view models -----------------------------------------------------------
@@ -24,9 +27,10 @@ type ingredientRow struct {
 	Local *domain.Ingredient // nil se la riga e' un OFF non ancora importato
 	OFF   *off.Product       // nil se la riga e' gia' nel DB
 
-	// Allergens e' popolato (batch) solo per le righe locali taggate: i
-	// template lo usano per il badge ⚠ nel picker e nella lista.
+	// Allergens e Category sono popolati (batch) solo per le righe locali:
+	// i template li mostrano come chip nel picker e nella lista.
 	Allergens []domain.AllergenTag
+	Category  *domain.IngredientCategory
 }
 
 // IsOFF e' usato dal template per decidere se mostrare il pulsante Importa.
@@ -228,9 +232,10 @@ type ingredientsListData struct {
 	Query      string
 	OFFWarning string // riempito se la search OFF locale e' fallita (raro)
 
-	// Filtro allergeni della pagina /ingredients (non usato dai picker).
-	AllAllergens       []domain.AllergenTag
-	SelectedAllergenID int64
+	// Filtri della pagina /ingredients (non usati dai picker).
+	Filter        ingredientFilter
+	AllAllergens  []domain.AllergenTag
+	AllCategories []domain.IngredientCategory
 
 	// Campi di context del picker. Quando il partial e' renderizzato in
 	// modalita' "picker" (es. dentro la pagina recipe-edit o nella card
@@ -242,6 +247,7 @@ type ingredientsListData struct {
 	MealID            int64           // se PickerKind == "meal_item"
 	VariationID       int64           // se PickerKind == "nutritionist_item"
 	WeekStart         string          // YYYY-MM-DD, per redirect post-add da meal_item
+	InDialog          bool            // picker nella finestra sopra la settimana (form HTMX)
 	NutritionistItems []ingredientRow // suggeriti dal piano nutrizionista
 }
 
@@ -279,25 +285,25 @@ type ingredientForm struct {
 
 func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	allergenID := parseAllergenFilter(r)
+	f := parseIngredientFilter(r)
 	// Render iniziale SSR: includi OFF solo se l'utente arriva gia' con una
 	// query in URL (link condiviso, refresh). Senza q, lista solo locali.
-	// Col filtro allergene attivo niente OFF: i prodotti non importati non
-	// hanno tag allergeni, quindi sarebbero comunque esclusi.
-	rows, warn, err := a.searchMixed(r.Context(), q, q != "" && allergenID == 0)
+	rows, warn, err := a.searchMixed(r.Context(), q, q != "" && f.WantsOFF())
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	rows = filterRowsByAllergen(rows, allergenID)
+	user := userFromContext(r.Context())
 	allergens, _ := a.Categories.ListAllergens(r.Context())
+	categories, _ := a.Categories.ListCategories(r.Context(), user.ID)
 	data := ingredientsListData{
-		authPageData:       a.baseData(r),
-		Rows:               rows,
-		Query:              q,
-		OFFWarning:         warn,
-		AllAllergens:       allergens,
-		SelectedAllergenID: allergenID,
+		authPageData:  a.baseData(r),
+		Rows:          f.apply(rows),
+		Query:         q,
+		OFFWarning:    warn,
+		Filter:        f,
+		AllAllergens:  allergens,
+		AllCategories: categories,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "ingredients_list", data); err != nil {
 		a.serverError(w, r, err)
@@ -309,50 +315,116 @@ func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 // Param `off=1` per includere OpenFoodFacts; senza, solo DB locale (veloce).
 func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	allergenID := parseAllergenFilter(r)
-	rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r) && allergenID == 0)
+	f := parseIngredientFilter(r)
+	rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r) && f.WantsOFF())
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	rows = filterRowsByAllergen(rows, allergenID)
 	// CSRF token serve nel partial per il form Importa.
 	data := ingredientsListData{
-		authPageData:       authPageData{CSRFToken: nosurf.Token(r)},
-		Rows:               rows,
-		Query:              q,
-		OFFWarning:         warn,
-		SelectedAllergenID: allergenID,
+		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+		Rows:         f.apply(rows),
+		Query:        q,
+		OFFWarning:   warn,
+		Filter:       f,
 	}
 	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "ingredient_results", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
 
-// parseAllergenFilter legge il parametro ?allergen=ID dalla query (0 = nessun filtro).
-func parseAllergenFilter(r *http.Request) int64 {
-	if id, err := strconv.ParseInt(r.URL.Query().Get("allergen"), 10, 64); err == nil && id > 0 {
-		return id
-	}
-	return 0
+// ingredientFilter sono i filtri della pagina /ingredients: provenienza
+// (Src: "" tutti, "mine" nel database, "off" solo OpenFoodFacts non
+// importati), categoria e allergene (0 = nessun filtro).
+type ingredientFilter struct {
+	Src        string
+	CategoryID int64
+	AllergenID int64
 }
 
-// filterRowsByAllergen tiene solo le righe che contengono l'allergene indicato.
-// Con allergenID == 0 ritorna le righe invariate.
-func filterRowsByAllergen(rows []ingredientRow, allergenID int64) []ingredientRow {
-	if allergenID == 0 {
-		return rows
+func parseIngredientFilter(r *http.Request) ingredientFilter {
+	q := r.URL.Query()
+	f := ingredientFilter{Src: q.Get("src")}
+	if f.Src != "mine" && f.Src != "off" {
+		f.Src = ""
 	}
-	out := rows[:0]
+	if id, err := strconv.ParseInt(q.Get("category"), 10, 64); err == nil && id > 0 {
+		f.CategoryID = id
+	}
+	if id, err := strconv.ParseInt(q.Get("allergen"), 10, 64); err == nil && id > 0 {
+		f.AllergenID = id
+	}
+	return f
+}
+
+// WantsOFF dice se cercare anche su OpenFoodFacts: i prodotti non importati
+// non hanno categoria ne' allergeni, quindi quei filtri li escludono comunque.
+func (f ingredientFilter) WantsOFF() bool {
+	return f.Src != "mine" && f.CategoryID == 0 && f.AllergenID == 0
+}
+
+func (f ingredientFilter) values() url.Values {
+	v := url.Values{}
+	if f.Src != "" {
+		v.Set("src", f.Src)
+	}
+	if f.CategoryID > 0 {
+		v.Set("category", strconv.FormatInt(f.CategoryID, 10))
+	}
+	if f.AllergenID > 0 {
+		v.Set("allergen", strconv.FormatInt(f.AllergenID, 10))
+	}
+	return v
+}
+
+// Query sono i parametri dei filtri (senza q) per la ricerca live.
+func (f ingredientFilter) Query() string { return f.values().Encode() }
+
+// Href e' il link alla lista con la ricerca q e questi filtri. E' costruito
+// qui perche' html/template codificherebbe & e = di una query interpolata.
+func (f ingredientFilter) Href(q string) template.URL {
+	v := f.values()
+	if q != "" {
+		v.Set("q", q)
+	}
+	if len(v) == 0 {
+		return "/ingredients"
+	}
+	return template.URL("/ingredients?" + v.Encode())
+}
+
+// WithSrc e WithoutTags derivano i filtri dei link (provenienza, azzera).
+func (f ingredientFilter) WithSrc(src string) ingredientFilter { f.Src = src; return f }
+func (f ingredientFilter) WithoutTags() ingredientFilter {
+	f.CategoryID, f.AllergenID = 0, 0
+	return f
+}
+
+// apply tiene le righe che passano tutti i filtri.
+func (f ingredientFilter) apply(rows []ingredientRow) []ingredientRow {
+	out := make([]ingredientRow, 0, len(rows))
 	for _, row := range rows {
-		for _, tag := range row.Allergens {
-			if tag.ID == allergenID {
-				out = append(out, row)
-				break
-			}
+		switch {
+		case f.Src == "mine" && row.IsOFF(), f.Src == "off" && !row.IsOFF():
+			continue
+		case f.CategoryID > 0 && (row.Category == nil || row.Category.ID != f.CategoryID):
+			continue
+		case f.AllergenID > 0 && !hasAllergen(row.Allergens, f.AllergenID):
+			continue
 		}
+		out = append(out, row)
 	}
 	return out
+}
+
+func hasAllergen(tags []domain.AllergenTag, id int64) bool {
+	for _, t := range tags {
+		if t.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // includeOFFParam ritorna true se il client ha richiesto esplicitamente
@@ -393,7 +465,7 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 		}
 	}
 
-	a.attachAllergens(ctx, rows)
+	a.attachTags(ctx, rows)
 
 	if !includeOFF || q == "" {
 		return rows, "", nil
@@ -415,10 +487,10 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 	return rows, "", nil
 }
 
-// attachAllergens carica in batch gli allergeni delle righe locali e li
-// assegna in-place, cosi' il picker e la lista possono mostrare il badge ⚠
-// senza query N+1. Le righe OFF non importate non hanno allergeni.
-func (a *App) attachAllergens(ctx context.Context, rows []ingredientRow) {
+// attachTags carica in batch allergeni e categoria delle righe locali e li
+// assegna in-place, cosi' il picker e la lista possono mostrarli senza query
+// N+1. Le righe OFF non importate non hanno ne' allergeni ne' categoria.
+func (a *App) attachTags(ctx context.Context, rows []ingredientRow) {
 	if a.Categories == nil {
 		return
 	}
@@ -434,11 +506,18 @@ func (a *App) attachAllergens(ctx context.Context, rows []ingredientRow) {
 	byIng, err := a.Categories.AllergensForIngredients(ctx, ids)
 	if err != nil {
 		a.Logger.Warn("attach allergens failed", "err", err)
-		return
+	}
+	cats, err := a.Categories.CategoriesForIngredients(ctx, ids)
+	if err != nil {
+		a.Logger.Warn("attach categories failed", "err", err)
 	}
 	for i := range rows {
-		if rows[i].Local != nil {
-			rows[i].Allergens = byIng[rows[i].Local.ID]
+		if rows[i].Local == nil {
+			continue
+		}
+		rows[i].Allergens = byIng[rows[i].Local.ID]
+		if c, ok := cats[rows[i].Local.ID]; ok {
+			rows[i].Category = &c
 		}
 	}
 }
@@ -478,20 +557,22 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	form := ingredientForm{
-		Name:         strings.TrimSpace(r.PostFormValue("name")),
-		Brand:        strings.TrimSpace(r.PostFormValue("brand")),
-		Unit:         strings.TrimSpace(r.PostFormValue("unit")),
-		Kcal:         strings.TrimSpace(r.PostFormValue("kcal")),
-		Protein:      strings.TrimSpace(r.PostFormValue("protein")),
-		Carbs:        strings.TrimSpace(r.PostFormValue("carbs")),
-		Fat:          strings.TrimSpace(r.PostFormValue("fat")),
-		UnitWeightG:  strings.TrimSpace(r.PostFormValue("unit_weight_g")),
-		CategoryID:   strings.TrimSpace(r.PostFormValue("category_id")),
-		AllergenIDs:  parsedAllergenIDs,
-		Fiber:        strings.TrimSpace(r.PostFormValue("fiber")),
-		Sugars:       strings.TrimSpace(r.PostFormValue("sugars")),
-		SaturatedFat: strings.TrimSpace(r.PostFormValue("saturated_fat")),
-		Sodium:       strings.TrimSpace(r.PostFormValue("sodium")),
+		Name:        strings.TrimSpace(r.PostFormValue("name")),
+		Brand:       strings.TrimSpace(r.PostFormValue("brand")),
+		Unit:        strings.TrimSpace(r.PostFormValue("unit")),
+		Kcal:        strings.TrimSpace(r.PostFormValue("kcal")),
+		Protein:     strings.TrimSpace(r.PostFormValue("protein")),
+		Carbs:       strings.TrimSpace(r.PostFormValue("carbs")),
+		Fat:         strings.TrimSpace(r.PostFormValue("fat")),
+		UnitWeightG: strings.TrimSpace(r.PostFormValue("unit_weight_g")),
+		// DefaultQuantity serve solo a ripresentare il valore dopo un errore.
+		DefaultQuantity: strings.TrimSpace(r.PostFormValue("default_quantity")),
+		CategoryID:      strings.TrimSpace(r.PostFormValue("category_id")),
+		AllergenIDs:     parsedAllergenIDs,
+		Fiber:           strings.TrimSpace(r.PostFormValue("fiber")),
+		Sugars:          strings.TrimSpace(r.PostFormValue("sugars")),
+		SaturatedFat:    strings.TrimSpace(r.PostFormValue("saturated_fat")),
+		Sodium:          strings.TrimSpace(r.PostFormValue("sodium")),
 	}
 
 	if form.Name == "" {
@@ -728,19 +809,20 @@ func (a *App) handleOFFMacroCheck(w http.ResponseWriter, r *http.Request) {
 	writeMacroFragment(w, true, product.Kcal, product.Protein, product.Carbs, product.Fat)
 }
 
+// writeMacroFragment scrive kcal e macro per 100 g di un prodotto OFF nel
+// formato delle righe di ingredient_results.
 func writeMacroFragment(w http.ResponseWriter, full bool, kcal, protein, carbs, fat float64) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if full {
 		fmt.Fprintf(w,
-			`<span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-accent"></span>`+
-				`<span class="text-accent">OpenFoodFacts</span>`+
-				` · %.0f kcal · P %.1fg · C %.1fg · F %.1fg (per 100g)`,
-			kcal, protein, carbs, fat)
+			`<span class="flex items-center gap-2.5 text-[12.5px] text-muted tabular-nums">`+
+				`<span class="text-[14px] text-text"><b>%s</b> kcal</span>`+
+				`<span><b class="text-prot font-semibold">P</b> %s g</span>`+
+				`<span><b class="text-carb font-semibold">C</b> %s g</span>`+
+				`<span><b class="text-fat font-semibold">G</b> %s g</span></span>`,
+			web.FormatNum(kcal), web.FormatDec(protein, 1), web.FormatDec(carbs, 1), web.FormatDec(fat, 1))
 	} else {
-		fmt.Fprintf(w,
-			`<span class="inline-block w-2 h-2 rounded-full mr-0.5 align-middle bg-danger/60"></span>`+
-				`<span class="text-muted">OpenFoodFacts</span>`+
-				`<span class="text-danger/80 italic"> · macro non disponibili su OFF</span>`)
+		fmt.Fprint(w, `<span class="text-[12.5px] text-muted">Macro non disponibili su OpenFoodFacts</span>`)
 	}
 }
 
@@ -781,6 +863,15 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	}
 	if ing.Brand != nil {
 		form.Brand = *ing.Brand
+	}
+	// Senza questa pre-selezione il salvataggio azzerava la categoria.
+	current, err := a.Categories.CategoriesForIngredients(r.Context(), []int64{id})
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if c, ok := current[id]; ok {
+		form.CategoryID = strconv.FormatInt(c.ID, 10)
 	}
 	if ing.UnitWeightG != nil {
 		form.UnitWeightG = strconv.FormatFloat(*ing.UnitWeightG, 'f', -1, 64)

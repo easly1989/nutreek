@@ -24,6 +24,41 @@ func allergenIDByName(t *testing.T, cats *Categories, name string) int64 {
 	return 0
 }
 
+// La lista ingredienti mostra la categoria di ogni riga e il form di modifica
+// la deve pre-selezionare (#122): CategoriesForIngredients le carica in batch.
+func TestCategoriesForIngredients(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	ings := NewIngredients(store.DB)
+	cats := NewCategories(store.DB)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	latticini, err := cats.CreateCategory(ctx, alice, "Latticini")
+	if err != nil {
+		t.Fatal(err)
+	}
+	yogurt, _ := ings.CreateLocal(ctx, "Yogurt", nil, "g", 57, 10, 4, 0.2, &alice, nil, nil, nil, nil, nil, nil)
+	mela, _ := ings.CreateLocal(ctx, "Mela", nil, "g", 52, 0.3, 13.8, 0.2, &alice, nil, nil, nil, nil, nil, nil)
+	if err := cats.SetIngredientCategory(ctx, yogurt, &latticini); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := cats.CategoriesForIngredients(ctx, []int64{yogurt, mela})
+	if err != nil {
+		t.Fatalf("CategoriesForIngredients: %v", err)
+	}
+	if c, ok := got[yogurt]; !ok || c.ID != latticini || c.Name != "Latticini" {
+		t.Errorf("categoria dello yogurt = %+v, attesa Latticini", got[yogurt])
+	}
+	if _, ok := got[mela]; ok {
+		t.Error("la mela non ha categoria: non deve comparire")
+	}
+	if empty, err := cats.CategoriesForIngredients(ctx, nil); err != nil || len(empty) != 0 {
+		t.Errorf("lista vuota = %v, %v", empty, err)
+	}
+}
+
 func TestAllergensSeedAndSet(t *testing.T) {
 	store := newTestStore(t)
 	ings := NewIngredients(store.DB)

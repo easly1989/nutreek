@@ -13,9 +13,11 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
 ### Corretto
 - Le voci in pezzi («pz») valgono quantità × peso unitario dell'ingrediente nella settimana, nella generazione automatica e nella lista della spesa; prima contavano come grammi (#126)
+- Salvare un ingrediente modificato non azzera più la sua categoria; gli errori dei form rapidi «Nuovo ingrediente / Nuova ricetta» ora si vedono nella finestra invece di essere scartati; un errore aggiungendo un alimento ricarica la settimana invece di annidarla nel giorno (#122)
 
 ### Cambiato
 - Restyle «Sereno», prima parte (#121): nuovo sistema di temi (modalità chiaro / scuro / come il sistema × colore bosco / mare / tramonto / grafite, in cookie e letto dal server), font Figtree servito dall'app, sidebar su desktop e barra in basso su telefono con il foglio «Altro», menu «Aspetto». La settimana mostra un giorno alla volta: schede dei giorni, riepilogo con anello kcal e macro, pasti, acqua e allenamenti; il giorno aperto è nell'URL (`?day=`). I vecchi cookie `theme` vengono convertiti.
+- Restyle «Sereno», seconda parte (#122): ricette con ricerca live, filtri, kcal e macro per porzione e ripartizione energetica nell'editor; ingredienti con filtri per provenienza, categoria e allergene e form a sezioni; piano nutrizionale a schede (pasti e varianti / template settimanali, che sostituisce `/templates`) con kcal per variante; editor dei template per giorno; il picker «Aggiungi alimento» si apre in una finestra sopra la settimana (foglio dal basso sul telefono) con anteprima kcal e unità g / pz.
 
 ### Manutenzione
 - Go 1.27.2; chi 5.5, goose 3.29, modernc sqlite 1.60, x/crypto 0.58; SortableJS 1.15.7; GitHub Actions alle major correnti, golangci-lint fissato a v2.14.0; immagini base `golang:1.27-alpine` e `alpine:3.24`; `.gitattributes` con fine riga LF (#112)

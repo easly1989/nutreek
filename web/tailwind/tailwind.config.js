@@ -4,7 +4,7 @@ module.exports = {
     "./internal/web/templates/**/*.html",
     "./internal/app/**/*.go",
     // Solo i nostri script (non i vendor .min.js): alcuni creano markup con classi.
-    "./internal/web/static/js/{confirm,modal,ingredient_search,theme,day_tabs,dnd,tour}.js",
+    "./internal/web/static/js/{confirm,modal,ingredient_search,theme,day_tabs,dnd,tour,picker}.js",
   ],
   theme: {
     extend: {

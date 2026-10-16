@@ -1,54 +1,48 @@
 {{define "recipe_picker_results"}}
 {{- /*
-  recipe_picker_results.html — Picker ricette per il flow meal_item:
-  lista delle ricette visibili all'utente filtrate per query. Ogni riga
-  ha un mini-form con campo "porzioni" + bottone Aggiungi.
+  recipe_picker_results.html — Picker ricette (pasto, sgarro, variante del
+  piano nutrizionale): ricette visibili all'utente filtrate per query. Come
+  picker_results, ogni riga e' un <details> che si apre sul form porzioni
+  con l'anteprima kcal (picker.js, data-kcal-each = kcal per porzione).
+  View-model: Recipes, Query, Kcal (kcal per porzione, per id), Cheat,
+  MealID, WeekStart, VariationID.
 */ -}}
 {{if .Recipes}}
-  <ul class="divide-y divide-border rounded border border-border bg-surface">
+  <div class="divide-y divide-border">
     {{range .Recipes}}
-      <li class="px-4 py-3 flex items-baseline justify-between gap-4">
-        <div class="min-w-0">
-          <p class="font-medium text-text truncate">{{.Name}}</p>
-          <p class="text-xs text-muted">{{.Servings}} porzion{{if eq .Servings 1}}e{{else}}i{{end}}{{if .IsPublic}} · <span class="text-accent">pubblica</span>{{end}}</p>
-        </div>
-        {{/* form standard (POST + redirect server-side): la pagina meal_item_new
-             non e' un container HTMX-aware, lasciamo che il server faccia
-             redirectToWeek dopo l'add. */}}
-        {{if $.Cheat}}
-          <form method="post" action="/meals/{{$.MealID}}/cheat/items?start={{$.WeekStart}}"
-                class="shrink-0 flex items-center gap-2">
-            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <input type="hidden" name="kind" value="recipe">
-            <input type="hidden" name="ref_id" value="{{.ID}}">
-            <input name="quantity" required inputmode="decimal" placeholder="porz." class="w-20 rounded border border-border bg-surface px-2 py-1 text-xs">
-            <button class="text-xs bg-danger text-white rounded px-3 py-1 hover:bg-danger/90">Sgarro</button>
-          </form>
-        {{else if gt $.VariationID 0}}
-          <form method="post" action="/nutrizionista/items"
-                class="shrink-0 flex items-center gap-2">
-            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+      {{- $kcal := index $.Kcal .ID -}}
+      {{- $action := printf "/meals/%d/items?start=%s" $.MealID $.WeekStart -}}
+      {{- if $.Cheat}}{{$action = printf "/meals/%d/cheat/items?start=%s" $.MealID $.WeekStart}}{{else if gt $.VariationID 0}}{{$action = "/nutrizionista/items"}}{{end -}}
+      <details class="group" data-picker-row>
+        <summary class="flex items-center gap-3 min-h-[52px] py-1.5 pl-4 lg:pl-5 pr-4 cursor-pointer list-none hover:bg-surface-2 group-open:bg-accent-soft [&::-webkit-details-marker]:hidden">
+          <span class="grow min-w-0">
+            <b class="block truncate font-semibold">{{.Name}}</b>
+            <span class="text-[12.5px] text-muted">{{.Servings}} {{if eq .Servings 1}}porzione{{else}}porzioni{{end}}{{if .IsPublic}} · pubblica{{end}}</span>
+          </span>
+          <span class="text-right tabular-nums whitespace-nowrap"><b>{{num $kcal}}</b> <span class="text-[12.5px] text-muted">kcal / porz.</span></span>
+          <span class="w-8 h-8 shrink-0 grid place-items-center rounded-full border border-border bg-surface text-accent group-open:rotate-45 transition-transform" aria-hidden="true">{{template "icon_sm" "i-plus"}}</span>
+        </summary>
+        <form method="post" action="{{$action}}" class="flex flex-wrap items-center gap-2 pl-4 lg:pl-5 pr-4 pt-1 pb-3 bg-accent-soft" data-kcal-each="{{$kcal}}"
+              {{if $.InDialog}}hx-post="{{$action}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog{{end}}>
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          {{if gt $.VariationID 0}}
             <input type="hidden" name="variation_id" value="{{$.VariationID}}">
             <input type="hidden" name="recipe_id" value="{{.ID}}">
-            <input name="quantity" required inputmode="decimal" placeholder="porz." class="w-20 rounded border border-border bg-surface px-2 py-1 text-xs">
-            <button class="text-xs bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90">Aggiungi</button>
-          </form>
-        {{else}}
-          <form method="post" action="/meals/{{$.MealID}}/items?start={{$.WeekStart}}"
-                class="shrink-0 flex items-center gap-2">
-            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          {{else}}
             <input type="hidden" name="kind" value="recipe">
             <input type="hidden" name="ref_id" value="{{.ID}}">
-            <input name="quantity" required inputmode="decimal" placeholder="porz." class="w-20 rounded border border-border bg-surface px-2 py-1 text-xs">
-            <button class="text-xs bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90">Aggiungi</button>
-          </form>
-        {{end}}
-      </li>
+          {{end}}
+          <input name="quantity" required inputmode="decimal" value="1" aria-label="Porzioni" class="field w-[76px] text-right tabular-nums">
+          <span class="text-muted">porzioni</span>
+          <span class="ml-auto font-bold tabular-nums whitespace-nowrap" data-kcal-preview></span>
+          <button class="btn h-[30px] px-3 text-[12.5px] {{if $.Cheat}}bg-danger text-surface hover:opacity-90{{else}}btn-primary{{end}}">{{if $.Cheat}}Registra sgarro{{else}}Aggiungi{{end}}</button>
+        </form>
+      </details>
     {{end}}
-  </ul>
+  </div>
 {{else}}
-  <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
-    {{if .Query}}Nessuna ricetta trovata per &laquo;{{.Query}}&raquo;.{{else}}Nessuna ricetta visibile. Creane una con &laquo;+ Nuova ricetta&raquo;.{{end}}
+  <p class="px-5 py-8 text-center text-muted">
+    {{if .Query}}Nessuna ricetta trovata per «{{.Query}}».{{else}}Nessuna ricetta ancora: creane una con «Nuova ricetta».{{end}}
   </p>
 {{end}}
 {{end}}

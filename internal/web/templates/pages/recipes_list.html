@@ -1,199 +1,165 @@
 {{define "title"}}Ricette — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-3xl">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-3xl font-semibold">Ricette</h1>
-    <a href="/recipes/new" class="inline-block bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Nuova</a>
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="h1">Ricette</h1>
+      <p class="text-muted">{{.MineN}} {{if eq .MineN 1}}tua ricetta{{else}}tue ricette{{end}}{{if .OthersN}}, {{.OthersN}} {{if eq .OthersN 1}}pubblica{{else}}pubbliche{{end}} di altri{{end}}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/recipes/new#importa" class="btn-secondary">{{template "icon" "i-link"}}Importa da URL</a>
+      <a href="/recipes/new" class="btn-primary">{{template "icon" "i-plus"}}Nuova ricetta</a>
+    </div>
   </div>
 
-  <section class="mb-8">
-    <h2 class="text-lg font-medium mb-3">Le mie</h2>
-    {{if .Mine}}
-      {{/* Form unico per bulk-delete: checkbox di tutte le righe vivono qui
-           dentro. La toolbar in alto resta visibile e si aggiorna via JS in
-           base alla selezione. */}}
-      <form id="recipes-bulk-form" method="post" action="/recipes/bulk-delete"
-            onsubmit="return confirmRecipesBulkDelete(this, event);">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-
-        <div data-recipes-toolbar
-             class="hidden mb-2 flex items-center justify-between rounded border border-border bg-surface-2/40 px-3 py-2 text-sm">
-          <span><span data-recipes-selected-count>0</span> selezionate</span>
-          <div class="flex items-center gap-3">
-            <button type="button" data-recipes-clear class="text-xs text-muted hover:underline">Deseleziona</button>
-            <button type="submit" class="text-xs text-danger hover:underline">Elimina selezionate</button>
-          </div>
-        </div>
-
-        <ul class="divide-y divide-border rounded border border-border bg-surface">
-          <li class="px-4 py-2 flex items-center gap-3 text-xs text-muted bg-surface-2/30">
-            <input type="checkbox" data-recipes-select-all aria-label="Seleziona tutte"
-                   class="rounded border-border">
-            <span>Seleziona tutte</span>
-          </li>
-          {{range .Mine}}
-            <li class="px-4 py-3 flex items-center gap-3"
-                data-recipe-row data-recipe-id="{{.Recipe.ID}}"
-                data-recipe-name="{{.Recipe.Name}}"
-                data-recipe-usages="{{.Usages}}">
-              <input type="checkbox" name="recipe_id" value="{{.Recipe.ID}}"
-                     data-recipes-checkbox aria-label="Seleziona {{.Recipe.Name}}"
-                     class="rounded border-border shrink-0">
-              <div class="flex-1 min-w-0">
-                <a href="/recipes/{{.Recipe.ID}}" class="font-medium text-text hover:underline">{{.Recipe.Name}}</a>
-                <p class="text-xs text-muted mt-0.5">
-                  {{.Recipe.Servings}} porzion{{if eq .Recipe.Servings 1}}e{{else}}i{{end}}
-                  {{if .Recipe.IsPublic}}· <span class="text-accent">pubblica</span>{{end}}
-                  {{if gt .Usages 0}}· in uso in {{.Usages}} {{if eq .Usages 1}}voce{{else}}voci{{end}} dei piani{{end}}
-                </p>
-              </div>
-              <div class="flex items-center gap-1 shrink-0">
-                <a href="/recipes/{{.Recipe.ID}}"
-                   class="text-muted hover:text-accent p-1 inline-flex" aria-label="Modifica" title="Modifica">
-                  <svg class="w-4 h-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                </a>
-                <button type="button"
-                        hx-get="/recipes/{{.Recipe.ID}}/duplicate"
-                        hx-target="#modal-host" hx-swap="innerHTML"
-                        class="text-muted hover:text-accent p-1 inline-flex" aria-label="Duplica" title="Duplica">
-                  <svg class="w-4 h-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-                {{/* Elimina singola: form annidato no, usiamo un button che
-                     submitta via JS un mini-form fuori da quello bulk per evitare
-                     di passare tutti i recipe_id selezionati. */}}
-                <button type="button" data-recipe-delete
-                        class="text-muted hover:text-danger p-1 inline-flex" aria-label="Elimina" title="Elimina">
-                  <svg class="w-4 h-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
-                    <path d="M10 11v6"/>
-                    <path d="M14 11v6"/>
-                    <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              </div>
-            </li>
-          {{end}}
-        </ul>
-      </form>
-
-      {{/* Form nascosti per la delete singola (uno per ricetta).
-           data-recipe-delete sopra trova il form per id e lo submitta. */}}
-      {{range .Mine}}
-        <form id="recipe-delete-{{.Recipe.ID}}" method="post"
-              action="/recipes/{{.Recipe.ID}}/delete" class="hidden">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-        </form>
+  {{/* Ricerca live: HTMX sostituisce solo #recipe-results. Senza JS il form
+       si invia con Invio. */}}
+  <form method="get" action="/recipes" class="flex flex-col gap-3" role="search">
+    <input type="hidden" name="f" value="{{.Filter}}">
+    <label class="field-ico">
+      {{template "icon" "i-search"}}
+      <input type="search" name="q" value="{{.Query}}" placeholder="Cerca una ricetta" aria-label="Cerca una ricetta"
+             class="field field-lg" autocomplete="off"
+             hx-get="/recipes" hx-trigger="input changed delay:200ms, search"
+             hx-include="closest form" hx-target="#recipe-results" hx-swap="outerHTML" hx-push-url="true">
+    </label>
+    <div class="flex flex-wrap gap-2">
+      {{range .Filters}}
+        <a href="/recipes?f={{.Key}}{{with $.Query}}&q={{.}}{{end}}" class="filter{{if .On}} is-on{{end}}"{{if .On}} aria-current="page"{{end}}>{{.Label}} <span class="cnt">{{.Count}}</span></a>
       {{end}}
-    {{else}}
-      <div class="rounded border border-dashed border-border bg-surface px-6 py-12 text-center">
-        <p class="text-muted mb-3 text-sm">Non hai ancora nessuna ricetta.</p>
-        <a href="/recipes/new" class="inline-block bg-accent text-accent-fg rounded px-4 py-2 text-sm hover:bg-accent/90 transition">Crea la prima ricetta</a>
-      </div>
-    {{end}}
-  </section>
+    </div>
+  </form>
 
-  {{if .Others}}
-    <section>
-      <h2 class="text-lg font-medium mb-3">Pubbliche di altri utenti</h2>
-      <ul class="divide-y divide-border rounded border border-border bg-surface">
-        {{range .Others}}
-          <li class="px-4 py-3 flex items-baseline justify-between gap-4">
-            <a href="/recipes/{{.ID}}" class="font-medium text-text hover:underline">{{.Name}}</a>
-            <span class="text-xs text-muted">{{.Servings}} porzioni</span>
-          </li>
-        {{end}}
-      </ul>
-    </section>
-  {{end}}
+  {{template "recipe_results" .}}
 </div>
 
 <script>
 (function () {
   'use strict';
 
-  // ---- toolbar bulk-delete: aggiorna conteggio e visibilità.
   function refreshToolbar() {
     var checked = document.querySelectorAll('[data-recipes-checkbox]:checked');
     var toolbar = document.querySelector('[data-recipes-toolbar]');
     var countEl = document.querySelector('[data-recipes-selected-count]');
     if (!toolbar || !countEl) return;
-    countEl.textContent = String(checked.length);
+    countEl.textContent = checked.length === 1 ? '1 ricetta selezionata' : checked.length + ' ricette selezionate';
     toolbar.classList.toggle('hidden', checked.length === 0);
+    var all = document.querySelector('[data-recipes-select-all]');
+    var boxes = document.querySelectorAll('[data-recipes-checkbox]');
+    if (all) all.checked = boxes.length > 0 && checked.length === boxes.length;
   }
 
   document.addEventListener('change', function (e) {
-    if (e.target.matches('[data-recipes-checkbox]')) {
-      refreshToolbar();
-      // Se deseleziono una riga e l'header era selezionato, sincronizza.
-      var all = document.querySelector('[data-recipes-select-all]');
-      if (all && !e.target.checked) all.checked = false;
-    }
+    if (e.target.matches('[data-recipes-checkbox]')) refreshToolbar();
     if (e.target.matches('[data-recipes-select-all]')) {
-      var checked = e.target.checked;
-      document.querySelectorAll('[data-recipes-checkbox]').forEach(function (cb) {
-        cb.checked = checked;
-      });
+      var on = e.target.checked;
+      document.querySelectorAll('[data-recipes-checkbox]').forEach(function (cb) { cb.checked = on; });
       refreshToolbar();
     }
   });
 
   document.addEventListener('click', function (e) {
-    if (e.target.matches('[data-recipes-clear]')) {
-      document.querySelectorAll('[data-recipes-checkbox]').forEach(function (cb) {
-        cb.checked = false;
-      });
-      var all = document.querySelector('[data-recipes-select-all]');
-      if (all) all.checked = false;
+    if (e.target.closest('[data-recipes-clear]')) {
+      document.querySelectorAll('[data-recipes-checkbox]').forEach(function (cb) { cb.checked = false; });
       refreshToolbar();
     }
-    var delBtn = e.target.closest('[data-recipe-delete]');
-    if (delBtn) {
-      var row = delBtn.closest('[data-recipe-row]');
-      if (!row) return;
-      var id = row.getAttribute('data-recipe-id');
-      var name = row.getAttribute('data-recipe-name') || '';
-      var usages = parseInt(row.getAttribute('data-recipe-usages') || '0', 10);
-      var msg = 'Eliminare la ricetta "' + name + '"?';
-      if (usages > 0) {
-        msg += '\n\nÈ usata in ' + usages + ' voce' + (usages === 1 ? '' : ' del piano')
-             + (usages === 1 ? ' di un piano' : '') + ' che verrà rimossa.';
-      }
-      msg += '\nOperazione non reversibile.';
-      window._showConfirm(msg, function () {
-        var form = document.getElementById('recipe-delete-' + id);
-        if (form) form.submit();
-      });
-      return;
-    }
   });
-}());
 
-function confirmRecipesBulkDelete(form, e) {
-  var checked = form.querySelectorAll('[data-recipes-checkbox]:checked');
-  if (checked.length === 0) return false;
-  var totalUsages = 0;
-  checked.forEach(function (cb) {
-    var row = cb.closest('[data-recipe-row]');
-    if (row) totalUsages += parseInt(row.getAttribute('data-recipe-usages') || '0', 10);
-  });
-  var msg = 'Eliminare ' + checked.length + ' ricette?';
-  if (totalUsages > 0) {
-    msg += ' Nel totale sono usate in ' + totalUsages + ' voci dei piani settimanali che verranno rimosse.';
-  }
-  msg += ' Operazione non reversibile.';
-  if (e) e.preventDefault();
-  window._showConfirm(msg, function () {
-    form.removeAttribute('onsubmit');
-    form.requestSubmit ? form.requestSubmit() : form.submit();
-  });
-  return false;
-}
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (form.id !== 'recipes-bulk-form' || form.dataset.confirmed) return;
+    e.preventDefault();
+    var checked = form.querySelectorAll('[data-recipes-checkbox]:checked');
+    if (checked.length === 0) return;
+    var usages = 0;
+    checked.forEach(function (cb) { usages += parseInt(cb.dataset.usages || '0', 10); });
+    var msg = checked.length === 1 ? 'Eliminare la ricetta selezionata?' : 'Eliminare ' + checked.length + ' ricette?';
+    if (usages > 0) msg += ' Sono usate in ' + usages + (usages === 1 ? ' voce' : ' voci') + ' dei piani settimanali, che verranno rimosse.';
+    msg += ' L’operazione non è reversibile.';
+    window._showConfirm(msg, function () {
+      form.dataset.confirmed = '1';
+      form.requestSubmit ? form.requestSubmit() : form.submit();
+    });
+  }, true);
+
+  // Dopo la ricerca live la barra di selezione riparte da zero.
+  document.body.addEventListener('htmx:afterSettle', refreshToolbar);
+}());
 </script>
+{{end}}
+
+{{define "recipe_results"}}
+<div id="recipe-results" class="flex flex-col gap-3">
+  {{if .Rows}}
+    {{- $mine := eq .Filter "mine" "used" "public" -}}
+    <form id="recipes-bulk-form" method="post" action="/recipes/bulk-delete" class="flex flex-col gap-3">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+      {{if $mine}}
+      <div data-recipes-toolbar class="selbar hidden" role="status">
+        <span data-recipes-selected-count class="grow">0 ricette selezionate</span>
+        <button type="button" data-recipes-clear class="btn-ghost h-[30px] px-2.5 text-[12.5px]">Deseleziona</button>
+        <button type="submit" class="btn-danger h-[30px] px-2.5 text-[12.5px]">{{template "icon_sm" "i-trash"}}Elimina</button>
+      </div>
+      {{end}}
+
+      <div class="card divide-y divide-border">
+        <div class="hidden lg:grid grid-cols-[18px_minmax(0,1fr)_96px_180px_32px] gap-3.5 items-center min-h-[38px] pl-4 pr-3 text-[12.5px] font-semibold text-muted">
+          {{if $mine}}<input type="checkbox" class="check" data-recipes-select-all aria-label="Seleziona tutte">{{else}}<span></span>{{end}}
+          <span>Nome</span>
+          <span class="text-right">kcal / porzione</span>
+          <span>Macro per porzione</span>
+          <span></span>
+        </div>
+        {{range .Rows}}
+          <div class="grid grid-cols-[minmax(0,1fr)_auto_32px] lg:grid-cols-[18px_minmax(0,1fr)_96px_180px_32px] gap-x-3 lg:gap-x-3.5 gap-y-1 items-center max-lg:[&:nth-child(2)]:!border-t-0 min-h-[60px] py-2.5 pl-3.5 lg:pl-4 pr-2 lg:pr-3">
+            {{if .Mine}}
+              <input type="checkbox" class="check hidden lg:block" name="recipe_id" value="{{.Recipe.ID}}"
+                     data-recipes-checkbox data-usages="{{.Usages}}" aria-label="Seleziona {{.Recipe.Name}}">
+            {{else}}<span class="hidden lg:block"></span>{{end}}
+            <div class="flex flex-col gap-1 min-w-0">
+              <a href="/recipes/{{.Recipe.ID}}" class="font-semibold hover:underline truncate">{{.Recipe.Name}}</a>
+              <span class="flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
+                {{.Recipe.Servings}} {{if eq .Recipe.Servings 1}}porzione{{else}}porzioni{{end}}
+                {{if and .Mine (gt .Usages 0)}}<span class="chip chip-n">In uso in {{.Usages}} {{if eq .Usages 1}}voce{{else}}voci{{end}}</span>{{end}}
+                {{if and .Mine .Recipe.IsPublic}}<span class="chip chip-soft">Pubblica</span>{{end}}
+              </span>
+            </div>
+            <span class="text-right tabular-nums whitespace-nowrap"><b>{{num .PerServing.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal</span></span>
+            <span class="col-span-3 lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums">
+              <span><b class="text-prot font-semibold">P</b> {{num .PerServing.Protein}} g</span>
+              <span><b class="text-carb font-semibold">C</b> {{num .PerServing.Carbs}} g</span>
+              <span><b class="text-fat font-semibold">G</b> {{num .PerServing.Fat}} g</span>
+            </span>
+            <div class="relative row-start-1 col-start-3 lg:row-start-auto lg:col-start-auto">
+              <button type="button" class="icon-action" data-popover="recipe-menu-{{.Recipe.ID}}" aria-expanded="false" aria-controls="recipe-menu-{{.Recipe.ID}}" aria-label="Azioni su {{.Recipe.Name}}">{{template "icon" "i-dots"}}</button>
+              <div id="recipe-menu-{{.Recipe.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5 flex flex-col">
+                <a href="/recipes/{{.Recipe.ID}}" class="nav-link">{{template "icon" (or (and .Mine "i-edit") "i-recipes")}}{{if .Mine}}Modifica{{else}}Apri{{end}}</a>
+                <button type="button" class="nav-link w-full" hx-get="/recipes/{{.Recipe.ID}}/duplicate" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-copy"}}Duplica</button>
+                {{if .Mine}}<button type="submit" form="recipe-delete-{{.Recipe.ID}}" class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina</button>{{end}}
+              </div>
+            </div>
+          </div>
+        {{end}}
+      </div>
+    </form>
+    {{/* Form della delete singola, fuori dal form bulk: il menu di riga li
+         invia con l'attributo form="". */}}
+    {{range .Rows}}{{if .Mine}}
+      <form id="recipe-delete-{{.Recipe.ID}}" method="post" action="/recipes/{{.Recipe.ID}}/delete" class="hidden"
+            data-confirm="Eliminare la ricetta «{{.Recipe.Name}}»?{{if gt .Usages 0}} È usata in {{.Usages}} {{if eq .Usages 1}}voce{{else}}voci{{end}} dei piani settimanali, che verranno rimosse.{{end}} L’operazione non è reversibile.">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+      </form>
+    {{end}}{{end}}
+  {{else if .Query}}
+    <p class="card px-6 py-10 text-center text-muted">Nessuna ricetta trovata per «{{.Query}}».</p>
+  {{else if eq .Filter "mine"}}
+    <div class="card border-dashed px-6 py-12 text-center flex flex-col items-center gap-3">
+      <p class="text-muted">Non hai ancora nessuna ricetta.</p>
+      <a href="/recipes/new" class="btn-primary">{{template "icon" "i-plus"}}Crea la prima ricetta</a>
+    </div>
+  {{else}}
+    <p class="card px-6 py-10 text-center text-muted">Nessuna ricetta in questo elenco.</p>
+  {{end}}
+</div>
 {{end}}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,26 +13,7 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// dayNames usato per render. Index 0 = lunedi'.
-var dayNames = []string{"Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"}
-
-// dayLabel ritorna l'etichetta human-readable per un day_of_week.
-func dayLabel(d int) string {
-	if d == domain.DayOfWeekEvery {
-		return "Ogni giorno"
-	}
-	if d >= 0 && d < len(dayNames) {
-		return dayNames[d]
-	}
-	return "?"
-}
-
 // ---- view models -----------------------------------------------------------
-
-type templatesListData struct {
-	authPageData
-	Templates []*domain.MealTemplate
-}
 
 type templateNewData struct {
 	authPageData
@@ -42,20 +24,33 @@ type templateNewData struct {
 type templateEditData struct {
 	authPageData
 	Template   *domain.MealTemplateWithSlots
+	Templates  []*domain.MealTemplate // tutti i template dell'utente (colonna a destra)
 	SlotGroups []slotGroup
 	NameForm   string
 	NameError  string
 	SlotForm   slotForm
 	SlotError  string
-	DayOptions []dayOption
 }
 
 // slotGroup raggruppa gli slot per giorno per la UI di drag-and-drop.
 // Ogni gruppo ha il proprio container ordinabile in template_edit.html.
 type slotGroup struct {
 	Day   int
-	Label string
+	Label string // "Ogni giorno", "Lunedì", ...
 	Slots []domain.MealTemplateSlot
+}
+
+var dayFullNames = []string{"Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"}
+
+// localPath ritorna next se e' un percorso di questa app ("/..." ma non
+// "//host" ne' "/\host"), altrimenti fallback: evita open redirect. Niente
+// caratteri di controllo: i browser li tolgono, e "/\t/host" diventa "//host".
+func localPath(next, fallback string) string {
+	if strings.HasPrefix(next, "/") && !strings.HasPrefix(next, "//") && !strings.HasPrefix(next, "/\\") &&
+		!strings.ContainsFunc(next, unicode.IsControl) {
+		return next
+	}
+	return fallback
 }
 
 // groupSlotsByDay raggruppa gli slot del template per day_of_week, mantenendo
@@ -65,7 +60,10 @@ type slotGroup struct {
 func groupSlotsByDay(slots []domain.MealTemplateSlot) []slotGroup {
 	out := make([]slotGroup, 0, 8)
 	for _, day := range []int{domain.DayOfWeekEvery, 0, 1, 2, 3, 4, 5, 6} {
-		g := slotGroup{Day: day, Label: dayLabel(day)}
+		g := slotGroup{Day: day, Label: "Ogni giorno"}
+		if day >= 0 {
+			g.Label = dayFullNames[day]
+		}
 		for _, s := range slots {
 			if s.DayOfWeek == day {
 				g.Slots = append(g.Slots, s)
@@ -81,32 +79,12 @@ type slotForm struct {
 	Name      string
 }
 
-type dayOption struct {
-	Value int
-	Label string
-}
-
-func dayOptions() []dayOption {
-	out := []dayOption{{Value: domain.DayOfWeekEvery, Label: "Ogni giorno"}}
-	for i, n := range dayNames {
-		out = append(out, dayOption{Value: i, Label: n})
-	}
-	return out
-}
-
 // ---- handlers --------------------------------------------------------------
 
+// handleTemplatesList: l'elenco dei template vive nella scheda «Template
+// settimanali» del piano nutrizionale (#122); /templates vi rimanda.
 func (a *App) handleTemplatesList(w http.ResponseWriter, r *http.Request) {
-	user := userFromContext(r.Context())
-	list, err := a.MealTemplates.ListByUser(r.Context(), user.ID)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	data := templatesListData{authPageData: a.baseData(r), Templates: list}
-	if err := a.Render.Render(w, http.StatusOK, "templates_list", data); err != nil {
-		a.serverError(w, r, err)
-	}
+	http.Redirect(w, r, "/piano-nutrizionale?tab=template", http.StatusSeeOther)
 }
 
 func (a *App) handleTemplateNewForm(w http.ResponseWriter, r *http.Request) {
@@ -163,15 +141,21 @@ func (a *App) renderTemplateEdit(
 	if nameForm == "" {
 		nameForm = tpl.Name
 	}
+	user := userFromContext(r.Context())
+	all, err := a.MealTemplates.ListByUser(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	data := templateEditData{
 		authPageData: a.baseData(r),
 		Template:     tpl,
+		Templates:    all,
 		SlotGroups:   groupSlotsByDay(tpl.Slots),
 		NameForm:     nameForm,
 		NameError:    nameErr,
 		SlotForm:     slotF,
 		SlotError:    slotErr,
-		DayOptions:   dayOptions(),
 	}
 	status := http.StatusOK
 	if nameErr != "" || slotErr != "" {
@@ -317,7 +301,7 @@ func (a *App) handleTemplateActivate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), "flash", "Template attivato.")
-	http.Redirect(w, r, "/templates", http.StatusSeeOther)
+	http.Redirect(w, r, localPath(r.PostFormValue("next"), "/piano-nutrizionale?tab=template"), http.StatusSeeOther)
 }
 
 func (a *App) handleTemplateDelete(w http.ResponseWriter, r *http.Request) {
@@ -332,7 +316,7 @@ func (a *App) handleTemplateDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), "flash", "Template eliminato.")
-	http.Redirect(w, r, "/templates", http.StatusSeeOther)
+	http.Redirect(w, r, "/piano-nutrizionale?tab=template", http.StatusSeeOther)
 }
 
 // ---- helpers ---------------------------------------------------------------

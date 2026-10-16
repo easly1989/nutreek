@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/macros"
 )
 
 // ErrRecipeNotFound e' restituito dalle Get quando la ricetta non esiste.
@@ -526,6 +527,46 @@ func (r *Recipes) UsagesByRecipe(ctx context.Context, userID int64) (map[int64]i
 			return nil, fmt.Errorf("scan usage: %w", err)
 		}
 		out[id] = n
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PerServingByRecipe ritorna i macro per porzione di tutte le ricette
+// visibili a viewerID (le sue + le pubbliche di altri, bozze escluse), con
+// una sola query aggregata. Le quantita' degli ingredienti di ricetta sono
+// gia' in g/ml (i «pz» sono convertiti all'inserimento). Le ricette senza
+// ingredienti compaiono con macro a zero.
+func (r *Recipes) PerServingByRecipe(ctx context.Context, viewerID int64) (map[int64]macros.Macros, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT r.id, r.servings,
+		       COALESCE(SUM(ri.quantity * i.kcal_per_100), 0) / 100.0,
+		       COALESCE(SUM(ri.quantity * i.protein_per_100), 0) / 100.0,
+		       COALESCE(SUM(ri.quantity * i.carbs_per_100), 0) / 100.0,
+		       COALESCE(SUM(ri.quantity * i.fat_per_100), 0) / 100.0
+		FROM recipes r
+		LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+		LEFT JOIN ingredients i ON i.id = ri.ingredient_id
+		WHERE r.is_draft = 0 AND (r.user_id = ? OR r.is_public = 1)
+		GROUP BY r.id, r.servings
+	`, viewerID)
+	if err != nil {
+		return nil, fmt.Errorf("per serving by recipe: %w", err)
+	}
+	defer rows.Close()
+	out := make(map[int64]macros.Macros, 16)
+	for rows.Next() {
+		var (
+			id       int64
+			servings int
+			total    macros.Macros
+		)
+		if err := rows.Scan(&id, &servings, &total.Kcal, &total.Protein, &total.Carbs, &total.Fat); err != nil {
+			return nil, fmt.Errorf("scan recipe macros: %w", err)
+		}
+		out[id] = macros.PerServing(total, servings)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
