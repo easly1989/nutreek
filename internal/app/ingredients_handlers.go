@@ -151,17 +151,18 @@ func (r ingredientRow) HasFullNutrients() bool {
 	return r.OFF != nil && r.OFF.HasFullNutrients
 }
 
-// ImageURL espone la URL del thumbnail OFF. Se il dump non ha image_url
-// (prodotti importati prima della migrazione 0012), costruisce una URL CDN
-// best-effort dal barcode — gestire con onerror nel template.
+// ImageURL espone la URL del thumbnail OFF, solo sull'host consentito dalla
+// CSP (off.ThumbURL). Se il dump non ha image_url (prodotti importati prima
+// della migrazione 0012) o ne ha una non mostrabile, costruisce una URL CDN
+// best-effort dal barcode: se non esiste, il template mostra l'icona.
 func (r ingredientRow) ImageURL() string {
-	if r.OFF != nil {
-		if r.OFF.ImageURL != "" {
-			return r.OFF.ImageURL
-		}
-		return off.OFFCDNImageURL(r.OFF.Code)
+	if r.OFF == nil {
+		return ""
 	}
-	return ""
+	if u := off.ThumbURL(r.OFF.ImageURL); u != "" {
+		return u
+	}
+	return off.ThumbURL(off.OFFCDNImageURL(r.OFF.Code))
 }
 
 // DefaultQuantity ritorna la quantita' predefinita per il picker (0 = non impostata).
