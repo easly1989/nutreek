@@ -1,53 +1,71 @@
 {{define "title"}}Amministrazione — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-3xl">
-  <h1 class="text-3xl font-semibold mb-1">Pannello Amministrazione</h1>
-  <p class="text-sm text-muted mb-6">Gestione istanza, feature e utenti.</p>
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  {{template "admin_header" "panoramica"}}
 
-  {{if .PremiumEnabled}}
-  <div class="mb-6 rounded border border-accent/40 bg-accent/10 text-accent px-4 py-2 text-sm">
-    Modalità premium <strong>attiva</strong> — il gating delle feature è operativo.
-  </div>
-  {{else}}
-  <div class="mb-6 rounded border border-amber-400/40 bg-amber-400/10 text-amber-700 px-4 py-2 text-sm">
-    Modalità premium <strong>disattivata</strong> — tutte le feature sono accessibili a tutti (NUTREEK_PREMIUM_ENABLED=false).
-  </div>
-  {{end}}
+  {{if not .PremiumEnabled}}{{template "premium_off_note"}}{{end}}
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-    <div class="bg-surface border border-border rounded p-5">
-      <p class="text-sm text-muted mb-1">Utenti registrati</p>
-      <p class="text-3xl font-bold">{{.UserCount}}</p>
-    </div>
-    <div class="bg-surface border border-border rounded p-5">
-      <p class="text-sm text-muted mb-1">Utenti premium</p>
-      <p class="text-3xl font-bold">{{.PremiumCount}}</p>
-    </div>
-    <div class="bg-surface border border-border rounded p-5">
-      <p class="text-sm text-muted mb-1">Feature totali</p>
-      <p class="text-3xl font-bold">{{.FeatureCount}}</p>
-    </div>
-    <div class="bg-surface border border-border rounded p-5">
-      <p class="text-sm text-muted mb-1">Feature abilitate</p>
-      <p class="text-3xl font-bold">{{.ActiveCount}}</p>
-    </div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="tile"><span class="tile-k">Utenti</span><span class="tile-v">{{.UserCount}}</span><span class="tile-s">{{if eq .CoachCount 1}}1 coach{{else}}{{.CoachCount}} coach{{end}}</span></div>
+    <div class="tile"><span class="tile-k">Premium</span><span class="tile-v">{{.PremiumCount}}</span><span class="tile-s">{{if .PremiumEnabled}}gating attivo{{else}}gating spento{{end}}</span></div>
+    <div class="tile"><span class="tile-k">Funzionalità attive</span><span class="tile-v">{{.ActiveCount}} <small>di {{len .Features}}</small></span><span class="tile-s">{{.PremiumFeats}} premium</span></div>
+    <div class="tile"><span class="tile-k">Prodotti OpenFoodFacts</span><span class="tile-v" data-off="count">—</span><span class="tile-s" data-off="synced-rel">&nbsp;</span></div>
   </div>
 
-  <div class="flex flex-wrap gap-3">
-    <a href="/admin/panel/features"
-       class="inline-flex items-center gap-2 px-4 py-2 rounded bg-accent text-white text-sm font-medium hover:bg-accent/90 transition">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 7a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-      </svg>
-      Gestisci feature
-    </a>
-    <a href="/admin/panel/users"
-       class="inline-flex items-center gap-2 px-4 py-2 rounded border border-border text-sm font-medium hover:bg-surface-2 transition">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-      </svg>
-      Gestisci utenti
-    </a>
+  <div class="grid gap-4 lg:gap-[18px] lg:grid-cols-[minmax(0,1fr)_360px] items-start">
+    <section id="funzionalita" class="card overflow-hidden scroll-mt-6">
+      <div class="flex items-baseline justify-between px-4 pt-3.5 pb-3">
+        <h2 class="h2">Funzionalità</h2>
+        <span class="text-[12.5px] text-muted">si applicano subito</span>
+      </div>
+      <ul class="border-t border-border divide-y divide-border">
+        <li class="grid grid-cols-[minmax(0,1fr)_72px_72px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>Funzionalità</span><span class="text-center">Attiva</span><span class="text-center">Premium</span></li>
+        {{range .Features}}
+        <li class="grid grid-cols-[minmax(0,1fr)_72px_72px] gap-3 items-center px-4 py-2.5">
+          <span class="flex flex-col min-w-0"><b>{{.Name}}</b><span class="text-[12.5px] text-muted truncate">{{.Key}}</span></span>
+          <form method="post" action="/admin/panel/features/{{.Key}}/toggle" class="justify-self-center">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="checkbox" class="toggle" data-autosubmit{{if .Enabled}} checked{{end}} aria-label="{{.Name}} attiva">
+          </form>
+          <form method="post" action="/admin/panel/features/{{.Key}}/premium" class="justify-self-center">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="checkbox" class="toggle" data-autosubmit{{if .IsPremium}} checked{{end}} aria-label="{{.Name}} solo Premium">
+          </form>
+        </li>
+        {{end}}
+      </ul>
+    </section>
+
+    {{if .HasOFF}}
+    <section id="off-sync-card" class="card overflow-hidden" data-csrf="{{.CSRFToken}}">
+      <div class="flex items-center gap-3 px-4 pt-3.5 pb-3">
+        <span class="thumb">{{template "icon" "i-database"}}</span>
+        <div class="flex flex-col"><h2 class="h2">OpenFoodFacts</h2><span class="text-[12.5px] text-muted">Copia locale per la ricerca degli ingredienti.</span></div>
+      </div>
+      <dl class="border-t border-border flex flex-col py-1.5 text-[13px]">
+        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">Stato</dt><dd data-off="state" class="font-semibold">—</dd></div>
+        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">Ultimo aggiornamento</dt><dd data-off="synced" class="tabular-nums">—</dd></div>
+        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">Prodotti</dt><dd data-off="count" class="tabular-nums">—</dd></div>
+        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">Con macro completi</dt><dd data-off="full" class="tabular-nums">—</dd></div>
+      </dl>
+      <p data-off="error" class="hidden mx-4 mb-3 rounded-xl bg-danger-soft text-danger px-3 py-2 text-[12.5px]"></p>
+      <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-t border-border">
+        <button type="button" id="off-sync-btn" class="btn-secondary disabled:opacity-50">{{template "icon_sm" "i-refresh"}}Aggiorna ora</button>
+        <label class="flex items-center gap-2 text-[13px] cursor-pointer"><input type="checkbox" id="off-force" class="check">Scarica di nuovo tutto</label>
+      </div>
+      <p id="off-feedback" role="status" class="hidden px-4 pb-3 text-[12.5px]"></p>
+    </section>
+    {{end}}
   </div>
 </div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// Interruttori: cambiano subito, senza un pulsante «Salva».
+document.querySelectorAll("[data-autosubmit]").forEach(function (i) {
+  i.addEventListener("change", function () { i.form.requestSubmit(); });
+});
+</script>
+{{if .HasOFF}}<script src="/static/js/off_sync.js" defer></script>{{end}}
 {{end}}

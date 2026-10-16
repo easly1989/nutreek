@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justinas/nosurf"
-
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 )
@@ -17,6 +15,7 @@ import (
 type shoppingListData struct {
 	authPageData
 	List          *domain.ShoppingListFull
+	View          shoppingView
 	UserItemViews []shoppingUserItemView // per badge duplicati
 	WeekStart     string                 // YYYY-MM-DD
 	WeekCount     int
@@ -30,15 +29,6 @@ type shoppingListData struct {
 type shoppingUserItemView struct {
 	Item      domain.ShoppingUserItem
 	Duplicate bool
-}
-
-// shoppingRowData e' usato per il partial shopping_row.html (swap HTMX
-// dopo toggle di una singola riga, sia auto che user).
-type shoppingRowData struct {
-	authPageData
-	Item      *domain.ShoppingListItem
-	UserItem  *domain.ShoppingUserItem
-	WeekStart string
 }
 
 // parseShoppingWeek normalizza il param `week` (default = lunedi'
@@ -56,8 +46,8 @@ func parseShoppingWeek(r *http.Request) (time.Time, int) {
 		}
 	}
 	weeks := 1
-	if v := strings.TrimSpace(r.URL.Query().Get("weeks")); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 4 {
+	for _, v := range []string{r.URL.Query().Get("weeks"), r.PostFormValue("weeks")} {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n >= 1 && n <= 4 {
 			weeks = n
 		}
 	}
@@ -115,9 +105,20 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	ingIDs := make([]int64, 0, len(full.Items))
+	for _, it := range full.Items {
+		ingIDs = append(ingIDs, it.IngredientID)
+	}
+	cats, err := a.Categories.CategoriesForIngredients(r.Context(), ingIDs)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+
 	data := shoppingListData{
 		authPageData:  a.baseData(r),
 		List:          full,
+		View:          buildShoppingView(full.Items, cats),
 		UserItemViews: userViews,
 		WeekStart:     weekStart.Format("2006-01-02"),
 		WeekCount:     weeks,
@@ -141,16 +142,15 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 	}
 	desc := strings.TrimSpace(r.PostFormValue("description"))
 	qty := strings.TrimSpace(r.PostFormValue("quantity_text"))
-	weekStart := strings.TrimSpace(r.PostFormValue("week"))
-	weeks := strings.TrimSpace(r.PostFormValue("weeks"))
+	back := shoppingListURL(r)
 	if desc == "" {
 		a.Sessions.Put(r.Context(), "flash", "Descrizione obbligatoria.")
-		http.Redirect(w, r, "/shopping-list?week="+weekStart+"&weeks="+weeks, http.StatusSeeOther)
+		http.Redirect(w, r, back, http.StatusSeeOther)
 		return
 	}
 	if !withinLen(desc, MaxNameLen) {
 		a.Sessions.Put(r.Context(), "flash", "Descrizione troppo lunga.")
-		http.Redirect(w, r, "/shopping-list?week="+weekStart+"&weeks="+weeks, http.StatusSeeOther)
+		http.Redirect(w, r, back, http.StatusSeeOther)
 		return
 	}
 	if _, err := a.ShoppingLists.AddUserItem(r.Context(), listID, user.ID, desc, qty); err != nil {
@@ -161,7 +161,7 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/shopping-list?week="+weekStart+"&weeks="+weeks, http.StatusSeeOther)
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 // handleToggleShoppingUserItem POST /shopping-list/user-items/{id}/toggle
@@ -180,35 +180,7 @@ func (a *App) handleToggleShoppingUserItem(w http.ResponseWriter, r *http.Reques
 		a.serverError(w, r, err)
 		return
 	}
-	weekStart := strings.TrimSpace(r.URL.Query().Get("week"))
-	if weekStart == "" {
-		weekStart = r.PostFormValue("week")
-	}
-	if r.Header.Get("HX-Request") == "true" {
-		// Ricarica la lista per recuperare lo stato aggiornato.
-		listID, ws, item, err := a.findShoppingUserItem(r, user.ID, itemID)
-		if err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-		_ = listID
-		// Per la riga manuale lo swap si limita all'item.
-		data := struct {
-			authPageData
-			Item      domain.ShoppingUserItem
-			Duplicate bool
-			WeekStart string
-		}{
-			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
-			Item:         *item,
-			WeekStart:    ws,
-		}
-		if err := a.Render.RenderPartial(w, http.StatusOK, "shopping_list", "shopping_row_user", data); err != nil {
-			a.serverError(w, r, err)
-		}
-		return
-	}
-	http.Redirect(w, r, "/shopping-list?week="+weekStart, http.StatusSeeOther)
+	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 }
 
 // handleRemoveShoppingUserItem POST /shopping-list/user-items/{id}/delete
@@ -227,40 +199,7 @@ func (a *App) handleRemoveShoppingUserItem(w http.ResponseWriter, r *http.Reques
 		a.serverError(w, r, err)
 		return
 	}
-	if r.Header.Get("HX-Request") == "true" {
-		w.WriteHeader(http.StatusOK) // body vuoto, riga rimossa via outerHTML="" semantica
-		return
-	}
-	weekStart := strings.TrimSpace(r.URL.Query().Get("week"))
-	if weekStart == "" {
-		weekStart = r.PostFormValue("week")
-	}
-	http.Redirect(w, r, "/shopping-list?week="+weekStart, http.StatusSeeOther)
-}
-
-// findShoppingUserItem trova un singolo user_item per render del partial.
-func (a *App) findShoppingUserItem(r *http.Request, userID, itemID int64) (int64, string, *domain.ShoppingUserItem, error) {
-	var listID int64
-	var weekStartStr string
-	err := a.Store.DB.QueryRowContext(r.Context(), `
-		SELECT sl.id, sl.week_start
-		FROM shopping_user_items sui
-		JOIN shopping_lists sl ON sl.id = sui.shopping_list_id
-		WHERE sui.id = ? AND sl.user_id = ?
-	`, itemID, userID).Scan(&listID, &weekStartStr)
-	if err != nil {
-		return 0, "", nil, err
-	}
-	full, err := a.ShoppingLists.LoadFull(r.Context(), listID, userID)
-	if err != nil {
-		return 0, "", nil, err
-	}
-	for _, it := range full.UserItems {
-		if it.ID == itemID {
-			return listID, strings.Split(weekStartStr, "T")[0], &it, nil
-		}
-	}
-	return 0, "", nil, db.ErrShoppingItemNotFound
+	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 }
 
 // handleShoppingGenerate POST /shopping-list/generate?week=YYYY-MM-DD&weeks=N
@@ -277,14 +216,12 @@ func (a *App) handleShoppingGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), "flash", "Lista rigenerata.")
-	http.Redirect(w, r,
-		"/shopping-list?week="+weekStart.Format("2006-01-02")+"&weeks="+strconv.Itoa(weeks),
-		http.StatusSeeOther)
+	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 }
 
 // handleShoppingToggle POST /shopping-list/items/{id}/toggle
-// Per HX-Request ritorna la riga partial aggiornata (swap inline);
-// altrimenti redirect alla lista.
+// Torna sempre alla lista: la voce spuntata cambia gruppo e l'avanzamento
+// cambia, quindi HTMX segue il redirect e ne prende la lista (hx-select).
 func (a *App) handleShoppingToggle(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	itemID, err := parseID(r, "id")
@@ -300,53 +237,12 @@ func (a *App) handleShoppingToggle(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	if r.Header.Get("HX-Request") == "true" {
-		// Recupera lo stato aggiornato per renderizzare la riga.
-		listID, weekStart, item, err := a.findShoppingItem(r, user.ID, itemID)
-		if err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-		_ = listID
-		data := shoppingRowData{
-			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
-			Item:         item,
-			WeekStart:    weekStart,
-		}
-		if err := a.Render.RenderPartial(w, http.StatusOK, "shopping_list", "shopping_row_auto", data); err != nil {
-			a.serverError(w, r, err)
-		}
-		return
-	}
-	weekStart := r.URL.Query().Get("week")
-	if weekStart == "" {
-		weekStart = r.PostFormValue("week")
-	}
-	http.Redirect(w, r, "/shopping-list?week="+weekStart, http.StatusSeeOther)
+	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 }
 
-// findShoppingItem ricarica un singolo shopping_list_item per render
-// del partial post-toggle.
-func (a *App) findShoppingItem(r *http.Request, userID, itemID int64) (int64, string, *domain.ShoppingListItem, error) {
-	var listID int64
-	var weekStartStr string
-	err := a.Store.DB.QueryRowContext(r.Context(), `
-		SELECT sl.id, sl.week_start
-		FROM shopping_list_items sli
-		JOIN shopping_lists sl ON sl.id = sli.shopping_list_id
-		WHERE sli.id = ? AND sl.user_id = ?
-	`, itemID, userID).Scan(&listID, &weekStartStr)
-	if err != nil {
-		return 0, "", nil, err
-	}
-	full, err := a.ShoppingLists.LoadFull(r.Context(), listID, userID)
-	if err != nil {
-		return 0, "", nil, err
-	}
-	for _, it := range full.Items {
-		if it.ID == itemID {
-			return listID, strings.Split(weekStartStr, "T")[0], &it, nil
-		}
-	}
-	return 0, "", nil, db.ErrShoppingItemNotFound
+// shoppingListURL e' l'indirizzo della lista da cui arriva la richiesta,
+// ricostruito da week/weeks validati (mai copiati dall'input).
+func shoppingListURL(r *http.Request) string {
+	weekStart, weeks := parseShoppingWeek(r)
+	return "/shopping-list?week=" + weekStart.Format("2006-01-02") + "&weeks=" + strconv.Itoa(weeks)
 }

@@ -69,6 +69,11 @@
   --carb: #C98A12;
   --fat: #23897D;
   --shadow: 0 12px 32px rgba(15, 20, 30, 0.14);
+  /* Macro nei grafici: piu' saturi delle lettere P/C/G, controllati per
+     daltonismo e contrasto sul fondo (#123). */
+  --ch-prot: #6B5BD2;
+  --ch-carb: #B47A0C;
+  --ch-fat: #0A8F7E;
 }
 
 /* Scuro: grigio-blu neutro, non quasi nero. Ripetuto per "sistema" sotto. */
@@ -92,6 +97,9 @@
   --carb: #E9B851;
   --fat: #5CC9BB;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --ch-prot: #8576DC;
+  --ch-carb: #BE8A26;
+  --ch-fat: #289C8E;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-mode="sistema"] {
@@ -114,6 +122,9 @@
     --carb: #E9B851;
     --fat: #5CC9BB;
     --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --ch-prot: #8576DC;
+  --ch-carb: #BE8A26;
+  --ch-fat: #289C8E;
   }
 }
 
@@ -193,6 +204,10 @@
   .field-unit { @apply relative block; }
   .field-unit > em { @apply absolute right-3 top-1/2 -translate-y-1/2 not-italic text-[13px] text-muted pointer-events-none; }
   .field-unit > .field { @apply pr-11; }
+  /* Password con Mostra/Nascondi a destra (partial pw_toggle). */
+  .field-pw { @apply relative block; }
+  .field-pw > .field { @apply pr-[92px]; }
+  .pw-toggle { @apply absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-2.5 rounded-lg text-[13px] font-semibold text-accent hover:bg-surface-2; }
   .lab { @apply flex flex-col gap-1.5 text-[12.5px] font-semibold text-muted; }
   .filter {
     @apply inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-surface text-[13px] font-semibold text-text whitespace-nowrap hover:bg-surface-2 transition-colors;
@@ -251,6 +266,51 @@
     }
   }
 
+  /* Lista della spesa (#123): riga da 48 px toccabile per intero. */
+  .shop-item {
+    @apply w-full flex items-center gap-3 min-h-12 px-4 py-1 text-left hover:bg-surface-2 transition-colors;
+  }
+  .shop-box {
+    @apply w-[22px] h-[22px] shrink-0 grid place-items-center rounded-md border-[1.5px] border-border bg-surface;
+  }
+  .shop-item[aria-pressed="true"] .shop-box { @apply bg-accent border-accent text-accent-fg; }
+  .shop-name { @apply flex-1 min-w-0; }
+  .shop-qty { @apply text-right tabular-nums whitespace-nowrap; }
+  .shop-qty small { @apply ml-1 text-[12.5px] text-muted; }
+  .shop-item[aria-pressed="true"] .shop-name,
+  .shop-item[aria-pressed="true"] .shop-qty b { @apply text-muted line-through; }
+
+  /* Statistiche (#123): card di sintesi, legende e grafici SVG (static/js/charts.js). */
+  .tile { @apply card px-3.5 py-3 flex flex-col gap-0.5 min-w-0; }
+  .tile-k { @apply text-[12.5px] font-semibold text-muted; }
+  .tile-v { @apply text-[22px] leading-tight font-bold tabular-nums; }
+  .tile-v small { @apply text-[13px] font-medium text-muted; }
+  .tile-s { @apply text-[12.5px] text-muted; }
+  .legend { @apply flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12.5px] text-muted; }
+  .legend i { @apply inline-block w-2.5 h-2.5 rounded-[3px] mr-1.5 align-[-1px]; }
+
+  /* Barra di salvataggio: sul telefono resta in basso, sopra la barra di navigazione. */
+  @media (max-width: 1023px) {
+    .savebar { @apply sticky bottom-[84px] z-20 bg-surface border border-border rounded-xl px-3 py-2.5; box-shadow: var(--shadow); }
+  }
+
+  /* Impostazioni (#123): indice a sinistra, sezioni titolo | contenuto. */
+  .settings-toc { @apply px-2.5 py-[7px] rounded-lg text-[13px] font-semibold text-muted hover:text-text hover:bg-surface; }
+  .settings-toc[aria-current] { @apply bg-surface text-text; box-shadow: 0 0 0 1px var(--border); }
+  .settings-sec { @apply grid gap-2.5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5 px-4 py-[18px]; }
+  .settings-sec + .settings-sec { @apply border-t border-border; }
+  .settings-d { @apply text-[12.5px] text-muted mt-1; }
+  .mode-card { @apply flex flex-col gap-2 p-2.5 rounded-xl border border-border text-left text-[13px] font-semibold text-text hover:bg-surface-2; }
+  .mode-card[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .mode-pv { @apply grid grid-cols-[30%_1fr] h-[52px] rounded-lg border border-border overflow-hidden; }
+
+  /* Pagine senza sessione e onboarding (#123): una colonna centrata. */
+  .auth-box { @apply w-full max-w-[400px] mx-auto mt-4 lg:mt-14 flex flex-col gap-[18px]; }
+  .auth-box .card { @apply p-6 flex flex-col gap-3.5; }
+  /* Chip scelto dentro un riquadro accent-soft: il verde chiaro sparirebbe. */
+  .on-soft .filter.is-on { @apply bg-accent text-accent-fg; }
+  .btn-block { @apply w-full h-[42px] text-[14px]; }
+
   /* Foglio dal basso (telefono), costruito su <dialog>. */
   .sheet {
     @apply w-full max-w-none m-0 mt-auto p-0 bg-surface text-text border-0 border-t border-border rounded-t-2xl;
@@ -259,6 +319,32 @@
   }
   .sheet::backdrop { background: rgba(10, 12, 16, 0.45); }
 }
+
+/* Intestazione di colonna visibile solo da desktop: quando e' nascosta la
+   prima riga non deve avere il separatore sopra (sarebbe doppio col bordo). */
+@media (max-width: 1023px) { .list-head + * { border-top-width: 0 !important; } }
+@media (max-width: 639px) { .list-head-sm + * { border-top-width: 0 !important; } }
+
+/* ---- Grafici SVG -------------------------------------------------------- */
+[data-chart] { position: relative; min-height: 40px; }
+.chart { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.chart text { font: 500 12px "Figtree", system-ui, sans-serif; fill: var(--muted); }
+.chart .ch-value { fill: var(--text); font-weight: 700; }
+.chart .ch-grid { stroke: var(--track); stroke-width: 1; }
+.chart .ch-target { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.chart .ch-hover { stroke: var(--muted); stroke-width: 1; }
+.chart .is-dim { opacity: .45; }
+.ch-tip {
+  position: absolute; top: 0; z-index: 10; pointer-events: none;
+  display: flex; flex-direction: column; gap: 3px; min-width: 150px;
+  padding: 8px 10px; border-radius: 10px; font-size: 12.5px;
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.ch-tip[hidden] { display: none; }
+.ch-tip-row { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.ch-tip-row i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.ch-tip-row b { margin-left: auto; padding-left: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
+.ch-tip-total { border-top: 1px solid var(--border); padding-top: 3px; }
 
 /* ---- HTMX loading indicators ------------------------------------------- */
 .htmx-indicator { display: none; }
@@ -337,6 +423,19 @@
     color: #ffffff !important;
     border-color: #000000 !important;
   }
+
+  /* Lista della spesa: due colonne, un quadratino per voce. */
+  .shop-print { font-size: 12.5px; }
+  .shop-print h1 { font-size: 20px; font-weight: 700; }
+  .shop-print > p { color: #333333; margin-top: 2px; }
+  .shop-print-cols { columns: 2; column-gap: 40px; margin-top: 24px; }
+  .shop-print section { break-inside: avoid; margin-bottom: 16px; }
+  .shop-print h2 { font-size: 12px; font-weight: 700; border-bottom: 1px solid #000000; padding-bottom: 3px; margin-bottom: 4px; }
+  .shop-print-line { display: flex; align-items: center; gap: 8px; min-height: 24px; border-bottom: 1px dotted #bbbbbb; }
+  .shop-print-line i { width: 12px; height: 12px; border: 1.2px solid #000000; flex: none; }
+  .shop-print-line span { flex: 1; }
+  .shop-print-line b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  @page { margin: 14mm 16mm; }
 }
 
 /* ---- Shepherd.js tour — override per adattarsi al tema Nutreek ---------- */

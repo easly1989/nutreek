@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/amon2126/nutreek/internal/domain"
@@ -60,7 +61,7 @@ func (w *WeightLogs) ListWeightLogs(ctx context.Context, userID int64, limit int
 		if err := rows.Scan(&l.ID, &l.UserID, &dateStr, &l.WeightKg, &note, &l.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan weight log: %w", err)
 		}
-		l.MeasuredAt, _ = time.Parse("2006-01-02", dateStr)
+		l.MeasuredAt = parseWeightDate(dateStr)
 		if note.Valid {
 			l.Note = &note.String
 		}
@@ -91,7 +92,7 @@ func (w *WeightLogs) ForRange(ctx context.Context, userID int64, from, to time.T
 		if err := rows.Scan(&l.ID, &l.UserID, &dateStr, &l.WeightKg, &note, &l.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan weight log: %w", err)
 		}
-		l.MeasuredAt, _ = time.Parse("2006-01-02", dateStr)
+		l.MeasuredAt = parseWeightDate(dateStr)
 		if note.Valid {
 			l.Note = &note.String
 		}
@@ -112,4 +113,11 @@ func (w *WeightLogs) DeleteWeightLog(ctx context.Context, id, userID int64) erro
 		return ErrWeightLogNotFound
 	}
 	return nil
+}
+
+// parseWeightDate legge measured_at: il driver puo' restituire la colonna
+// DATE come "2026-10-13" o come "2026-10-13T00:00:00Z".
+func parseWeightDate(s string) time.Time {
+	t, _ := time.Parse("2006-01-02", strings.Split(s, "T")[0])
+	return t
 }

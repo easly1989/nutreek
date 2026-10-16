@@ -1,19 +1,26 @@
-{{define "title"}}Nutreek{{end}}
+{{define "title"}}Nutreek — la settimana a tavola{{end}}
 {{define "content"}}
-<div class="max-w-3xl">
-  <h1 class="text-3xl font-semibold mb-4">Ciao {{if .User}}{{.User.DisplayName}}{{else}}su Nutreek{{end}}</h1>
-  {{if .User}}
-    <p class="text-muted mb-6">Il piano settimanale, ingredienti e ricette arriveranno nelle prossime tappe. Per ora l'autenticazione e' attiva.</p>
-    <div class="rounded border border-border bg-surface p-4 text-sm text-text">
-      <p><span class="font-medium">Email:</span> {{.User.Email}}</p>
-      <p><span class="font-medium">Registrato il:</span> {{.User.CreatedAt.Format "02/01/2006 15:04"}}</p>
+<section class="grid gap-6 lg:gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] items-center pt-4 lg:pt-12 pb-6 lg:pb-10">
+  <div class="flex flex-col gap-[18px]">
+    <h1 class="text-[30px] lg:text-[40px] leading-[1.1] font-extrabold tracking-[-0.01em]">La settimana a tavola, già fatta i conti.</h1>
+    <p class="text-[17px] text-muted max-w-[46ch]">Pianifica i pasti, tieni d'occhio calorie e macro giorno per giorno, e porta al supermercato una lista già pronta.</p>
+    <div class="flex flex-wrap gap-2">
+      <a href="/register" class="btn-primary h-[42px] px-[18px] text-[14px]">Crea un account</a>
+      <a href="/login" class="btn-secondary h-[42px] px-[18px] text-[14px]">Accedi</a>
     </div>
-  {{else}}
-    <p class="text-muted mb-6">Gestisci il tuo piano nutrizionale settimanale con ingredienti condivisi (OpenFoodFacts), ricette personali e vista macro per pasto, giorno e settimana.</p>
-    <div class="flex gap-3">
-      <a href="/login" class="inline-block bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Accedi</a>
-      <a href="/register" class="inline-block border border-border rounded px-4 py-2 hover:bg-surface-2">Registrati</a>
-    </div>
-  {{end}}
-</div>
+    <p class="text-[12.5px] text-muted">Gira sul tuo server: i dati restano a casa tua.</p>
+  </div>
+  <picture class="block rounded-[14px] border border-border overflow-hidden bg-surface max-w-[280px] lg:max-w-none mx-auto lg:mx-0" style="box-shadow: var(--shadow)">
+    <source media="(min-width: 1024px)" srcset="/static/img/home-settimana.webp" width="1280" height="800">
+    <img src="/static/img/home-settimana-telefono.webp" width="560" height="1091" alt="La settimana in Nutreek: i giorni in alto, l'anello delle calorie e i pasti del giorno" class="block w-full h-auto">
+  </picture>
+</section>
+
+<section class="grid gap-[18px] lg:gap-6 lg:grid-cols-3 pb-10 lg:pb-16">
+  <div class="flex flex-col gap-1.5"><span class="thumb bg-accent-soft text-accent">{{template "icon" "i-week"}}</span><b>Un giorno alla volta</b><span class="text-muted">Pasti, acqua e allenamenti del giorno, con l'anello delle calorie e le barre dei macro.</span></div>
+  <div class="flex flex-col gap-1.5"><span class="thumb bg-accent-soft text-accent">{{template "icon" "i-recipes"}}</span><b>Ricette e ingredienti</b><span class="text-muted">Ricerca istantanea sui prodotti italiani di OpenFoodFacts, salvati in locale: niente attese sul loro sito.</span></div>
+  <div class="flex flex-col gap-1.5"><span class="thumb bg-accent-soft text-accent">{{template "icon" "i-cart"}}</span><b>La spesa, già divisa</b><span class="text-muted">Dalla settimana alla lista per reparto, da spuntare in negozio o da stampare.</span></div>
+</section>
+
+<footer class="flex gap-4 border-t border-border pt-4 text-[12.5px] text-muted"><span>Nutreek</span><span class="ml-auto">Progetto self-hosted</span></footer>
 {{end}}

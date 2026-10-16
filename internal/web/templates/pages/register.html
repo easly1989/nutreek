@@ -1,53 +1,44 @@
-{{define "title"}}Registrazione - Nutreek{{end}}
+{{define "title"}}Registrati — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-md mx-auto">
-  <h1 class="text-2xl font-semibold mb-6">Crea il tuo account</h1>
-  {{if .Error}}
-    <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
-  {{end}}
-  <form method="post" action="/register" class="space-y-4 bg-surface p-6 rounded border border-border">
+<div class="auth-box">
+  <div class="text-center">
+    <h1 class="h1">Crea il tuo account</h1>
+    <p class="text-muted mt-1">Un minuto, poi ti aiutiamo a impostare i tuoi obiettivi.</p>
+  </div>
+  {{if .Error}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>{{end}}
+  <form method="post" action="/register" class="card">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <div>
-      <label class="block text-sm font-medium mb-1" for="display_name">Nome</label>
-      <input id="display_name" name="display_name" type="text" required value="{{.Form.DisplayName}}"
-             class="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-    </div>
-    <div>
-      <label class="block text-sm font-medium mb-1" for="email">Email</label>
-      <input id="email" name="email" type="email" required value="{{.Form.Email}}"
-             class="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-    </div>
-    <div>
-      <label class="block text-sm font-medium mb-1" for="password">Password</label>
-      <input id="password" name="password" type="password" required minlength="8" maxlength="72"
-             class="w-full border border-border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-      <div class="h-1.5 rounded mt-2 bg-border overflow-hidden">
-        <div id="pwd-strength-fill" class="h-full rounded transition-all duration-300" style="width:0%"></div>
-      </div>
-      <p id="pwd-strength-label" class="text-xs text-muted mt-0.5 h-4">Minimo 8 caratteri, massimo 72.</p>
-      <script>
-      (function(){
-        var inp=document.getElementById('password');
-        var fill=document.getElementById('pwd-strength-fill');
-        var lbl=document.getElementById('pwd-strength-label');
-        if(!inp)return;
-        inp.addEventListener('input',function(){
-          var v=inp.value,score=0;
-          if(v.length>=8)score++;
-          if(/[A-Z]/.test(v))score++;
-          if(/[0-9]/.test(v))score++;
-          if(/[^A-Za-z0-9]/.test(v))score++;
-          var labels=['','Debole','Discreta','Buona','Ottima'];
-          var colors=['','#ef4444','#f97316','#eab308','#22c55e'];
-          fill.style.width=(score*25)+'%';
-          fill.style.background=colors[score]||'';
-          lbl.textContent=v.length?labels[score]||'':'Minimo 8 caratteri, massimo 72.';
-        });
-      })();
-      </script>
-    </div>
-    <button type="submit" class="w-full bg-accent text-accent-fg rounded py-2 hover:bg-accent/90">Registrati</button>
+    <label class="lab">Nome<input id="display_name" name="display_name" type="text" required autocomplete="given-name" value="{{.Form.DisplayName}}" class="field field-lg"></label>
+    <label class="lab">Email<input id="email" name="email" type="email" required autocomplete="email" value="{{.Form.Email}}" class="field field-lg"></label>
+    <label class="lab">Password
+      <span class="field-pw"><input id="password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" aria-describedby="pwd-strength-label" class="field field-lg">{{template "pw_toggle" "password"}}</span>
+      <span class="h-1.5 rounded-full bg-track overflow-hidden" aria-hidden="true"><span id="pwd-strength-fill" class="block h-full rounded-full transition-all duration-300" style="width:0%"></span></span>
+      <span id="pwd-strength-label" class="font-medium" aria-live="polite">Da 8 a 72 caratteri.</span>
+    </label>
+    <button class="btn-primary btn-block">Registrati</button>
   </form>
-  <p class="text-sm text-muted mt-4 text-center">Hai gia' un account? <a href="/login" class="underline">Accedi</a></p>
+  <p class="text-center text-muted">Hai già un account? <a href="/login" class="text-accent font-semibold hover:underline">Accedi</a></p>
 </div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// Robustezza della password: indicativa, non blocca l'invio.
+(function () {
+  var inp = document.getElementById("password"), fill = document.getElementById("pwd-strength-fill"), lbl = document.getElementById("pwd-strength-label");
+  if (!inp) return;
+  var labels = ["", "Debole", "Discreta", "Buona", "Ottima"];
+  var colors = ["", "var(--danger)", "var(--carb)", "var(--accent)", "var(--accent)"];
+  inp.addEventListener("input", function () {
+    var v = inp.value, score = 0;
+    if (v.length >= 8) score++;
+    if (/[A-Z]/.test(v)) score++;
+    if (/[0-9]/.test(v)) score++;
+    if (/[^A-Za-z0-9]/.test(v)) score++;
+    fill.style.width = (score * 25) + "%";
+    fill.style.background = colors[score] || "";
+    lbl.textContent = v.length ? labels[score] || "" : "Da 8 a 72 caratteri.";
+  });
+})();
+</script>
 {{end}}

@@ -238,7 +238,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 		SELECT sli.id, sli.shopping_list_id, sli.ingredient_id, sli.total_quantity, sli.checked, sli.sort_order,
 		       i.id, i.source, i.off_barcode, i.name, i.brand, i.unit,
 		       i.kcal_per_100, i.protein_per_100, i.carbs_per_100, i.fat_per_100,
-		       i.created_by, i.created_at, i.last_verified_at, i.superseded_by
+		       i.created_by, i.created_at, i.last_verified_at, i.superseded_by, i.unit_weight_g
 		FROM shopping_list_items sli
 		JOIN ingredients i ON i.id = sli.ingredient_id
 		WHERE sli.shopping_list_id = ?
@@ -256,7 +256,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 			&it.ID, &it.ShoppingListID, &it.IngredientID, &it.TotalQuantity, &checked, &it.SortOrder,
 			&ing.ID, &src, &ing.OFFBarcode, &ing.Name, &ing.Brand, &unit,
 			&ing.KcalPer100, &ing.ProteinPer100, &ing.CarbsPer100, &ing.FatPer100,
-			&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy,
+			&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy, &ing.UnitWeightG,
 		)
 		if err != nil {
 			itemRows.Close()

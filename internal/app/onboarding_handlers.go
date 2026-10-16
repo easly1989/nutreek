@@ -19,6 +19,8 @@ type onboardingData struct {
 	Steps     [5]int // [1,2,3,4,5] — usato nel template per lo stepper
 	Form      profileForm
 	Templates []*domain.MealTemplate
+	TDEE      float64 // fabbisogno dai dati del passo 1, 0 se non calcolabile
+	Weight    float64 // per i modelli del passo 2 (g/kg di proteine)
 }
 
 // handleOnboardingPage GET /onboarding — mostra lo step corrente del wizard.
@@ -46,6 +48,9 @@ func (a *App) handleOnboardingPage(w http.ResponseWriter, r *http.Request) {
 		Steps:        [5]int{1, 2, 3, 4, 5},
 		Form:         profileFormFromUser(user),
 	}
+	data.Bare = true
+	data.TDEE = onboardingTDEE(user)
+	data.Weight = derefFloat(user.WeightKg)
 
 	// Step 4 ha bisogno dei template disponibili.
 	if step == 4 {
@@ -178,4 +183,26 @@ func parseOnboardingMacros(r *http.Request) *db.UserProfileInput {
 		TargetCarbs:   targetCarbs,
 		TargetFat:     targetFat,
 	}
+}
+
+// onboardingTDEE stima il fabbisogno dai dati fisici del profilo, 0 se
+// mancano. Ricalcola il BMR invece di leggere quello salvato, che puo'
+// mancare o non essere aggiornato.
+func onboardingTDEE(user *domain.User) float64 {
+	if !profile.CanComputeIndices(user.WeightKg, user.HeightCm, user.BirthYear, user.Sex) {
+		return 0
+	}
+	bmr := profile.BMR(*user.WeightKg, *user.HeightCm, profile.AgeFromBirthYear(*user.BirthYear), *user.Sex)
+	mult := 1.4 // attivita' non indicata, come in profile.js
+	if user.ActivityLevel != nil {
+		mult = profile.ActivityFactor(*user.ActivityLevel)
+	}
+	return profile.TDEE(bmr, mult)
+}
+
+func derefFloat(p *float64) float64 {
+	if p == nil {
+		return 0
+	}
+	return *p
 }
