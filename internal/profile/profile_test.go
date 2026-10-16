@@ -85,7 +85,7 @@ func TestBuildMacroProgress(t *testing.T) {
 	}
 	// Carbs: 250/300 = 83% → no overflow
 	if p.Carbs.Overflow {
-		t.Errorf("Carbs non dovrebbe essere overflow (%.0f%%)", p.Carbs.Raw)
+		t.Errorf("Carbs should not overflow (%.0f%%)", p.Carbs.Raw)
 	}
 	// Fat: 80/70 ≈ 114% → overflow
 	if !p.Fat.Overflow {
@@ -95,10 +95,10 @@ func TestBuildMacroProgress(t *testing.T) {
 		t.Errorf("AnyExceeds dovrebbe essere true")
 	}
 
-	// Nessun target impostato → HasTarget=false
+	// No target set → HasTarget=false
 	none := BuildMacroProgress(actual, nil, nil, nil, nil)
 	if none.HasTarget {
-		t.Errorf("nessun target: HasTarget dovrebbe essere false")
+		t.Errorf("no target: HasTarget should be false")
 	}
 }
 

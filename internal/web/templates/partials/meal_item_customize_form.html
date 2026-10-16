@@ -1,10 +1,10 @@
 {{define "meal_item_customize_form"}}
 {{- /*
-  meal_item_customize_form.html — view-model: customizeFormData
-  NOTA: il pulsante "Ripristina" NON usa un <form> annidato (HTML invalido:
-  il parser chiuderebbe il form esterno al primo </form>, lasciando "Salva"
-  fuori da qualsiasi form e rendendo il submit impossibile). Usa invece
-  hx-post + hx-include per portare il csrf_token.
+  meal_item_customize_form.html — view model: customizeFormData
+  NOTE: the "Ripristina" button does NOT use a nested <form> (invalid HTML:
+  the parser would close the outer form at the first </form>, leaving
+  "Salva" outside any form and making the submit impossible). It uses
+  hx-post + hx-include to carry the csrf_token instead.
 */ -}}
 <form method="post" action="/meal-items/{{.MealItemID}}/customize?start={{.WeekStart}}"
       hx-post="/meal-items/{{.MealItemID}}/customize?start={{.WeekStart}}"
@@ -45,7 +45,7 @@
   {{end}}
 
   <div class="flex items-center justify-between gap-2 pt-2">
-    {{/* Ripristina: usa hx-post + hx-include invece di un <form> annidato. */}}
+    {{/* Ripristina: uses hx-post + hx-include instead of a nested <form>. */}}
     <button type="button"
             hx-post="/meal-items/{{.MealItemID}}/customize/reset?start={{.WeekStart}}"
             hx-include="[name=csrf_token]"

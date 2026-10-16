@@ -7,15 +7,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// ErrInvalidCredentials viene restituito quando email/password non matchano.
-// Non specifica quale dei due e' errato per non facilitare enumeration.
+// ErrInvalidCredentials is returned when email/password do not match.
+// It does not say which of the two is wrong, so as not to help enumeration.
 var ErrInvalidCredentials = errors.New("credenziali non valide")
 
-// bcryptCost e' il costo esponenziale dell'hash. 12 e' un buon trade-off
-// 2024/2026 fra sicurezza e latenza (~250ms su CPU consumer).
+// bcryptCost is the hash's exponential cost. 12 is a good 2024/2026
+// trade-off between security and latency (~250ms on a consumer CPU).
 const bcryptCost = 12
 
-// HashPassword produce un hash bcrypt pronto per la persistenza.
+// HashPassword produces a bcrypt hash ready to be stored.
 func HashPassword(password string) (string, error) {
 	if len(password) < 8 {
 		return "", errors.New("password: minimo 8 caratteri")
@@ -31,8 +31,8 @@ func HashPassword(password string) (string, error) {
 	return string(h), nil
 }
 
-// VerifyPassword restituisce nil se la password matcha l'hash, altrimenti
-// ErrInvalidCredentials. Propaga errori non previsti dal bcrypt.
+// VerifyPassword returns nil when the password matches the hash, otherwise
+// ErrInvalidCredentials. It propagates unexpected bcrypt errors.
 func VerifyPassword(hash, password string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err == nil {

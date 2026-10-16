@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 /* ---- Font ------------------------------------------------------------------
- * Figtree (OFL, vedi static/fonts/Figtree-OFL.txt), variabile 300-900,
- * servito dall'app: niente Google Fonts a runtime (CSP font-src 'self').
+ * Figtree (OFL, see static/fonts/Figtree-OFL.txt), variable 300-900,
+ * served by the app: no Google Fonts at runtime (CSP font-src 'self').
  * ------------------------------------------------------------------------ */
 @font-face {
   font-family: "Figtree";
@@ -23,16 +23,16 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* ---- Temi (stile «Sereno», #121) ----------------------------------------------
- * Due scelte indipendenti, entrambe attributi su <html> scritti dal server
- * (cookie tema_modo / tema_colore, vedi internal/app/appearance.go):
+/* ---- Themes («Sereno» style, #121) --------------------------------------------
+ * Two independent choices, both attributes on <html> written by the server
+ * (the tema_modo / tema_colore cookies, see internal/app/appearance.go):
  *
- *   data-mode   = chiaro | scuro | sistema (segue prefers-color-scheme)
+ *   data-mode   = chiaro | scuro | sistema (follows prefers-color-scheme)
  *   data-accent = bosco | mare | tramonto | grafite
  *
- * I template usano solo le utility semantiche (bg-bg, text-muted, bg-accent,
- * text-prot, ...) che Tailwind risolve in var(--*) definite qui.
- * Ogni accento ha la variante per il chiaro (-l) e per lo scuro (-d).
+ * The templates use only the semantic utilities (bg-bg, text-muted, bg-accent,
+ * text-prot, ...) that Tailwind resolves to the var(--*) defined here.
+ * Every accent has a light (-l) and a dark (-d) variant.
  * ------------------------------------------------------------------------ */
 
 :root {
@@ -48,7 +48,7 @@
   --acc-l: #3A4150; --acc-d: #C9CED6; --acc-soft-l: #E7E9EE; --acc-soft-d: #2C3038;
 }
 
-/* Chiaro: base per tutti, anche per "sistema" quando il SO e' chiaro. */
+/* Light: the base for everyone, "sistema" too when the OS is light. */
 :root {
   color-scheme: light;
   --bg: #F7F8FA;
@@ -69,14 +69,14 @@
   --carb: #C98A12;
   --fat: #23897D;
   --shadow: 0 12px 32px rgba(15, 20, 30, 0.14);
-  /* Macro nei grafici: piu' saturi delle lettere P/C/G, controllati per
-     daltonismo e contrasto sul fondo (#123). */
+  /* Macros in the charts: more saturated than the P/C/G letters, checked for
+     color blindness and contrast on the background (#123). */
   --ch-prot: #6B5BD2;
   --ch-carb: #B47A0C;
   --ch-fat: #0A8F7E;
 }
 
-/* Scuro: grigio-blu neutro, non quasi nero. Ripetuto per "sistema" sotto. */
+/* Dark: a neutral blue-grey, not near-black. Repeated for "sistema" below. */
 :root[data-mode="scuro"] {
   color-scheme: dark;
   --bg: #16181C;
@@ -128,9 +128,9 @@
   }
 }
 
-/* ---- Componenti condivisi -------------------------------------------------
- * Pochi mattoni riusati da tutte le pagine del restyle: bottoni, card,
- * campi. Le pagine compongono il resto con le utility.
+/* ---- Shared components ----------------------------------------------------
+ * A few bricks reused by every page of the restyle: buttons, cards,
+ * fields. The pages compose the rest with the utilities.
  * ------------------------------------------------------------------------ */
 @layer components {
   .btn {
@@ -150,8 +150,8 @@
     box-shadow: var(--shadow);
   }
 
-  /* Schede giorno della settimana: lo stato selezionato e' un attributo,
-     cosi' il JS non deve conoscere le classi (che Tailwind poi epura). */
+  /* Day tabs of the week: the selected state is an attribute, so the JS
+     need not know the classes (which Tailwind then purges). */
   .day-tab {
     @apply flex flex-col gap-1 px-2.5 pt-2 pb-2.5 text-left rounded-[10px] border border-border bg-surface text-text transition-colors;
   }
@@ -172,7 +172,7 @@
     @apply w-8 h-8 grid place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-text transition-colors;
   }
 
-  /* Segmented control (Modalita' nel menu Aspetto). */
+  /* Segmented control (Modalità in the Aspetto menu). */
   .segmented { @apply grid gap-1 p-[3px] rounded-[10px] bg-surface-2; }
   .segmented button { @apply h-[30px] rounded-lg text-[12.5px] font-semibold text-text; }
   .segmented button[aria-checked="true"] { @apply bg-surface; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
@@ -182,7 +182,7 @@
   .swatch[aria-checked="true"] { border-color: var(--accent); }
   .swatch-dot { @apply block w-[22px] h-[22px] rounded-full; }
 
-  /* Shell: voci della sidebar / del foglio «Altro» e della barra in basso. */
+  /* Shell: entries of the sidebar / the «Altro» sheet and the bottom bar. */
   .nav-link {
     @apply flex items-center gap-2.5 min-h-[38px] px-2.5 rounded-lg text-left text-text hover:bg-surface-2 transition-colors;
   }
@@ -192,19 +192,19 @@
   }
   .tab-link.is-active { @apply text-accent; }
 
-  /* Pagine di costruzione del piano (#122). */
+  /* The plan-building pages (#122). */
   .field-lg { @apply h-[42px] text-[15px]; }
   textarea.field { @apply h-auto py-2; }
   select.field { @apply pr-8; }
-  /* Campo con icona a sinistra: <label class="field-ico">{{icon}}<input class="field">. */
+  /* A field with an icon on the left: <label class="field-ico">{{icon}}<input class="field">. */
   .field-ico { @apply relative block; }
   .field-ico > svg { @apply absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none; }
   .field-ico > .field { @apply pl-[38px]; }
-  /* Campo con unita' a destra: <span class="field-unit"><input class="field"><em>g</em></span>. */
+  /* A field with a unit on the right: <span class="field-unit"><input class="field"><em>g</em></span>. */
   .field-unit { @apply relative block; }
   .field-unit > em { @apply absolute right-3 top-1/2 -translate-y-1/2 not-italic text-[13px] text-muted pointer-events-none; }
   .field-unit > .field { @apply pr-11; }
-  /* Password con Mostra/Nascondi a destra (partial pw_toggle). */
+  /* Password with Mostra/Nascondi on the right (the pw_toggle partial). */
   .field-pw { @apply relative block; }
   .field-pw > .field { @apply pr-[92px]; }
   .pw-toggle { @apply absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-2.5 rounded-lg text-[13px] font-semibold text-accent hover:bg-surface-2; }
@@ -212,7 +212,7 @@
   .filter {
     @apply inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-surface text-[13px] font-semibold text-text whitespace-nowrap hover:bg-surface-2 transition-colors;
   }
-  /* Campi in sola lettura (ingrediente altrui, #143): leggibili, non attivi. */
+  /* Read-only fields (another user's ingredient, #143): readable, not active. */
   .field:disabled { @apply bg-surface-2 border-transparent cursor-default; }
   .field:disabled::placeholder { color: transparent; }
   .segmented > label:has(:disabled) { @apply cursor-default; }
@@ -222,12 +222,12 @@
   .filter .cnt { @apply font-medium text-muted; }
   .filter.is-on, .filter:has(input:checked) { @apply bg-accent-soft border-transparent text-accent; }
   .filter.is-on .cnt { color: inherit; opacity: .75; }
-  /* Select e checkbox dei chip sono invisibili: il focus si vede sul chip. */
+  /* The chips' selects and checkboxes are invisible: the focus shows on the chip. */
   .filter:has(:focus-visible), .segmented > label:has(:focus-visible) {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
-  /* Segmented fatto di link o radio, oltre ai button del menu Aspetto. */
+  /* A segmented control made of links or radios, besides the Aspetto menu's buttons. */
   .segmented { @apply grid-flow-col; }
   .segmented > a, .segmented > label {
     @apply grid place-items-center h-[30px] px-3.5 rounded-lg text-[12.5px] font-semibold text-text cursor-pointer whitespace-nowrap;
@@ -245,11 +245,11 @@
   .h1 { @apply text-xl lg:text-[22px] leading-tight font-bold; }
   .h2 { @apply text-[15px] font-bold; }
   .thumb { @apply relative w-9 h-9 shrink-0 rounded-lg bg-surface-2 grid place-items-center text-muted overflow-hidden; }
-  /* Foto sopra l'icona del codice (partial off_thumb), con fondo pieno: ai lati
-     di una foto non quadrata l'icona non deve trasparire. */
+  /* The photo over the barcode icon (the off_thumb partial), with a solid
+     background: the icon must not show through beside a non-square photo. */
   .thumb-img { @apply absolute inset-0 w-full h-full object-contain bg-surface-2 opacity-0; }
   .thumb-img.is-loaded { @apply opacity-100; }
-  /* Interruttore su checkbox nativa: <input type="checkbox" class="toggle">. */
+  /* A switch on a native checkbox: <input type="checkbox" class="toggle">. */
   .toggle {
     @apply relative w-[34px] h-5 shrink-0 rounded-full bg-track cursor-pointer appearance-none transition-colors;
   }
@@ -261,7 +261,7 @@
   .toggle:checked::after { @apply left-4; }
   .selbar { @apply flex items-center gap-3 py-2 pr-2 pl-4 rounded-xl bg-accent-soft text-accent font-semibold; }
 
-  /* Finestra centrata su desktop, foglio dal basso sul telefono (<dialog>). */
+  /* A centered dialog on desktop, a bottom sheet on the phone (<dialog>). */
   .dialog-panel {
     @apply p-0 bg-surface text-text border border-border rounded-2xl w-[580px] max-w-[calc(100vw-2rem)];
     max-height: calc(100vh - 7rem);
@@ -277,8 +277,8 @@
     }
   }
 
-  /* Scanner del codice a barre (#59). I bottoni esistono solo dove c'e' una
-     fotocamera utilizzabile: scanner.js mette .can-scan su <html>. */
+  /* Barcode scanner (#59). The buttons exist only where there is a usable
+     camera: scanner.js puts .can-scan on <html>. */
   .scan-btn { @apply btn-secondary btn-icon shrink-0 text-accent; }
   .scan-only { display: none; }
   html.can-scan .scan-only:not(.hidden) { display: inline-flex; }
@@ -293,7 +293,7 @@
   .scan-frame span:nth-child(2) { @apply right-0 top-0 border-l-0 border-b-0 rounded-tr-[10px]; }
   .scan-frame span:nth-child(3) { @apply left-0 bottom-0 border-r-0 border-t-0 rounded-bl-[10px]; }
   .scan-frame span:nth-child(4) { @apply right-0 bottom-0 border-l-0 border-t-0 rounded-br-[10px]; }
-  /* La linea e' sempre la variante chiara dell'accento: sta sul buio della fotocamera. */
+  /* The line is always the accent's light variant: it sits on the camera's dark. */
   .scan-line {
     @apply absolute left-1/2 top-1/2 -translate-x-1/2 w-[min(232px,72%)] h-0.5;
     background: var(--acc-d); box-shadow: 0 0 10px var(--acc-d);
@@ -301,7 +301,7 @@
   .scan-hint { @apply absolute inset-x-0 bottom-3.5 text-center text-white font-semibold; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
   @media (max-width: 1023px) { .scan-cam { height: min(340px, 45vh); } }
 
-  /* Lista della spesa (#123): riga da 48 px toccabile per intero. */
+  /* Shopping list (#123): a 48 px row, tappable as a whole. */
   .shop-item {
     @apply w-full flex items-center gap-3 min-h-12 px-4 py-1 text-left hover:bg-surface-2 transition-colors;
   }
@@ -315,7 +315,7 @@
   .shop-item[aria-pressed="true"] .shop-name,
   .shop-item[aria-pressed="true"] .shop-qty b { @apply text-muted line-through; }
 
-  /* Statistiche (#123): card di sintesi, legende e grafici SVG (static/js/charts.js). */
+  /* Statistics (#123): summary cards, legends and SVG charts (static/js/charts.js). */
   .tile { @apply card px-3.5 py-3 flex flex-col gap-0.5 min-w-0; }
   .tile-k { @apply text-[12.5px] font-semibold text-muted; }
   .tile-v { @apply text-[22px] leading-tight font-bold tabular-nums; }
@@ -324,12 +324,12 @@
   .legend { @apply flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12.5px] text-muted; }
   .legend i { @apply inline-block w-2.5 h-2.5 rounded-[3px] mr-1.5 align-[-1px]; }
 
-  /* Barra di salvataggio: sul telefono resta in basso, sopra la barra di navigazione. */
+  /* Save bar: on the phone it stays at the bottom, above the navigation bar. */
   @media (max-width: 1023px) {
     .savebar { @apply sticky bottom-[84px] z-20 bg-surface border border-border rounded-xl px-3 py-2.5; box-shadow: var(--shadow); }
   }
 
-  /* Impostazioni (#123): indice a sinistra, sezioni titolo | contenuto. */
+  /* Settings (#123): an index on the left, title | content sections. */
   .settings-toc { @apply px-2.5 py-[7px] rounded-lg text-[13px] font-semibold text-muted hover:text-text hover:bg-surface; }
   .settings-toc[aria-current] { @apply bg-surface text-text; box-shadow: 0 0 0 1px var(--border); }
   .settings-sec { @apply grid gap-2.5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5 px-4 py-[18px]; }
@@ -338,20 +338,20 @@
   .mode-card { @apply flex flex-col gap-2 p-2.5 rounded-xl border border-border text-left text-[13px] font-semibold text-text hover:bg-surface-2; }
   .mode-card[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .mode-pv { @apply grid grid-cols-[30%_1fr] h-[52px] rounded-lg border border-border overflow-hidden; }
-  /* «App sul telefono» (#59): icona dell'app, passaggi numerati, tasti di Safari. */
+  /* «App sul telefono» (#59): the app icon, numbered steps, Safari's buttons. */
   .app-icon { @apply w-14 h-14 shrink-0 rounded-[14px] bg-accent text-accent-fg grid place-items-center; }
   .step-n { @apply w-6 h-6 shrink-0 rounded-full bg-surface-2 grid place-items-center text-[12px] font-bold; }
   .kbd { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-border bg-surface text-[13px] font-semibold align-middle; }
   .kbd svg { @apply w-[15px] h-[15px] text-accent; }
 
-  /* Pagine senza sessione e onboarding (#123): una colonna centrata. */
+  /* Pages without a session and onboarding (#123): one centered column. */
   .auth-box { @apply w-full max-w-[400px] mx-auto mt-4 lg:mt-14 flex flex-col gap-[18px]; }
   .auth-box .card { @apply p-6 flex flex-col gap-3.5; }
-  /* Chip scelto dentro un riquadro accent-soft: il verde chiaro sparirebbe. */
+  /* A chosen chip inside an accent-soft box: the light green would disappear. */
   .on-soft .filter.is-on { @apply bg-accent text-accent-fg; }
   .btn-block { @apply w-full h-[42px] text-[14px]; }
 
-  /* Foglio dal basso (telefono), costruito su <dialog>. */
+  /* Bottom sheet (phone), built on <dialog>. */
   .sheet {
     @apply w-full max-w-none m-0 mt-auto p-0 bg-surface text-text border-0 border-t border-border rounded-t-2xl;
     max-height: 85vh;
@@ -360,12 +360,12 @@
   .sheet::backdrop { background: rgba(10, 12, 16, 0.45); }
 }
 
-/* Intestazione di colonna visibile solo da desktop: quando e' nascosta la
-   prima riga non deve avere il separatore sopra (sarebbe doppio col bordo). */
+/* A column header visible on desktop only: when it is hidden the first row
+   must not have the separator above (it would double the border). */
 @media (max-width: 1023px) { .list-head + * { border-top-width: 0 !important; } }
 @media (max-width: 639px) { .list-head-sm + * { border-top-width: 0 !important; } }
 
-/* ---- Grafici SVG -------------------------------------------------------- */
+/* ---- SVG charts --------------------------------------------------------- */
 [data-chart] { position: relative; min-height: 40px; }
 .chart { display: block; width: 100%; height: auto; touch-action: pan-y; }
 .chart text { font: 500 12px "Figtree", system-ui, sans-serif; fill: var(--muted); }
@@ -417,7 +417,7 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
-  /* Smooth transition fra temi senza flash */
+  /* Smooth transition between themes without a flash */
   html {
     transition: background-color 200ms ease, color 200ms ease;
     scrollbar-gutter: stable;
@@ -425,14 +425,14 @@
 }
 
 /* ---- Print styles ----------------------------------------------------------
- * Per la lista della spesa (e in generale per qualunque pagina). Nasconde nav,
- * modal-host e qualunque elemento marcato `print:hidden` (utility Tailwind).
- * Forza fondo bianco / testo nero indipendentemente dal tema attivo per
- * non sprecare toner.
+ * For the shopping list (and any page in general). Hides nav, modal-host
+ * and any element marked `print:hidden` (a Tailwind utility). Forces a white
+ * background / black text whatever the active theme, so as not to waste
+ * toner.
  * --------------------------------------------------------------------- */
-/* Utility nostre, sempre presenti (non dipendiamo dalla variant Tailwind
-   `print:` che richiederebbe purge-aware scan e tende a non generarsi). */
-.no-print { /* normale = visibile, override solo in print */ }
+/* Our own utilities, always present (we do not depend on Tailwind's `print:`
+   variant, which would need a purge-aware scan and tends not to be generated). */
+.no-print { /* normal = visible, overridden only in print */ }
 .only-print { display: none; }
 
 @media print {
@@ -451,20 +451,20 @@
     padding: 0 !important;
     margin: 0 !important;
   }
-  /* Card/box bianchi diventano flat per stampa pulita */
+  /* White cards/boxes go flat for a clean print */
   .bg-surface, .bg-surface-2, .bg-accent-soft\/30 {
     background: #ffffff !important;
     border-color: #cccccc !important;
   }
-  /* Checkbox custom (span con bg-accent) diventano box neri se checked
-     per leggibilita' in B/W */
+  /* Custom checkboxes (a span with bg-accent) become black boxes when checked,
+     for readability in B/W */
   span.bg-accent {
     background: #000000 !important;
     color: #ffffff !important;
     border-color: #000000 !important;
   }
 
-  /* Lista della spesa: due colonne, un quadratino per voce. */
+  /* Shopping list: two columns, one box per item. */
   .shop-print { font-size: 12.5px; }
   .shop-print h1 { font-size: 20px; font-weight: 700; }
   .shop-print > p { color: #333333; margin-top: 2px; }
@@ -478,7 +478,7 @@
   @page { margin: 14mm 16mm; }
 }
 
-/* ---- Shepherd.js tour — override per adattarsi al tema Nutreek ---------- */
+/* ---- Shepherd.js tour — overrides to fit the Nutreek theme -------------- */
 .shepherd-has-cancel-icon .shepherd-cancel-icon {
   color: var(--muted);
 }

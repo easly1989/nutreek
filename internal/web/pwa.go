@@ -7,9 +7,9 @@ import (
 	"sync"
 )
 
-// accentColors: il colore d'accento di ogni tema nel modo chiaro, lo stesso
-// di --acc-l in web/tailwind/input.css. Serve fuori dal CSS: theme-color
-// nella pagina e nel manifest dell'app installata (#59).
+// accentColors: the accent color of every theme in light mode, the same as
+// --acc-l in web/tailwind/input.css. Needed outside the CSS: theme-color in
+// the page and in the installed app's manifest (#59).
 var accentColors = map[string]string{
 	"bosco":    "#2F7A55",
 	"mare":     "#1D6FA5",
@@ -17,8 +17,8 @@ var accentColors = map[string]string{
 	"grafite":  "#3A4150",
 }
 
-// AccentColor restituisce il colore del tema; quello di default (bosco) per
-// un nome sconosciuto.
+// AccentColor returns the theme's color; the default one (bosco) for an
+// unknown name.
 func AccentColor(name string) string {
 	if c, ok := accentColors[name]; ok {
 		return c
@@ -31,9 +31,9 @@ var (
 	staticVersion     string
 )
 
-// StaticVersion e' un'impronta del contenuto di /static: cambia appena cambia
-// un file. Il service worker la mette nel nome della sua cache, cosi' dopo un
-// aggiornamento il browser butta i file vecchi. Calcolata una volta sola.
+// StaticVersion is a fingerprint of the content of /static: it changes as
+// soon as a file changes. The service worker puts it in its cache name, so
+// after an update the browser drops the old files. Computed only once.
 func StaticVersion() string {
 	staticVersionOnce.Do(func() {
 		h := sha256.New()
@@ -52,7 +52,7 @@ func StaticVersion() string {
 			return nil
 		})
 		if err != nil {
-			// L'embed e' statico: se fallisce e' un bug build-time.
+			// The embed is static: when it fails it is a build-time bug.
 			panic(err)
 		}
 		staticVersion = hex.EncodeToString(h.Sum(nil))[:12]

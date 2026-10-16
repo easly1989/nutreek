@@ -1,3 +1,3 @@
-// Package service incapsula la business logic che orchestra db/sqlc e
-// altri moduli (auth, off, macros) per servire gli handler in internal/app.
+// Package service wraps the business logic that orchestrates the db layer and
+// other modules (auth, off, macros) to serve the handlers in internal/app.
 package service

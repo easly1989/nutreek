@@ -1,8 +1,8 @@
 services:
   nutreek:
-    # Immagine privata pubblicata dal workflow Release (serve `docker login ghcr.io`).
-    # `docker compose pull && docker compose up -d` aggiorna all'ultima release;
-    # `docker compose up --build` costruisce invece dal sorgente locale.
+    # Public image published by the Release workflow.
+    # `docker compose pull && docker compose up -d` updates to the latest release;
+    # `docker compose up --build` builds from the local source instead.
     image: ghcr.io/easly1989/nutreek:latest
     build: .
     container_name: nutreek
@@ -20,9 +20,9 @@ services:
       NUTREEK_RECONCILE_INTERVAL: ${NUTREEK_RECONCILE_INTERVAL:-24h}
       NUTREEK_ADMIN_TOKEN: ${NUTREEK_ADMIN_TOKEN:-}
     restart: unless-stopped
-    # Healthcheck: distroless non ha shell ne' wget/curl. Il binario
-    # supporta `-healthcheck` (sub-comando in cmd/nutreek/main.go) che
-    # fa una GET locale su /healthz e termina con exit 0 / 1.
+    # Healthcheck: distroless has no shell nor wget/curl. The binary
+    # supports `-healthcheck` (a subcommand in cmd/nutreek/main.go) that
+    # does a local GET on /healthz and exits with 0 / 1.
     healthcheck:
       test: ["CMD", "/app/nutreek", "-healthcheck"]
       interval: 30s

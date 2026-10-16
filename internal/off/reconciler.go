@@ -11,33 +11,33 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// Reconciler periodicamente cerca su OpenFoodFacts un equivalente per ogni
-// ingrediente locale non verificato di recente. Quando trova un match
-// "abbastanza buono" lo importa come source='openfoodfacts' (idempotente)
-// e segna il locale come superseded_by quel barcode. Quando non trova
-// nulla, aggiorna comunque last_verified_at per non riprovare a breve.
+// Reconciler periodically searches OpenFoodFacts for an equivalent of every
+// local ingredient not verified recently. When it finds a "good enough"
+// match it imports it as source='openfoodfacts' (idempotent) and marks the
+// local one as superseded_by that barcode. When it finds nothing, it updates
+// last_verified_at anyway, so it does not retry soon.
 type Reconciler struct {
 	Ingredients *db.Ingredients
 	Client      *Client
 	Logger      *slog.Logger
 
-	// MaxBatch e' quante locals processare per RunOnce. Default 50.
+	// MaxBatch is how many locals to process per RunOnce. Default 50.
 	MaxBatch int
-	// MinAge e' quanto deve essere "vecchia" last_verified_at perche'
-	// rientri nel batch. Default 7 giorni.
+	// MinAge is how "old" last_verified_at must be for an ingredient to
+	// enter the batch. Default 7 days.
 	MinAge time.Duration
 }
 
-// Stats riassume l'esito di una RunOnce.
+// Stats summarizes the outcome of a RunOnce.
 type Stats struct {
-	Considered int // candidati estratti dal DB
+	Considered int // candidates pulled from the DB
 	Matched    int // match trovati e superseded
-	NoMatch    int // nessun candidato OFF abbastanza buono
+	NoMatch    int // no OFF candidate good enough
 	Errors     int // errori HTTP / DB durante l'iterazione
 }
 
-// RunOnce processa un singolo batch. Sicuro a riavvio: idempotente
-// per-ingrediente (last_verified_at fa da cursore implicito).
+// RunOnce processes a single batch. Safe on restart: idempotent per
+// ingredient (last_verified_at acts as an implicit cursor).
 func (r *Reconciler) RunOnce(ctx context.Context) (Stats, error) {
 	maxBatch := r.MaxBatch
 	if maxBatch <= 0 {
@@ -62,7 +62,7 @@ func (r *Reconciler) RunOnce(ctx context.Context) (Stats, error) {
 		if err != nil {
 			r.logger().Warn("reconciler: search failed", "ingredient_id", local.ID, "name", local.Name, "err", err)
 			stats.Errors++
-			// Non touch-iamo: ritenteremo prima.
+			// Do not touch it: we will retry sooner.
 			continue
 		}
 		if match == nil {
@@ -74,7 +74,7 @@ func (r *Reconciler) RunOnce(ctx context.Context) (Stats, error) {
 			continue
 		}
 
-		// Importa l'OFF (o recupera quello esistente per stesso barcode).
+		// Import the OFF product (or fetch the existing one with the same barcode).
 		offID, err := r.upsertOFF(ctx, *match, local.Unit)
 		if err != nil {
 			r.logger().Warn("reconciler: upsert OFF failed", "barcode", match.Code, "err", err)
@@ -95,15 +95,15 @@ func (r *Reconciler) RunOnce(ctx context.Context) (Stats, error) {
 	return stats, nil
 }
 
-// findBestMatch cerca su OFF e ritorna il primo prodotto con macro completi
-// che condivide almeno una parola "significativa" (>=4 char, non stop-word)
-// col nome del local. Brand match obbligatorio se entrambi i lati lo hanno.
-// Per MVP volutamente piu' tollerante di un substring stretto: "Grana
-// Padano locale" deve agganciarsi a "Grana Padano DOP".
+// findBestMatch searches OFF and returns the first product with complete
+// macros that shares at least one "significant" word (>=4 chars, not a stop
+// word) with the local's name. A brand match is required when both sides
+// have one. For the MVP deliberately more tolerant than a strict substring:
+// "Grana Padano locale" must latch onto "Grana Padano DOP".
 //
-// Usa solo le prime 2 parole significative come seed: con FTS5 AND prefix
-// (semantica di SearchByName) usare il nome intero filtrerebbe via parole
-// come "locale"/"casereccio" che non esistono nel prodotto OFF target.
+// It uses only the first 2 significant words as the seed: with the FTS5 AND
+// prefix (SearchByName's semantics) using the whole name would filter out
+// words like "locale"/"casereccio" that do not exist in the target OFF product.
 func (r *Reconciler) findBestMatch(ctx context.Context, local *domain.Ingredient) (*Product, error) {
 	localWords := significantWords(local.Name)
 	if len(localWords) == 0 {
@@ -129,7 +129,7 @@ func (r *Reconciler) findBestMatch(ctx context.Context, local *domain.Ingredient
 		if !shareWord(localWords, offWords) {
 			continue
 		}
-		// Se entrambi hanno brand non vuoto, devono coincidere (case-insensitive).
+		// When both have a non-empty brand, they must match (case-insensitive).
 		if local.Brand != nil && strings.TrimSpace(*local.Brand) != "" && strings.TrimSpace(p.Brand) != "" {
 			if !strings.EqualFold(strings.TrimSpace(*local.Brand), strings.TrimSpace(p.Brand)) {
 				continue
@@ -140,9 +140,9 @@ func (r *Reconciler) findBestMatch(ctx context.Context, local *domain.Ingredient
 	return nil, nil
 }
 
-// significantWords spezza il nome in parole minuscole, scartando token di
-// 3 char o meno e qualche stop-word italiana. Volutamente piccola: lo scopo
-// e' solo evitare match su "di / il / la / dop / bio".
+// significantWords splits the name into lowercase words, dropping tokens of
+// 3 chars or fewer and a few Italian stop words. Deliberately small: the goal
+// is only to avoid matches on "di / il / la / dop / bio".
 var stopWords = map[string]bool{
 	"di": true, "del": true, "della": true, "il": true, "lo": true, "la": true,
 	"dop": true, "igp": true, "bio": true, "doc": true, "stg": true,
@@ -177,9 +177,9 @@ func shareWord(a, b []string) bool {
 	return false
 }
 
-// upsertOFF tenta CreateOFF; se il barcode e' gia' presente (un altro local
-// e' gia' stato riconciliato verso lo stesso OFF) recupera l'id esistente
-// con GetByBarcode.
+// upsertOFF tries CreateOFF; when the barcode is already there (another local
+// was already reconciled to the same OFF product) it fetches the existing id
+// with GetByBarcode.
 func (r *Reconciler) upsertOFF(ctx context.Context, p Product, unit domain.IngredientUnit) (int64, error) {
 	if unit == "" {
 		unit = domain.UnitGram
@@ -203,9 +203,9 @@ func (r *Reconciler) upsertOFF(ctx context.Context, p Product, unit domain.Ingre
 	return 0, err
 }
 
-// Run avvia il loop di reconciliation con `interval`. Esce su context.Done.
-// La prima esecuzione parte dopo `interval` (non immediato): per un trigger
-// on-demand usa RunOnce direttamente o l'endpoint admin.
+// Run starts the reconciliation loop with `interval`. It exits on
+// context.Done. The first run starts after `interval` (not immediately): for
+// an on-demand trigger use RunOnce directly or the admin endpoint.
 func (r *Reconciler) Run(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		interval = 24 * time.Hour

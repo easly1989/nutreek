@@ -107,7 +107,7 @@
   </div>
 </div>
 
-{{/* Foglio stampato: solo nero su bianco, due colonne, un quadratino per voce. */}}
+{{/* Printed sheet: black on white only, two columns, one box per item. */}}
 <div class="only-print shop-print">
   <h1>Lista della spesa</h1>
   <p>{{if gt $wc 1}}{{$wc}} settimane, {{end}}{{weeksRange .List.WeekStart $wc}} · {{add .View.Total (len .UserItemViews)}} voci</p>
@@ -128,12 +128,13 @@
 </div>
 {{end}}
 
-{{/* Quantita' di una voce: «240 g», o «0,5 g» sotto i 10. */}}
+{{/* An item's quantity: «240 g», or «0,5 g» below 10. */}}
 {{define "shop_qty"}}{{if lt .Item.TotalQuantity 10.0}}{{dec .Item.TotalQuantity 1}}{{else}}{{num .Item.TotalQuantity}}{{end}} {{.Item.Ingredient.Unit}}{{with .Pieces}} ({{.}} pz){{end}}{{end}}
 
-{{/* Voce calcolata dai pasti. Toccarla la mette nel carrello o la toglie:
-     il server torna alla lista e HTMX ne prende #shop-list, perche' la voce
-     cambia gruppo e l'avanzamento cambia. L'id sul bottone tiene il focus. */}}
+{{/* An item computed from the meals. Tapping it puts it in the cart or takes
+     it out: the server goes back to the list and HTMX takes #shop-list from
+     it, because the item changes group and the progress changes. The id on
+     the button keeps the focus. */}}
 {{define "shop_item"}}{{$v := .Row}}{{$it := $v.Item}}{{$p := .Page}}
 <li>
   <form method="post" action="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
@@ -148,7 +149,7 @@
   </form>
 </li>{{end}}
 
-{{/* Voce aggiunta a mano: stessa forma, piu' il pulsante per toglierla. */}}
+{{/* An item added by hand: the same shape, plus the button to remove it. */}}
 {{define "shop_user_item"}}{{$it := .Row.Item}}{{$p := .Page}}
 <li class="flex items-center pr-2">
   <form method="post" action="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"

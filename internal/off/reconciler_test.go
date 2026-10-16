@@ -10,8 +10,8 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// fixture monta DB sqlite temporaneo con off_products seedata + repo +
-// Reconciler. SearchByName ora interroga FTS5 locale, niente piu' mock HTTP.
+// fixture sets up a temporary sqlite DB with off_products seeded + repo +
+// Reconciler. SearchByName now queries the local FTS5, no more HTTP mocks.
 type fixture struct {
 	store *db.Store
 	ings  *db.Ingredients
@@ -30,9 +30,9 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatalf("Migrate: %v", err)
 	}
 
-	// Seed: prodotti OFF "locali" disponibili al reconciler via FTS5.
-	// - Grana Padano con macro completi → match per il local "Grana Padano locale".
-	// - Pane integrale con macro INCOMPLETI → reconciler lo scarta.
+	// Seed: "local" OFF products available to the reconciler via FTS5.
+	// - Grana Padano with complete macros → matches the local "Grana Padano locale".
+	// - Pane integrale with INCOMPLETE macros → the reconciler discards it.
 	seedOFFProducts(t, store.DB, []Product{
 		{Code: "8000000000017", Name: "Grana Padano DOP", Brand: "Consorzio Test", Kcal: 384, Protein: 33, Carbs: 0, Fat: 28, HasFullNutrients: true},
 		{Code: "BARCODE_PANE", Name: "Pane integrale", Brand: "", Kcal: 0, Protein: 8, Carbs: 0, Fat: 0, HasFullNutrients: false},
@@ -44,7 +44,7 @@ func newFixture(t *testing.T) *fixture {
 		Ingredients: ings,
 		Client:      client,
 		MaxBatch:    20,
-		MinAge:      1 * time.Hour, // basso per il test
+		MinAge:      1 * time.Hour, // low for the test
 	}
 	return &fixture{store: store, ings: ings, rec: rec}
 }
@@ -53,8 +53,8 @@ func TestReconcilerMatchAndNoMatch(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
 
-	// 3 locals: "Grana" → match, "Banana" → no result OFF, "Pane" → result
-	// con macro incompleti (deve restare no-match).
+	// 3 locals: "Grana" → match, "Banana" → no OFF result, "Pane" → a result
+	// with incomplete macros (must stay a no-match).
 	idGrana, _ := f.ings.CreateLocal(ctx, "Grana Padano locale", nil, domain.UnitGram, 380, 32, 0, 28, nil, nil, nil, nil, nil, nil, nil)
 	idBanana, _ := f.ings.CreateLocal(ctx, "Banana", nil, domain.UnitGram, 89, 1.1, 23, 0.3, nil, nil, nil, nil, nil, nil, nil)
 	idPane, _ := f.ings.CreateLocal(ctx, "Pane casereccio", nil, domain.UnitGram, 250, 8, 50, 1, nil, nil, nil, nil, nil, nil, nil)
@@ -67,51 +67,51 @@ func TestReconcilerMatchAndNoMatch(t *testing.T) {
 		t.Errorf("considered: got %d want 3", stats.Considered)
 	}
 	if stats.Matched != 1 {
-		t.Errorf("matched: got %d want 1 (solo Grana)", stats.Matched)
+		t.Errorf("matched: got %d want 1 (only Grana)", stats.Matched)
 	}
 	if stats.NoMatch != 2 {
-		t.Errorf("no_match: got %d want 2 (Banana + Pane scartato per macro incompleti)", stats.NoMatch)
+		t.Errorf("no_match: got %d want 2 (Banana + Pane discarded for incomplete macros)", stats.NoMatch)
 	}
 	if stats.Errors != 0 {
 		t.Errorf("errors: got %d want 0", stats.Errors)
 	}
 
-	// Grana superseded da un nuovo OFF.
+	// Grana superseded by a new OFF product.
 	got, err := f.ings.GetByID(ctx, idGrana)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.SupersededBy == nil {
-		t.Errorf("Grana non e' superseded")
+		t.Errorf("Grana is not superseded")
 	} else {
 		off, _ := f.ings.GetByID(ctx, *got.SupersededBy)
 		if off.Source != domain.IngredientSourceOFF {
-			t.Errorf("la superseder non e' OFF: %v", off.Source)
+			t.Errorf("the superseder is not OFF: %v", off.Source)
 		}
 		if off.OFFBarcode == nil || *off.OFFBarcode != "8000000000017" {
 			t.Errorf("barcode OFF inatteso: %v", off.OFFBarcode)
 		}
 	}
 
-	// Banana e Pane non superseded ma touchati.
+	// Banana and Pane not superseded but touched.
 	for _, id := range []int64{idBanana, idPane} {
 		ing, _ := f.ings.GetByID(ctx, id)
 		if ing.SupersededBy != nil {
-			t.Errorf("ing %d non doveva essere superseded", id)
+			t.Errorf("ing %d should not have been superseded", id)
 		}
 		if ing.LastVerifiedAt == nil {
-			t.Errorf("ing %d last_verified_at non touchato", id)
+			t.Errorf("ing %d last_verified_at not touched", id)
 		}
 	}
 
-	// Una seconda RunOnce subito dopo: nessun candidato (tutti hanno
-	// last_verified_at appena settato, MinAge=1h).
+	// A second RunOnce right after: no candidates (all have last_verified_at
+	// just set, MinAge=1h).
 	stats2, err := f.rec.RunOnce(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if stats2.Considered != 0 {
-		t.Errorf("seconda esecuzione: considered %d, atteso 0", stats2.Considered)
+		t.Errorf("second run: considered %d, want 0", stats2.Considered)
 	}
 }
 
@@ -119,8 +119,8 @@ func TestReconcilerIdempotentTwoLocalsSameOFF(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
 
-	// Due locals con lo stesso nome → devono entrambi finire superseded
-	// allo stesso OFF (idempotente sul barcode).
+	// Two locals with the same name → both must end up superseded by the
+	// same OFF product (idempotent on the barcode).
 	id1, _ := f.ings.CreateLocal(ctx, "Grana Padano A", nil, domain.UnitGram, 380, 32, 0, 28, nil, nil, nil, nil, nil, nil, nil)
 	id2, _ := f.ings.CreateLocal(ctx, "Grana Padano B", nil, domain.UnitGram, 380, 32, 0, 28, nil, nil, nil, nil, nil, nil, nil)
 
@@ -134,6 +134,6 @@ func TestReconcilerIdempotentTwoLocalsSameOFF(t *testing.T) {
 	g1, _ := f.ings.GetByID(ctx, id1)
 	g2, _ := f.ings.GetByID(ctx, id2)
 	if g1.SupersededBy == nil || g2.SupersededBy == nil || *g1.SupersededBy != *g2.SupersededBy {
-		t.Errorf("entrambi i local devono puntare allo stesso OFF: %v vs %v", g1.SupersededBy, g2.SupersededBy)
+		t.Errorf("both locals must point to the same OFF product: %v vs %v", g1.SupersededBy, g2.SupersededBy)
 	}
 }

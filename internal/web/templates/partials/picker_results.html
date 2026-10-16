@@ -1,12 +1,12 @@
 {{define "picker_results"}}
-{{/* Risultati del picker ingredienti (ricetta, pasto, sgarro, variante del
-     piano nutrizionale). Ogni riga e' un <details>: toccandola si apre il
-     form con quantita', unita' (g/ml o pezzi) e anteprima kcal (picker.js).
-     Per gli OFF non importati il form passa il barcode al posto dell'id e il
-     server fa l'auto-import in modo idempotente.
+{{/* Results of the ingredient picker (recipe, meal, cheat, nutrition plan
+     variation). Every row is a <details>: tapping it opens the form with
+     quantity, unit (g/ml or pieces) and a kcal preview (picker.js).
+     For OFF products not imported, the form passes the barcode instead of
+     the id and the server auto-imports it idempotently.
 
-     Sezioni: suggeriti dal piano nutrizionale, ingredienti nel database,
-     prodotti OpenFoodFacts. */}}
+     Sections: suggestions from the nutrition plan, ingredients in the
+     database, OpenFoodFacts products. */}}
 {{if .OFFWarning}}
   <p class="mx-4 lg:mx-5 my-2 rounded-xl bg-warn-bg text-warn-fg px-3 py-2 text-[13px]">{{.OFFWarning}}</p>
 {{end}}
@@ -14,9 +14,9 @@
 {{end}}
 
 {{define "picker_barcode"}}
-{{- /* Ricerca per codice a barre (scanner o cifre scritte): una riga gia'
-       aperta, oppure «non trovato» con «Crea l'ingrediente».
-       View-model: web.PickerRowCtx {Row: codice, List: dati del picker}. */ -}}
+{{- /* Search by barcode (scanner or typed digits): a row already open, or
+       «non trovato» with «Crea l'ingrediente».
+       View model: web.PickerRowCtx {Row: code, List: the picker's data}. */ -}}
 {{- $code := .Row -}}{{- $d := .List -}}
 {{- $host := "#modal-host" -}}{{- if or (eq $d.PickerKind "meal_item") (eq $d.PickerKind "meal_cheat")}}{{$host = "#modal-host-2"}}{{end -}}
 <div class="flex items-center gap-2 pl-4 lg:pl-5 pr-4 pt-3 pb-1">
@@ -26,8 +26,8 @@
 {{if $d.Rows}}
   {{range $d.Rows}}{{template "picker_row" (pickerRow . $d)}}{{end}}
 {{else if not $d.SearchedOFF}}
-  {{/* Risposta della sola ricerca locale: ingredient_search.js vede
-       data-barcode-pending e lancia quella con OpenFoodFacts. */}}
+  {{/* Response of the local search only: ingredient_search.js sees
+       data-barcode-pending and starts the one with OpenFoodFacts. */}}
   <p class="px-5 py-6 text-center text-muted" data-barcode-pending><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco il codice su OpenFoodFacts…</p>
 {{else}}
   <div class="mx-4 lg:mx-5 mt-2 rounded-xl bg-surface-2 p-3.5 flex gap-3 items-start">
@@ -73,15 +73,15 @@
 {{end}}
 
 {{define "off_thumb"}}
-{{- /* Miniatura di un prodotto OFF dentro .thumb; . e' l'URL (vuoto se non
-       c'e'). L'icona del codice sta sotto la foto, che compare solo a
-       caricamento finito: mentre arriva, o se non arriva (404, rete), si
-       vede l'icona. no-referrer: OFF non vede da quale istanza arriva. */ -}}
+{{- /* Thumbnail of an OFF product inside .thumb; . is the URL (empty when
+       there is none). The barcode icon sits under the photo, which appears
+       only once loaded: while it arrives, or if it does not (404, network),
+       the icon shows. no-referrer: OFF does not see which instance it comes from. */ -}}
 {{template "icon_sm" "i-barcode"}}{{with .}}<img src="{{.}}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.classList.add('is-loaded')" onerror="this.remove()" class="thumb-img">{{end}}
 {{- end}}
 
 {{define "picker_row"}}
-{{- /* Una riga del picker. View-model: web.PickerRowCtx {Row, List}. */ -}}
+{{- /* A picker row. View model: web.PickerRowCtx {Row, List}. */ -}}
 {{- $r := .Row -}}{{- $d := .List -}}
 {{- $cheat := eq $d.PickerKind "meal_cheat" -}}
 {{- $scanned := barcode $d.Query -}}
@@ -126,8 +126,8 @@
     <input name="quantity" required inputmode="decimal" aria-label="Quantità" class="field w-[76px] text-right tabular-nums"
            {{with $r.PickQuantity}}value="{{dec . 2}}"{{else}}placeholder="{{$r.Unit}}"{{end}}>
     {{if gt $r.UnitWeightG 0.0}}
-      {{/* Quantita' e unita' proposte: ingredientRow.PickQuantity/PickUnit.
-           Per i prodotti OFF «pz» e' la confezione: mai preselezionato. */}}
+      {{/* Proposed quantity and unit: ingredientRow.PickQuantity/PickUnit.
+           For OFF products «pz» is the package: never preselected. */}}
       <span class="segmented" role="radiogroup" aria-label="Unità">
         <label><input type="radio" name="qty_unit" value="{{$r.Unit}}"{{if ne $r.PickUnit "pz"}} checked{{end}}>{{$r.Unit}}</label>
         <label><input type="radio" name="qty_unit" value="pz"{{if eq $r.PickUnit "pz"}} checked{{end}}>pz</label>

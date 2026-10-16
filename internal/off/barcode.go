@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-// NormalizeBarcode riconosce un codice a barre alimentare (EAN-13, EAN-8 o
-// UPC-A) scritto o letto dalla fotocamera: toglie gli spazi, accetta solo
-// cifre e verifica la cifra di controllo. L'UPC-A torna a 13 cifre con lo
-// zero davanti, come lo salva OpenFoodFacts. ok=false per tutto il resto,
-// cosi' una ricerca per nome non viene scambiata per un codice.
+// NormalizeBarcode recognizes a food barcode (EAN-13, EAN-8 or UPC-A) typed
+// or read by the camera: it removes the spaces, accepts only digits and
+// checks the check digit. UPC-A goes back to 13 digits with a leading zero,
+// as OpenFoodFacts stores it. ok=false for everything else, so a search by
+// name is not mistaken for a code.
 func NormalizeBarcode(s string) (string, bool) {
 	code := strings.Join(strings.Fields(s), "")
 	switch len(code) {
@@ -34,8 +34,8 @@ func NormalizeBarcode(s string) (string, bool) {
 			}
 			break
 		}
-		// Pesi 3 e 1 alternati, contando da destra a partire dalla cifra
-		// che precede quella di controllo.
+		// Weights 3 and 1 alternating, counting from the right starting at the
+		// digit before the check digit.
 		if (len(code)-1-i)%2 == 1 {
 			d *= 3
 		}
@@ -44,10 +44,10 @@ func NormalizeBarcode(s string) (string, bool) {
 	return code, true
 }
 
-// FindByBarcode cerca un prodotto per codice: prima nella copia locale del
-// dump (off_products, nessuna rete), poi, se live e' true e la copia manca o
-// non ha i macro completi, sull'API di OFF. Con live=false un prodotto locale
-// incompleto viene restituito comunque; ErrNotFound se non c'e' da nessuna parte.
+// FindByBarcode looks a product up by code: first in the local copy of the
+// dump (off_products, no network), then, when live is true and the copy is
+// missing or lacks complete macros, on the OFF API. With live=false an
+// incomplete local product is returned anyway; ErrNotFound when it is nowhere.
 func (c *Client) FindByBarcode(ctx context.Context, code string, live bool) (*Product, error) {
 	local, err := c.localByBarcode(ctx, code)
 	if err != nil {
@@ -66,12 +66,12 @@ func (c *Client) FindByBarcode(ctx context.Context, code string, live bool) (*Pr
 	return p, err
 }
 
-// ErrUnavailable: l'API di OFF non ha risposto (rete, timeout, 5xx). Distinto
-// da un errore della copia locale, che e' un guasto nostro.
+// ErrUnavailable: the OFF API did not answer (network, timeout, 5xx). Distinct
+// from an error of the local copy, which is our own failure.
 var ErrUnavailable = errors.New("OpenFoodFacts non raggiungibile")
 
-// localByBarcode legge off_products; nil se il codice non c'e' o il DB non
-// e' configurato.
+// localByBarcode reads off_products; nil when the code is not there or the DB
+// is not configured.
 func (c *Client) localByBarcode(ctx context.Context, code string) (*Product, error) {
 	if c.DB == nil {
 		return nil, nil

@@ -1,6 +1,6 @@
 {{define "ingredient_results"}}
-{{- /* Risultati della pagina /ingredients (view-model ingredientsListData):
-       ingredienti nel database, poi prodotti OpenFoodFacts da importare. */ -}}
+{{- /* Results of the /ingredients page (view model ingredientsListData):
+       ingredients in the database, then OpenFoodFacts products to import. */ -}}
 {{if .OFFWarning}}
   <p class="mb-3 rounded-xl bg-warn-bg text-warn-fg px-3 py-2">{{.OFFWarning}}</p>
 {{end}}
@@ -36,7 +36,7 @@
 {{end}}
 
 {{define "ingredient_row"}}
-{{- /* Una riga di ingredient_results. View-model: web.PickerRowCtx {Row, List}. */ -}}
+{{- /* A row of ingredient_results. View model: web.PickerRowCtx {Row, List}. */ -}}
 {{- $r := .Row -}}{{- $d := .List -}}
 <div class="grid grid-cols-[36px_minmax(0,1fr)_auto] lg:grid-cols-[36px_minmax(0,1fr)_84px_190px_96px] gap-x-3 lg:gap-x-3.5 gap-y-1 items-center min-h-[60px] py-2.5 pl-3.5 lg:pl-4 pr-3 border-t border-border">
   <span class="thumb {{if not $r.IsOFF}}bg-accent-soft text-accent{{end}}">
@@ -61,7 +61,7 @@
       <span><b class="text-fat font-semibold">G</b> {{dec $r.Fat 1}} g</span>
     </span>
   {{else}}
-    {{/* Il dump OFF spesso non ha i macro: li chiediamo al prodotto. */}}
+    {{/* The OFF dump often lacks the macros: we ask the product for them. */}}
     <span class="col-span-3 lg:col-span-2 row-start-2 lg:row-start-auto pl-[48px] lg:pl-0"
           hx-get="/off/check/{{$r.Barcode}}" hx-trigger="load delay:600ms" hx-swap="innerHTML">
       <span class="text-[12.5px] text-muted animate-pulse">Verifico i macro…</span>

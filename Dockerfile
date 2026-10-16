@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
 # --- Stage 1: Tailwind CSS bundle --------------------------------------------
-# Pinned a v3.4.17 (vedi Makefile per la stessa ragione: v4 ha cambiato
-# CLI/config, l'input.css/tailwind.config.js sono v3 syntax).
+# Pinned to v3.4.17 (see the Makefile for the same reason: v4 changed the
+# CLI/config, input.css/tailwind.config.js are v3 syntax).
 FROM alpine:3.24 AS tailwind-builder
 RUN apk add --no-cache curl ca-certificates
 WORKDIR /src
@@ -33,9 +33,9 @@ ENV CGO_ENABLED=0 GOFLAGS=-trimpath
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-# Override del CSS dal tailwind-builder: la sorgente locale eventualmente
-# in context e' gia' stata esclusa da .dockerignore, quindi questa COPY
-# e' l'unica fonte autoritativa di tailwind.css per l'embed Go.
+# Override the CSS from the tailwind-builder: any local source in the
+# context was already excluded by .dockerignore, so this COPY is the only
+# authoritative source of tailwind.css for the Go embed.
 COPY --from=tailwind-builder /src/internal/web/static/css/tailwind.css ./internal/web/static/css/tailwind.css
 ARG VERSION=dev
 RUN go build -ldflags="-s -w -X main.version=${VERSION}" -o /out/nutreek ./cmd/nutreek

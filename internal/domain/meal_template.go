@@ -2,10 +2,9 @@ package domain
 
 import "time"
 
-// MealTemplate e' uno schema riutilizzabile di pasti settimanali (es. "5
-// pasti", "Solo lavorativi"). L'utente puo' avere piu' template ma uno
-// solo "attivo" alla volta — quello applicato di default alle nuove
-// settimane.
+// MealTemplate is a reusable scheme of weekly meals (e.g. "5 pasti",
+// "Solo lavorativi"). The user can have several templates but only one
+// "active" at a time — the one applied by default to new weeks.
 type MealTemplate struct {
 	ID        int64
 	UserID    int64
@@ -14,21 +13,21 @@ type MealTemplate struct {
 	CreatedAt time.Time
 }
 
-// MealTemplateSlot e' una "scheda pasto" dentro un template: nome del
-// pasto + giorno della settimana. DayOfWeek=-1 significa "ogni giorno"
-// (verra' espanso a 7 occorrenze al momento di applicare il template).
+// MealTemplateSlot is a "meal card" inside a template: meal name + day of
+// the week. DayOfWeek=-1 means "every day" (expanded to 7 occurrences when
+// the template is applied).
 type MealTemplateSlot struct {
 	ID         int64
 	TemplateID int64
-	DayOfWeek  int // -1 = ogni giorno; 0 = lunedi'; 6 = domenica
+	DayOfWeek  int // -1 = every day; 0 = Monday; 6 = Sunday
 	Name       string
 	SortOrder  int
 }
 
-// DayOfWeekEvery e' il sentinel per "ogni giorno della settimana".
+// DayOfWeekEvery is the sentinel for "every day of the week".
 const DayOfWeekEvery = -1
 
-// MealTemplateWithSlots aggrega il template + le sue slot per il render.
+// MealTemplateWithSlots joins the template + its slots for rendering.
 type MealTemplateWithSlots struct {
 	MealTemplate
 	Slots []MealTemplateSlot

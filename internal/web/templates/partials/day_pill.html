@@ -1,11 +1,11 @@
 {{define "day_pill"}}
 {{- /*
-  day_pill.html — view-model: dayCardData
-  Scheda di un giorno in #timeline-pills (tablist). Il click apre il giorno
-  in #day-panel via HTMX; senza JS il link porta alla stessa pagina con
-  ?day=. Lo stato selezionato e' aria-selected (stile in input.css, .day-tab),
-  aggiornato da day_tabs.js e dalla copia OOB che il server rimanda dopo
-  ogni mutazione.
+  day_pill.html — view model: dayCardData
+  A day's tab in #timeline-pills (tablist). A click opens the day in
+  #day-panel via HTMX; without JS the link leads to the same page with
+  ?day=. The selected state is aria-selected (styled in input.css,
+  .day-tab), updated by day_tabs.js and by the OOB copy the server sends
+  back after every mutation.
 */ -}}
 <a role="tab" id="pill-{{.DateStr}}"
    href="/?start={{.WeekStart}}&day={{.DateStr}}"

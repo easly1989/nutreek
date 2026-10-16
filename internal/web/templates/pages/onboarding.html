@@ -24,7 +24,7 @@
 </div>
 {{end}}
 
-{{/* Indietro / Avanti, comune ai passi 2-4. */}}
+{{/* Indietro / Avanti, shared by steps 2-4. */}}
 {{define "onboarding_nav"}}
 <div class="flex items-center">
   <a href="/onboarding?step={{add .Step -1}}{{if .Restart}}&restart=true{{end}}" class="btn-ghost">{{template "icon_sm" "i-chevron-left"}}Indietro</a>
@@ -111,7 +111,7 @@
 </form>
 {{end}}
 
-{{/* ===================== PASSO 4: settimana ===================== */}}
+{{/* ===================== STEP 4: week ===================== */}}
 {{define "onboarding_step4"}}
 <form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
   {{template "onboarding_hidden" .}}

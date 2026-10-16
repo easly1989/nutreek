@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// Ruoli utente validi.
+// Valid user roles.
 const (
 	RoleUser  = "user"
 	RoleCoach = "coach"
@@ -16,14 +16,14 @@ type User struct {
 	DisplayName  string
 	CreatedAt    time.Time
 
-	// Role: 'user' (default) o 'coach' (gestione multi-cliente).
+	// Role: 'user' (default) or 'coach' (multi-client management).
 	Role string
 
-	// Dati fisici — tutti opzionali (NULL in DB se non impostati).
+	// Physical data — all optional (NULL in the DB when not set).
 	WeightKg  *float64
 	HeightCm  *float64
 	BirthYear *int
-	Sex       *string // "M" o "F" (sesso biologico, usato per il calcolo BMR)
+	Sex       *string // "M" or "F" (biological sex, used for the BMR calculation)
 
 	// Obiettivi macro giornalieri.
 	TargetKcal    *float64
@@ -31,19 +31,19 @@ type User struct {
 	TargetCarbs   *float64
 	TargetFat     *float64
 
-	// Indici calcolati e salvati al momento dell'aggiornamento del profilo.
+	// Indices computed and saved when the profile is updated.
 	BMI *float64
 	BMR *float64
 
-	// Livello di attività fisica: 'sedentary'|'light'|'moderate'|'active'|'athlete'
+	// Physical activity level: 'sedentary'|'light'|'moderate'|'active'|'athlete'
 	ActivityLevel *string
 
-	// Wizard di onboarding: NULL = non completato, valorizzato = completato.
+	// Onboarding wizard: NULL = not completed, set = completed.
 	OnboardingCompletedAt *time.Time
 
-	// Tour guidato: NULL = mostrare il tour, valorizzato = tour dismesso.
+	// Guided tour: NULL = show the tour, set = tour dismissed.
 	TourDismissedAt *time.Time
 
-	// Target idratazione giornaliero in ml (default 2000, mai NULL).
+	// Daily hydration target in ml (default 2000, never NULL).
 	WaterTargetML int
 }

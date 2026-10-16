@@ -1,10 +1,10 @@
-// day_tabs.js — schede dei giorni nella dashboard settimanale.
+// day_tabs.js — the day tabs of the weekly dashboard.
 //
-// Ogni scheda (#timeline-pills [role=tab]) e' un link con hx-get che carica
-// il giorno in #day-panel e aggiorna l'URL (?day=). La risposta del server
-// porta anche la scheda del giorno con aria-selected="true" (swap OOB):
-// qui deselezioniamo le altre e teniamo allineato il tabpanel. Le frecce
-// spostano la selezione come in un tablist standard.
+// Every tab (#timeline-pills [role=tab]) is a link with hx-get that loads the
+// day into #day-panel and updates the URL (?day=). The server's response also
+// carries the day's tab with aria-selected="true" (OOB swap): here we
+// deselect the others and keep the tabpanel aligned. The arrow keys move the
+// selection as in a standard tablist.
 (function () {
   "use strict";
 
@@ -22,9 +22,9 @@
     if (panel) panel.setAttribute("aria-labelledby", "pill-" + date);
   }
 
-  // htmx:load scatta su ogni elemento nuovo, anche quelli arrivati OOB:
-  // dopo un cambio di scheda o una mutazione il giorno aperto e' quello
-  // della <section> in #day-panel.
+  // htmx:load fires on every new element, those arriving OOB too: after a
+  // tab change or a mutation the open day is the one of the <section> in
+  // #day-panel.
   document.addEventListener("htmx:load", function (e) {
     var el = e.target;
     if (!el.matches || !el.matches("section[data-day], #timeline-pills [role=tab]")) return;

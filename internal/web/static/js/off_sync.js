@@ -1,6 +1,6 @@
-// Stato e aggiornamento della copia locale di OpenFoodFacts, nella
-// Panoramica dell'Amministrazione (solo owner). Gli elementi da riempire
-// hanno data-off="<campo>" e possono comparire piu' volte (tile e card).
+// State and refresh of the local OpenFoodFacts copy, in the Administration
+// Overview (owner only). The elements to fill have data-off="<field>" and
+// can appear more than once (tile and card).
 (function () {
   'use strict';
 

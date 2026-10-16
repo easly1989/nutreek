@@ -1,10 +1,10 @@
-// theme.js — aspetto (modalita' x colore) e piccoli comandi della shell.
+// theme.js — appearance (mode x color) and small shell commands.
 //
-// Il server scrive data-mode / data-accent su <html> leggendo i cookie
-// tema_modo / tema_colore (internal/app/appearance.go), quindi la pagina
-// nasce gia' col tema giusto. Qui gestiamo solo il cambio interattivo:
-// aggiorniamo l'attributo, il cookie e lo stato dei controlli, che possono
-// comparire piu' volte nella pagina (sidebar e foglio «Altro»).
+// The server writes data-mode / data-accent on <html> by reading the
+// tema_modo / tema_colore cookies (internal/app/appearance.go), so the page
+// is born with the right theme. Here we handle only the interactive change:
+// we update the attribute, the cookie and the state of the controls, which
+// can appear more than once on the page (sidebar and the «Altro» sheet).
 (function () {
   "use strict";
 
@@ -28,8 +28,8 @@
     });
   }
 
-  // Barra del browser e icona della scheda seguono subito il colore; il
-  // manifest lo rilegge il server dal cookie.
+  // The browser bar and the tab icon follow the color right away; the server
+  // reads the manifest's color again from the cookie.
   function syncAppIcon(accent) {
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = getComputedStyle(root).getPropertyValue("--acc-l").trim() || meta.content;
@@ -43,13 +43,13 @@
     root.setAttribute(attr, value);
     setCookie(cookie, value);
     if (attr === "data-accent") syncAppIcon(value);
-    // Il vecchio cookie a quattro temi non serve piu': i nuovi lo sostituiscono.
+    // The old four-theme cookie is no longer needed: the new ones replace it.
     document.cookie = "theme=; path=/; max-age=0; SameSite=Lax";
     syncControls();
     document.dispatchEvent(new CustomEvent("nutreek:appearance"));
   }
 
-  // Popover ancorati (es. «Aspetto» nella sidebar): data-popover="<id>".
+  // Anchored popovers (e.g. «Aspetto» in the sidebar): data-popover="<id>".
   function closePopovers(except) {
     document.querySelectorAll("[data-popover]").forEach(function (btn) {
       var panel = document.getElementById(btn.dataset.popover);
@@ -78,7 +78,7 @@
       }
       if (!e.target.closest(".menu-panel")) closePopovers(null);
 
-      // data-focus="<id>": porta il cursore su un campo (es. «Aggiungi pasto»).
+      // data-focus="<id>": moves the cursor to a field (e.g. «Aggiungi pasto»).
       var focusBtn = e.target.closest("[data-focus]");
       if (focusBtn) {
         var field = document.getElementById(focusBtn.dataset.focus);
@@ -100,7 +100,7 @@
         if (d) d.close();
         return;
       }
-      // Click sullo sfondo del foglio (fuori dal contenuto) lo chiude.
+      // A click on the sheet's backdrop (outside the content) closes it.
       if (e.target.tagName === "DIALOG" && e.target.classList.contains("sheet")) {
         e.target.close();
       }

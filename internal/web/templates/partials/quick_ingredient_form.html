@@ -1,12 +1,12 @@
 {{define "quick_ingredient_form"}}
 {{- /*
-  quick_ingredient_form.html — view-model: quickIngredientData
-  Form compatto per creare un ingrediente locale al volo, con le stesse
-  sezioni del form completo. Renderizzato dentro <dialog> via partial
-  modal_dialog. Submit POSTa /quick/ingredient con HTMX: in caso di errore
-  di validazione il server re-renderizza il form (rimanendo nel dialog); in
-  caso di success ritorna 204 + header HX-Trigger=ingredient-created che
-  modal.js intercetta per chiudere.
+  quick_ingredient_form.html — view model: quickIngredientData
+  A compact form to create a local ingredient on the fly, with the same
+  sections as the full form. Rendered inside <dialog> via the modal_dialog
+  partial. The submit POSTs /quick/ingredient with HTMX: on a validation
+  error the server re-renders the form (staying in the dialog); on success
+  it returns 204 + the HX-Trigger=ingredient-created header that modal.js
+  catches to close.
 */ -}}
 {{- $u := or .Form.Unit "g" -}}
 <form method="post" action="/quick/ingredient"

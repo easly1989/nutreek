@@ -6,8 +6,8 @@
     <h1 class="h1">Nuova ricetta</h1>
   </div>
 
-  {{/* Import da URL: incolla il link di una ricetta e pre-compila il form
-       dai dati schema.org/Recipe della pagina. */}}
+  {{/* Import from a URL: paste a recipe's link and prefill the form from
+       the page's schema.org/Recipe data. */}}
   <form id="importa" method="post" action="/recipes/import" class="card p-4 flex flex-col gap-3 scroll-mt-6">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="flex items-baseline gap-2"><h2 class="h2">Importa da URL</h2><p class="text-[12.5px] text-muted">facoltativo</p></div>
