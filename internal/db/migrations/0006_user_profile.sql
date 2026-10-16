@@ -11,4 +11,4 @@ ALTER TABLE users ADD COLUMN bmi            REAL;
 ALTER TABLE users ADD COLUMN bmr            REAL;
 
 -- +goose Down
--- SQLite < 3.35 non supporta DROP COLUMN; le colonne sono vuote e inoffensive.
+-- SQLite < 3.35 does not support DROP COLUMN; the columns are empty and harmless.

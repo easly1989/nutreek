@@ -1,12 +1,12 @@
 -- +goose Up
 -- +goose StatementBegin
--- is_draft = 1 marca una ricetta come "bozza non confermata", tipicamente
--- creata da Duplicate. I draft sono:
---   - nascosti dalla lista ricette
---   - non selezionabili nei piani settimanali
---   - non salvabili (handleRecipeUpdate blocca il save finché is_draft = 1)
--- Vengono promossi a is_draft = 0 al primo add/remove ingrediente che
--- rende il contenuto diverso da tutte le altre ricette dell'utente.
+-- is_draft = 1 marks a recipe as an "unconfirmed draft", typically created
+-- by Duplicate. Drafts are:
+--   - hidden from the recipe list
+--   - not selectable in weekly plans
+--   - not savable (handleRecipeUpdate blocks the save while is_draft = 1)
+-- They are promoted to is_draft = 0 on the first ingredient add/remove that
+-- makes the content differ from every other recipe of the user.
 ALTER TABLE recipes ADD COLUMN is_draft INTEGER NOT NULL DEFAULT 0;
 CREATE INDEX idx_recipes_is_draft ON recipes(is_draft);
 -- +goose StatementEnd

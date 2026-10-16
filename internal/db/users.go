@@ -13,13 +13,13 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// ErrUserNotFound e' restituito dalle Get quando la riga non esiste.
+// ErrUserNotFound is returned by the Get methods when the row does not exist.
 var ErrUserNotFound = errors.New("user non trovato")
 
-// ErrEmailAlreadyUsed e' restituito da CreateUser quando l'email esiste gia'.
+// ErrEmailAlreadyUsed is returned by CreateUser when the email already exists.
 var ErrEmailAlreadyUsed = errors.New("email gia' registrata")
 
-// Users e' il repository degli utenti.
+// Users is the users repository.
 type Users struct {
 	db *sql.DB
 }
@@ -28,8 +28,8 @@ func NewUsers(db *sql.DB) *Users {
 	return &Users{db: db}
 }
 
-// Create inserisce un nuovo utente. Ritorna l'id assegnato dal DB.
-// Se l'email e' gia' presente ritorna ErrEmailAlreadyUsed.
+// Create inserts a new user and returns the id the DB assigned.
+// When the email is already taken it returns ErrEmailAlreadyUsed.
 func (u *Users) Create(ctx context.Context, email, passwordHash, displayName string) (int64, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	res, err := u.db.ExecContext(ctx,
@@ -49,7 +49,7 @@ func (u *Users) Create(ctx context.Context, email, passwordHash, displayName str
 	return id, nil
 }
 
-// GetByEmail ritorna l'utente con l'email data o ErrUserNotFound.
+// GetByEmail returns the user with the given email or ErrUserNotFound.
 func (u *Users) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	row := u.db.QueryRowContext(ctx,
@@ -63,7 +63,7 @@ func (u *Users) GetByEmail(ctx context.Context, email string) (*domain.User, err
 	return scanUser(row)
 }
 
-// GetByID ritorna l'utente con l'id dato o ErrUserNotFound.
+// GetByID returns the user with the given id or ErrUserNotFound.
 func (u *Users) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 	row := u.db.QueryRowContext(ctx,
 		`SELECT id, email, password_hash, display_name, created_at,
@@ -76,8 +76,8 @@ func (u *Users) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 	return scanUser(row)
 }
 
-// UserProfileInput raccoglie i campi aggiornabili dalla pagina profilo.
-// I pointer nil significano "non modificare / cancella il valore".
+// UserProfileInput collects the fields the profile page can update.
+// nil pointers mean "do not change / clear the value".
 type UserProfileInput struct {
 	WeightKg      *float64
 	HeightCm      *float64
@@ -93,7 +93,7 @@ type UserProfileInput struct {
 	WaterTargetML int
 }
 
-// UpdateProfile aggiorna i dati del profilo dell'utente.
+// UpdateProfile updates the user's profile data.
 func (u *Users) UpdateProfile(ctx context.Context, id int64, p UserProfileInput) error {
 	_, err := u.db.ExecContext(ctx,
 		`UPDATE users SET
@@ -141,7 +141,7 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 	return &user, nil
 }
 
-// UpdateRole cambia il ruolo dell'utente ('user' | 'coach').
+// UpdateRole changes the user's role ('user' | 'coach').
 func (u *Users) UpdateRole(ctx context.Context, id int64, role string) error {
 	if role != domain.RoleUser && role != domain.RoleCoach {
 		return fmt.Errorf("ruolo non valido: %q", role)
@@ -150,47 +150,47 @@ func (u *Users) UpdateRole(ctx context.Context, id int64, role string) error {
 	return err
 }
 
-// CompleteOnboarding segna il wizard come completato per l'utente.
+// CompleteOnboarding marks the setup wizard as completed for the user.
 func (u *Users) CompleteOnboarding(ctx context.Context, id int64) error {
 	_, err := u.db.ExecContext(ctx,
 		`UPDATE users SET onboarding_completed_at = CURRENT_TIMESTAMP WHERE id = ?`, id)
 	return err
 }
 
-// ResetOnboarding azzera il timestamp di completamento wizard (per il "Guida rapida").
+// ResetOnboarding clears the wizard completion timestamp (for the quick guide).
 func (u *Users) ResetOnboarding(ctx context.Context, id int64) error {
 	_, err := u.db.ExecContext(ctx,
 		`UPDATE users SET onboarding_completed_at = NULL WHERE id = ?`, id)
 	return err
 }
 
-// DismissTour segna il tour guidato come dismesso dall'utente.
+// DismissTour marks the guided tour as dismissed by the user.
 func (u *Users) DismissTour(ctx context.Context, id int64) error {
 	_, err := u.db.ExecContext(ctx,
 		`UPDATE users SET tour_dismissed_at = CURRENT_TIMESTAMP WHERE id = ?`, id)
 	return err
 }
 
-// ResetTour azzera il timestamp del tour (permette di riavviarlo).
+// ResetTour clears the tour timestamp (so it can start again).
 func (u *Users) ResetTour(ctx context.Context, id int64) error {
 	_, err := u.db.ExecContext(ctx,
 		`UPDATE users SET tour_dismissed_at = NULL WHERE id = ?`, id)
 	return err
 }
 
-// Delete cancella l'utente e, via cascade FK, tutti i dati associati.
+// Delete deletes the user and, through FK cascades, all their data.
 func (u *Users) Delete(ctx context.Context, id int64) error {
 	_, err := u.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
 	return err
 }
 
-// UpdatePassword sostituisce l'hash della password per l'utente.
+// UpdatePassword replaces the user's password hash.
 func (u *Users) UpdatePassword(ctx context.Context, id int64, newHash string) error {
 	_, err := u.db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, newHash, id)
 	return err
 }
 
-// ListAll restituisce tutti gli utenti ordinati per data di registrazione.
+// ListAll returns every user ordered by sign-up date.
 func (u *Users) ListAll(ctx context.Context) ([]*domain.User, error) {
 	rows, err := u.db.QueryContext(ctx,
 		`SELECT id, email, password_hash, display_name, created_at,
@@ -221,8 +221,8 @@ func (u *Users) ListAll(ctx context.Context) ([]*domain.User, error) {
 	return out, rows.Err()
 }
 
-// isUniqueViolation identifica i codici errore SQLite per UNIQUE constraint.
-// modernc.org/sqlite espone *sqlite.Error con Code() int.
+// isUniqueViolation recognizes SQLite's error codes for a UNIQUE constraint.
+// modernc.org/sqlite exposes *sqlite.Error with Code() int.
 func isUniqueViolation(err error) bool {
 	var sqlErr *sqlite.Error
 	if !errors.As(err, &sqlErr) {

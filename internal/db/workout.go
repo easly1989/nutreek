@@ -111,7 +111,7 @@ func (w *WorkoutLogs) DeleteWorkoutLog(ctx context.Context, id, userID int64) er
 	return nil
 }
 
-// SumKcalForWeek ritorna la somma delle kcal bruciate in un intervallo di date.
+// SumKcalForWeek returns the total kcal burned in a date range.
 func (w *WorkoutLogs) SumKcalForWeek(ctx context.Context, userID int64, from, to time.Time) (float64, error) {
 	var sum float64
 	err := w.db.QueryRowContext(ctx,
@@ -125,7 +125,7 @@ func (w *WorkoutLogs) SumKcalForWeek(ctx context.Context, userID int64, from, to
 	return sum, nil
 }
 
-// WorkoutKcalForDay ritorna la somma delle kcal bruciate in un giorno.
+// WorkoutKcalForDay returns the total kcal burned on a day.
 func (w *WorkoutLogs) WorkoutKcalForDay(ctx context.Context, userID int64, date time.Time) (float64, error) {
 	var total sql.NullFloat64
 	err := w.db.QueryRowContext(ctx,

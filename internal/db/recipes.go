@@ -12,26 +12,26 @@ import (
 	"github.com/amon2126/nutreek/internal/macros"
 )
 
-// ErrRecipeNotFound e' restituito dalle Get quando la ricetta non esiste.
+// ErrRecipeNotFound is returned by the Get methods when the recipe does not exist.
 var ErrRecipeNotFound = errors.New("ricetta non trovata")
 
-// ErrRecipeForbidden segnala un accesso non consentito (es. utente che
-// tenta update/delete di una ricetta non sua).
+// ErrRecipeForbidden reports an access that is not allowed (e.g. a user
+// trying to update/delete a recipe that is not theirs).
 var ErrRecipeForbidden = errors.New("operazione non consentita su questa ricetta")
 
-// ErrRecipeItemNotFound = item recipe_ingredients inesistente / non appartiene.
+// ErrRecipeItemNotFound means the recipe_ingredients item does not exist or is not the user's.
 var ErrRecipeItemNotFound = errors.New("voce ricetta non trovata")
 
-// ErrRecipeNameTaken segnala che esiste già una ricetta dello stesso utente
-// con lo stesso nome (case-insensitive). Vincolo applicato sia a livello DB
-// (UNIQUE INDEX) sia in handler per messaggi leggibili.
+// ErrRecipeNameTaken reports that the same user already has a recipe with the
+// same name (case-insensitive). Enforced both in the DB (UNIQUE INDEX) and in
+// the handlers, for readable messages.
 var ErrRecipeNameTaken = errors.New("esiste già una ricetta con questo nome")
 
-// ErrRecipeIdenticalContent segnala che il contenuto della ricetta (set di
-// ingredienti+quantità) coincide con un'altra ricetta dell'utente.
+// ErrRecipeIdenticalContent reports that the recipe's content (set of
+// ingredients+quantities) matches another recipe of the user.
 var ErrRecipeIdenticalContent = errors.New("esiste già una ricetta con gli stessi ingredienti e quantità")
 
-// Recipes e' il repository delle ricette.
+// Recipes is the recipes repository.
 type Recipes struct {
 	db *sql.DB
 }
@@ -40,9 +40,9 @@ func NewRecipes(db *sql.DB) *Recipes {
 	return &Recipes{db: db}
 }
 
-// Create inserisce una nuova ricetta vuota (gli items si aggiungono dopo).
-// Ritorna l'id assegnato. Errore ErrRecipeNameTaken se esiste già una ricetta
-// con lo stesso nome (case-insensitive) per lo stesso utente.
+// Create inserts a new empty recipe (items are added later).
+// It returns the assigned id. ErrRecipeNameTaken when the same user already
+// has a recipe with the same name (case-insensitive).
 func (r *Recipes) Create(
 	ctx context.Context,
 	userID int64,
@@ -69,9 +69,9 @@ func (r *Recipes) Create(
 	return id, nil
 }
 
-// recipeVisibleTo verifica che l'utente possa usare la ricetta in una voce:
-// sua (anche bozza) o pubblica confermata. Altrimenti ErrRecipeNotFound,
-// senza distinguere tra inesistente e privata di altri.
+// recipeVisibleTo checks that the user may use the recipe in an item: their
+// own (drafts included) or a confirmed public one. Otherwise ErrRecipeNotFound,
+// without telling a missing recipe from another user's private one.
 func recipeVisibleTo(ctx context.Context, db *sql.DB, recipeID, userID int64) error {
 	var ok int
 	err := db.QueryRowContext(ctx, `
@@ -88,8 +88,8 @@ func recipeVisibleTo(ctx context.Context, db *sql.DB, recipeID, userID int64) er
 	return nil
 }
 
-// Update modifica i campi base. Verifica owner: se userID non e' il
-// proprietario, ritorna ErrRecipeForbidden senza toccare la riga.
+// Update changes the base fields. Checks the owner: when userID is not the
+// owner it returns ErrRecipeForbidden without touching the row.
 func (r *Recipes) Update(
 	ctx context.Context,
 	id, userID int64,
@@ -117,7 +117,7 @@ func (r *Recipes) Update(
 	return nil
 }
 
-// Delete cancella la ricetta (gli items vanno via per ON DELETE CASCADE).
+// Delete deletes the recipe (its items go through ON DELETE CASCADE).
 func (r *Recipes) Delete(ctx context.Context, id, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `DELETE FROM recipes WHERE id = ? AND user_id = ?`, id, userID)
 	if err != nil {
@@ -130,7 +130,7 @@ func (r *Recipes) Delete(ctx context.Context, id, userID int64) error {
 	return nil
 }
 
-// notFoundOrForbidden distingue 404 da 403 quando UPDATE/DELETE non tocca righe.
+// notFoundOrForbidden tells 404 from 403 when an UPDATE/DELETE touches no rows.
 func (r *Recipes) notFoundOrForbidden(ctx context.Context, id, userID int64) error {
 	var owner int64
 	err := r.db.QueryRowContext(ctx, `SELECT user_id FROM recipes WHERE id = ?`, id).Scan(&owner)
@@ -143,13 +143,13 @@ func (r *Recipes) notFoundOrForbidden(ctx context.Context, id, userID int64) err
 	if owner != userID {
 		return ErrRecipeForbidden
 	}
-	// Owner combacia ma RowsAffected=0: non dovrebbe succedere → fallback.
+	// The owner matches but RowsAffected=0: should not happen → fallback.
 	return ErrRecipeNotFound
 }
 
-// GetWithItems carica la ricetta + tutti gli item joinati con l'ingrediente.
-// Per ricette altrui ritorna comunque i dati se isPublic; altrimenti
-// ErrRecipeForbidden. ErrRecipeNotFound se l'id non esiste.
+// GetWithItems loads the recipe + every item joined with its ingredient.
+// For another user's recipe it still returns the data when isPublic;
+// otherwise ErrRecipeForbidden. ErrRecipeNotFound when the id does not exist.
 func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain.RecipeWithItems, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT r.id, r.user_id, r.name, r.description, r.servings, r.is_public,
@@ -216,8 +216,8 @@ func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain
 	return &out, nil
 }
 
-// ListVisible ritorna ricette visibili a viewerID: tutte le sue + le pubbliche
-// di altri. Esclude i draft (bozze non confermate). Ordinate alfabetico per nome.
+// ListVisible returns the recipes visible to viewerID: all of theirs + other
+// users' public ones. Drafts (unconfirmed) are excluded. Sorted by name.
 func (r *Recipes) ListVisible(ctx context.Context, viewerID int64) ([]*domain.Recipe, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, name, description, servings, is_public, is_draft, created_at, updated_at
@@ -248,8 +248,8 @@ func (r *Recipes) ListVisible(ctx context.Context, viewerID int64) ([]*domain.Re
 	return out, nil
 }
 
-// AddItem inserisce un nuovo ingrediente nella ricetta. sortOrder default
-// = max(sort_order)+1. Verifica owner.
+// AddItem inserts a new ingredient into the recipe. sortOrder defaults to
+// max(sort_order)+1. Checks the owner.
 func (r *Recipes) AddItem(
 	ctx context.Context,
 	recipeID, userID, ingredientID int64,
@@ -287,8 +287,8 @@ func (r *Recipes) AddItem(
 	return id, nil
 }
 
-// RemoveItem cancella un item; verifica che l'item appartenga a una ricetta
-// di userID.
+// RemoveItem deletes an item; checks that the item belongs to a recipe
+// of userID.
 func (r *Recipes) RemoveItem(ctx context.Context, itemID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		DELETE FROM recipe_ingredients
@@ -326,8 +326,8 @@ func boolToInt(b bool) int {
 	return 0
 }
 
-// NameExists ritorna true se l'utente ha già una ricetta con questo nome
-// (case-insensitive). excludeID = id da ignorare nel check (utile in update).
+// NameExists reports whether the user already has a recipe with this name
+// (case-insensitive). excludeID = an id to skip in the check (useful on update).
 func (r *Recipes) NameExists(ctx context.Context, userID int64, name string, excludeID int64) (bool, error) {
 	var n int
 	err := r.db.QueryRowContext(ctx, `
@@ -340,8 +340,8 @@ func (r *Recipes) NameExists(ctx context.Context, userID int64, name string, exc
 	return n > 0, nil
 }
 
-// CountMealUsages ritorna il numero di meal_items che referenziano questa
-// ricetta. Usato per mostrare warning prima dell'eliminazione.
+// CountMealUsages returns the number of meal_items referencing this recipe.
+// Used to warn before deleting it.
 func (r *Recipes) CountMealUsages(ctx context.Context, recipeID int64) (int, error) {
 	var n int
 	err := r.db.QueryRowContext(ctx,
@@ -352,14 +352,14 @@ func (r *Recipes) CountMealUsages(ctx context.Context, recipeID int64) (int, err
 	return n, nil
 }
 
-// IdenticalContentRecipe verifica se esiste un'altra ricetta dello stesso
-// utente con lo stesso identico set (ingredient_id, quantity) di ingredienti.
-// Ritorna il nome di quella ricetta (o "") e nil se non c'è. excludeID = id
-// da ignorare (utile per duplicate/update).
+// IdenticalContentRecipe checks whether another recipe of the same user has
+// exactly the same set of (ingredient_id, quantity) ingredients.
+// It returns that recipe's name (or "") and nil when there is none.
+// excludeID = an id to skip (useful for duplicate/update).
 //
-// Implementazione: due ricette sono "identiche" sse hanno lo stesso numero
-// di item e tutti gli (ingredient_id, quantity) coincidono. Confrontiamo
-// firma serializzata "id:qty;id:qty;..." su tuple ordinate.
+// Implementation: two recipes are "identical" iff they have the same number
+// of items and every (ingredient_id, quantity) matches. The comparison uses a
+// serialized "id:qty;id:qty;..." signature over sorted tuples.
 func (r *Recipes) IdenticalContentRecipe(
 	ctx context.Context,
 	userID int64,
@@ -368,7 +368,7 @@ func (r *Recipes) IdenticalContentRecipe(
 ) (string, error) {
 	target := contentSignature(items)
 	if target == "" {
-		// Ricetta senza ingredienti: non consideriamo identica nessuna altra.
+		// A recipe without ingredients is never identical to another one.
 		return "", nil
 	}
 	rows, err := r.db.QueryContext(ctx, `
@@ -405,7 +405,7 @@ func (r *Recipes) IdenticalContentRecipe(
 	return "", nil
 }
 
-// signatureForRecipe legge gli item della ricetta e ritorna la firma normalizzata.
+// signatureForRecipe reads the recipe's items and returns the normalized signature.
 func (r *Recipes) signatureForRecipe(ctx context.Context, recipeID int64) (string, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT ingredient_id, quantity FROM recipe_ingredients WHERE recipe_id = ?
@@ -428,9 +428,9 @@ func (r *Recipes) signatureForRecipe(ctx context.Context, recipeID int64) (strin
 	return contentSignature(items), nil
 }
 
-// contentSignature produce una firma normalizzata di una lista di item:
-// tuple (ingredient_id, quantità arrotondata a 3 decimali) ordinate, concatenate.
-// Due liste con stesso set di tuple → stessa firma (indipendentemente da sort_order).
+// contentSignature builds a normalized signature of a list of items:
+// sorted, concatenated (ingredient_id, quantity rounded to 3 decimals) tuples.
+// Two lists with the same set of tuples → same signature (whatever the sort_order).
 func contentSignature(items []domain.RecipeItem) string {
 	if len(items) == 0 {
 		return ""
@@ -443,13 +443,13 @@ func contentSignature(items []domain.RecipeItem) string {
 	return strings.Join(pairs, ";")
 }
 
-// Duplicate crea una copia profonda di una ricetta (meta + tutti i recipe_ingredients)
-// con il nuovo nome specificato. Transazionale.
+// Duplicate deep-copies a recipe (metadata + every recipe_ingredients row)
+// under the given new name. Transactional.
 //
-// Errori:
-//   - ErrRecipeNotFound: source non esiste
-//   - ErrRecipeForbidden: source non appartiene a userID e non è pubblica
-//   - ErrRecipeNameTaken: nome già esistente per l'utente
+// Errors:
+//   - ErrRecipeNotFound: the source does not exist
+//   - ErrRecipeForbidden: the source is not userID's and is not public
+//   - ErrRecipeNameTaken: the user already has that name
 func (r *Recipes) Duplicate(ctx context.Context, srcID, userID int64, newName string) (int64, error) {
 	newName = strings.TrimSpace(newName)
 	if newName == "" {
@@ -470,8 +470,8 @@ func (r *Recipes) Duplicate(ctx context.Context, srcID, userID int64, newName st
 		s := *src.Description
 		descPtr = &s
 	}
-	// is_draft = 1: la copia parte come bozza non confermata. Verrà promossa
-	// al primo add/remove ingrediente che la rende diversa dalle altre ricette.
+	// is_draft = 1: the copy starts as an unconfirmed draft. It is promoted on
+	// the first ingredient add/remove that makes it differ from the other recipes.
 	res, err := tx.ExecContext(ctx, `
 		INSERT INTO recipes (user_id, name, description, servings, is_public, is_draft)
 		VALUES (?, ?, ?, ?, ?, 1)
@@ -500,10 +500,10 @@ func (r *Recipes) Duplicate(ctx context.Context, srcID, userID int64, newName st
 	return newID, nil
 }
 
-// BulkDelete cancella più ricette dell'utente. Ritorna il numero di ricette
-// effettivamente cancellate (le altre erano forbidden / inesistenti, ignorate).
-// I meal_items collegati alle ricette cancellate vengono rimossi a cascata
-// (FK ON DELETE CASCADE, vedi migrazione 0008).
+// BulkDelete deletes several of the user's recipes. It returns how many were
+// actually deleted (the others were forbidden / missing, and are ignored).
+// The meal_items linked to the deleted recipes are removed by cascade
+// (FK ON DELETE CASCADE, see migration 0008).
 func (r *Recipes) BulkDelete(ctx context.Context, ids []int64, userID int64) (int, error) {
 	if len(ids) == 0 {
 		return 0, nil
@@ -523,9 +523,9 @@ func (r *Recipes) BulkDelete(ctx context.Context, ids []int64, userID int64) (in
 	return int(n), nil
 }
 
-// UsagesByRecipe ritorna una mappa recipe_id → numero di meal_items che la
-// referenziano, limitata alle ricette dell'utente. Recipe senza usi non sono
-// presenti nella mappa (chiamante può assumere 0).
+// UsagesByRecipe returns a map recipe_id → number of meal_items referencing
+// it, limited to the user's recipes. Recipes with no uses are absent from the
+// map (the caller can assume 0).
 func (r *Recipes) UsagesByRecipe(ctx context.Context, userID int64) (map[int64]int, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT mi.recipe_id, COUNT(*) AS n
@@ -553,11 +553,11 @@ func (r *Recipes) UsagesByRecipe(ctx context.Context, userID int64) (map[int64]i
 	return out, nil
 }
 
-// PerServingByRecipe ritorna i macro per porzione di tutte le ricette
-// visibili a viewerID (le sue + le pubbliche di altri, bozze escluse), con
-// una sola query aggregata. Le quantita' degli ingredienti di ricetta sono
-// gia' in g/ml (i «pz» sono convertiti all'inserimento). Le ricette senza
-// ingredienti compaiono con macro a zero.
+// PerServingByRecipe returns the per-serving macros of every recipe visible
+// to viewerID (theirs + other users' public ones, drafts excluded) with one
+// aggregate query. Recipe ingredient quantities are already in g/ml ("pz"
+// is converted on insert). Recipes without ingredients appear with zero
+// macros.
 func (r *Recipes) PerServingByRecipe(ctx context.Context, viewerID int64) (map[int64]macros.Macros, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT r.id, r.servings,
@@ -593,7 +593,7 @@ func (r *Recipes) PerServingByRecipe(ctx context.Context, viewerID int64) (map[i
 	return out, nil
 }
 
-// CountMealUsagesMulti somma le occorrenze meal_items su più ricette.
+// CountMealUsagesMulti sums the meal_items occurrences over several recipes.
 func (r *Recipes) CountMealUsagesMulti(ctx context.Context, recipeIDs []int64) (int, error) {
 	if len(recipeIDs) == 0 {
 		return 0, nil
@@ -612,8 +612,8 @@ func (r *Recipes) CountMealUsagesMulti(ctx context.Context, recipeIDs []int64) (
 	return n, nil
 }
 
-// PromoteDraft toglie il flag is_draft. Idempotente: chiamarla su una ricetta
-// già non-draft non ha effetto. Verifica l'ownership.
+// PromoteDraft clears the is_draft flag. Idempotent: calling it on a recipe
+// that is not a draft has no effect. Checks ownership.
 func (r *Recipes) PromoteDraft(ctx context.Context, id, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		UPDATE recipes SET is_draft = 0, updated_at = CURRENT_TIMESTAMP
@@ -626,8 +626,8 @@ func (r *Recipes) PromoteDraft(ctx context.Context, id, userID int64) error {
 	return nil
 }
 
-// isUniqueRecipeNameErr rileva la violazione del vincolo uniq_recipes_user_name.
-// modernc.org/sqlite ritorna l'errore come testo contenente il nome dell'indice.
+// isUniqueRecipeNameErr detects a violation of the uniq_recipes_user_name constraint.
+// modernc.org/sqlite returns the error as text containing the index name.
 func isUniqueRecipeNameErr(err error) bool {
 	if err == nil {
 		return false

@@ -1,7 +1,7 @@
 -- +goose Up
 
--- Token API personali. Il token in chiaro (prefisso 'nutreek_' + 32 byte hex)
--- viene mostrato una sola volta alla creazione; a DB resta solo SHA-256.
+-- Personal API tokens. The plaintext token ('nutreek_' prefix + 32 hex bytes)
+-- is shown only once, at creation; the DB keeps only the SHA-256.
 CREATE TABLE api_tokens (
     id           INTEGER PRIMARY KEY,
     user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

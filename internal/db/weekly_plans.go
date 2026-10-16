@@ -11,24 +11,24 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// ErrPlanNotFound = piano inesistente.
+// ErrPlanNotFound means the plan does not exist.
 var ErrPlanNotFound = errors.New("piano settimanale non trovato")
 
-// ErrMealNotFound / ErrMealItemNotFound: stessa logica di RecipeItem.
+// ErrMealNotFound / ErrMealItemNotFound: same logic as RecipeItem.
 var (
 	ErrMealNotFound     = errors.New("pasto non trovato")
 	ErrMealItemNotFound = errors.New("voce di pasto non trovata")
 )
 
-// ErrPlanNotEmpty / ErrSourcePlanEmpty per CopyFrom: rispettivamente il
-// piano destinazione contiene gia' meals (refuse il copy per evitare
-// merge ambigui) o il piano sorgente e' vuoto (niente da copiare).
+// ErrPlanNotEmpty / ErrSourcePlanEmpty for CopyFrom: respectively, the
+// destination plan already has meals (the copy is refused to avoid ambiguous
+// merges) or the source plan is empty (nothing to copy).
 var (
 	ErrPlanNotEmpty    = errors.New("piano destinazione gia' popolato")
 	ErrSourcePlanEmpty = errors.New("piano sorgente vuoto")
 )
 
-// WeeklyPlans e' il repo dei piani settimanali.
+// WeeklyPlans is the weekly plans repository.
 type WeeklyPlans struct {
 	db *sql.DB
 }
@@ -37,21 +37,21 @@ func NewWeeklyPlans(db *sql.DB) *WeeklyPlans {
 	return &WeeklyPlans{db: db}
 }
 
-// MondayOf normalizza una data al lunedi' della stessa settimana (ISO).
+// MondayOf normalizes a date to the Monday of the same (ISO) week.
 func MondayOf(t time.Time) time.Time {
 	wd := int(t.Weekday()) // domenica=0, lunedi'=1
-	// Trasformo a 0=lun..6=dom:
+	// Map to 0=Mon..6=Sun:
 	off := (wd + 6) % 7
 	return time.Date(t.Year(), t.Month(), t.Day()-off, 0, 0, 0, 0, t.Location())
 }
 
-// GetOrCreateForWeek ritorna il piano per (user, weekStart). Se non esiste,
-// lo crea (idempotente). weekStart deve essere un lunedi'.
+// GetOrCreateForWeek returns the plan for (user, weekStart), creating it when
+// it does not exist (idempotent). weekStart must be a Monday.
 func (r *WeeklyPlans) GetOrCreateForWeek(ctx context.Context, userID int64, weekStart time.Time) (*domain.WeeklyPlan, error) {
 	weekStart = MondayOf(weekStart)
 	dateStr := weekStart.Format("2006-01-02")
 
-	// INSERT OR IGNORE per evitare race su unique(user, week_start).
+	// INSERT OR IGNORE avoids a race on unique(user, week_start).
 	if _, err := r.db.ExecContext(ctx,
 		`INSERT OR IGNORE INTO weekly_plans (user_id, week_start) VALUES (?, ?)`,
 		userID, dateStr,
@@ -79,8 +79,8 @@ func (r *WeeklyPlans) GetOrCreateForWeek(ctx context.Context, userID int64, week
 	return &p, nil
 }
 
-// SetSourcePlan registra quale piano nutrizionista era in uso quando la
-// settimana e' stata generata/applicata (freeze storico, sola tracciabilita').
+// SetSourcePlan records which nutrition plan was in use when the week was
+// generated/applied (a historical freeze, for traceability only).
 func (r *WeeklyPlans) SetSourcePlan(ctx context.Context, weeklyPlanID, sourcePlanID int64) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE weekly_plans SET source_plan_id = ? WHERE id = ?`,
@@ -91,7 +91,7 @@ func (r *WeeklyPlans) SetSourcePlan(ctx context.Context, weeklyPlanID, sourcePla
 	return nil
 }
 
-// HasMeals indica se il piano ha gia' almeno un meal (per evitare double apply).
+// HasMeals reports whether the plan already has at least one meal (to avoid a double apply).
 func (r *WeeklyPlans) HasMeals(ctx context.Context, planID int64) (bool, error) {
 	var n int
 	err := r.db.QueryRowContext(ctx,
@@ -103,12 +103,12 @@ func (r *WeeklyPlans) HasMeals(ctx context.Context, planID int64) (bool, error) 
 	return n > 0, nil
 }
 
-// ApplyTemplate espande gli slot del template in righe `meals`. Slot con
-// day_of_week=-1 vengono espansi a 7 righe (una per giorno). Esegue in
-// transazione. Se il piano gia' contiene meals, ritorna senza fare niente
-// (idempotente lato chiamante: usare HasMeals per decidere prima).
+// ApplyTemplate expands the template's slots into `meals` rows. Slots with
+// day_of_week=-1 expand to 7 rows (one per day). Runs in a transaction. When
+// the plan already has meals it returns without doing anything (the caller
+// decides first, with HasMeals).
 func (r *WeeklyPlans) ApplyTemplate(ctx context.Context, planID, userID, templateID int64) error {
-	// Verifica ownership del piano + del template.
+	// Check the ownership of the plan + the template.
 	var pUser int64
 	err := r.db.QueryRowContext(ctx, `SELECT user_id FROM weekly_plans WHERE id = ?`, planID).Scan(&pUser)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -145,7 +145,7 @@ func (r *WeeklyPlans) ApplyTemplate(ctx context.Context, planID, userID, templat
 		return fmt.Errorf("tag plan: %w", err)
 	}
 
-	// Carica le slot.
+	// Load the slots.
 	rows, err := tx.QueryContext(ctx,
 		`SELECT day_of_week, name, sort_order
 		 FROM meal_template_slots WHERE template_id = ?
@@ -173,7 +173,7 @@ func (r *WeeklyPlans) ApplyTemplate(ctx context.Context, planID, userID, templat
 		return err
 	}
 
-	// Espandi e inserisci. day=-1 → loop 0..6.
+	// Expand and insert. day=-1 → loop 0..6.
 	stmt, err := tx.PrepareContext(ctx,
 		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`,
 	)
@@ -197,12 +197,12 @@ func (r *WeeklyPlans) ApplyTemplate(ctx context.Context, planID, userID, templat
 	return tx.Commit()
 }
 
-// CopyFrom clona meals e meal_items dal piano sorgente al piano destinazione,
-// in transazione. Verifica ownership di entrambi (devono essere dello stesso
-// userID), rifiuta se dst contiene gia' meals (ErrPlanNotEmpty) o se src e'
-// vuoto (ErrSourcePlanEmpty). NON copia righe dalla tabella meal_cheat_items
-// (introdotta in 0004) — gli sgarri sono per definizione contestuali alla
-// settimana in cui sono avvenuti, non vanno propagati.
+// CopyFrom clones meals and meal_items from the source plan to the destination
+// plan, in a transaction. It checks the ownership of both (they must belong to
+// the same userID) and refuses when dst already has meals (ErrPlanNotEmpty) or
+// src is empty (ErrSourcePlanEmpty). It does NOT copy rows of the
+// meal_cheat_items table (added in 0004): cheats belong by definition to the
+// week they happened in, and must not be carried over.
 func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID int64) error {
 	if srcPlanID == dstPlanID {
 		return fmt.Errorf("src e dst coincidono")
@@ -231,7 +231,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 	if dstUser != userID {
 		return ErrPlanNotFound
 	}
-	// Refuse se dst gia' popolato (analogo a ApplyTemplate).
+	// Refuse when dst is already filled (as ApplyTemplate does).
 	dstHas, err := r.HasMeals(ctx, dstPlanID)
 	if err != nil {
 		return err
@@ -253,7 +253,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// 1. Copia i meals e mantiene una mappa srcMealID -> dstMealID.
+	// 1. Copy the meals, keeping a srcMealID -> dstMealID map.
 	mealRows, err := tx.QueryContext(ctx,
 		`SELECT id, day_of_week, name, sort_order
 		 FROM meals WHERE weekly_plan_id = ?
@@ -300,7 +300,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 		idMap[m.ID] = newID
 	}
 
-	// 2. Copia i meal_items per ogni meal sorgente.
+	// 2. Copy the meal_items of every source meal.
 	if len(meals) > 0 {
 		insItem, err := tx.PrepareContext(ctx,
 			`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`)
@@ -308,7 +308,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 			return fmt.Errorf("prepare insert item: %w", err)
 		}
 		defer insItem.Close()
-		// Una singola query batch per tutti gli items dei meals sorgente.
+		// One batch query for every item of the source meals.
 		srcIDs := make([]any, 0, len(meals))
 		for _, m := range meals {
 			srcIDs = append(srcIDs, m.ID)
@@ -343,7 +343,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 		if err := itemRows.Err(); err != nil {
 			return err
 		}
-		// Mappa srcItemID → dstItemID per copiare le personalizzazioni.
+		// srcItemID → dstItemID map to copy the customizations.
 		itemIDMap := make(map[int64]int64, len(items))
 		for _, srcIt := range items {
 			dstMealID, ok := idMap[srcIt.MealID]
@@ -361,7 +361,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 			itemIDMap[srcIt.ID] = newItemID
 		}
 
-		// Copia le personalizzazioni seguendo la mappa srcItemID → dstItemID.
+		// Copy the customizations following the srcItemID → dstItemID map.
 		if len(itemIDMap) > 0 {
 			srcItemIDs := make([]any, 0, len(itemIDMap))
 			for srcID := range itemIDMap {
@@ -418,10 +418,10 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 	return tx.Commit()
 }
 
-// ClearMeals cancella TUTTI i meals di un piano (e a cascata gli items
-// e i cheat_items). Usato per "reset settimana" UI: l'utente puo'
-// annullare una copia/template applicato per sbaglio. Idempotente: se
-// il piano e' gia' vuoto non e' un errore.
+// ClearMeals deletes ALL the meals of a plan (and, by cascade, the items and
+// cheat_items). Used by the UI's "reset week": the user can undo a copy or a
+// template applied by mistake. Idempotent: an already empty plan is not an
+// error.
 func (r *WeeklyPlans) ClearMeals(ctx context.Context, planID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		DELETE FROM meals
@@ -435,7 +435,7 @@ func (r *WeeklyPlans) ClearMeals(ctx context.Context, planID, userID int64) erro
 	return nil
 }
 
-// AddMeal manualmente (override del template).
+// AddMeal adds a meal by hand (overriding the template).
 func (r *WeeklyPlans) AddMeal(ctx context.Context, planID, userID int64, day int, name string) (int64, error) {
 	if err := r.assertPlanOwner(ctx, planID, userID); err != nil {
 		return 0, err
@@ -463,8 +463,8 @@ func (r *WeeklyPlans) AddMeal(ctx context.Context, planID, userID int64, day int
 	return res.LastInsertId()
 }
 
-// MealInfo ritorna nome e data di un pasto dell'utente. ErrMealNotFound se
-// il pasto non esiste o appartiene a un altro utente.
+// MealInfo returns the name and date of one of the user's meals.
+// ErrMealNotFound when the meal does not exist or belongs to another user.
 func (r *WeeklyPlans) MealInfo(ctx context.Context, mealID, userID int64) (string, time.Time, error) {
 	var (
 		name, weekStart string
@@ -489,7 +489,7 @@ func (r *WeeklyPlans) MealInfo(ctx context.Context, mealID, userID int64) (strin
 	return name, start.AddDate(0, 0, day), nil
 }
 
-// RemoveMeal cancella un pasto (e items via CASCADE).
+// RemoveMeal deletes a meal (and its items via CASCADE).
 func (r *WeeklyPlans) RemoveMeal(ctx context.Context, mealID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		DELETE FROM meals
@@ -506,9 +506,9 @@ func (r *WeeklyPlans) RemoveMeal(ctx context.Context, mealID, userID int64) erro
 	return nil
 }
 
-// AddItem aggiunge una voce a un pasto. Esattamente uno fra recipeID e
-// ingredientID dev'essere != 0 (= nil pointer). Quantity > 0.
-// quantityUnit: 'g', 'ml', o 'pz' (ignorato per le ricette, usa sempre porzioni).
+// AddItem adds an item to a meal. Exactly one of recipeID and ingredientID
+// must be != 0 (= nil pointer). Quantity > 0.
+// quantityUnit: 'g', 'ml' or 'pz' (ignored for recipes, which always use servings).
 func (r *WeeklyPlans) AddItem(
 	ctx context.Context,
 	mealID, userID int64,
@@ -516,7 +516,7 @@ func (r *WeeklyPlans) AddItem(
 	quantity float64,
 	quantityUnit string,
 ) (int64, error) {
-	// Verifica che il pasto appartenga a un piano dell'utente.
+	// Check that the meal belongs to one of the user's plans.
 	var planUser int64
 	err := r.db.QueryRowContext(ctx, `
 		SELECT wp.user_id
@@ -552,7 +552,7 @@ func (r *WeeklyPlans) AddItem(
 	}
 	unit := quantityUnit
 	if unit == "" || recipeID != nil {
-		unit = "g" // ricette usano sempre porzioni (non pz), default g per ingredienti
+		unit = "g" // recipes always use servings (not pz), g is the default for ingredients
 	}
 	res, err := r.db.ExecContext(ctx,
 		`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -564,8 +564,8 @@ func (r *WeeklyPlans) AddItem(
 	return res.LastInsertId()
 }
 
-// GeneratedMealItem e' una voce da inserire in un pasto generato
-// automaticamente (vedi CreateMeals).
+// GeneratedMealItem is an item to insert into an automatically generated
+// meal (see CreateMeals).
 type GeneratedMealItem struct {
 	RecipeID     *int64
 	IngredientID *int64
@@ -573,8 +573,8 @@ type GeneratedMealItem struct {
 	QuantityUnit string
 }
 
-// GeneratedMeal e' un pasto da creare con le sue voci, usato dal generatore
-// automatico del piano (internal/service/planner_service.go).
+// GeneratedMeal is a meal to create with its items, used by the automatic
+// plan generator (internal/service/planner_service.go).
 type GeneratedMeal struct {
 	DayOfWeek int
 	Name      string
@@ -582,10 +582,10 @@ type GeneratedMeal struct {
 	Items     []GeneratedMealItem
 }
 
-// CreateMeals inserisce in un'unica transazione i pasti generati (con le
-// rispettive voci) nel piano indicato. Verifica l'ownership del piano una
-// sola volta. Pensato per il generatore automatico: il chiamante deve
-// assicurarsi che il piano sia vuoto (vedi HasMeals).
+// CreateMeals inserts the generated meals (with their items) into the given
+// plan in a single transaction. It checks the plan's ownership once. Meant for
+// the automatic generator: the caller must make sure the plan is empty (see
+// HasMeals).
 func (r *WeeklyPlans) CreateMeals(ctx context.Context, planID, userID int64, meals []GeneratedMeal) error {
 	var pUser int64
 	err := r.db.QueryRowContext(ctx, `SELECT user_id FROM weekly_plans WHERE id = ?`, planID).Scan(&pUser)
@@ -630,7 +630,7 @@ func (r *WeeklyPlans) CreateMeals(ctx context.Context, planID, userID int64, mea
 		for i, it := range m.Items {
 			unit := it.QuantityUnit
 			if unit == "" || it.RecipeID != nil {
-				unit = "g" // ricette usano sempre porzioni, default g per ingredienti
+				unit = "g" // recipes always use servings, g is the default for ingredients
 			}
 			if _, err := itemStmt.ExecContext(ctx, mealID, it.RecipeID, it.IngredientID, it.Quantity, unit, i); err != nil {
 				return fmt.Errorf("insert meal item: %w", err)
@@ -640,7 +640,7 @@ func (r *WeeklyPlans) CreateMeals(ctx context.Context, planID, userID int64, mea
 	return tx.Commit()
 }
 
-// RemoveItem cancella un meal_item; verifica ownership tramite join.
+// RemoveItem deletes a meal_item; checks ownership through a join.
 func (r *WeeklyPlans) RemoveItem(ctx context.Context, itemID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		DELETE FROM meal_items
@@ -661,9 +661,9 @@ func (r *WeeklyPlans) RemoveItem(ctx context.Context, itemID, userID int64) erro
 	return nil
 }
 
-// LoadFull carica plan + meals + items + (recipes + ingredients) in 4 query.
-// Mette tutto sotto WeeklyPlanFull.Days[0..6]. La risoluzione di Recipe/
-// Ingredient e' caricata in batch (una query per tipo) e poi mappata.
+// LoadFull loads plan + meals + items + (recipes + ingredients) in 4 queries
+// and puts everything under WeeklyPlanFull.Days[0..6]. Recipes and
+// ingredients are loaded in batches (one query per type) and then mapped.
 func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*domain.WeeklyPlanFull, error) {
 	out := &domain.WeeklyPlanFull{WeeklyPlan: *plan}
 
@@ -691,11 +691,11 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	mealRows.Close()
 
 	if len(mealIDs) == 0 {
-		// Nessun pasto: ritorna struct vuota.
+		// No meals: return an empty struct.
 		return out, nil
 	}
 
-	// 2. items per quei meals.
+	// 2. the items of those meals.
 	placeholders := strings.Repeat("?,", len(mealIDs)-1) + "?"
 	args := make([]any, len(mealIDs))
 	for i, id := range mealIDs {
@@ -728,7 +728,7 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	}
 	itemRows.Close()
 
-	// 2b. cheats per quei meals (stessa struttura di meal_items).
+	// 2b. the cheats of those meals (same structure as meal_items).
 	cheatRows, err := r.db.QueryContext(ctx, `
 		SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order
 		FROM meal_cheat_items WHERE meal_id IN (`+placeholders+`)
@@ -755,9 +755,9 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	}
 	cheatRows.Close()
 
-	// 2c. personalizzazioni per gli item ricetta (non per i cheat).
-	// Raccoglie tutti i meal_item_id che puntano a una ricetta, poi carica
-	// le eventuali righe meal_item_customizations con JOIN a ingredients.
+	// 2c. customizations of the recipe items (not of the cheats).
+	// Collect every meal_item_id pointing to a recipe, then load any
+	// meal_item_customizations rows with a JOIN on ingredients.
 	customMap := make(map[int64][]domain.MealItemCustomization)
 	{
 		var recipeItemIDs []int64
@@ -821,8 +821,8 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		for i, id := range ingredientIDs {
 			ia[i] = id
 		}
-		// Colonne complete (selectIngredientCols): serve unit_weight_g per
-		// le voci in pezzi.
+		// Full columns (selectIngredientCols): items in pieces need
+		// unit_weight_g.
 		ingRows, err := r.db.QueryContext(ctx,
 			selectIngredientCols+` FROM ingredients WHERE id IN (`+ph+`)`, ia...)
 		if err != nil {
@@ -838,7 +838,7 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		}
 	}
 
-	// 4. recipes (con i loro items joined a ingredients) in batch.
+	// 4. recipes (with their items joined to ingredients) in a batch.
 	recipeMap := make(map[int64]*domain.Recipe)
 	recipeItemsMap := make(map[int64][]domain.RecipeItemFull)
 	if len(recipeIDs) > 0 {
@@ -869,7 +869,7 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		}
 		recRows.Close()
 
-		// recipe_ingredients joined a ingredients per ognuna delle ricette.
+		// recipe_ingredients joined to ingredients for each recipe.
 		ph2 := strings.Repeat("?,", len(recipeIDs)-1) + "?"
 		ra2 := make([]any, len(recipeIDs))
 		for i, id := range recipeIDs {
@@ -910,10 +910,10 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		riRows.Close()
 	}
 
-	// 5. assemble: collega items e cheats con i loro target, distribuisce
-	//    nei Days. Iteriamo `mealIDs` (ordinato dal SELECT iniziale per
-	//    day_of_week, sort_order, id) per garantire l'ordine determinist
-	//    nei Days[]. Items e cheats condividono i lookup recipeMap/ingMap.
+	// 5. assemble: link items and cheats to their targets and spread them
+	//    over the Days. Iterating `mealIDs` (sorted by the first SELECT on
+	//    day_of_week, sort_order, id) guarantees a deterministic order in
+	//    Days[]. Items and cheats share the recipeMap/ingMap lookups.
 	resolve := func(it *domain.MealItemFull) {
 		if it.RecipeID != nil {
 			it.Recipe = recipeMap[*it.RecipeID]
@@ -943,17 +943,17 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	return out, nil
 }
 
-// ErrReorderMismatch segnala che la lista di id passata a un Reorder non
-// corrisponde esattamente all'insieme delle righe esistenti per quel
-// container (id estranei, mancanti, duplicati).
+// ErrReorderMismatch reports that the list of ids passed to a Reorder does
+// not match exactly the set of rows in that container (extra, missing or
+// duplicate ids).
 var ErrReorderMismatch = errors.New("ordine non valido: ids non corrispondono alle righe esistenti")
 
-// ReorderMealItems persiste l'ordine di tutti i meal_items di un meal.
-// `ids` deve contenere esattamente l'insieme degli id correnti, una sola
-// volta ognuno: scrive sort_order = indice. Verifica ownership tramite
-// JOIN su weekly_plans.user_id.
+// ReorderMealItems stores the order of every meal_item of a meal.
+// `ids` must contain exactly the set of current ids, each once: it writes
+// sort_order = index. Checks ownership with a JOIN on
+// weekly_plans.user_id.
 func (r *WeeklyPlans) ReorderMealItems(ctx context.Context, mealID, userID int64, ids []int64) error {
-	// Verifica meal -> plan -> user.
+	// Check meal -> plan -> user.
 	var planUser int64
 	err := r.db.QueryRowContext(ctx, `
 		SELECT wp.user_id
@@ -970,7 +970,7 @@ func (r *WeeklyPlans) ReorderMealItems(ctx context.Context, mealID, userID int64
 		return ErrPlanNotFound
 	}
 
-	// Carica gli id correnti per validare l'input.
+	// Load the current ids to validate the input.
 	currentIDs, err := scanInt64Set(ctx, r.db,
 		`SELECT id FROM meal_items WHERE meal_id = ?`, mealID)
 	if err != nil {
@@ -984,9 +984,9 @@ func (r *WeeklyPlans) ReorderMealItems(ctx context.Context, mealID, userID int64
 		ids, mealID)
 }
 
-// ReorderMeals persiste l'ordine dei meals di un giorno specifico per un
-// piano settimanale. `ids` deve contenere ESATTAMENTE l'insieme dei
-// meal id presenti per quel (planID, day).
+// ReorderMeals stores the order of the meals of one day of a weekly plan.
+// `ids` must contain EXACTLY the set of meal ids present for that
+// (planID, day).
 func (r *WeeklyPlans) ReorderMeals(ctx context.Context, planID, userID int64, day int, ids []int64) error {
 	if err := r.assertPlanOwner(ctx, planID, userID); err != nil {
 		return err
@@ -1008,10 +1008,10 @@ func (r *WeeklyPlans) ReorderMeals(ctx context.Context, planID, userID int64, da
 		ids, planID)
 }
 
-// ---- helpers di reorder (riusati anche da MealTemplates) -------------------
+// ---- reorder helpers (also used by MealTemplates) ---------------------------
 
-// scanInt64Set esegue una query e ritorna gli id come slice. Il chiamante
-// passa la query e gli args; la funzione e' interna al package.
+// scanInt64Set runs a query and returns the ids as a slice. The caller
+// passes the query and its args; the function is internal to the package.
 func scanInt64Set(ctx context.Context, db *sql.DB, query string, args ...any) ([]int64, error) {
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -1029,8 +1029,8 @@ func scanInt64Set(ctx context.Context, db *sql.DB, query string, args ...any) ([
 	return out, rows.Err()
 }
 
-// sameInt64Set ritorna true se a e b contengono esattamente gli stessi
-// elementi (ognuno una sola volta), ignorando l'ordine.
+// sameInt64Set reports whether a and b contain exactly the same elements
+// (each once), ignoring the order.
 func sameInt64Set(a, b []int64) bool {
 	if len(a) != len(b) {
 		return false
@@ -1048,9 +1048,9 @@ func sameInt64Set(a, b []int64) bool {
 	return true
 }
 
-// runReorderTx esegue gli UPDATE sort_order=index in transazione, con un
-// secondo argomento parent (mealID/planID/templateID) per ulteriore safety
-// nel WHERE.
+// runReorderTx runs the UPDATE sort_order=index statements in a transaction,
+// with a second parent argument (mealID/planID/templateID) in the WHERE for
+// extra safety.
 func runReorderTx(ctx context.Context, db *sql.DB, updateQuery string, ids []int64, parentID int64) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {

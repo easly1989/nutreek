@@ -12,14 +12,14 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// ErrAPITokenNotFound e' restituito quando il token non esiste o non
-// appartiene all'utente.
+// ErrAPITokenNotFound is returned when the token does not exist or does not
+// belong to the user.
 var ErrAPITokenNotFound = errors.New("token API non trovato")
 
-// tokenPrefix identifica i token Nutreek (facilita secret-scanning e revoca).
+// tokenPrefix marks Nutreek tokens (it eases secret scanning and revocation).
 const tokenPrefix = "nutreek_"
 
-// APITokens e' il repository dei token API personali.
+// APITokens is the repository of personal API tokens.
 type APITokens struct {
 	db    *sql.DB
 	users *Users
@@ -34,8 +34,8 @@ func hashToken(plain string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// Create genera un nuovo token per l'utente e ritorna il valore in chiaro.
-// Il chiaro viene mostrato una sola volta: a DB resta solo SHA-256.
+// Create generates a new token for the user and returns its plaintext value.
+// The plaintext is shown only once: the DB keeps only the SHA-256.
 func (t *APITokens) Create(ctx context.Context, userID int64, name string) (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
@@ -51,7 +51,7 @@ func (t *APITokens) Create(ctx context.Context, userID int64, name string) (stri
 	return plain, nil
 }
 
-// List ritorna i token dell'utente (senza hash), i piu' recenti per primi.
+// List returns the user's tokens (without hashes), newest first.
 func (t *APITokens) List(ctx context.Context, userID int64) ([]domain.APIToken, error) {
 	rows, err := t.db.QueryContext(ctx,
 		`SELECT id, user_id, name, created_at, last_used_at
@@ -71,7 +71,7 @@ func (t *APITokens) List(ctx context.Context, userID int64) ([]domain.APIToken, 
 	return out, rows.Err()
 }
 
-// Revoke cancella il token dell'utente.
+// Revoke deletes the user's token.
 func (t *APITokens) Revoke(ctx context.Context, id, userID int64) error {
 	res, err := t.db.ExecContext(ctx,
 		`DELETE FROM api_tokens WHERE id = ? AND user_id = ?`, id, userID)
@@ -85,8 +85,8 @@ func (t *APITokens) Revoke(ctx context.Context, id, userID int64) error {
 	return nil
 }
 
-// Authenticate risolve il token in chiaro nell'utente proprietario e
-// aggiorna last_used_at (best-effort). ErrAPITokenNotFound se non valido.
+// Authenticate resolves a plaintext token to its owner and updates
+// last_used_at (best effort). ErrAPITokenNotFound when it is not valid.
 func (t *APITokens) Authenticate(ctx context.Context, plain string) (*domain.User, error) {
 	hash := hashToken(plain)
 	var userID int64

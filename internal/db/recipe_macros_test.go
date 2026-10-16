@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// L'elenco ricette mostra kcal e macro per porzione di ogni ricetta (#122):
-// PerServingByRecipe li calcola in un colpo per tutte le ricette visibili.
+// The recipe list shows each recipe's kcal and macros per serving (#122):
+// PerServingByRecipe computes them in one go for every visible recipe.
 func TestPerServingByRecipe(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)
@@ -19,7 +19,7 @@ func TestPerServingByRecipe(t *testing.T) {
 	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 350, 12, 72, 1.5, &alice, nil, nil, nil, nil, nil, nil)
 	olio, _ := ings.CreateLocal(ctx, "Olio", nil, "ml", 900, 0, 0, 100, &alice, nil, nil, nil, nil, nil, nil)
 
-	// 2 porzioni: 200 g pasta + 20 ml olio = 700+180 kcal → 440 per porzione.
+	// 2 servings: 200 g pasta + 20 ml oil = 700+180 kcal → 440 per serving.
 	mia, _ := recs.Create(ctx, alice, "Pasta all'olio", nil, 2, false)
 	if _, err := recs.AddItem(ctx, mia, alice, pasta, 200); err != nil {
 		t.Fatal(err)
@@ -43,15 +43,15 @@ func TestPerServingByRecipe(t *testing.T) {
 	}
 	m := got[mia]
 	if !approxEqual(m.Kcal, 440) || !approxEqual(m.Protein, 12) || !approxEqual(m.Carbs, 72) || !approxEqual(m.Fat, 11.5) {
-		t.Errorf("per porzione = %+v, atteso 440 kcal, P 12, C 72, G 11,5", m)
+		t.Errorf("per serving = %+v, want 440 kcal, P 12, C 72, F 11.5", m)
 	}
 	if !got[vuota].IsZero() {
-		t.Errorf("ricetta senza ingredienti = %+v, atteso zero", got[vuota])
+		t.Errorf("recipe without ingredients = %+v, want zero", got[vuota])
 	}
 	if !approxEqual(got[pubblica].Kcal, 350) {
-		t.Errorf("ricetta pubblica di altri = %.2f kcal, atteso 350", got[pubblica].Kcal)
+		t.Errorf("another user's public recipe = %.2f kcal, want 350", got[pubblica].Kcal)
 	}
 	if _, ok := got[privata]; ok {
-		t.Error("le ricette private di altri non devono comparire")
+		t.Error("other users' private recipes must not appear")
 	}
 }
