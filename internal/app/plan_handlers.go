@@ -667,6 +667,13 @@ func (a *App) handleResetWeek(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) flashAndBack(w http.ResponseWriter, r *http.Request, weekStart time.Time, msg string) {
 	a.Sessions.Put(r.Context(), "flash", msg)
+	// Con HTMX un 303 verrebbe seguito dentro la XHR e la settimana intera
+	// finirebbe nel frammento da sostituire: ricarichiamo la pagina.
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", "/?start="+formatDate(weekStart))
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	a.redirectToWeek(w, r, weekStart)
 }
 
@@ -838,6 +845,28 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
+// splitSuggested tiene i suggeriti del piano nutrizionale il cui nome
+// contiene q (tutti se q e' vuota) e li toglie dalle altre righe, cosi' nel
+// picker ogni ingrediente compare una volta sola.
+func splitSuggested(suggested []*domain.Ingredient, rows []ingredientRow, q string) ([]ingredientRow, []ingredientRow) {
+	ql := strings.ToLower(q)
+	var out []ingredientRow
+	shown := make(map[int64]bool, len(suggested))
+	for _, ing := range suggested {
+		if strings.Contains(strings.ToLower(ing.Name), ql) {
+			out = append(out, ingredientRow{Local: ing})
+			shown[ing.ID] = true
+		}
+	}
+	rest := make([]ingredientRow, 0, len(rows))
+	for _, row := range rows {
+		if row.Local == nil || !shown[row.Local.ID] {
+			rest = append(rest, row)
+		}
+	}
+	return out, rest
+}
+
 // handleMealPicker GET /meals/{mealID}/picker?kind=ingredient|recipe&q=...&start=
 // Renderizza il partial picker (live HTMX) con le righe filtrate. Per
 // kind=ingredient usa searchMixed (DB + OFF unificato). Per kind=recipe
@@ -854,6 +883,9 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 		kind = "ingredient"
 	}
 	asCheat := r.URL.Query().Get("as") == "cheat"
+	// dialog=1: il picker e' nella finestra sopra la settimana, quindi i form
+	// aggiornano il giorno aperto via HTMX invece di ricaricare la pagina.
+	inDialog := r.URL.Query().Get("dialog") == "1"
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	weekStart := parseWeekStart(r)
 	weekStartStr := formatDate(weekStart)
@@ -877,9 +909,7 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 		var nutrRows []ingredientRow
 		if mealName := strings.TrimSpace(r.URL.Query().Get("meal_name")); mealName != "" && !asCheat {
 			suggested, _ := a.NutritionistPlans.SearchSuggestedIngredients(r.Context(), user.ID, mealName)
-			for _, ing := range suggested {
-				nutrRows = append(nutrRows, ingredientRow{Local: ing})
-			}
+			nutrRows, rows = splitSuggested(suggested, rows, q)
 		}
 
 		data := ingredientsListData{
@@ -891,42 +921,18 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			MealID:            mealID,
 			WeekStart:         weekStartStr,
 			NutritionistItems: nutrRows,
+			InDialog:          inDialog,
 		}
 		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 			a.serverError(w, r, err)
 		}
 	case "recipe":
-		recipes, err := a.Recipes.ListVisible(r.Context(), user.ID)
+		data, err := a.recipePicker(r, q)
 		if err != nil {
 			a.serverError(w, r, err)
 			return
 		}
-		// Filtra per nome (case-insensitive).
-		filtered := recipes
-		if q != "" {
-			ql := strings.ToLower(q)
-			filtered = filtered[:0]
-			for _, rc := range recipes {
-				if strings.Contains(strings.ToLower(rc.Name), ql) {
-					filtered = append(filtered, rc)
-				}
-			}
-		}
-		data := struct {
-			authPageData
-			Recipes   []*domain.Recipe
-			Query     string
-			MealID    int64
-			WeekStart string
-			Cheat     bool
-		}{
-			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
-			Recipes:      filtered,
-			Query:        q,
-			MealID:       mealID,
-			WeekStart:    weekStartStr,
-			Cheat:        asCheat,
-		}
+		data.MealID, data.WeekStart, data.Cheat, data.InDialog = mealID, weekStartStr, asCheat, inDialog
 		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "recipe_picker_results", data); err != nil {
 			a.serverError(w, r, err)
 		}
@@ -1055,31 +1061,50 @@ func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 
 // handleAddItemForm GET /meals/{mealID}/items/new — shell del picker live
 // HTMX. Le liste sono caricate via /meals/{id}/picker, niente precaricamento.
+// Chiamato da HTMX (link della settimana) risponde con la sola finestra
+// <dialog>, che modal.js apre sopra la settimana; senza JS e' una pagina.
 type addItemFormData struct {
 	authPageData
 	MealID    int64
 	MealName  string
+	Date      time.Time // giorno del pasto, per il sottotitolo
 	WeekStart string
 	Cheat     bool // true = aggiungi come sgarro (POSTa a /meals/{id}/cheat/items)
+	InDialog  bool // true = le aggiunte aggiornano il giorno via HTMX
 	Error     string
 }
 
 func (a *App) handleAddItemForm(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
 	mealID, err := parseID(r, "mealID")
 	if err != nil {
 		a.notFound(w, r)
 		return
 	}
-	weekStart := parseWeekStart(r)
-	mealName := strings.TrimSpace(r.URL.Query().Get("meal_name"))
+	mealName, date, err := a.WeeklyPlans.MealInfo(r.Context(), mealID, user.ID)
+	if errors.Is(err, db.ErrMealNotFound) {
+		a.notFound(w, r)
+		return
+	}
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	data := addItemFormData{
 		authPageData: a.baseData(r),
 		MealID:       mealID,
 		MealName:     mealName,
-		WeekStart:    formatDate(weekStart),
+		Date:         date,
+		WeekStart:    formatDate(db.MondayOf(date)),
 		Cheat:        r.URL.Query().Get("cheat") == "1",
+		InDialog:     r.Header.Get("HX-Request") == "true",
 	}
-	if err := a.Render.Render(w, http.StatusOK, "meal_item_new", data); err != nil {
+	if data.InDialog {
+		err = a.Render.RenderPartial(w, http.StatusOK, "meal_item_new", "meal_picker_dialog", data)
+	} else {
+		err = a.Render.Render(w, http.StatusOK, "meal_item_new", data)
+	}
+	if err != nil {
 		a.serverError(w, r, err)
 	}
 }
