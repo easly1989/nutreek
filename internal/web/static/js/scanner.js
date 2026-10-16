@@ -20,6 +20,9 @@
   if (canScan) document.documentElement.classList.add("can-scan");
 
   var dlg, video, stream, detector, timer, target;
+  // Ogni apertura e' una sessione: fotocamera o letture che arrivano dopo la
+  // chiusura (o da un'apertura precedente) si scartano.
+  var session = 0;
 
   // Stessa regola di off.NormalizeBarcode: EAN-13, EAN-8, UPC-A (a 13 cifre)
   // con la cifra di controllo giusta. "" se non e' un codice.
@@ -77,33 +80,38 @@
   }
 
   function stop() {
+    session++;
     clearTimeout(timer);
     if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
     stream = null;
     if (video) video.srcObject = null;
   }
 
-  function loop() {
-    if (!stream) return;
+  function loop(my) {
+    if (my !== session) return;
     detector.detect(video).then(function (found) {
+      if (my !== session) return;
       for (var i = 0; i < found.length; i++) {
         var code = normalize(found[i].rawValue);
         if (code) { done(code); return; }
       }
-      timer = setTimeout(loop, 200);
-    }).catch(function () { timer = setTimeout(loop, 400); });
+      timer = setTimeout(loop, 200, my);
+    }).catch(function () { if (my === session) timer = setTimeout(loop, 400, my); });
   }
 
   function start() {
+    stop();
+    var my = session;
     show("cam");
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false })
       .then(function (s) {
-        if (!dlg.open) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+        if (my !== session) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
         stream = s;
         video.srcObject = s;
-        return video.play().then(loadDetector).then(loop);
+        return video.play().then(loadDetector).then(function () { loop(my); });
       })
       .catch(function (err) {
+        if (my !== session) return;
         stop();
         var name = err && err.name;
         show("problem", name === "NotAllowedError" || name === "SecurityError"

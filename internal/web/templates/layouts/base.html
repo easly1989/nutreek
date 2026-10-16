@@ -11,21 +11,21 @@
   <link rel="apple-touch-icon" href="/static/icons/apple-{{.Appearance.Accent}}-180.png">
   <meta name="apple-mobile-web-app-title" content="Nutreek">
   <link rel="preload" href="/static/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/static/css/tailwind.css">
-  <script src="/static/js/htmx.min.js" defer></script>
-  <script src="/static/js/sortable.min.js" defer></script>
-  <script src="/static/js/theme.js" defer></script>
-  <script src="/static/js/dnd.js" defer></script>
-  <script src="/static/js/modal.js" defer></script>
-  <script src="/static/js/ingredient_search.js" defer></script>
-  <script src="/static/js/picker.js" defer></script>
-  <script src="/static/js/confirm.js" defer></script>
-  <script src="/static/js/pwa.js" defer></script>
-  {{if .User}}<script src="/static/js/scanner.js" defer></script>{{end}}
+  <link rel="stylesheet" href="{{asset "css/tailwind.css"}}">
+  <script src="{{asset "js/htmx.min.js"}}" defer></script>
+  <script src="{{asset "js/sortable.min.js"}}" defer></script>
+  <script src="{{asset "js/theme.js"}}" defer></script>
+  <script src="{{asset "js/dnd.js"}}" defer></script>
+  <script src="{{asset "js/modal.js"}}" defer></script>
+  <script src="{{asset "js/ingredient_search.js"}}" defer></script>
+  <script src="{{asset "js/picker.js"}}" defer></script>
+  <script src="{{asset "js/confirm.js"}}" defer></script>
+  <script src="{{asset "js/pwa.js"}}" defer></script>
+  {{if .User}}<script src="{{asset "js/scanner.js"}}" defer></script>{{end}}
   {{if .ShowTour}}
-  <link rel="stylesheet" href="/static/css/shepherd.css">
-  <script src="/static/js/shepherd.min.js" defer></script>
-  <script src="/static/js/tour.js" defer></script>
+  <link rel="stylesheet" href="{{asset "css/shepherd.css"}}">
+  <script src="{{asset "js/shepherd.min.js"}}" defer></script>
+  <script src="{{asset "js/tour.js"}}" defer></script>
   {{end}}
 </head>
 <body class="bg-bg text-text min-h-screen"{{if .ShowTour}} data-show-tour="1"{{end}}>
@@ -257,10 +257,10 @@
   <div class="flex flex-col gap-1.5">
     <span class="text-[12.5px] font-semibold text-muted">Colore</span>
     <div class="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Colore">
-      <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Accent "bosco"}}"><span class="swatch-dot" style="background:#2F7A55"></span>Bosco</button>
-      <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Accent "mare"}}"><span class="swatch-dot" style="background:#1D6FA5"></span>Mare</button>
-      <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Accent "tramonto"}}"><span class="swatch-dot" style="background:#B4511A"></span>Tramonto</button>
-      <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Accent "grafite"}}"><span class="swatch-dot" style="background:#3A4150"></span>Grafite</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Accent "bosco"}}"><span class="swatch-dot" style="background:{{accentColor "bosco"}}"></span>Bosco</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Accent "mare"}}"><span class="swatch-dot" style="background:{{accentColor "mare"}}"></span>Mare</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Accent "tramonto"}}"><span class="swatch-dot" style="background:{{accentColor "tramonto"}}"></span>Tramonto</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Accent "grafite"}}"><span class="swatch-dot" style="background:{{accentColor "grafite"}}"></span>Grafite</button>
     </div>
   </div>
 </div>{{end}}

@@ -105,3 +105,19 @@ func TestFindByBarcodeNotFound(t *testing.T) {
 		t.Errorf("live: atteso ErrNotFound, got %v", err)
 	}
 }
+
+// Un guasto di OFF e' ErrUnavailable (lo scanner dice «riprova»), distinto
+// da «non trovato».
+func TestFindByBarcodeUnavailable(t *testing.T) {
+	sqldb := openTestDB(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "down", http.StatusBadGateway)
+	}))
+	t.Cleanup(srv.Close)
+	c := NewClient(sqldb, srv.URL, nil)
+
+	_, err := c.FindByBarcode(context.Background(), "96385074", true)
+	if !errors.Is(err, ErrUnavailable) || errors.Is(err, ErrNotFound) {
+		t.Errorf("atteso ErrUnavailable, got %v", err)
+	}
+}

@@ -161,7 +161,7 @@
 {{define "scripts"}}
 {{if .View.HasMacro}}
 <script type="application/json" id="chart-data">{{.View.Charts}}</script>
-<script src="/static/js/charts.js"></script>
+<script src="{{asset "js/charts.js"}}"></script>
 <script>
 (function () {
   var b = document.getElementById("weeks-toggle");

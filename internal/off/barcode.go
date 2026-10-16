@@ -60,11 +60,15 @@ func (c *Client) FindByBarcode(ctx context.Context, code string, live bool) (*Pr
 		return nil, ErrNotFound
 	}
 	p, err := c.GetByBarcode(ctx, code)
-	if err != nil {
-		return nil, err
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
 	}
-	return p, nil
+	return p, err
 }
+
+// ErrUnavailable: l'API di OFF non ha risposto (rete, timeout, 5xx). Distinto
+// da un errore della copia locale, che e' un guasto nostro.
+var ErrUnavailable = errors.New("OpenFoodFacts non raggiungibile")
 
 // localByBarcode legge off_products; nil se il codice non c'e' o il DB non
 // e' configurato.

@@ -38,10 +38,10 @@
         <div class="settings-sec">
           <div><h2 class="h2">Colore</h2><p class="settings-d">Il colore di pulsanti, link e grafici.</p></div>
           <div class="grid grid-cols-4 gap-2 max-w-[340px]" role="radiogroup" aria-label="Colore">
-            <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Appearance.Accent "bosco"}}"><span class="swatch-dot" style="background:#2F7A55"></span>Bosco</button>
-            <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Appearance.Accent "mare"}}"><span class="swatch-dot" style="background:#1D6FA5"></span>Mare</button>
-            <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Appearance.Accent "tramonto"}}"><span class="swatch-dot" style="background:#B4511A"></span>Tramonto</button>
-            <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Appearance.Accent "grafite"}}"><span class="swatch-dot" style="background:#3A4150"></span>Grafite</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Appearance.Accent "bosco"}}"><span class="swatch-dot" style="background:{{accentColor "bosco"}}"></span>Bosco</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Appearance.Accent "mare"}}"><span class="swatch-dot" style="background:{{accentColor "mare"}}"></span>Mare</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Appearance.Accent "tramonto"}}"><span class="swatch-dot" style="background:{{accentColor "tramonto"}}"></span>Tramonto</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Appearance.Accent "grafite"}}"><span class="swatch-dot" style="background:{{accentColor "grafite"}}"></span>Grafite</button>
           </div>
         </div>
       </section>
