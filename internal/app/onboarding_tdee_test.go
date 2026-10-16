@@ -21,13 +21,13 @@ func TestOnboardingTDEE(t *testing.T) {
 	}{
 		{"dati completi", domain.User{WeightKg: &w, HeightCm: &h, BirthYear: &y, Sex: &m, ActivityLevel: &act},
 			profile.TDEE(bmr, profile.ActivityFactor(act))},
-		{"attivita' non indicata", domain.User{WeightKg: &w, HeightCm: &h, BirthYear: &y, Sex: &m},
+		{"activity not given", domain.User{WeightKg: &w, HeightCm: &h, BirthYear: &y, Sex: &m},
 			profile.TDEE(bmr, 1.4)},
-		// Il BMR salvato puo' mancare o essere vecchio: conta il profilo.
+		// The saved BMR may be missing or old: the profile is what counts.
 		{"BMR salvato ignorato", domain.User{WeightKg: &w, HeightCm: &h, BirthYear: &y, Sex: &m, BMR: &staleBMR},
 			profile.TDEE(bmr, 1.4)},
-		{"manca il sesso", domain.User{WeightKg: &w, HeightCm: &h, BirthYear: &y}, 0},
-		{"profilo vuoto", domain.User{}, 0},
+		{"sex missing", domain.User{WeightKg: &w, HeightCm: &h, BirthYear: &y}, 0},
+		{"empty profile", domain.User{}, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

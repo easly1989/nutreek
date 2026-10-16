@@ -12,7 +12,7 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// featureCacheEntry memorizza una snapshot della lista feature con timestamp.
+// featureCacheEntry stores a snapshot of the feature list with a timestamp.
 type featureCacheEntry struct {
 	features []domain.Feature
 	at       time.Time
@@ -25,8 +25,8 @@ var (
 	featureCache   *featureCacheEntry
 )
 
-// featuresFromCache restituisce la lista feature dalla cache (se ancora valida)
-// oppure la ricarica dal DB.
+// featuresFromCache returns the feature list from the cache (when still valid)
+// or reloads it from the DB.
 func (a *App) featuresFromCache(ctx context.Context) ([]domain.Feature, error) {
 	featureCacheMu.RLock()
 	if featureCache != nil && time.Since(featureCache.at) < featureCacheTTL {
@@ -38,7 +38,7 @@ func (a *App) featuresFromCache(ctx context.Context) ([]domain.Feature, error) {
 
 	featureCacheMu.Lock()
 	defer featureCacheMu.Unlock()
-	// double-check dopo aver acquisito il write lock
+	// double-check after taking the write lock
 	if featureCache != nil && time.Since(featureCache.at) < featureCacheTTL {
 		return featureCache.features, nil
 	}
@@ -50,19 +50,19 @@ func (a *App) featuresFromCache(ctx context.Context) ([]domain.Feature, error) {
 	return features, nil
 }
 
-// invalidateFeatureCache svuota la cache in modo che la prossima chiamata
-// ricarichi dal DB. Va chiamata dopo ogni toggle enabled/premium.
+// invalidateFeatureCache empties the cache so the next call reloads from the
+// DB. Call it after every enabled/premium toggle.
 func invalidateFeatureCache() {
 	featureCacheMu.Lock()
 	featureCache = nil
 	featureCacheMu.Unlock()
 }
 
-// HasFeature verifica se l'utente ha accesso alla feature richiesta.
-//   - Se PremiumEnabled=false: sempre true (tutto è accessibile).
-//   - Se PremiumEnabled=true:  l'owner ha sempre tutto; le feature disabilitate
-//     (kill-switch) sono false per tutti; le feature non-premium sono true;
-//     le feature premium richiedono una sottoscrizione attiva.
+// HasFeature reports whether the user has access to the requested feature.
+//   - With PremiumEnabled=false: always true (everything is available).
+//   - With PremiumEnabled=true: the owner always has everything; disabled
+//     features (kill switch) are false for everyone; non-premium features are
+//     true; premium features need an active subscription.
 func (a *App) HasFeature(ctx context.Context, u *domain.User, key string) bool {
 	if !a.Cfg.PremiumEnabled {
 		return true
@@ -72,7 +72,7 @@ func (a *App) HasFeature(ctx context.Context, u *domain.User, key string) bool {
 	}
 	features, err := a.featuresFromCache(ctx)
 	if err != nil {
-		return true // fallback permissivo in caso di errore DB
+		return true // permissive fallback on a DB error
 	}
 	for _, f := range features {
 		if f.Key == key {
@@ -87,24 +87,24 @@ func (a *App) HasFeature(ctx context.Context, u *domain.User, key string) bool {
 			}
 			active, err := a.Subscriptions.IsActive(ctx, u.ID)
 			if err != nil {
-				return true // fallback permissivo in caso di errore DB
+				return true // permissive fallback on a DB error
 			}
 			return active
 		}
 	}
-	return true // feature sconosciuta = non bloccata
+	return true // unknown feature = not blocked
 }
 
-// requireFeature è un middleware chi blocca l'accesso se l'utente non ha la
-// feature. Le richieste browser vengono redirette alla pagina /upgrade,
-// le richieste API/HTMX ricevono 403.
+// requireFeature is a chi middleware that blocks access when the user lacks
+// the feature. Browser requests are redirected to the /upgrade page, API/HTMX
+// requests get 403.
 func (a *App) requireFeature(key string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			u := userFromContext(r.Context())
 			if !a.HasFeature(r.Context(), u, key) {
 				if r.Header.Get("HX-Request") == "true" {
-					// HTMX: redirect client-side alla pagina upgrade.
+					// HTMX: client-side redirect to the upgrade page.
 					w.Header().Set("HX-Redirect", "/upgrade?da="+url.QueryEscape(key))
 					w.WriteHeader(http.StatusForbidden)
 					return
@@ -113,7 +113,7 @@ func (a *App) requireFeature(key string) func(http.Handler) http.Handler {
 					http.Redirect(w, r, "/upgrade?da="+url.QueryEscape(key), http.StatusSeeOther)
 					return
 				}
-				// API/JSON: risposta strutturata.
+				// API/JSON: a structured response.
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
 				_ = json.NewEncoder(w).Encode(map[string]string{

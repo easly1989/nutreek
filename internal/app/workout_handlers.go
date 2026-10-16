@@ -12,9 +12,9 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 )
 
-// handleWorkoutLog POST /allenamento — aggiunge un allenamento al giorno.
-// Il form proviene dalla day card; dopo la creazione aggiorna la card via
-// HTMX swap o redirect alla settimana.
+// handleWorkoutLog POST /allenamento — adds a workout to the day.
+// The form comes from the day card; after creation it updates the card via
+// an HTMX swap or a redirect to the week.
 func (a *App) handleWorkoutLog(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 
@@ -55,12 +55,12 @@ func (a *App) handleWorkoutLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Aggiorna la card del giorno in cui è stato loggato l'allenamento.
+	// Update the card of the day the workout was logged on.
 	dayIndex := int(date.Sub(db.MondayOf(date)).Hours() / 24)
 	a.respondMutationOrRedirect(w, r, db.MondayOf(date), dayIndex)
 }
 
-// handleWorkoutLogDelete POST /allenamento/{id}/delete — elimina un allenamento.
+// handleWorkoutLogDelete POST /allenamento/{id}/delete — deletes a workout.
 func (a *App) handleWorkoutLogDelete(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -69,7 +69,7 @@ func (a *App) handleWorkoutLogDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Legge logged_at prima di cancellare per sapere quale card aggiornare.
+	// Read logged_at before deleting to know which card to update.
 	var dateStr string
 	err = a.Store.DB.QueryRowContext(r.Context(),
 		`SELECT logged_at FROM workout_logs WHERE id = ? AND user_id = ?`, id, user.ID,

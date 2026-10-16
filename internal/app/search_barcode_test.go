@@ -10,9 +10,9 @@ import (
 	"github.com/amon2126/nutreek/internal/off"
 )
 
-// Una ricerca che e' un codice a barre valido diventa una ricerca per codice:
-// prima i propri ingredienti, poi la copia locale di OFF, la rete solo a
-// digitazione ferma (includeOFF).
+// A search that is a valid barcode becomes a search by code: first the
+// user's own ingredients, then the local copy of OFF, the network only once
+// typing stops (includeOFF).
 func TestSearchMixedBarcode(t *testing.T) {
 	a := newTestApp(t)
 	ctx := context.Background()
@@ -36,21 +36,21 @@ func TestSearchMixedBarcode(t *testing.T) {
 
 	rows, warn, err := a.searchMixed(ctx, "4 006381 333931", true)
 	if err != nil || warn != "" || len(rows) != 1 || rows[0].LocalID() != localID {
-		t.Errorf("ingrediente proprio: %+v, %q, %v", rows, warn, err)
+		t.Errorf("own ingredient: %+v, %q, %v", rows, warn, err)
 	}
 
 	rows, _, err = a.searchMixed(ctx, "96385074", false)
 	if err != nil || len(rows) != 1 || !rows[0].IsOFF() || rows[0].Barcode() != "96385074" {
-		t.Errorf("copia locale OFF: %+v, %v", rows, err)
+		t.Errorf("local OFF copy: %+v, %v", rows, err)
 	}
 
 	rows, warn, err = a.searchMixed(ctx, "036000291452", false)
 	if err != nil || len(rows) != 0 || warn != "" || liveCalls != 0 {
-		t.Errorf("sconosciuto senza rete: %+v, %q, %v, %d chiamate", rows, warn, err, liveCalls)
+		t.Errorf("unknown without the network: %+v, %q, %v, %d calls", rows, warn, err, liveCalls)
 	}
 
 	rows, warn, err = a.searchMixed(ctx, "036000291452", true)
 	if err != nil || len(rows) != 0 || warn == "" || liveCalls != 1 {
-		t.Errorf("OFF giu': %+v, %q, %v, %d chiamate", rows, warn, err, liveCalls)
+		t.Errorf("OFF down: %+v, %q, %v, %d calls", rows, warn, err, liveCalls)
 	}
 }

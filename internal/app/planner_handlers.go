@@ -10,9 +10,9 @@ import (
 	"github.com/amon2126/nutreek/internal/service"
 )
 
-// handleGeneratePlan POST /week/generate — genera automaticamente il piano
-// della settimana pescando dal pool di varianti del piano nutrizionista e
-// puntando ai target macro dell'utente.
+// handleGeneratePlan POST /week/generate — generates the week's plan
+// automatically, drawing from the pool of variations of the nutrition plan
+// and aiming at the user's macro targets.
 func (a *App) handleGeneratePlan(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	weekStart := parseWeekStart(r)

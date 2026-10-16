@@ -22,17 +22,17 @@ import (
 type dashboardData struct {
 	authPageData
 	Plan                *domain.WeeklyPlanFull
-	Days                []dayView     // legacy: usato nei test eventuali
-	AllCards            []dayCardData // 7 giorni, in ordine: le schede in alto
-	Selected            dayCardData   // il giorno aperto sotto le schede
+	Days                []dayView     // legacy: used by tests, if any
+	AllCards            []dayCardData // 7 days, in order: the cards at the top
+	Selected            dayCardData   // the day open under the cards
 	WeekStart           time.Time
-	WeekStartStr        string // YYYY-MM-DD per i form
+	WeekStartStr        string // YYYY-MM-DD for the forms
 	PrevWeek            string // YYYY-MM-DD
 	NextWeek            string
 	Week                weekSummary
 	HasMeals            bool
-	Templates           []*domain.MealTemplate // per il picker "applica template"
-	HasNutritionistPlan bool                   // true se l'utente ha varianti da cui generare
+	Templates           []*domain.MealTemplate // for the "apply template" picker
+	HasNutritionistPlan bool                   // true when the user has variations to generate from
 	ApplyError          string
 	NewMealForm         newMealForm
 	NewMealError        string
@@ -46,35 +46,35 @@ type dayView struct {
 	DayTotal macros.Macros
 }
 
-// dayCardData e' il view-model passato ai partial day_pill.html (scheda del
-// giorno in alto) e day_card.html (il giorno aperto). Self-contained per
-// essere renderizzabile sia inline (dashboard) sia da solo (HTMX swap dopo
-// mutation o cambio di scheda).
+// dayCardData is the view model passed to the day_pill.html partials (the
+// day's card at the top) and day_card.html (the open day). Self-contained so
+// it can be rendered both inline (dashboard) and alone (HTMX swap after a
+// mutation or a card change).
 //
-// `State` descrive il giorno calendariale (past/today/future). `Selected`
-// dice se e' il giorno aperto: uno solo per pagina.
+// `State` describes the calendar day (past/today/future). `Selected` says
+// whether it is the open day: only one per page.
 type dayCardData struct {
 	Day         dayView
-	DateStr     string // YYYY-MM-DD per data-day attribute
+	DateStr     string // YYYY-MM-DD for the data-day attribute
 	State       string // "past" | "today" | "future"
-	Selected    bool   // true = giorno aperto in #day-panel
-	OOB         bool   // true = la scheda viaggia come swap out-of-band
-	WeekStart   string // YYYY-MM-DD per nascondere/passare nei form
+	Selected    bool   // true = the day open in #day-panel
+	OOB         bool   // true = the card travels as an out-of-band swap
+	WeekStart   string // YYYY-MM-DD to hide/pass in the forms
 	CSRFToken   string
 	Progress    profile.MacroProgress
-	WorkoutKcal float64                  // kcal bruciate con allenamenti in quel giorno
-	Workouts    []domain.WorkoutLog      // allenamenti del giorno
-	Activities  []domain.WorkoutActivity // per il select nel form di aggiunta
-	Water       waterWidgetData          // widget idratazione del giorno
-	Adherence   macros.AdherenceScore    // aderenza piano vs effettivo del giorno
+	WorkoutKcal float64                  // kcal burned by workouts that day
+	Workouts    []domain.WorkoutLog      // the day's workouts
+	Activities  []domain.WorkoutActivity // for the select in the add form
+	Water       waterWidgetData          // the day's hydration widget
+	Adherence   macros.AdherenceScore    // the day's plan vs actual adherence
 }
 
-// HasMeals indica se il giorno ha almeno un pasto pianificato (per decidere
-// se mostrare il badge aderenza).
+// HasMeals says whether the day has at least one planned meal (to decide
+// whether to show the adherence badge).
 func (d dayCardData) HasMeals() bool { return len(d.Day.Meals) > 0 }
 
-// waterWidgetData alimenta il partial water_widget.html, renderizzabile sia
-// dentro la day card sia da solo (HTMX swap dopo quick-log).
+// waterWidgetData feeds the water_widget.html partial, renderable both inside
+// the day card and alone (HTMX swap after a quick log).
 type waterWidgetData struct {
 	DateStr       string
 	WaterML       int
@@ -82,7 +82,7 @@ type waterWidgetData struct {
 	CSRFToken     string
 }
 
-// Pct ritorna la percentuale di avanzamento (0-100, clamp) per la barra.
+// Pct returns the progress percentage (0-100, clamped) for the bar.
 func (d waterWidgetData) Pct() int {
 	if d.WaterTargetML <= 0 {
 		return 0
@@ -94,22 +94,22 @@ func (d waterWidgetData) Pct() int {
 	return p
 }
 
-// Reached indica se il target e' stato raggiunto (per evidenziare la barra).
+// Reached says whether the target has been reached (to highlight the bar).
 func (d waterWidgetData) Reached() bool {
 	return d.WaterTargetML > 0 && d.WaterML >= d.WaterTargetML
 }
 
 type mealView struct {
 	Meal       domain.MealWithItems
-	MealTotal  macros.Macros // effettivo: cheats se presenti, altrimenti items
+	MealTotal  macros.Macros // actual: cheats when present, otherwise items
 	ItemViews  []mealItemView
-	CheatViews []mealItemView // popolato se HasCheats
+	CheatViews []mealItemView // filled when HasCheats
 	HasCheats  bool
 }
 
-// scaledIngredient e' un ingrediente di una ricetta con quantita' scalata
-// rispetto al numero di porzioni del meal_item. Es. ricetta da 4 porzioni
-// con 200g pasta, in un meal_item con quantity=2 → quantity scalata = 100g.
+// scaledIngredient is an ingredient of a recipe with its quantity scaled to
+// the meal_item's number of servings. E.g. a 4-serving recipe with 200g pasta,
+// in a meal_item with quantity=2 → scaled quantity = 100g.
 type scaledIngredient struct {
 	Name     string
 	Quantity float64
@@ -119,19 +119,19 @@ type scaledIngredient struct {
 type mealItemView struct {
 	Item   domain.MealItemFull
 	Macros macros.Macros
-	// ScaledRecipeItems: per item ricetta, lista degli ingredienti con
-	// quantita' scalata = recipeItem.Quantity * (item.Quantity /
-	// recipe.Servings). Vuoto per gli item ingrediente puro.
+	// ScaledRecipeItems: for a recipe item, the list of ingredients with
+	// scaled quantity = recipeItem.Quantity * (item.Quantity /
+	// recipe.Servings). Empty for plain ingredient items.
 	ScaledRecipeItems []scaledIngredient
-	// EffectiveGrams: grammi/ml effettivi quando QuantityUnit=="pz"
-	// (quantity * UnitWeightG). Pre-calcolato perche' i template Go
-	// non possono moltiplicare due valori.
+	// EffectiveGrams: the actual grams/ml when QuantityUnit=="pz"
+	// (quantity * UnitWeightG). Precomputed because Go templates cannot
+	// multiply two values.
 	EffectiveGrams float64
 }
 
-// effectiveGramsFor restituisce i grammi/ml effettivi di un meal item:
-// quantity * unit_weight_g se QuantityUnit=="pz" e l'ingrediente ha un
-// peso per unita' noto, altrimenti la quantity grezza.
+// effectiveGramsFor returns the actual grams/ml of a meal item:
+// quantity * unit_weight_g when QuantityUnit=="pz" and the ingredient has a
+// known weight per unit, otherwise the raw quantity.
 func effectiveGramsFor(it domain.MealItemFull) float64 {
 	return macros.Grams(it.Quantity, it.QuantityUnit, it.Ingredient)
 }
@@ -149,15 +149,15 @@ var dayLabelsFull = [7]string{
 
 func formatDate(t time.Time) string { return t.Format("2006-01-02") }
 
-// todayDate ritorna la data odierna normalizzata a mezzanotte locale.
+// todayDate returns today's date normalized to local midnight.
 func todayDate() time.Time {
 	now := time.Now()
 	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 }
 
-// dayState classifica un giorno come "past", "today" o "future" rispetto a
-// today. Usa il confronto sulla rappresentazione calendariale (YYYY-MM-DD)
-// per essere robusto a timezone/DST/clock_drift dei time.Time interni.
+// dayState classifies a day as "past", "today" or "future" relative to
+// today. It compares the calendar representation (YYYY-MM-DD) to be robust
+// to timezone/DST/clock drift of the internal time.Time values.
 func dayState(date, today time.Time) string {
 	a, b := date.Format("2006-01-02"), today.Format("2006-01-02")
 	switch {
@@ -170,8 +170,8 @@ func dayState(date, today time.Time) string {
 	}
 }
 
-// buildDayViews popola un []dayView a partire dal piano completo, calcolando
-// i totali macro per giorno e la struttura items.
+// buildDayViews fills a []dayView from the full plan, computing the macro
+// totals per day and the items structure.
 func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 	out := make([]dayView, 7)
 	for d := 0; d < 7; d++ {
@@ -182,7 +182,7 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 		}
 		for _, m := range full.Days[d] {
 			mv := mealView{Meal: m, HasCheats: m.HasCheats()}
-			// Items "ufficiali" sempre popolati (UI mostra greyed se sgarro).
+			// "Official" items always filled (the UI greys them out on a cheat).
 			for _, it := range m.Items {
 				macroIt := macros.ForMealItem(it)
 				mv.ItemViews = append(mv.ItemViews, mealItemView{
@@ -192,7 +192,7 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 					EffectiveGrams:    effectiveGramsFor(it),
 				})
 			}
-			// Cheat views popolati se ci sono sgarri.
+			// Cheat views filled when there are cheats.
 			for _, ch := range m.Cheats {
 				macroIt := macros.ForMealItem(ch)
 				mv.CheatViews = append(mv.CheatViews, mealItemView{
@@ -202,7 +202,7 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 					EffectiveGrams:    effectiveGramsFor(ch),
 				})
 			}
-			// Totale effettivo: cheats sostituiscono items se presenti.
+			// Actual total: cheats replace items when present.
 			mv.MealTotal = macros.ForMealEffective(m)
 			dv.Meals = append(dv.Meals, mv)
 			dv.DayTotal = dv.DayTotal.Add(mv.MealTotal)
@@ -212,11 +212,11 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 	return out
 }
 
-// scaleRecipeItems espande gli ingredienti di una ricetta scalando le
-// quantita' per il numero di porzioni richieste. Se l'item ha variazioni
-// personalizzate, le usa al posto degli ingredienti base (quantita' gia'
-// assolute, nessuno scaling aggiuntivo). Ritorna nil se l'item non e'
-// una ricetta o se non ha ingredienti caricati.
+// scaleRecipeItems expands a recipe's ingredients, scaling the quantities to
+// the requested number of servings. When the item has custom variations, it
+// uses them instead of the base ingredients (quantities already absolute, no
+// extra scaling). Returns nil when the item is not a recipe or has no
+// ingredients loaded.
 func scaleRecipeItems(it domain.MealItemFull) []scaledIngredient {
 	if it.Recipe == nil {
 		return nil
@@ -250,8 +250,8 @@ func scaleRecipeItems(it domain.MealItemFull) []scaledIngredient {
 	return out
 }
 
-// adherenceForDay calcola l'aderenza giornaliera a partire dai pasti di una
-// dayView (estrae i domain.MealWithItems dalle mealView gia' costruite).
+// adherenceForDay computes the daily adherence from the meals of a dayView
+// (it extracts the domain.MealWithItems from the mealViews already built).
 func adherenceForDay(dv dayView) macros.AdherenceScore {
 	meals := make([]domain.MealWithItems, 0, len(dv.Meals))
 	for _, mv := range dv.Meals {
@@ -260,8 +260,8 @@ func adherenceForDay(dv dayView) macros.AdherenceScore {
 	return macros.ScoreDay(meals)
 }
 
-// makeDayCard costruisce dayCardData a partire da una dayView e dal contesto.
-// `state` e' il giorno calendariale; `selected` dice se e' il giorno aperto.
+// makeDayCard builds dayCardData from a dayView and the context.
+// `state` is the calendar day; `selected` says whether it is the open day.
 func makeDayCard(dv dayView, state string, selected bool, weekStartStr, csrfToken string, progress profile.MacroProgress, workoutKcal float64, workouts []domain.WorkoutLog, activities []domain.WorkoutActivity) dayCardData {
 	return dayCardData{
 		Day:         dv,
@@ -277,8 +277,8 @@ func makeDayCard(dv dayView, state string, selected bool, weekStartStr, csrfToke
 	}
 }
 
-// buildDayCards costruisce le 7 dayCardData; `selected` (YYYY-MM-DD) e' il
-// giorno aperto.
+// buildDayCards builds the 7 dayCardData; `selected` (YYYY-MM-DD) is the
+// open day.
 func buildDayCards(days []dayView, today time.Time, selected, weekStartStr, csrfToken string, user *domain.User, workoutKcals [7]float64, workoutLogs [7][]domain.WorkoutLog, activities []domain.WorkoutActivity, waterMLs [7]int) []dayCardData {
 	out := make([]dayCardData, 0, 7)
 	target := waterTargetFor(user)
@@ -296,8 +296,8 @@ func buildDayCards(days []dayView, today time.Time, selected, weekStartStr, csrf
 	return out
 }
 
-// waterTargetFor ritorna il target idratazione dell'utente, con fallback a
-// 2000 ml se non valorizzato (utenti pre-migrazione o nil).
+// waterTargetFor returns the user's hydration target, falling back to
+// 2000 ml when unset (pre-migration users or nil).
 func waterTargetFor(user *domain.User) int {
 	if user != nil && user.WaterTargetML > 0 {
 		return user.WaterTargetML
@@ -305,15 +305,15 @@ func waterTargetFor(user *domain.User) int {
 	return 2000
 }
 
-// weekSummary e' il riepilogo della settimana nell'intestazione della
-// dashboard (#week-totals), aggiornato out-of-band dopo ogni mutazione.
+// weekSummary is the week's summary in the dashboard header (#week-totals),
+// updated out-of-band after every mutation.
 type weekSummary struct {
 	Total       macros.Macros
-	PlannedDays int  // giorni con almeno un pasto
+	PlannedDays int  // days with at least one meal
 	OOB         bool // true = viaggia come swap out-of-band
 }
 
-// AvgKcal e' la media giornaliera sui soli giorni pianificati.
+// AvgKcal is the daily average over the planned days only.
 func (s weekSummary) AvgKcal() float64 {
 	if s.PlannedDays == 0 {
 		return 0
@@ -331,25 +331,25 @@ func summarizeWeek(full *domain.WeeklyPlanFull) weekSummary {
 	return s
 }
 
-// dayMutationResponse e' il view-model per day_card_with_pill_oob: card +
-// scheda del giorno OOB + riepilogo settimanale OOB. Serve per aggiornare in
-// unica risposta tutti gli elementi che dipendono dai macro dopo una
-// mutazione (add, remove, reorder) o un cambio di scheda.
+// dayMutationResponse is the view model for day_card_with_pill_oob: card +
+// the day's card OOB + the weekly summary OOB. It updates in a single
+// response every element that depends on the macros after a mutation (add,
+// remove, reorder) or a card change.
 type dayMutationResponse struct {
 	Card dayCardData
 	Week weekSummary
 }
 
-// renderDayCard scrive il partial day_card piu' la scheda corrispondente e
-// il riepilogo settimanale con HX-OOB swap, in un unico response. Il giorno
-// renderizzato diventa quello selezionato.
+// renderDayCard writes the day_card partial plus the matching card and the
+// weekly summary with HX-OOB swaps, in a single response. The rendered day
+// becomes the selected one.
 func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, week weekSummary, weekStart time.Time, state string) {
 	user := userFromContext(r.Context())
 	var progress profile.MacroProgress
 	if user != nil {
 		progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
 	}
-	// Carica workout per il giorno (fix bug: prima era sempre 0 dopo mutation HTMX).
+	// Load the workouts for the day (bug fix: it was always 0 after an HTMX mutation).
 	var wkcal float64
 	var wlogs []domain.WorkoutLog
 	var acts []domain.WorkoutActivity
@@ -372,9 +372,9 @@ func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, 
 	}
 }
 
-// loadDayCard carica il piano dell'utente per la settimana data, costruisce
-// la dayView del giorno richiesto e ritorna anche il riepilogo settimanale
-// per permettere l'aggiornamento OOB dell'intestazione.
+// loadDayCard loads the user's plan for the given week, builds the dayView of
+// the requested day and also returns the weekly summary, so the header can be
+// updated OOB.
 func (a *App) loadDayCard(r *http.Request, userID int64, weekStart time.Time, dayIndex int) (*dayView, weekSummary, error) {
 	if dayIndex < 0 || dayIndex > 6 {
 		return nil, weekSummary{}, fmt.Errorf("day_index fuori range")
@@ -392,16 +392,16 @@ func (a *App) loadDayCard(r *http.Request, userID int64, weekStart time.Time, da
 	return &dv, summarizeWeek(full), nil
 }
 
-// nosurfTokenOrEmpty e' un thin wrapper per leggere il CSRF token; usato dai
-// renderer di partial dove non c'e' un baseData() pre-costruito.
+// nosurfTokenOrEmpty is a thin wrapper to read the CSRF token; used by the
+// partial renderers where there is no prebuilt baseData().
 func nosurfTokenOrEmpty(r *http.Request) string {
 	return nosurf.Token(r)
 }
 
-// respondMutationOrRedirect gestisce in modo uniforme il dual-mode (HTMX
-// vs full navigation) dopo una mutazione su un meal/item. Per HX-Request
-// ritorna la card piena + la scheda OOB; altrimenti redirect alla settimana,
-// sul giorno toccato.
+// respondMutationOrRedirect handles the dual mode (HTMX vs full navigation)
+// uniformly after a mutation on a meal/item. For HX-Request it returns the
+// full card + the OOB day card; otherwise it redirects to the week, on the
+// day touched.
 func (a *App) respondMutationOrRedirect(w http.ResponseWriter, r *http.Request, weekStart time.Time, dayIndex int) {
 	if r.Header.Get("HX-Request") != "true" {
 		a.redirectToDay(w, r, weekStart, dayIndex)
@@ -417,9 +417,9 @@ func (a *App) respondMutationOrRedirect(w http.ResponseWriter, r *http.Request, 
 	a.renderDayCard(w, r, *dv, week, weekStart, state)
 }
 
-// dayIndexFromMealID risolve il day_of_week di un meal a partire dal suo id.
-// Necessario per sapere quale card swappare dopo remove/add-item, dato che
-// il client non passa sempre l'index esplicito.
+// dayIndexFromMealID resolves a meal's day_of_week from its id.
+// Needed to know which card to swap after remove/add-item, since the client
+// does not always pass the index explicitly.
 func (a *App) dayIndexFromMealID(r *http.Request, mealID int64) (int, error) {
 	var day int
 	err := a.Store.DB.QueryRowContext(r.Context(),
@@ -427,7 +427,7 @@ func (a *App) dayIndexFromMealID(r *http.Request, mealID int64) (int, error) {
 	return day, err
 }
 
-// dayIndexFromItemID risolve il day_of_week del meal che contiene l'item.
+// dayIndexFromItemID resolves the day_of_week of the meal holding the item.
 func (a *App) dayIndexFromItemID(r *http.Request, itemID int64) (int, error) {
 	var day int
 	err := a.Store.DB.QueryRowContext(r.Context(),
@@ -439,8 +439,8 @@ func (a *App) dayIndexFromItemID(r *http.Request, itemID int64) (int, error) {
 
 // ---- handlers --------------------------------------------------------------
 
-// handleDashboard gestisce GET / per utenti loggati: mostra la settimana
-// corrente o quella indicata da ?start=. Per utenti non loggati delega a
+// handleDashboard handles GET / for logged-in users: it shows the current
+// week or the one given by ?start=. For anonymous users it delegates to
 // handleHome (landing page).
 func (a *App) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
@@ -501,7 +501,7 @@ func (a *App) renderDashboard(
 			workoutLogs[i], _ = a.WorkoutLogs.ListWorkoutLogs(r.Context(), user.ID, d, d)
 		}
 	}
-	// Idratazione: una sola query per la settimana, poi distribuita sui 7 giorni.
+	// Hydration: a single query for the week, then spread over the 7 days.
 	var waterMLs [7]int
 	if a.WaterLogs != nil && user != nil {
 		totals, _ := a.WaterLogs.ForDateRange(r.Context(), user.ID, weekStart, weekStart.AddDate(0, 0, 6))
@@ -553,10 +553,10 @@ func (a *App) renderDashboard(
 	}
 }
 
-// handleApplyTemplate POST /week/{start}/apply-template — istanzia i meals.
+// handleApplyTemplate POST /week/{start}/apply-template — instantiates the meals.
 func (a *App) handleApplyTemplate(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
-	weekStart := parseWeekStart(r) // legge ?start ANCHE da form via redirect
+	weekStart := parseWeekStart(r) // reads ?start from a form via redirect TOO
 	if v := r.PostFormValue("start"); v != "" {
 		if t, err := time.Parse("2006-01-02", v); err == nil {
 			weekStart = db.MondayOf(t)
@@ -590,8 +590,8 @@ func (a *App) handleApplyTemplate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	// Freeze storico: registra il piano nutrizionista in uso al momento
-	// dell'applicazione (best-effort, non blocca il flusso).
+	// Historical freeze: record the nutrition plan in use when the template
+	// was applied (best effort, does not block the flow).
 	if effective, err := a.Planner.EffectivePlanFull(r.Context(), user.ID); err == nil {
 		_ = a.WeeklyPlans.SetSourcePlan(r.Context(), plan.ID, effective.ID)
 	}
@@ -600,9 +600,9 @@ func (a *App) handleApplyTemplate(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleCopyPrevious POST /week/copy-previous?start=YYYY-MM-DD
-// Clona meals + meal_items dal piano della settimana precedente al piano
-// corrente. Refuse se la settimana corrente non e' vuota o se la
-// precedente non ha meals.
+// Clones meals + meal_items from the previous week's plan into the current
+// plan. Refuses when the current week is not empty or the previous one has
+// no meals.
 func (a *App) handleCopyPrevious(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	weekStart := parseWeekStart(r)
@@ -641,9 +641,9 @@ func (a *App) handleCopyPrevious(w http.ResponseWriter, r *http.Request) {
 	a.redirectToWeek(w, r, weekStart)
 }
 
-// handleResetWeek POST /week/reset?start=YYYY-MM-DD — cancella tutti i
-// meals della settimana corrente. Usato per annullare una copia o un
-// apply-template fatti per sbaglio.
+// handleResetWeek POST /week/reset?start=YYYY-MM-DD — deletes every meal of
+// the current week. Used to undo a copy or an apply-template done by
+// mistake.
 func (a *App) handleResetWeek(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	weekStart := parseWeekStart(r)
@@ -667,8 +667,8 @@ func (a *App) handleResetWeek(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) flashAndBack(w http.ResponseWriter, r *http.Request, weekStart time.Time, msg string) {
 	a.Sessions.Put(r.Context(), "flash", msg)
-	// Con HTMX un 303 verrebbe seguito dentro la XHR e la settimana intera
-	// finirebbe nel frammento da sostituire: ricarichiamo la pagina.
+	// With HTMX a 303 would be followed inside the XHR and the whole week
+	// would end up in the fragment to replace: reload the page instead.
 	if r.Header.Get("HX-Request") == "true" {
 		w.Header().Set("HX-Redirect", "/?start="+formatDate(weekStart))
 		w.WriteHeader(http.StatusNoContent)
@@ -681,7 +681,7 @@ func (a *App) redirectToWeek(w http.ResponseWriter, r *http.Request, weekStart t
 	http.Redirect(w, r, "/?start="+formatDate(weekStart), http.StatusSeeOther)
 }
 
-// redirectToDay torna alla settimana con aperto il giorno dayIndex (0=lunedi').
+// redirectToDay goes back to the week with day dayIndex open (0=Monday).
 func (a *App) redirectToDay(w http.ResponseWriter, r *http.Request, weekStart time.Time, dayIndex int) {
 	if dayIndex < 0 || dayIndex > 6 {
 		a.redirectToWeek(w, r, weekStart)
@@ -690,15 +690,15 @@ func (a *App) redirectToDay(w http.ResponseWriter, r *http.Request, weekStart ti
 	http.Redirect(w, r, weekDayURL(weekStart, weekStart.AddDate(0, 0, dayIndex)), http.StatusSeeOther)
 }
 
-// weekDayURL e' l'indirizzo della dashboard sulla settimana weekStart con
-// aperto il giorno day.
+// weekDayURL is the address of the dashboard on week weekStart with day day
+// open.
 func weekDayURL(weekStart, day time.Time) string {
 	return "/?start=" + formatDate(weekStart) + "&day=" + formatDate(day)
 }
 
-// selectedDay sceglie il giorno aperto nella dashboard: quello in ?day= se
-// cade nella settimana, altrimenti oggi se e' in settimana, altrimenti il
-// lunedi'. Confronta le date come stringhe YYYY-MM-DD (vedi dayState).
+// selectedDay picks the day open in the dashboard: the one in ?day= when it
+// falls in the week, otherwise today when it is in the week, otherwise
+// Monday. It compares dates as YYYY-MM-DD strings (see dayState).
 func selectedDay(param string, weekStart, today time.Time) time.Time {
 	first, last := formatDate(weekStart), formatDate(weekStart.AddDate(0, 0, 6))
 	in := func(s string) bool { return s >= first && s <= last }
@@ -711,7 +711,7 @@ func selectedDay(param string, weekStart, today time.Time) time.Time {
 	return weekStart
 }
 
-// handleAddMeal POST /meals — aggiunge un pasto manuale al piano corrente.
+// handleAddMeal POST /meals — adds a manual meal to the current plan.
 func (a *App) handleAddMeal(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	weekStart := parseWeekStart(r)
@@ -773,8 +773,8 @@ func (a *App) handleRemoveMeal(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAddMealItem POST /meals/{mealID}/items — recipe XOR ingredient.
-// Per ingredient supporta sia `ref_id` (locale gia' in DB) sia `barcode`
-// (OFF, auto-import idempotente via resolveOFFBarcode).
+// For an ingredient it supports both `ref_id` (local, already in the DB) and
+// `barcode` (OFF, idempotent auto-import via resolveOFFBarcode).
 func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	weekStart := parseWeekStart(r)
@@ -827,7 +827,7 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// qty_unit: 'g', 'ml', o 'pz'; ignorato per le ricette.
+	// qty_unit: 'g', 'ml', or 'pz'; ignored for recipes.
 	qtyUnit := strings.TrimSpace(r.PostFormValue("qty_unit"))
 	if qtyUnit != "g" && qtyUnit != "ml" && qtyUnit != "pz" {
 		qtyUnit = "g"
@@ -845,9 +845,9 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
-// splitSuggested tiene i suggeriti del piano nutrizionale il cui nome
-// contiene q (tutti se q e' vuota) e li toglie dalle altre righe, cosi' nel
-// picker ogni ingrediente compare una volta sola.
+// splitSuggested keeps the nutrition plan's suggestions whose name contains
+// q (all of them when q is empty) and removes them from the other rows, so in
+// the picker every ingredient appears only once.
 func splitSuggested(suggested []*domain.Ingredient, rows []ingredientRow, q string) ([]ingredientRow, []ingredientRow) {
 	ql := strings.ToLower(q)
 	var out []ingredientRow
@@ -868,9 +868,9 @@ func splitSuggested(suggested []*domain.Ingredient, rows []ingredientRow, q stri
 }
 
 // handleMealPicker GET /meals/{mealID}/picker?kind=ingredient|recipe&q=...&start=
-// Renderizza il partial picker (live HTMX) con le righe filtrate. Per
-// kind=ingredient usa searchMixed (DB + OFF unificato). Per kind=recipe
-// filtra le ricette visibili all'utente per nome.
+// Renders the picker partial (live HTMX) with the filtered rows. For
+// kind=ingredient it uses searchMixed (DB + OFF merged). For kind=recipe it
+// filters the recipes visible to the user by name.
 func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	mealID, err := parseID(r, "mealID")
@@ -883,8 +883,8 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 		kind = "ingredient"
 	}
 	asCheat := r.URL.Query().Get("as") == "cheat"
-	// dialog=1: il picker e' nella finestra sopra la settimana, quindi i form
-	// aggiornano il giorno aperto via HTMX invece di ricaricare la pagina.
+	// dialog=1: the picker is in the dialog over the week, so the forms
+	// update the open day via HTMX instead of reloading the page.
 	inDialog := r.URL.Query().Get("dialog") == "1"
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	weekStart := parseWeekStart(r)
@@ -892,8 +892,8 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 
 	switch kind {
 	case "ingredient":
-		// Search OFF e' ora locale via FTS5: una sola chiamata sincrona
-		// veloce (<50ms) restituisce locali + OFF unificati.
+		// The OFF search is now local via FTS5: a single fast synchronous call
+		// (<50ms) returns local + OFF merged.
 		rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r))
 		if err != nil {
 			a.serverError(w, r, err)
@@ -904,8 +904,8 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			pkind = "meal_cheat"
 		}
 
-		// Suggeriti dal piano nutrizionista: attivi solo se meal_name e' fornito
-		// e il picker non e' in modalita' cheat (sgarri non hanno suggerimenti).
+		// Suggestions from the nutrition plan: active only when meal_name is
+		// given and the picker is not in cheat mode (cheats have no suggestions).
 		var nutrRows []ingredientRow
 		if mealName := strings.TrimSpace(r.URL.Query().Get("meal_name")); mealName != "" && !asCheat {
 			suggested, _ := a.NutritionistPlans.SearchSuggestedIngredients(r.Context(), user.ID, mealName)
@@ -968,8 +968,8 @@ func (a *App) handleRemoveMealItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleReorderMeals POST /meals/reorder?day_of_week=N&start=YYYY-MM-DD
-// Body: ids=12,9,15  (form-encoded). Persiste l'ordine dei meal_id per quel
-// giorno e ritorna il partial day_card aggiornato.
+// Body: ids=12,9,15  (form-encoded). Persists the order of the meal_ids for
+// that day and returns the updated day_card partial.
 func (a *App) handleReorderMeals(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	weekStart := parseWeekStart(r)
@@ -1034,9 +1034,9 @@ func (a *App) handleReorderMealItems(w http.ResponseWriter, r *http.Request) {
 	a.respondMutationOrRedirect(w, r, weekStart, day)
 }
 
-// handleDayCard GET /days/{date} ritorna la card piena (+ scheda OOB) per
-// il giorno indicato. Chiamato dalle schede dei giorni (hx-get) quando
-// l'utente apre un altro giorno della settimana.
+// handleDayCard GET /days/{date} returns the full card (+ the OOB day card)
+// for the given day. Called by the day cards (hx-get) when the user opens
+// another day of the week.
 func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	dateStr := chi.URLParam(r, "date")
@@ -1060,18 +1060,18 @@ func (a *App) handleDayCard(w http.ResponseWriter, r *http.Request) {
 	a.renderDayCard(w, r, *dv, week, weekStart, state)
 }
 
-// handleAddItemForm GET /meals/{mealID}/items/new — shell del picker live
-// HTMX. Le liste sono caricate via /meals/{id}/picker, niente precaricamento.
-// Chiamato da HTMX (link della settimana) risponde con la sola finestra
-// <dialog>, che modal.js apre sopra la settimana; senza JS e' una pagina.
+// handleAddItemForm GET /meals/{mealID}/items/new — shell of the live HTMX
+// picker. The lists load via /meals/{id}/picker, nothing is preloaded.
+// Called by HTMX (the week's link) it answers with just the <dialog>, which
+// modal.js opens over the week; without JS it is a page.
 type addItemFormData struct {
 	authPageData
 	MealID    int64
 	MealName  string
-	Date      time.Time // giorno del pasto, per il sottotitolo
+	Date      time.Time // the meal's day, for the subtitle
 	WeekStart string
-	Cheat     bool // true = aggiungi come sgarro (POSTa a /meals/{id}/cheat/items)
-	InDialog  bool // true = le aggiunte aggiornano il giorno via HTMX
+	Cheat     bool // true = add as a cheat (POSTs to /meals/{id}/cheat/items)
+	InDialog  bool // true = additions update the day via HTMX
 	Error     string
 }
 

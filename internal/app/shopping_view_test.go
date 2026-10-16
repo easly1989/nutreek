@@ -14,9 +14,9 @@ func shopItem(id, ingID int64, name string, qty float64, checked bool, unitWeigh
 	return domain.ShoppingListItem{ID: id, IngredientID: ingID, TotalQuantity: qty, Checked: checked, Ingredient: ing}
 }
 
-// Le voci si raggruppano per categoria dell'ingrediente, nell'ordine delle
-// categorie; quelle senza categoria finiscono in «Altro», in fondo. Le
-// spuntate escono dai gruppi e vanno in «Nel carrello».
+// Items are grouped by the ingredient's category, in category order; those
+// without a category end up in «Altro», last. The checked ones leave the
+// groups and go to «Nel carrello».
 func TestBuildShoppingView(t *testing.T) {
 	items := []domain.ShoppingListItem{
 		shopItem(1, 10, "Banana", 240, false, 120),
@@ -40,49 +40,49 @@ func TestBuildShoppingView(t *testing.T) {
 	}
 	want := []string{"Frutta e verdura", "Latticini e uova", "Dispensa", "Altro"}
 	if len(names) != len(want) {
-		t.Fatalf("gruppi = %v, attesi %v", names, want)
+		t.Fatalf("groups = %v, want %v", names, want)
 	}
 	for i := range want {
 		if names[i] != want[i] {
-			t.Fatalf("gruppi = %v, attesi %v", names, want)
+			t.Fatalf("groups = %v, want %v", names, want)
 		}
 	}
 	if got := v.Groups[0].Items; len(got) != 1 || got[0].Item.ID != 1 {
-		t.Errorf("Frutta e verdura = %+v, attesa solo la banana (la mela e' spuntata)", got)
+		t.Errorf("Frutta e verdura = %+v, want only the banana (the apple is checked)", got)
 	}
 	if got := v.Groups[3].Items; len(got) != 1 || got[0].Item.ID != 4 {
-		t.Errorf("Altro = %+v, atteso il sale", got)
+		t.Errorf("Altro = %+v, want the salt", got)
 	}
 	if len(v.Cart) != 1 || v.Cart[0].Item.ID != 3 {
-		t.Errorf("carrello = %+v, attesa la mela", v.Cart)
+		t.Errorf("cart = %+v, want the apple", v.Cart)
 	}
-	// Sul foglio stampato ogni voce ha il suo quadratino, spuntata o no.
+	// On the printed sheet every item has its own box, checked or not.
 	if len(v.PrintGroups) != 4 || len(v.PrintGroups[0].Items) != 2 {
-		t.Errorf("gruppi di stampa = %+v, attesi 4 con la mela nel primo", v.PrintGroups)
+		t.Errorf("print groups = %+v, want 4 with the apple in the first", v.PrintGroups)
 	}
 	if v.Done != 1 || v.Total != 5 || v.Percent != 20 {
-		t.Errorf("avanzamento = %d di %d (%d%%), atteso 1 di 5 (20%%)", v.Done, v.Total, v.Percent)
+		t.Errorf("progress = %d of %d (%d%%), want 1 of 5 (20%%)", v.Done, v.Total, v.Percent)
 	}
 }
 
-// Una categoria con tutte le voci spuntate sparisce dai gruppi.
+// A category with every item checked disappears from the groups.
 func TestBuildShoppingViewSkipsEmptyGroups(t *testing.T) {
 	items := []domain.ShoppingListItem{shopItem(1, 10, "Mela", 300, true, 0)}
 	cats := map[int64]domain.IngredientCategory{10: {ID: 1, Name: "Frutta e verdura"}}
 	v := buildShoppingView(items, cats)
 	if len(v.Groups) != 0 {
-		t.Errorf("gruppi = %+v, attesi nessuno", v.Groups)
+		t.Errorf("groups = %+v, want none", v.Groups)
 	}
 	if v.Percent != 100 {
-		t.Errorf("percentuale = %d, attesa 100", v.Percent)
+		t.Errorf("percentage = %d, want 100", v.Percent)
 	}
 	if empty := buildShoppingView(nil, nil); empty.Percent != 0 || empty.Total != 0 {
-		t.Errorf("lista vuota = %+v", empty)
+		t.Errorf("empty list = %+v", empty)
 	}
 }
 
-// Gli ingredienti con un peso per pezzo mostrano anche i pezzi: si comprano
-// pezzi interi, quindi una frazione si arrotonda per eccesso (ma 2,02 resta 2).
+// Ingredients with a weight per piece show the pieces too: whole pieces are
+// bought, so a fraction rounds up (but 2.02 stays 2).
 func TestShoppingPieces(t *testing.T) {
 	cases := []struct {
 		qty, unitWeight float64
@@ -98,12 +98,12 @@ func TestShoppingPieces(t *testing.T) {
 	for _, c := range cases {
 		it := shopItem(1, 1, "x", c.qty, false, c.unitWeight)
 		if got := shoppingPieces(it); got != c.want {
-			t.Errorf("shoppingPieces(%v g, %v g/pz) = %d, atteso %d", c.qty, c.unitWeight, got, c.want)
+			t.Errorf("shoppingPieces(%v g, %v g/pz) = %d, want %d", c.qty, c.unitWeight, got, c.want)
 		}
 	}
 	ml := shopItem(1, 1, "latte", 500, false, 250)
 	ml.Ingredient.Unit = domain.UnitMilliliter
 	if got := shoppingPieces(ml); got != 2 {
-		t.Errorf("anche in ml i pezzi valgono: %d", got)
+		t.Errorf("pieces count in ml too: %d", got)
 	}
 }

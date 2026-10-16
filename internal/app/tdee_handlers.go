@@ -8,8 +8,8 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 )
 
-// handleAcceptTDEESuggestion aggiorna target_kcal dell'utente con il TDEE
-// stimato inviato nel form (campo hidden "estimated_tdee").
+// handleAcceptTDEESuggestion updates the user's target_kcal with the estimated
+// TDEE sent in the form (hidden field "estimated_tdee").
 func (a *App) handleAcceptTDEESuggestion(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	ctx := r.Context()

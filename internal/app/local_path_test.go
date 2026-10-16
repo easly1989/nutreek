@@ -12,13 +12,13 @@ func TestLocalPath(t *testing.T) {
 		"/\\evil.example":      fb,
 		"templates/3":          fb,
 		"javascript:alert(1)":  fb,
-		// I browser tolgono tab e a capo dagli URL: "/\t/x" diventerebbe "//x".
+		// Browsers strip tabs and newlines from URLs: "/\t/x" would become "//x".
 		"/\t/evil.example":  fb,
 		"/\n\\evil.example": fb,
 	}
 	for in, want := range cases {
 		if got := localPath(in, fb); got != want {
-			t.Errorf("localPath(%q) = %q, atteso %q", in, got, want)
+			t.Errorf("localPath(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

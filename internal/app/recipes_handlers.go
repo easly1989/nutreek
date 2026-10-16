@@ -19,24 +19,24 @@ import (
 
 type recipesListData struct {
 	authPageData
-	Rows    []recipeListRow // righe del filtro corrente, gia' filtrate per Query
+	Rows    []recipeListRow // rows of the current filter, already filtered by Query
 	Filter  string          // mine | others | used | public
 	Query   string
 	Filters []recipeFilter
-	MineN   int // totali per il sottotitolo
+	MineN   int // totals for the subtitle
 	OthersN int
 }
 
-// recipeFilter e' un chip filtro dell'elenco ricette con il suo conteggio.
+// recipeFilter is a filter chip of the recipe list with its count.
 type recipeFilter struct {
 	Key, Label string
 	Count      int
 	On         bool
 }
 
-// recipeListRow è una riga dell'elenco: la ricetta, i macro per porzione e,
-// per le proprie, il conteggio degli usi nei piani settimanali (serve a
-// mostrare un warning informato nella conferma di eliminazione).
+// recipeListRow is a row of the list: the recipe, the macros per serving and,
+// for the user's own, the count of uses in the weekly plans (it shows an
+// informed warning in the delete confirmation).
 type recipeListRow struct {
 	Recipe     *domain.Recipe
 	Mine       bool
@@ -44,7 +44,7 @@ type recipeListRow struct {
 	PerServing macros.Macros
 }
 
-// recipeFilters elenca i filtri dell'elenco ricette, nell'ordine dei chip.
+// recipeFilters lists the filters of the recipe list, in chip order.
 var recipeFilters = []struct{ Key, Label string }{
 	{"mine", "Le mie"},
 	{"others", "Pubbliche di altri"},
@@ -52,7 +52,7 @@ var recipeFilters = []struct{ Key, Label string }{
 	{"public", "Rese pubbliche"},
 }
 
-// matchRecipeFilter dice se la riga appartiene al filtro key.
+// matchRecipeFilter says whether the row belongs to filter key.
 func matchRecipeFilter(key string, row recipeListRow) bool {
 	switch key {
 	case "others":
@@ -66,8 +66,8 @@ func matchRecipeFilter(key string, row recipeListRow) bool {
 	}
 }
 
-// buildRecipesList filtra le righe per filtro e ricerca (case-insensitive sul
-// nome) e conta le ricette di ogni filtro, ricerca esclusa.
+// buildRecipesList filters the rows by filter and search (case-insensitive on
+// the name) and counts the recipes of every filter, search excluded.
 func buildRecipesList(all []recipeListRow, filter, query string) recipesListData {
 	valid := false
 	for _, f := range recipeFilters {
@@ -105,10 +105,10 @@ type recipeNewData struct {
 	Form  recipeForm
 	Error string
 
-	// Campi popolati dopo un import da URL (schema.org/Recipe).
-	ImportError         string   // errore del fetch/parse, mostrato nel pannello import
-	ImportedIngredients []string // righe ingrediente rilevate (da mappare a mano)
-	ImportSource        string   // URL di origine, mostrato come riferimento
+	// Fields filled after an import from a URL (schema.org/Recipe).
+	ImportError         string   // fetch/parse error, shown in the import panel
+	ImportedIngredients []string // ingredient lines detected (to map by hand)
+	ImportSource        string   // source URL, shown for reference
 }
 
 type recipeForm struct {
@@ -118,12 +118,12 @@ type recipeForm struct {
 	IsPublic    bool
 }
 
-// recipeDuplicateData è il view-model del modal di duplicazione.
+// recipeDuplicateData is the view model of the duplicate modal.
 type recipeDuplicateData struct {
 	authPageData
 	SrcID   int64
 	SrcName string
-	NewName string // valore pre-compilato (default "Copia di X")
+	NewName string // prefilled value (default "Copia di X")
 	Error   string
 }
 
@@ -133,15 +133,15 @@ type recipeEditData struct {
 	Form        recipeForm
 	Error       string
 	ItemError   string
-	CanEdit     bool                 // true se l'utente loggato e' l'autore
-	Total       macros.Macros        // totale ricetta
-	PerServing  macros.Macros        // per-serving
-	Shares      macros.Shares        // ripartizione energetica per porzione
-	ItemKcal    map[int64]float64    // kcal di ogni voce (per id voce)
-	Usages      int                  // voci dei piani settimanali che la usano
-	Ingredients []*domain.Ingredient // pool per il select del nuovo item
-	NewItemQty  string               // valore nel form item dopo errore
-	NewItemIng  string               // ingredient_id selezionato
+	CanEdit     bool                 // true when the logged-in user is the author
+	Total       macros.Macros        // recipe total
+	PerServing  macros.Macros        // per serving
+	Shares      macros.Shares        // energy split per serving
+	ItemKcal    map[int64]float64    // kcal of every item (by item id)
+	Usages      int                  // weekly plan items that use it
+	Ingredients []*domain.Ingredient // pool for the new item's select
+	NewItemQty  string               // value in the item form after an error
+	NewItemIng  string               // selected ingredient_id
 }
 
 // ---- list ------------------------------------------------------------------
@@ -179,7 +179,7 @@ func (a *App) handleRecipesList(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	data := buildRecipesList(rows, q.Get("f"), strings.TrimSpace(q.Get("q")))
 	data.authPageData = a.baseData(r)
-	// La ricerca live (HTMX) sostituisce solo i risultati.
+	// The live search (HTMX) replaces only the results.
 	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "recipe-results" {
 		if err := a.Render.RenderPartial(w, http.StatusOK, "recipes_list", "recipe_results", data); err != nil {
 			a.serverError(w, r, err)
@@ -203,10 +203,10 @@ func (a *App) handleRecipeNewForm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleRecipeImport gestisce POST /recipes/import: scarica la pagina indicata,
-// estrae la ricetta schema.org/Recipe e ri-renderizza /recipes/new con il form
-// pre-compilato. Gli ingredienti rilevati sono testo libero (schema.org non li
-// struttura) e vengono mostrati come riferimento da mappare manualmente.
+// handleRecipeImport handles POST /recipes/import: it downloads the given
+// page, extracts the schema.org/Recipe recipe and re-renders /recipes/new with
+// the form prefilled. The detected ingredients are free text (schema.org does
+// not structure them) and are shown as a reference to map by hand.
 func (a *App) handleRecipeImport(w http.ResponseWriter, r *http.Request) {
 	srcURL := strings.TrimSpace(r.PostFormValue("import_url"))
 	renderImport := func(data recipeNewData) {
@@ -242,7 +242,7 @@ func (a *App) handleRecipeImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Normalizza i campi entro i limiti dei form.
+	// Normalize the fields within the form limits.
 	name := parsed.Name
 	if !withinLen(name, MaxNameLen) {
 		name = truncateRunes(name, MaxNameLen)
@@ -342,7 +342,7 @@ func (a *App) renderRecipeEdit(
 	user := userFromContext(r.Context())
 	canEdit := user != nil && user.ID == rec.UserID
 
-	// Calcolo macro: somma item per item, poi per-serving.
+	// Macro computation: sum item by item, then per serving.
 	items := make([]macros.IngredientItem, 0, len(rec.Items))
 	itemKcal := make(map[int64]float64, len(rec.Items))
 	for _, it := range rec.Items {
@@ -382,7 +382,7 @@ func (a *App) renderRecipeEdit(
 			return
 		}
 		data.Usages = usages
-		// Carichiamo gli ingredienti per il select solo se l'utente puo' editare.
+		// Load the ingredients for the select only when the user may edit.
 		ings, err := a.Ingredients.ListActive(r.Context(), 0, 200)
 		if err != nil {
 			a.serverError(w, r, err)
@@ -430,10 +430,10 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 		a.reRenderEdit(w, r, id, "Porzioni: serve un intero > 0.", "")
 		return
 	}
-	// Bozza: il salva metadati è bloccato finché l'utente non modifica gli
-	// ingredienti (add/remove) rendendo il contenuto diverso dalle altre
-	// ricette. Il messaggio cita la ricetta a cui è ancora identica per
-	// guidare l'utente.
+	// Draft: saving the metadata is blocked until the user changes the
+	// ingredients (add/remove), making the content differ from the other
+	// recipes. The message names the recipe it is still identical to, to
+	// guide the user.
 	if rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID); err == nil && rec.IsDraft {
 		simulated := make([]domain.RecipeItem, 0, len(rec.Items))
 		for _, it := range rec.Items {
@@ -463,13 +463,13 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }
 
-// handleRecipeAddItem POST /recipes/{id}/items. Accetta uno fra:
-//   - ingredient_id: id di un ingrediente gia' nel DB locale.
-//   - barcode: codice OFF di un prodotto NON ancora importato; il server
-//     fa auto-import (idempotente: se gia' presente recupera l'esistente).
+// handleRecipeAddItem POST /recipes/{id}/items. Accepts one of:
+//   - ingredient_id: id of an ingredient already in the local DB.
+//   - barcode: OFF code of a product NOT imported yet; the server
+//     auto-imports it (idempotent: when already there it fetches the existing one).
 //
-// La distinzione viene fatta dal partial picker_results in base alla
-// natura della riga cliccata.
+// The picker_results partial makes the distinction based on the kind of the
+// row clicked.
 func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
@@ -484,11 +484,11 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Risolvi l'ingrediente target. Due strade:
+	// Resolve the target ingredient. Two ways:
 	barcode := strings.TrimSpace(r.PostFormValue("barcode"))
 	var ingID int64
 	if barcode != "" {
-		// Auto-import OFF idempotente.
+		// Idempotent OFF auto-import.
 		resolved, err := a.resolveOFFBarcode(r.Context(), barcode)
 		if err != nil {
 			a.reRenderEditItem(w, r, id, "Import OFF fallito: "+err.Error(), qtyStr, "")
@@ -505,9 +505,9 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		ingID = parsed
 	}
 
-	// I recipe_ingredients sono memorizzati in grammi/ml: se l'utente ha
-	// scelto "pz" nel picker, converti subito moltiplicando per il peso
-	// medio dell'unita' (UnitWeightG).
+	// recipe_ingredients are stored in grams/ml: when the user picked "pz" in
+	// the picker, convert right away by multiplying by the unit's average
+	// weight (UnitWeightG).
 	if strings.TrimSpace(r.PostFormValue("qty_unit")) == "pz" {
 		ing, gerr := a.Ingredients.GetByID(r.Context(), ingID)
 		if gerr == nil && ing.UnitWeightG != nil && *ing.UnitWeightG > 0 {
@@ -515,8 +515,8 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Identity check: verifica che lo stato risultante non sia identico a
-	// un'altra ricetta dell'utente. Carica items correnti + simula l'aggiunta.
+	// Identity check: make sure the resulting state is not identical to
+	// another recipe of the user. Load the current items + simulate the add.
 	rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID)
 	if err != nil {
 		a.handleRecipeError(w, r, err)
@@ -541,8 +541,8 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		a.handleRecipeError(w, r, err)
 		return
 	}
-	// L'identity check sopra garantisce che il contenuto risultante è diverso
-	// da tutte le altre ricette. Se era una bozza, è il momento di promuoverla.
+	// The identity check above guarantees the resulting content differs from
+	// every other recipe. When it was a draft, now is the time to promote it.
 	if rec.IsDraft {
 		if err := a.Recipes.PromoteDraft(r.Context(), id, user.ID); err != nil {
 			a.serverError(w, r, err)
@@ -553,8 +553,8 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleRecipePicker GET /recipes/{id}/picker?q=...
-// Renderizza il partial picker_results in modalita' recipe_item.
-// Usa lo stesso searchMixed della pagina /ingredients (locale + OFF).
+// Renders the picker_results partial in recipe_item mode.
+// Uses the same searchMixed as the /ingredients page (local + OFF).
 func (a *App) handleRecipePicker(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
@@ -562,7 +562,7 @@ func (a *App) handleRecipePicker(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	// Verifica che l'utente sia autore (solo l'autore puo' editare).
+	// Check that the user is the author (only the author may edit).
 	rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID)
 	if err != nil {
 		a.handleRecipeError(w, r, err)
@@ -593,7 +593,7 @@ func (a *App) handleRecipePicker(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleRecipeRemoveItem POST /recipes/{id}/items/{itemID}/delete (form-driven).
-// HTMX swap della pagina: redirect 303 alla edit page.
+// HTMX swap of the page: 303 redirect to the edit page.
 func (a *App) handleRecipeRemoveItem(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
@@ -607,8 +607,8 @@ func (a *App) handleRecipeRemoveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Identity check: simula la rimozione e verifica che lo stato risultante
-	// non sia identico a un'altra ricetta dell'utente.
+	// Identity check: simulate the removal and make sure the resulting state
+	// is not identical to another recipe of the user.
 	rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID)
 	if err != nil {
 		a.handleRecipeError(w, r, err)
@@ -638,7 +638,7 @@ func (a *App) handleRecipeRemoveItem(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	// Promozione bozza analoga ad handleRecipeAddItem.
+	// Draft promotion, as in handleRecipeAddItem.
 	if rec.IsDraft {
 		if err := a.Recipes.PromoteDraft(r.Context(), id, user.ID); err != nil {
 			a.serverError(w, r, err)
@@ -648,9 +648,9 @@ func (a *App) handleRecipeRemoveItem(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }
 
-// handleRecipeDelete POST /recipes/{id}/delete. Conta le occorrenze nei
-// piani settimanali prima della cancellazione, perché la FK ON DELETE CASCADE
-// (migrazione 0008) le rimuove silenziosamente: il flash informa l'utente.
+// handleRecipeDelete POST /recipes/{id}/delete. Counts the occurrences in the
+// weekly plans before the delete, because the FK ON DELETE CASCADE
+// (migration 0008) removes them silently: the flash tells the user.
 func (a *App) handleRecipeDelete(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
@@ -672,9 +672,9 @@ func (a *App) handleRecipeDelete(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/recipes", http.StatusSeeOther)
 }
 
-// handleRecipesBulkDelete POST /recipes/bulk-delete. Cancella più ricette
-// in una sola chiamata. Le ricette non di proprietà dell'utente vengono
-// silenziosamente ignorate (BulkDelete filtra per user_id).
+// handleRecipesBulkDelete POST /recipes/bulk-delete. Deletes several recipes
+// in a single call. Recipes the user does not own are silently ignored
+// (BulkDelete filters by user_id).
 func (a *App) handleRecipesBulkDelete(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	if err := r.ParseForm(); err != nil {
@@ -717,7 +717,7 @@ func (a *App) handleRecipesBulkDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleRecipeDuplicateForm GET /recipes/{id}/duplicate
-// Renderizza il modal con il campo "nuovo nome" pre-compilato a "Copia di X".
+// Renders the modal with the "new name" field prefilled to "Copia di X".
 func (a *App) handleRecipeDuplicateForm(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
@@ -739,8 +739,8 @@ func (a *App) handleRecipeDuplicateForm(w http.ResponseWriter, r *http.Request) 
 }
 
 // handleRecipeDuplicate POST /recipes/{id}/duplicate
-// Valida il nuovo nome (obbligatorio, diverso dall'originale, unico) e crea
-// una copia profonda. Risponde con HX-Redirect alla edit della nuova ricetta.
+// Validates the new name (required, different from the original, unique) and
+// makes a deep copy. Answers with HX-Redirect to the new recipe's edit page.
 func (a *App) handleRecipeDuplicate(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	srcID, err := parseID(r, "id")
@@ -748,8 +748,8 @@ func (a *App) handleRecipeDuplicate(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	// Carichiamo src prima di tutto così renderErr può passare SrcName
-	// e il testo "Stai duplicando X" rimane visibile anche in caso di errore.
+	// Load src first of all so renderErr can pass SrcName and the text
+	// "Stai duplicando X" stays visible on errors too.
 	src, err := a.Recipes.GetWithItems(r.Context(), srcID, user.ID)
 	if err != nil {
 		a.handleRecipeError(w, r, err)
@@ -791,7 +791,7 @@ func (a *App) handleRecipeDuplicate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), "flash", "Ricetta duplicata. Modifica gli ingredienti per personalizzarla.")
-	// HTMX rispetta HX-Redirect e fa un full reload alla URL specificata.
+	// HTMX honors HX-Redirect and does a full reload of the given URL.
 	w.Header().Set("HX-Redirect", "/recipes/"+strconv.FormatInt(newID, 10))
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -808,21 +808,21 @@ func (a *App) renderRecipeDuplicateModal(w http.ResponseWriter, r *http.Request,
 }
 
 func (a *App) renderRecipeDuplicateFormOnly(w http.ResponseWriter, r *http.Request, data recipeDuplicateData) {
-	// 200 (non 422) perché HTMX 1.x di default fa swap solo su 2xx: con 422
-	// la risposta verrebbe ignorata e l'utente non vedrebbe il warning inline.
+	// 200 (not 422) because HTMX 1.x by default swaps only on 2xx: with 422
+	// the response would be ignored and the user would not see the inline warning.
 	if err := a.Render.RenderPartial(w, http.StatusOK, "recipes_list", "recipe_duplicate_form", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
 
-// proposeDuplicateName ritorna un nome plausibile per la copia. Se l'utente
-// poi conferma e quel nome è già preso, il vincolo UNIQUE lo riporta indietro
-// con errore esplicito.
+// proposeDuplicateName returns a plausible name for the copy. When the user
+// then confirms and that name is taken, the UNIQUE constraint sends it back
+// with an explicit error.
 func proposeDuplicateName(name string) string {
 	return "Copia di " + name
 }
 
-// pluralize sceglie singolare/plurale in base al conteggio.
+// pluralize picks singular/plural based on the count.
 func pluralize(n int, singular, plural string) string {
 	if n == 1 {
 		return singular
@@ -832,22 +832,22 @@ func pluralize(n int, singular, plural string) string {
 
 // ---- picker ricette --------------------------------------------------------
 
-// recipePickerData e' il view-model di recipe_picker_results, il picker
-// ricette di pasti, sgarri e varianti del piano nutrizionale.
+// recipePickerData is the view model of recipe_picker_results, the recipe
+// picker of meals, cheats and nutrition plan variations.
 type recipePickerData struct {
 	authPageData
 	Recipes     []*domain.Recipe
 	Query       string
-	Kcal        map[int64]float64 // kcal per porzione, per id ricetta
-	VariationID int64             // > 0: variante del piano nutrizionale
-	Cheat       bool              // sgarro invece di voce del pasto
+	Kcal        map[int64]float64 // kcal per serving, by recipe id
+	VariationID int64             // > 0: a nutrition plan variation
+	Cheat       bool              // a cheat instead of a meal item
 	MealID      int64
 	WeekStart   string
-	InDialog    bool // picker nella finestra sopra la settimana (form HTMX)
+	InDialog    bool // picker in the dialog over the week (HTMX form)
 }
 
-// recipePicker carica le ricette visibili all'utente il cui nome contiene q
-// (senza distinguere maiuscole), con le kcal per porzione.
+// recipePicker loads the recipes visible to the user whose name contains q
+// (case-insensitive), with the kcal per serving.
 func (a *App) recipePicker(r *http.Request, q string) (recipePickerData, error) {
 	user := userFromContext(r.Context())
 	recipes, err := a.Recipes.ListVisible(r.Context(), user.ID)

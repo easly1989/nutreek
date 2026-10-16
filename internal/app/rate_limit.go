@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-// ipRateLimiter limita le richieste per IP con una finestra fissa: il primo
-// tentativo apre il bucket, la window scorre da li', scaduta si riparte.
-// In-memory, per-process: si azzera al restart. Usato sia come middleware
-// chi sia direttamente da handleLogin (allow/reset).
+// ipRateLimiter limits requests per IP with a fixed window: the first attempt
+// opens the bucket, the window runs from there, and once expired it starts
+// over. In memory, per process: it resets on restart. Used both as a chi
+// middleware and directly by handleLogin (allow/reset).
 type ipRateLimiter struct {
 	mu        sync.Mutex
 	buckets   map[string]*ipBucket
@@ -35,8 +35,8 @@ func newIPRateLimiter(max int, window time.Duration) *ipRateLimiter {
 	}
 }
 
-// allow ritorna true se l'IP puo' fare un'altra richiesta. Va chiamata PRIMA
-// di processare la richiesta; se nega, il chiamante risponde 429.
+// allow returns true when the IP may make another request. Call it BEFORE
+// processing the request; when it denies, the caller answers 429.
 func (l *ipRateLimiter) allow(ip string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -55,16 +55,16 @@ func (l *ipRateLimiter) allow(ip string) bool {
 	return true
 }
 
-// reset cancella il bucket dell'IP — chiamato dopo un login *riuscito*
-// cosi' un utente legittimo non resta bloccato dai tentativi precedenti.
+// reset deletes the IP's bucket — called after a *successful* login so a
+// legitimate user does not stay blocked by earlier attempts.
 func (l *ipRateLimiter) reset(ip string) {
 	l.mu.Lock()
 	delete(l.buckets, ip)
 	l.mu.Unlock()
 }
 
-// pruneLocked elimina i bucket scaduti al massimo una volta per window, cosi'
-// la mappa non cresce senza limite con IP sempre nuovi. Richiede l.mu.
+// pruneLocked removes the expired buckets at most once per window, so the
+// map does not grow without bound with ever-new IPs. Requires l.mu.
 func (l *ipRateLimiter) pruneLocked(now time.Time) {
 	if now.Sub(l.lastPrune) < l.window {
 		return
@@ -77,15 +77,15 @@ func (l *ipRateLimiter) pruneLocked(now time.Time) {
 	l.lastPrune = now
 }
 
-// size ritorna il numero di bucket in memoria (usato dai test).
+// size returns the number of buckets in memory (used by tests).
 func (l *ipRateLimiter) size() int {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return len(l.buckets)
 }
 
-// Middleware ritorna un chi-compatible middleware che blocca le richieste oltre
-// la soglia con 429 Too Many Requests.
+// Middleware returns a chi-compatible middleware that blocks requests over
+// the threshold with 429 Too Many Requests.
 func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !l.allow(remoteIP(r)) {
@@ -96,14 +96,14 @@ func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-// remoteIP estrae l'IP del client per il rate limiting.
+// remoteIP extracts the client's IP for rate limiting.
 //
-// X-Forwarded-For conta solo se la connessione arriva da un proxy fidato
-// (loopback o rete privata: Traefik/nginx sullo stesso host o in Docker).
-// Un client che si collega direttamente non puo' scegliersi l'IP mandando
-// l'header. La catena si legge da destra: il primo indirizzo non fidato e'
-// quello aggiunto dall'ultimo proxy nostro, quindi non falsificabile. Se la
-// catena e' tutta privata (client in LAN) vale il primo indirizzo.
+// X-Forwarded-For counts only when the connection comes from a trusted proxy
+// (loopback or a private network: Traefik/nginx on the same host or in
+// Docker). A client connecting directly cannot pick its IP by sending the
+// header. The chain is read from the right: the first untrusted address is
+// the one added by our last proxy, so it cannot be forged. When the whole
+// chain is private (a client on the LAN), the first address counts.
 func remoteIP(r *http.Request) string {
 	peer := r.RemoteAddr
 	if host, _, err := net.SplitHostPort(peer); err == nil {
@@ -133,8 +133,8 @@ func remoteIP(r *http.Request) string {
 	return chain[0].String()
 }
 
-// isTrustedProxy: loopback e reti private (10/8, 172.16/12, 192.168/16,
-// fc00::/7) sono considerate infrastruttura nostra.
+// isTrustedProxy: loopback and private networks (10/8, 172.16/12, 192.168/16,
+// fc00::/7) count as our own infrastructure.
 func isTrustedProxy(a netip.Addr) bool {
 	a = a.Unmap()
 	return a.IsLoopback() || a.IsPrivate()

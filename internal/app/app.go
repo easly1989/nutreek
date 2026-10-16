@@ -16,7 +16,7 @@ import (
 	"github.com/amon2126/nutreek/internal/web"
 )
 
-// App raccoglie le dipendenze condivise fra handler e middleware.
+// App holds the dependencies shared by handlers and middleware.
 type App struct {
 	Cfg                    *config.Config
 	Store                  *db.Store
@@ -45,15 +45,15 @@ type App struct {
 	Render                 *web.Renderer
 	Logger                 *slog.Logger
 
-	// loginLimiter limita i tentativi POST /login per IP (5/minuto).
-	// Creato una volta sola da loginRateLimiter(): l'App e' costruita come
-	// struct literal, quindi niente costruttore in cui inizializzarlo.
+	// loginLimiter limits POST /login attempts per IP (5/minute).
+	// Created once by loginRateLimiter(): App is built as a struct literal,
+	// so there is no constructor to initialize it in.
 	loginLimiter     *ipRateLimiter
 	loginLimiterOnce sync.Once
 }
 
-// loginRateLimiter ritorna il limiter del login, creandolo al primo uso in
-// modo sicuro rispetto alle richieste concorrenti.
+// loginRateLimiter returns the login limiter, creating it on first use in a
+// way that is safe under concurrent requests.
 func (a *App) loginRateLimiter() *ipRateLimiter {
 	a.loginLimiterOnce.Do(func() {
 		a.loginLimiter = newIPRateLimiter(5, time.Minute)
@@ -67,7 +67,7 @@ const (
 	ctxKeyUser ctxKey = iota
 )
 
-// userFromContext estrae l'utente autenticato dal context o ritorna nil.
+// userFromContext extracts the authenticated user from the context, or returns nil.
 func userFromContext(ctx context.Context) *domain.User {
 	u, _ := ctx.Value(ctxKeyUser).(*domain.User)
 	return u

@@ -15,18 +15,18 @@ import (
 
 type weightPageData struct {
 	authPageData
-	Logs     []domain.WeightLog // dalla piu' recente
-	TodayStr string             // YYYY-MM-DD per il default del campo data
-	Range    int                // giorni mostrati nel grafico: 30, 90 o 365
-	Trend    string             // «−0,8 kg in 30 giorni»; vuoto con meno di due pesate
-	Charts   statsCharts        // solo WeightLabels e Weight
+	Logs     []domain.WeightLog // from the most recent
+	TodayStr string             // YYYY-MM-DD for the date field's default
+	Range    int                // days shown in the chart: 30, 90 or 365
+	Trend    string             // «−0,8 kg in 30 giorni»; empty with fewer than two weigh-ins
+	Charts   statsCharts        // only WeightLabels and Weight
 	HasChart bool
 }
 
-// weightRanges sono gli intervalli del grafico; il primo e' il predefinito.
+// weightRanges are the chart's ranges; the first is the default.
 var weightRanges = []int{90, 30, 365}
 
-// parseWeightRange legge ?giorni=; un valore fuori elenco torna al predefinito.
+// parseWeightRange reads ?giorni=; a value not in the list falls back to the default.
 func parseWeightRange(r *http.Request) int {
 	if n, err := strconv.Atoi(r.URL.Query().Get("giorni")); err == nil {
 		for _, v := range weightRanges {
@@ -49,8 +49,8 @@ func (a *App) handleWeightPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// weightPage prepara la pagina: elenco delle pesate e grafico
-// dell'intervallo scelto, con la variazione dalla prima all'ultima.
+// weightPage prepares the page: the list of weigh-ins and the chart of the
+// chosen range, with the change from the first to the last.
 func (a *App) weightPage(r *http.Request) (weightPageData, error) {
 	user := userFromContext(r.Context())
 	data := weightPageData{

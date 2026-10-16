@@ -24,7 +24,7 @@ type templateNewData struct {
 type templateEditData struct {
 	authPageData
 	Template   *domain.MealTemplateWithSlots
-	Templates  []*domain.MealTemplate // tutti i template dell'utente (colonna a destra)
+	Templates  []*domain.MealTemplate // every template of the user (right column)
 	SlotGroups []slotGroup
 	NameForm   string
 	NameError  string
@@ -32,8 +32,8 @@ type templateEditData struct {
 	SlotError  string
 }
 
-// slotGroup raggruppa gli slot per giorno per la UI di drag-and-drop.
-// Ogni gruppo ha il proprio container ordinabile in template_edit.html.
+// slotGroup groups the slots by day for the drag-and-drop UI.
+// Every group has its own sortable container in template_edit.html.
 type slotGroup struct {
 	Day   int
 	Label string // "Ogni giorno", "Lunedì", ...
@@ -42,9 +42,9 @@ type slotGroup struct {
 
 var dayFullNames = []string{"Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"}
 
-// localPath ritorna next se e' un percorso di questa app ("/..." ma non
-// "//host" ne' "/\host"), altrimenti fallback: evita open redirect. Niente
-// caratteri di controllo: i browser li tolgono, e "/\t/host" diventa "//host".
+// localPath returns next when it is a path of this app ("/..." but not
+// "//host" nor "/\host"), otherwise fallback: it prevents an open redirect. No
+// control characters: browsers strip them, and "/\t/host" becomes "//host".
 func localPath(next, fallback string) string {
 	if strings.HasPrefix(next, "/") && !strings.HasPrefix(next, "//") && !strings.HasPrefix(next, "/\\") &&
 		!strings.ContainsFunc(next, unicode.IsControl) {
@@ -53,10 +53,10 @@ func localPath(next, fallback string) string {
 	return fallback
 }
 
-// groupSlotsByDay raggruppa gli slot del template per day_of_week, mantenendo
-// l'ordine corrente (slots gia' arriva ORDER BY day_of_week, sort_order).
-// Ritorna sempre 8 gruppi (-1 + 0..6) anche se vuoti, cosi' il drag-and-drop
-// puo' funzionare anche con un solo elemento.
+// groupSlotsByDay groups the template's slots by day_of_week, keeping the
+// current order (slots already arrive ORDER BY day_of_week, sort_order).
+// It always returns 8 groups (-1 + 0..6) even when empty, so drag-and-drop
+// works with a single element too.
 func groupSlotsByDay(slots []domain.MealTemplateSlot) []slotGroup {
 	out := make([]slotGroup, 0, 8)
 	for _, day := range []int{domain.DayOfWeekEvery, 0, 1, 2, 3, 4, 5, 6} {
@@ -81,8 +81,8 @@ type slotForm struct {
 
 // ---- handlers --------------------------------------------------------------
 
-// handleTemplatesList: l'elenco dei template vive nella scheda «Template
-// settimanali» del piano nutrizionale (#122); /templates vi rimanda.
+// handleTemplatesList: the template list lives in the «Template settimanali»
+// tab of the nutrition plan (#122); /templates redirects there.
 func (a *App) handleTemplatesList(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/piano-nutrizionale?tab=template", http.StatusSeeOther)
 }
@@ -250,9 +250,9 @@ func (a *App) handleTemplateRemoveSlot(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleReorderTemplateSlots POST /templates/{id}/days/{day}/slots/reorder
-// Body: ids=12,9,15. Persiste l'ordine degli slot del template per il giorno
-// indicato (e' supportato anche -1 per "ogni giorno"). Risponde redirect alla
-// pagina del template (la UI fa swap automatico via HTMX dopo Sortable).
+// Body: ids=12,9,15. Persists the order of the template's slots for the given
+// day (-1 for "every day" is supported too). Answers with a redirect to the
+// template page (the UI swaps automatically via HTMX after Sortable).
 func (a *App) handleReorderTemplateSlots(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
@@ -279,9 +279,9 @@ func (a *App) handleReorderTemplateSlots(w http.ResponseWriter, r *http.Request)
 		a.handleTemplateError(w, r, err)
 		return
 	}
-	// Per ora il template_edit non ha un partial dedicato: per HX-Request
-	// rispondiamo 204 e il client puo' aggiornare l'UI da solo (Sortable
-	// l'ha gia' fatto). Per navigazione classica redirect alla pagina.
+	// For now template_edit has no dedicated partial: for HX-Request we
+	// answer 204 and the client can update the UI on its own (Sortable
+	// already did). For classic navigation, redirect to the page.
 	if r.Header.Get("HX-Request") == "true" {
 		w.WriteHeader(http.StatusNoContent)
 		return
