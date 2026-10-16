@@ -67,5 +67,5 @@ document.querySelectorAll("[data-autosubmit]").forEach(function (i) {
   i.addEventListener("change", function () { i.form.requestSubmit(); });
 });
 </script>
-{{if .HasOFF}}<script src="/static/js/off_sync.js" defer></script>{{end}}
+{{if .HasOFF}}<script src="{{asset "js/off_sync.js"}}" defer></script>{{end}}
 {{end}}

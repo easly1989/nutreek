@@ -10,6 +10,7 @@ import (
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/off"
 )
 
 // Quick handlers: form modal "crea al volo" per ingrediente locale e
@@ -34,8 +35,11 @@ type modalDialogData struct {
 
 // handleQuickIngredientForm GET /quick/ingredient — restituisce il dialog con
 // il form vuoto (o riempito di errori dopo un POST fallito).
+// ?barcode= arriva da «Crea l'ingrediente» dello scanner: il codice resta
+// collegato al nuovo ingrediente.
 func (a *App) handleQuickIngredientForm(w http.ResponseWriter, r *http.Request) {
 	form := ingredientForm{Unit: "g"}
+	form.Barcode, _ = off.NormalizeBarcode(r.URL.Query().Get("barcode"))
 	a.renderQuickIngredientModal(w, r, form, "")
 }
 
@@ -83,6 +87,14 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 		Fat:     strings.TrimSpace(r.PostFormValue("fat")),
 
 		UnitWeightG: strings.TrimSpace(r.PostFormValue("unit_weight_g")),
+	}
+	// Un codice non valido si ignora: l'ingrediente si crea comunque.
+	form.Barcode, _ = off.NormalizeBarcode(r.PostFormValue("barcode"))
+	if form.Barcode != "" {
+		if got, err := a.Ingredients.GetByBarcode(r.Context(), form.Barcode); err == nil {
+			a.renderQuickIngredientFormOnly(w, r, form, "Il codice "+form.Barcode+" è già collegato a «"+got.Name+"».")
+			return
+		}
 	}
 	if form.Name == "" {
 		a.renderQuickIngredientFormOnly(w, r, form, "Nome obbligatorio.")
@@ -137,6 +149,13 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		a.serverError(w, r, err)
 		return
+	}
+	if form.Barcode != "" {
+		// Il controllo sopra copre il caso normale; qui resta solo la corsa
+		// con un altro import dello stesso codice: l'ingrediente c'e' comunque.
+		if err := a.Ingredients.SetLocalBarcode(r.Context(), id, form.Barcode); err != nil {
+			a.Logger.Warn("collegamento codice al nuovo ingrediente fallito", "err", err, "barcode", form.Barcode)
+		}
 	}
 	w.Header().Set("HX-Trigger", `{"ingredient-created":{"id":`+strconv.FormatInt(id, 10)+`,"name":`+jsonString(form.Name)+`}}`)
 	w.WriteHeader(http.StatusNoContent)

@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/amon2126/nutreek/internal/off"
 )
 
 // Renderer mantiene i template parsati e offre Render per scriverli sulla
@@ -161,6 +163,20 @@ func funcMap() template.FuncMap {
 		},
 		"itemCtx": func(view any, struck, cheat bool, weekStart, csrf string) ItemCtx {
 			return ItemCtx{View: view, Struck: struck, Cheat: cheat, WeekStart: weekStart, CSRFToken: csrf}
+		},
+		// barcode: il codice normalizzato se q e' un codice a barre valido,
+		// altrimenti "". Con un codice i picker mostrano l'esito dello scanner.
+		"barcode": func(q string) string {
+			code, _ := off.NormalizeBarcode(q)
+			return code
+		},
+		// accentColor: il colore del tema per theme-color (#59).
+		"accentColor": AccentColor,
+		// asset: URL di un file in /static con la versione degli statici. Il
+		// service worker li serve dalla cache: un URL nuovo a ogni rilascio
+		// evita CSS e JS vecchi sotto l'HTML nuovo.
+		"asset": func(path string) string {
+			return "/static/" + path + "?v=" + StaticVersion()
 		},
 		// pickerRow passa a picker_row la riga insieme ai dati della lista
 		// (tipo di picker, id di destinazione, CSRF).

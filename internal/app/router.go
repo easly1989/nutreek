@@ -22,10 +22,12 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
-		h.Set("Permissions-Policy", "camera=(), microphone=()")
+		// Fotocamera solo per lo scanner dei picker (#59); 'wasm-unsafe-eval'
+		// compila il lettore WebAssembly del polyfill, senza aprire eval().
+		h.Set("Permissions-Policy", "camera=(self), microphone=()")
 		h.Set("Content-Security-Policy",
 			"default-src 'self'; "+
-				"script-src 'self' 'unsafe-inline'; "+
+				"script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; "+
 				"style-src 'self' 'unsafe-inline'; "+
 				"img-src 'self' data:; "+
 				"font-src 'self'")
@@ -54,6 +56,10 @@ func (a *App) Router() http.Handler {
 
 	// Static assets: serviti dal filesystem embedded.
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(web.Static()))))
+
+	// App installabile (#59): alla radice, fuori da /static.
+	r.Get("/manifest.webmanifest", a.handleManifest)
+	r.Get("/sw.js", a.handleServiceWorker)
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.Store.DB.PingContext(r.Context()); err != nil {

@@ -10,6 +10,41 @@
 {{if .OFFWarning}}
   <p class="mx-4 lg:mx-5 my-2 rounded-xl bg-warn-bg text-warn-fg px-3 py-2 text-[13px]">{{.OFFWarning}}</p>
 {{end}}
+{{- with barcode .Query}}{{template "picker_barcode" (pickerRow . $)}}{{else}}{{template "picker_sections" .}}{{end}}
+{{end}}
+
+{{define "picker_barcode"}}
+{{- /* Ricerca per codice a barre (scanner o cifre scritte): una riga gia'
+       aperta, oppure «non trovato» con «Crea l'ingrediente».
+       View-model: web.PickerRowCtx {Row: codice, List: dati del picker}. */ -}}
+{{- $code := .Row -}}{{- $d := .List -}}
+{{- $host := "#modal-host" -}}{{- if or (eq $d.PickerKind "meal_item") (eq $d.PickerKind "meal_cheat")}}{{$host = "#modal-host-2"}}{{end -}}
+<div class="flex items-center gap-2 pl-4 lg:pl-5 pr-4 pt-3 pb-1">
+  <p class="grow text-[12.5px] font-bold text-muted">Codice <span class="tabular-nums">{{$code}}</span></p>
+  <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] -mr-2.5 scan-only" data-scan-again>{{template "icon_sm" "i-scan"}}Scansiona un altro</button>
+</div>
+{{if $d.Rows}}
+  {{range $d.Rows}}{{template "picker_row" (pickerRow . $d)}}{{end}}
+{{else if not $d.SearchedOFF}}
+  {{/* Risposta della sola ricerca locale: ingredient_search.js vede
+       data-barcode-pending e lancia quella con OpenFoodFacts. */}}
+  <p class="px-5 py-6 text-center text-muted" data-barcode-pending><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco il codice su OpenFoodFacts…</p>
+{{else}}
+  <div class="mx-4 lg:mx-5 mt-2 rounded-xl bg-surface-2 p-3.5 flex gap-3 items-start">
+    <span class="thumb bg-surface">{{template "icon_sm" "i-barcode"}}</span>
+    <div class="grow flex flex-col gap-1">
+      <b>Prodotto non trovato</b>
+      <span class="text-muted">Il codice non è su OpenFoodFacts, oppure non ha i valori nutrizionali. Crealo tu con quelli dell'etichetta: il codice resta collegato.</span>
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-2 px-4 lg:px-5 pt-3 pb-2">
+    <button type="button" class="btn-primary" hx-get="/quick/ingredient?barcode={{$code}}" hx-target="{{$host}}" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Crea l'ingrediente</button>
+    <button type="button" class="btn-secondary scan-only" data-scan-again>{{template "icon_sm" "i-scan"}}Riprova</button>
+  </div>
+{{end}}
+{{end}}
+
+{{define "picker_sections"}}
 {{- $locals := 0 -}}{{- $offs := 0 -}}
 {{- range .Rows}}{{if .IsOFF}}{{$offs = add $offs 1}}{{else}}{{$locals = add $locals 1}}{{end}}{{end -}}
 {{if .NutritionistItems}}
@@ -41,7 +76,8 @@
 {{- /* Una riga del picker. View-model: web.PickerRowCtx {Row, List}. */ -}}
 {{- $r := .Row -}}{{- $d := .List -}}
 {{- $cheat := eq $d.PickerKind "meal_cheat" -}}
-<details class="group" data-picker-row>
+{{- $scanned := barcode $d.Query -}}
+<details class="group" data-picker-row{{if $scanned}} open{{end}}>
   <summary class="flex items-center gap-3 min-h-[52px] py-1.5 pl-4 lg:pl-5 pr-4 cursor-pointer list-none hover:bg-surface-2 group-open:bg-accent-soft [&::-webkit-details-marker]:hidden">
     {{if $r.IsOFF}}
       <span class="thumb">{{if $r.ImageURL}}<img src="{{$r.ImageURL}}" alt="" loading="lazy" onerror="this.remove()" class="w-full h-full object-contain">{{else}}{{template "icon_sm" "i-barcode"}}{{end}}</span>
@@ -55,6 +91,12 @@
     </span>
     <span class="w-8 h-8 shrink-0 grid place-items-center rounded-full border border-border bg-surface text-accent group-open:rotate-45 transition-transform" aria-hidden="true">{{template "icon_sm" "i-plus"}}</span>
   </summary>
+  {{if and $scanned $r.HasFullNutrients}}
+  <p class="flex gap-3.5 pl-4 lg:pl-5 pr-4 pt-1 bg-accent-soft text-[13px] tabular-nums">
+    <span><b class="text-prot font-semibold">P</b> {{dec $r.Protein 1}} g</span><span><b class="text-carb font-semibold">C</b> {{dec $r.Carbs 1}} g</span><span><b class="text-fat font-semibold">G</b> {{dec $r.Fat 1}} g</span>
+    <span class="ml-auto text-muted text-[12.5px]">per 100 {{$r.Unit}}</span>
+  </p>
+  {{end}}
   {{if or (not $r.IsOFF) $r.Importable}}
   {{- $action := "/nutrizionista/items" -}}
   {{- if eq $d.PickerKind "recipe_item"}}{{$action = printf "/recipes/%d/items" $d.RecipeID}}

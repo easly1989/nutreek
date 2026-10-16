@@ -28,10 +28,21 @@
     });
   }
 
+  // Barra del browser e icona della scheda seguono subito il colore; il
+  // manifest lo rilegge il server dal cookie.
+  function syncAppIcon(accent) {
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = getComputedStyle(root).getPropertyValue("--acc-l").trim() || meta.content;
+    document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]').forEach(function (l) {
+      l.href = l.href.replace(/-(bosco|mare|tramonto|grafite)-/, "-" + accent + "-");
+    });
+  }
+
   function apply(attr, cookie, allowed, value) {
     if (allowed.indexOf(value) === -1) return;
     root.setAttribute(attr, value);
     setCookie(cookie, value);
+    if (attr === "data-accent") syncAppIcon(value);
     // Il vecchio cookie a quattro temi non serve piu': i nuovi lo sostituiscono.
     document.cookie = "theme=; path=/; max-age=0; SameSite=Lax";
     syncControls();
