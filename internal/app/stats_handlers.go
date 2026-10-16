@@ -11,20 +11,20 @@ import (
 	"github.com/amon2126/nutreek/internal/service"
 )
 
-// slotAdherence aggrega l'aderenza media per tipo di pasto (es. "Colazione").
+// slotAdherence aggregates the average adherence per meal type (e.g. "Colazione").
 type slotAdherence struct {
 	SlotName string
 	AvgScore float64
-	Count    int // numero di giorni-pasto con sgarro osservato
+	Count    int // number of meal-days with a cheat observed
 }
 
 type statsPageData struct {
 	authPageData
 	View          statsView
-	From, To      time.Time // primo lunedi' e ultima domenica mostrati
+	From, To      time.Time // first Monday and last Sunday shown
 	SlotAdherence []slotAdherence
 	TDEEReport    *service.TDEEReport
-	TargetKcal    float64 // 0 se l'utente non ha un obiettivo
+	TargetKcal    float64 // 0 when the user has no goal
 }
 
 func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
@@ -35,13 +35,13 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	weekStart := db.MondayOf(time.Now())
 	from := weekStart.AddDate(0, 0, -7*(numWeeks-1))
 
-	// Aderenza piano vs effettivo: streak giornaliero e breakdown per tipo di
-	// pasto, oltre al punteggio di ogni settimana.
+	// Plan vs actual adherence: daily streak and breakdown per meal type,
+	// on top of every week's score.
 	type datedScore struct {
 		date  time.Time
 		score float64
 	}
-	var dailyAdh []datedScore // solo giorni pianificati fino a oggi, per lo streak
+	var dailyAdh []datedScore // only planned days up to today, for the streak
 	slotAgg := map[string]*slotAdherence{}
 	var slotOrder []string
 	today := todayDate()
@@ -85,12 +85,12 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 			dayScores = append(dayScores, adh)
 			if !adh.PlannedMacros.IsZero() {
 				sw.Planned = true
-				// Streak: solo giorni con pasti pianificati, non futuri.
+				// Streak: only days with planned meals, not future ones.
 				if dayDate := ws.AddDate(0, 0, d); !dayDate.After(today) {
 					dailyAdh = append(dailyAdh, datedScore{date: dayDate, score: adh.Score})
 				}
 			}
-			// Breakdown per slot: aderenza del singolo pasto.
+			// Breakdown per slot: the single meal's adherence.
 			for _, meal := range dayMeals {
 				ms := macros.ScoreDay([]domain.MealWithItems{meal})
 				if ms.PlannedMacros.IsZero() {
@@ -102,7 +102,7 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 					slotAgg[meal.Name] = agg
 					slotOrder = append(slotOrder, meal.Name)
 				}
-				agg.AvgScore += ms.Score // somma, mediata dopo il loop
+				agg.AvgScore += ms.Score // sum, averaged after the loop
 				agg.Count++
 			}
 		}
@@ -117,15 +117,15 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		weeks = append(weeks, sw)
 	}
 
-	// Streak: giorni pianificati in ordine, conta i piu' recenti
-	// consecutivi con score >= 80.
+	// Streak: planned days in order, count the most recent consecutive ones
+	// with score >= 80.
 	sort.Slice(dailyAdh, func(i, j int) bool { return dailyAdh[i].date.Before(dailyAdh[j].date) })
 	dailyScores := make([]float64, len(dailyAdh))
 	for i, ds := range dailyAdh {
 		dailyScores[i] = ds.score
 	}
 
-	// Breakdown per slot: media e ordinamento per aderenza decrescente.
+	// Breakdown per slot: average and sort by decreasing adherence.
 	slotAdherences := make([]slotAdherence, 0, len(slotOrder))
 	for _, name := range slotOrder {
 		agg := slotAgg[name]

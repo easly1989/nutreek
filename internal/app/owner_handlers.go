@@ -12,9 +12,9 @@ import (
 	"github.com/amon2126/nutreek/internal/off"
 )
 
-// isOwner ritorna true se l'utente e' l'owner dell'istanza (NUTREEK_OWNER_EMAIL).
-// Case-insensitive sull'email. Se NUTREEK_OWNER_EMAIL non è configurata, nessuno
-// è owner e le funzionalità owner-only sono disabilitate.
+// isOwner returns true when the user is the instance owner (NUTREEK_OWNER_EMAIL).
+// Case-insensitive on the email. When NUTREEK_OWNER_EMAIL is not set, nobody
+// is the owner and the owner-only features are disabled.
 func (a *App) isOwner(u *domain.User) bool {
 	if u == nil || a.Cfg.OwnerEmail == "" {
 		return false
@@ -22,8 +22,8 @@ func (a *App) isOwner(u *domain.User) bool {
 	return strings.EqualFold(strings.TrimSpace(u.Email), a.Cfg.OwnerEmail)
 }
 
-// requireOwner blocca chi non e' l'owner. Risponde 404 (non 403) per non
-// rivelare l'esistenza dell'endpoint a utenti normali.
+// requireOwner blocks anyone who is not the owner. It answers 404 (not 403)
+// so as not to reveal the endpoint to ordinary users.
 func (a *App) requireOwner(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !a.isOwner(userFromContext(r.Context())) {
@@ -34,7 +34,7 @@ func (a *App) requireOwner(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// requireOwnerMiddleware è la versione middleware di requireOwner.
+// requireOwnerMiddleware is the middleware version of requireOwner.
 func (a *App) requireOwnerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !a.isOwner(userFromContext(r.Context())) {
@@ -45,9 +45,9 @@ func (a *App) requireOwnerMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// handleOwnerOFFStatus GET /profile/off-status — stato corrente del sync OFF.
-// Equivalente owner di /admin/off-status, accessibile via sessione invece
-// che X-Admin-Token. Include anche un campione diagnostico dei prodotti in DB.
+// handleOwnerOFFStatus GET /profile/off-status — the current state of the OFF sync.
+// The owner's equivalent of /admin/off-status, reached via the session instead
+// of X-Admin-Token. It also includes a diagnostic sample of the products in the DB.
 func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
 		http.Error(w, "OFF syncer non configurato", http.StatusServiceUnavailable)
@@ -61,7 +61,7 @@ func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 
 	out := offStatusJSON(state)
 
-	// Diagnostic: conteggio prodotti con/senza nutrienti completi.
+	// Diagnostic: count of products with/without complete nutrients.
 	var full, partial int
 	_ = a.Store.DB.QueryRowContext(r.Context(),
 		`SELECT COUNT(*) FROM off_products WHERE has_full_nutrients = 1`).Scan(&full)
@@ -70,7 +70,7 @@ func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 	out["diag_full_nutrients"] = full
 	out["diag_partial_nutrients"] = partial
 
-	// Campione: 3 prodotti con nutrienti completi (se esistono).
+	// Sample: 3 products with complete nutrients (when any exist).
 	type sampleRow struct {
 		Barcode string  `json:"barcode"`
 		Name    string  `json:"name"`
@@ -97,9 +97,9 @@ func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(out)
 }
 
-// handleOwnerOFFRefresh POST /profile/off-sync — triggera sync OFF in
-// background. Accetta `force=true` (form o query) per invalidare l'ETag
-// salvato e forzare re-download completo (utile dopo cambi al parser).
+// handleOwnerOFFRefresh POST /profile/off-sync — triggers an OFF sync in the
+// background. Accepts `force=true` (form or query) to invalidate the saved
+// ETag and force a full re-download (useful after parser changes).
 func (a *App) handleOwnerOFFRefresh(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
 		http.Error(w, "OFF syncer non configurato", http.StatusServiceUnavailable)
@@ -115,14 +115,14 @@ func (a *App) handleOwnerOFFRefresh(w http.ResponseWriter, r *http.Request) {
 
 	force := r.URL.Query().Get("force") == "true" || r.PostFormValue("force") == "true"
 	if force {
-		// Azzerando dump_etag il prossimo doSync non manda If-None-Match,
-		// quindi OFF risponde 200 + dump completo invece di 304.
+		// With dump_etag cleared the next doSync sends no If-None-Match,
+		// so OFF answers 200 + the full dump instead of 304.
 		if _, err := a.Store.DB.ExecContext(r.Context(),
 			`UPDATE off_sync_state SET dump_etag = NULL WHERE id = 1`); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
-		a.Logger.Info("owner OFF sync: forzato (etag azzerato)")
+		a.Logger.Info("owner OFF sync: forced (etag cleared)")
 	}
 
 	go func() {

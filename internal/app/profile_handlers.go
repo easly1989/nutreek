@@ -21,8 +21,8 @@ type profileData struct {
 	BMICategory string
 	BMRValue    float64
 	TDEEValue   float64
-	HasIndices  bool // true se BMI/BMR sono calcolati e mostrabili
-	HasTDEE     bool // true se anche activity_level è impostato
+	HasIndices  bool // true when BMI/BMR are computed and can be shown
+	HasTDEE     bool // true when activity_level is set too
 }
 
 type profileForm struct {
@@ -90,7 +90,7 @@ func formatOptFloat(v float64) string {
 
 // ---- handlers --------------------------------------------------------------
 
-// handleProfilePage GET /profile — mostra la scheda personale.
+// handleProfilePage GET /profile — shows the personal profile.
 func (a *App) handleProfilePage(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	data := profileData{
@@ -112,7 +112,7 @@ func (a *App) handleProfilePage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleProfileSave POST /profile — valida e salva i dati del profilo.
+// handleProfileSave POST /profile — validates and saves the profile data.
 func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	form := profileForm{
@@ -139,7 +139,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Dati fisici — tutti opzionali.
+	// Physical data — all optional.
 	weightKg, err := parseOptionalPositiveFloat(form.WeightKg)
 	if err != nil || (weightKg != nil && (*weightKg < 20 || *weightKg > 300)) {
 		renderErr("Peso non valido (range plausibile: 20–300 kg).")
@@ -163,7 +163,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		s := form.Sex
 		sexPtr = &s
 	case "":
-		// non impostato
+		// not set
 	default:
 		renderErr("Sesso non valido.")
 		return
@@ -179,7 +179,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		activityPtr = &al
 	}
 
-	// Obiettivi macro — tutti opzionali, non negativi.
+	// Macro goals — all optional, non-negative.
 	targetKcal, err := parseOptionalNonNegFloat(form.TargetKcal)
 	if err != nil {
 		renderErr("Obiettivo Kcal non valido.")
@@ -201,8 +201,8 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Target idratazione: opzionale. Vuoto = mantieni il valore corrente
-	// (0 = sentinella "non modificare" lato UpdateProfile).
+	// Hydration target: optional. Empty = keep the current value
+	// (0 = the "do not change" sentinel in UpdateProfile).
 	waterTargetML := 0
 	if form.WaterTargetML != "" {
 		v, errW := strconv.Atoi(form.WaterTargetML)
@@ -213,7 +213,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		waterTargetML = v
 	}
 
-	// Validazione combinazione macro (controllo fisicamente impossibile).
+	// Validate the macro combination (a physically impossible check).
 	if targetKcal != nil && *targetKcal > 0 {
 		if *targetKcal < 800 {
 			renderErr("Obiettivo Kcal troppo basso (minimo consigliato: 800 kcal).")
@@ -240,7 +240,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ricalcola BMI e BMR se tutti i dati fisici sono presenti.
+	// Recompute BMI and BMR when all the physical data is present.
 	var bmiPtr, bmrPtr *float64
 	if profile.CanComputeIndices(weightKg, heightCm, birthYear, sexPtr) {
 		bmi := profile.BMI(*weightKg, *heightCm)
@@ -267,7 +267,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	// Aggiorna l'utente in sessione per riflettere i nuovi target subito.
+	// Update the user in the session so the new targets show at once.
 	updatedUser, err := a.Users.GetByID(r.Context(), user.ID)
 	if err == nil {
 		a.Sessions.Put(r.Context(), "user_id", updatedUser.ID)
@@ -276,7 +276,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/profile", http.StatusSeeOther)
 }
 
-// ---- helpers di parsing (opzionali) ----------------------------------------
+// ---- parsing helpers (optional) -------------------------------------------
 
 func parseOptionalPositiveFloat(s string) (*float64, error) {
 	if s == "" {

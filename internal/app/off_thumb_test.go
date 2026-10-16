@@ -9,8 +9,8 @@ import (
 	"github.com/amon2126/nutreek/internal/off"
 )
 
-// Le miniature OFF escono solo dall'host consentito dalla CSP, senza referrer,
-// e con l'icona del codice sotto per quando la foto non arriva (#133).
+// OFF thumbnails come only from the host the CSP allows, with no referrer,
+// and with the barcode icon underneath for when the photo does not load (#133).
 func TestOFFThumbnailInResults(t *testing.T) {
 	a := newTestApp(t)
 	a.OFF = off.NewClient(a.Store.DB, "http://127.0.0.1:1", nil)
@@ -33,19 +33,19 @@ func TestOFFThumbnailInResults(t *testing.T) {
 	}
 
 	if !strings.Contains(body, `src="https://images.openfoodfacts.org/images/products/801/234/567/8907/front_it.3.200.jpg"`) {
-		t.Errorf("la foto dal vecchio host static. non e' stata spostata su images.:\n%s", body)
+		t.Errorf("the photo from the old static. host was not moved to images.:\n%s", body)
 	}
 	if strings.Contains(body, "static.openfoodfacts.org") || strings.Contains(body, "tracker.example.com") {
-		t.Errorf("nel risultato resta un host non consentito:\n%s", body)
+		t.Errorf("a host that is not allowed remains in the result:\n%s", body)
 	}
-	// Per il farro l'URL del dump non e' mostrabile: si ripiega su quello dal codice.
+	// For the spelt the dump's URL cannot be shown: fall back to the one built from the code.
 	if !strings.Contains(body, "/images/products/801/555/555/5556/") {
-		t.Errorf("manca la miniatura costruita dal codice per il farro:\n%s", body)
+		t.Errorf("the thumbnail built from the code is missing for the spelt:\n%s", body)
 	}
 	if n := strings.Count(body, `referrerpolicy="no-referrer"`); n != 2 {
-		t.Errorf("immagini senza no-referrer: %d su 2", n)
+		t.Errorf("images without no-referrer: %d of 2", n)
 	}
 	if n := strings.Count(body, `href="#i-barcode"`); n < 2 {
-		t.Errorf("l'icona del codice deve stare sotto ogni foto: trovate %d", n)
+		t.Errorf("the barcode icon must sit under every photo: found %d", n)
 	}
 }

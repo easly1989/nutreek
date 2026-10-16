@@ -62,7 +62,7 @@ func TestHandleLogin_UnknownEmail(t *testing.T) {
 	w := httptest.NewRecorder()
 	a.Sessions.LoadAndSave(http.HandlerFunc(a.handleLogin)).ServeHTTP(w, r)
 
-	// stessa risposta 401 per non rivelare se l'email esiste (enumeration)
+	// the same 401 answer, so as not to reveal whether the email exists (enumeration)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("email sconosciuta: want 401, got %d", w.Code)
 	}
@@ -87,7 +87,7 @@ func TestHandleRegister_DuplicateEmail(t *testing.T) {
 		t.Errorf("email duplicata: want 422, got %d", w.Code)
 	}
 	if !strings.Contains(w.Body.String(), "gia") {
-		t.Errorf("atteso messaggio di errore email duplicata nel body")
+		t.Errorf("want the duplicate email error message in the body")
 	}
 }
 

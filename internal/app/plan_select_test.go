@@ -14,11 +14,11 @@ func TestSelectedDay(t *testing.T) {
 		today       time.Time
 		want        string
 	}{
-		{"giorno richiesto in settimana", "2026-10-17", thu, "2026-10-17"},
-		{"senza parametro: oggi", "", thu, "2026-10-15"},
-		{"parametro fuori settimana: oggi", "2026-10-25", thu, "2026-10-15"},
-		{"parametro non valido: oggi", "domani", thu, "2026-10-15"},
-		{"oggi fuori settimana: lunedi'", "", nextWeek, "2026-10-12"},
+		{"requested day in the week", "2026-10-17", thu, "2026-10-17"},
+		{"no parameter: today", "", thu, "2026-10-15"},
+		{"parameter outside the week: today", "2026-10-25", thu, "2026-10-15"},
+		{"invalid parameter: today", "domani", thu, "2026-10-15"},
+		{"today outside the week: Monday", "", nextWeek, "2026-10-12"},
 		{"domenica compresa", "2026-10-18", nextWeek, "2026-10-18"},
 	}
 	for _, tc := range cases {

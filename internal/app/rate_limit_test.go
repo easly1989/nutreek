@@ -14,20 +14,20 @@ func TestLoginRateLimiter(t *testing.T) {
 	rl := newIPRateLimiter(3, 1*time.Minute)
 	for i := 0; i < 3; i++ {
 		if !rl.allow("1.2.3.4") {
-			t.Fatalf("tentativo %d non dovrebbe essere bloccato", i+1)
+			t.Fatalf("attempt %d should not be blocked", i+1)
 		}
 	}
 	if rl.allow("1.2.3.4") {
-		t.Errorf("4° tentativo dovrebbe essere bloccato")
+		t.Errorf("the 4th attempt should be blocked")
 	}
-	// Altro IP non interferisce.
+	// Another IP does not interfere.
 	if !rl.allow("5.6.7.8") {
-		t.Errorf("IP diverso non dovrebbe essere bloccato")
+		t.Errorf("a different IP should not be blocked")
 	}
-	// reset (login successful) → ricomincia da capo.
+	// reset (successful login) → starts over.
 	rl.reset("1.2.3.4")
 	if !rl.allow("1.2.3.4") {
-		t.Errorf("dopo reset, primo tentativo dovrebbe essere ammesso")
+		t.Errorf("after reset, the first attempt should be allowed")
 	}
 }
 
@@ -36,11 +36,11 @@ func TestLoginRateLimiterWindowExpiry(t *testing.T) {
 	rl.allow("ip")
 	rl.allow("ip")
 	if rl.allow("ip") {
-		t.Errorf("3° dentro la window dovrebbe essere bloccato")
+		t.Errorf("the 3rd within the window should be blocked")
 	}
 	time.Sleep(60 * time.Millisecond)
 	if !rl.allow("ip") {
-		t.Errorf("dopo expiry window dovrebbe essere ammesso di nuovo")
+		t.Errorf("after the window expires it should be allowed again")
 	}
 }
 
@@ -52,15 +52,15 @@ func TestRemoteIP(t *testing.T) {
 		expected string
 	}{
 		{"no XFF, host:port", "", "1.2.3.4:55555", "1.2.3.4"},
-		{"RemoteAddr senza porta", "", "5.6.7.8", "5.6.7.8"},
-		// Client diretto (IP pubblico): l'header e' ignorato.
+		{"RemoteAddr without a port", "", "5.6.7.8", "5.6.7.8"},
+		// Direct client (public IP): the header is ignored.
 		{"client diretto, XFF falsificato", "9.9.9.9", "1.2.3.4:55555", "1.2.3.4"},
-		// Dietro proxy fidato: vale l'ultimo IP non fidato della catena.
+		// Behind a trusted proxy: the last untrusted IP of the chain counts.
 		{"proxy locale, XFF singolo", "9.9.9.9", "127.0.0.1:40000", "9.9.9.9"},
-		{"proxy docker, catena con IP falsificato a sinistra", "6.6.6.6, 9.9.9.9", "172.18.0.2:40000", "9.9.9.9"},
+		{"docker proxy, chain with a forged IP on the left", "6.6.6.6, 9.9.9.9", "172.18.0.2:40000", "9.9.9.9"},
 		{"due proxy privati", "9.9.9.9, 10.0.0.5", "172.18.0.2:40000", "9.9.9.9"},
 		{"client in LAN, catena tutta privata", "192.168.1.50", "172.18.0.2:40000", "192.168.1.50"},
-		{"proxy fidato, XFF non valido", "garbage", "127.0.0.1:40000", "127.0.0.1"},
+		{"trusted proxy, invalid XFF", "garbage", "127.0.0.1:40000", "127.0.0.1"},
 		{"proxy fidato IPv6 loopback", "9.9.9.9", "[::1]:40000", "9.9.9.9"},
 	}
 	for _, tc := range cases {
@@ -77,8 +77,8 @@ func TestRemoteIP(t *testing.T) {
 	}
 }
 
-// TestRateLimiterSpoofedXFF: un client diretto che cambia X-Forwarded-For a
-// ogni richiesta resta nello stesso bucket e viene bloccato.
+// TestRateLimiterSpoofedXFF: a direct client that changes X-Forwarded-For on
+// every request stays in the same bucket and gets blocked.
 func TestRateLimiterSpoofedXFF(t *testing.T) {
 	rl := newIPRateLimiter(5, time.Minute)
 	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
@@ -93,29 +93,29 @@ func TestRateLimiterSpoofedXFF(t *testing.T) {
 			want = http.StatusTooManyRequests
 		}
 		if rec.Code != want {
-			t.Fatalf("richiesta %d: atteso %d, got %d", i, want, rec.Code)
+			t.Fatalf("request %d: want %d, got %d", i, want, rec.Code)
 		}
 	}
 }
 
-// TestRateLimiterPrunesExpired: i bucket scaduti vengono eliminati.
+// TestRateLimiterPrunesExpired: expired buckets are removed.
 func TestRateLimiterPrunesExpired(t *testing.T) {
 	rl := newIPRateLimiter(5, 20*time.Millisecond)
 	for i := range 100 {
 		rl.allow(fmt.Sprintf("198.51.100.%d", i))
 	}
 	if got := rl.size(); got != 100 {
-		t.Fatalf("bucket attesi 100, got %d", got)
+		t.Fatalf("want 100 buckets, got %d", got)
 	}
 	time.Sleep(30 * time.Millisecond)
 	rl.allow("203.0.113.1")
 	if got := rl.size(); got != 1 {
-		t.Errorf("dopo la pulizia atteso 1 bucket, got %d", got)
+		t.Errorf("after the cleanup want 1 bucket, got %d", got)
 	}
 }
 
-// TestLoginRateLimiterConcurrent: il limiter del login e' creato una volta
-// sola anche con richieste concorrenti (go test -race).
+// TestLoginRateLimiterConcurrent: the login limiter is created only once,
+// even with concurrent requests (go test -race).
 func TestLoginRateLimiterConcurrent(t *testing.T) {
 	a := &App{}
 	var wg sync.WaitGroup
@@ -130,7 +130,7 @@ func TestLoginRateLimiterConcurrent(t *testing.T) {
 	wg.Wait()
 	for i, l := range seen {
 		if l == nil || l != seen[0] {
-			t.Fatalf("goroutine %d: limiter diverso o nil", i)
+			t.Fatalf("goroutine %d: different or nil limiter", i)
 		}
 	}
 }
@@ -155,14 +155,14 @@ func TestIPRateLimiterAllow(t *testing.T) {
 	rl := newIPRateLimiter(3, time.Minute)
 	for i := 0; i < 3; i++ {
 		if !rl.allow("1.2.3.4") {
-			t.Fatalf("richiesta %d non dovrebbe essere bloccata", i+1)
+			t.Fatalf("request %d should not be blocked", i+1)
 		}
 	}
 	if rl.allow("1.2.3.4") {
-		t.Error("4a richiesta dovrebbe essere bloccata")
+		t.Error("the 4th request should be blocked")
 	}
 	if !rl.allow("5.6.7.8") {
-		t.Error("IP diverso non dovrebbe essere bloccato")
+		t.Error("a different IP should not be blocked")
 	}
 }
 
@@ -178,7 +178,7 @@ func TestIPRateLimiterMiddleware429(t *testing.T) {
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
-			t.Fatalf("richiesta %d: atteso 200, got %d", i+1, rec.Code)
+			t.Fatalf("request %d: want 200, got %d", i+1, rec.Code)
 		}
 	}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -186,6 +186,6 @@ func TestIPRateLimiterMiddleware429(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusTooManyRequests {
-		t.Errorf("3a richiesta: atteso 429, got %d", rec.Code)
+		t.Errorf("3rd request: want 429, got %d", rec.Code)
 	}
 }

@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-// requireAdmin protegge gli endpoint admin con un token in header
-// `X-Admin-Token` confrontato (constant-time) con cfg.AdminToken. Se il
-// token in config e' vuoto, l'endpoint resta disabilitato (404).
+// requireAdmin protects the admin endpoints with a token in the
+// `X-Admin-Token` header, compared (constant time) with cfg.AdminToken. When
+// the configured token is empty, the endpoint stays disabled (404).
 func (a *App) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		expected := strings.TrimSpace(a.Cfg.AdminToken)
@@ -26,9 +26,9 @@ func (a *App) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// handleAdminReconcile esegue una RunOnce manuale del reconciler e ritorna
-// le statistiche come JSON. Utile per smoke test e per forzare la
-// riconciliazione senza aspettare il ticker.
+// handleAdminReconcile runs a manual RunOnce of the reconciler and returns
+// the stats as JSON. Useful for smoke tests and to force reconciliation
+// without waiting for the ticker.
 func (a *App) handleAdminReconcile(w http.ResponseWriter, r *http.Request) {
 	if a.Reconciler == nil {
 		http.Error(w, "reconciler non configurato", http.StatusServiceUnavailable)

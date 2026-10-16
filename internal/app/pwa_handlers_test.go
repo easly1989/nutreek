@@ -42,7 +42,7 @@ func getManifest(t *testing.T, a *App, cookies ...*http.Cookie) (*httptest.Respo
 	var m manifestDoc
 	if rec.Code == http.StatusOK {
 		if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
-			t.Fatalf("manifest non e' JSON: %v\n%s", err, rec.Body.String())
+			t.Fatalf("manifest is not JSON: %v\n%s", err, rec.Body.String())
 		}
 	}
 	return rec, m
@@ -63,7 +63,7 @@ func TestManifestFollowsAccent(t *testing.T) {
 		t.Errorf("manifest base: %+v", m)
 	}
 	if m.ThemeColor != "#2F7A55" {
-		t.Errorf("senza cookie theme_color = %q, voglio il bosco", m.ThemeColor)
+		t.Errorf("without a cookie theme_color = %q, want the forest one", m.ThemeColor)
 	}
 
 	_, m = getManifest(t, a, &http.Cookie{Name: cookieAccent, Value: "tramonto"})
@@ -74,10 +74,10 @@ func TestManifestFollowsAccent(t *testing.T) {
 	static := web.Static()
 	for _, ic := range m.Icons {
 		if !strings.Contains(ic.Src, "-tramonto-") {
-			t.Errorf("icona %q non segue il colore", ic.Src)
+			t.Errorf("icon %q does not follow the color", ic.Src)
 		}
 		if _, err := fs.Stat(static, strings.TrimPrefix(ic.Src, "/static/")); err != nil {
-			t.Errorf("icona %q non esiste: %v", ic.Src, err)
+			t.Errorf("icon %q does not exist: %v", ic.Src, err)
 		}
 		switch {
 		case ic.Sizes == "192x192" && ic.Purpose == "any":
@@ -89,7 +89,7 @@ func TestManifestFollowsAccent(t *testing.T) {
 		}
 	}
 	if !any192 || !any512 || !mask512 {
-		t.Errorf("icone: voglio 192 e 512 «any» e 512 «maskable», ho %+v", m.Icons)
+		t.Errorf("icons: want 192 and 512 «any» and 512 «maskable», got %+v", m.Icons)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestManifestDarkBackground(t *testing.T) {
 	_, light := getManifest(t, a, &http.Cookie{Name: cookieMode, Value: "chiaro"})
 	_, dark := getManifest(t, a, &http.Cookie{Name: cookieMode, Value: "scuro"})
 	if light.BackgroundColor == dark.BackgroundColor {
-		t.Errorf("lo sfondo della schermata d'avvio non cambia col modo scuro: %q", dark.BackgroundColor)
+		t.Errorf("the splash screen background does not change with dark mode: %q", dark.BackgroundColor)
 	}
 }
 
@@ -112,17 +112,17 @@ func TestServiceWorker(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/javascript") {
 		t.Errorf("Content-Type = %q", ct)
 	}
-	// Il browser deve ricontrollare a ogni visita, se no un aggiornamento
-	// dell'app resterebbe nascosto dietro il vecchio worker.
+	// The browser must check again on every visit, otherwise an app update
+	// would stay hidden behind the old worker.
 	if cc := rec.Header().Get("Cache-Control"); !strings.Contains(cc, "no-cache") {
 		t.Errorf("Cache-Control = %q", cc)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, `"nutreek-static-`+web.StaticVersion()+`"`) {
-		t.Errorf("il nome della cache non porta la versione degli statici:\n%s", body)
+		t.Errorf("the cache name does not carry the static assets' version:\n%s", body)
 	}
-	// Solo /static: niente pagine (dati dell'utente) in cache.
+	// Only /static: no pages (user data) in the cache.
 	if !strings.Contains(body, `"/static/"`) {
-		t.Errorf("il worker non limita la cache a /static/")
+		t.Errorf("the worker does not limit the cache to /static/")
 	}
 }

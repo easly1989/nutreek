@@ -11,8 +11,8 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// «Crea l'ingrediente» dallo scanner: il codice letto arriva nel form e
-// resta collegato al nuovo ingrediente, cosi' la scansione successiva lo trova.
+// «Crea l'ingrediente» from the scanner: the scanned code reaches the form and
+// stays linked to the new ingredient, so the next scan finds it.
 func TestQuickIngredientWithBarcode(t *testing.T) {
 	a := newTestApp(t)
 	u := mustCreateTestUser(t, a, "scan@example.com", "password123")
@@ -29,25 +29,25 @@ func TestQuickIngredientWithBarcode(t *testing.T) {
 	}
 
 	if w := post("4 006381 333931"); w.Code != http.StatusNoContent {
-		t.Fatalf("creazione: status %d, body %s", w.Code, w.Body.String())
+		t.Fatalf("creation: status %d, body %s", w.Code, w.Body.String())
 	}
 	ing, err := a.Ingredients.GetByBarcode(ctx, "4006381333931")
 	if err != nil || ing.Name != "Biscotti del forno" || ing.Source != domain.IngredientSourceLocal {
-		t.Fatalf("ingrediente per codice: %+v, %v", ing, err)
+		t.Fatalf("ingredient by code: %+v, %v", ing, err)
 	}
 
-	// Lo stesso codice una seconda volta: errore nel form, niente doppione.
+	// The same code a second time: an error in the form, no duplicate.
 	w := post("4006381333931")
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Biscotti del forno") {
-		t.Errorf("codice gia' usato: status %d, body %s", w.Code, w.Body.String())
+		t.Errorf("code already used: status %d, body %s", w.Code, w.Body.String())
 	}
 	if n := countIngredients(t, a); n != 1 {
-		t.Errorf("ingredienti: %d, atteso 1", n)
+		t.Errorf("ingredients: %d, want 1", n)
 	}
 
-	// Un codice non valido non blocca nulla: si crea senza codice.
+	// An invalid code blocks nothing: the ingredient is created without a code.
 	if w := post("123"); w.Code != http.StatusNoContent {
-		t.Errorf("codice non valido: status %d", w.Code)
+		t.Errorf("invalid code: status %d", w.Code)
 	}
 }
 

@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// TestHandleIngredients_RequiresAuth verifica che le sezioni protette
-// reindirizzino a /login quando non autenticati.
+// TestHandleIngredients_RequiresAuth checks that the protected sections
+// redirect to /login when not authenticated.
 func TestHandleIngredients_RequiresAuth(t *testing.T) {
 	a := newTestApp(t)
 	srv := httptest.NewServer(a.Router())
@@ -15,7 +15,7 @@ func TestHandleIngredients_RequiresAuth(t *testing.T) {
 
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse // non seguire i redirect
+			return http.ErrUseLastResponse // do not follow redirects
 		},
 	}
 
@@ -34,17 +34,17 @@ func TestHandleIngredients_RequiresAuth(t *testing.T) {
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusSeeOther {
-				t.Errorf("GET %s senza auth: want 303, got %d", path, resp.StatusCode)
+				t.Errorf("GET %s without auth: want 303, got %d", path, resp.StatusCode)
 			}
 			if loc := resp.Header.Get("Location"); loc != "/login" {
-				t.Errorf("GET %s senza auth: want redirect a /login, got %q", path, loc)
+				t.Errorf("GET %s without auth: want redirect to /login, got %q", path, loc)
 			}
 		})
 	}
 }
 
-// TestHandleDashboard_Unauthenticated verifica che la home mostri la landing
-// page (non redirect) agli utenti non autenticati.
+// TestHandleDashboard_Unauthenticated checks that the home shows the landing
+// page (not a redirect) to anonymous users.
 func TestHandleDashboard_Unauthenticated(t *testing.T) {
 	a := newTestApp(t)
 
@@ -52,13 +52,13 @@ func TestHandleDashboard_Unauthenticated(t *testing.T) {
 	w := httptest.NewRecorder()
 	a.Sessions.LoadAndSave(http.HandlerFunc(a.handleDashboard)).ServeHTTP(w, r)
 
-	// La home senza auth mostra la pagina "home", non un redirect.
+	// The home without auth shows the "home" page, not a redirect.
 	if w.Code != http.StatusOK {
-		t.Errorf("home senza auth: want 200, got %d", w.Code)
+		t.Errorf("home without auth: want 200, got %d", w.Code)
 	}
 }
 
-// TestHandleWeekExport_RequiresAuth verifica che l'export CSV richieda auth.
+// TestHandleWeekExport_RequiresAuth checks that the CSV export requires auth.
 func TestHandleWeekExport_RequiresAuth(t *testing.T) {
 	a := newTestApp(t)
 	srv := httptest.NewServer(a.Router())
@@ -77,6 +77,6 @@ func TestHandleWeekExport_RequiresAuth(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusSeeOther {
-		t.Errorf("export senza auth: want 303, got %d", resp.StatusCode)
+		t.Errorf("export without auth: want 303, got %d", resp.StatusCode)
 	}
 }

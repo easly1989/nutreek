@@ -12,8 +12,8 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// customizeFormData e' il view-model del modal di personalizzazione di un
-// item ricetta in un pasto.
+// customizeFormData is the view model of the dialog that customizes a recipe
+// item in a meal.
 type customizeFormData struct {
 	authPageData
 	MealItemID int64
@@ -23,7 +23,7 @@ type customizeFormData struct {
 	Error      string
 }
 
-// customizeRow e' una riga del form: ingrediente + quantita'.
+// customizeRow is one row of the form: ingredient + quantity.
 type customizeRow struct {
 	IngredientID int64
 	Name         string
@@ -32,7 +32,7 @@ type customizeRow struct {
 }
 
 // handleMealItemCustomizeForm GET /meal-items/{itemID}/customize?start=YYYY-MM-DD
-// Renderizza il modal di personalizzazione per un item ricetta.
+// Renders the customization dialog for a recipe item.
 func (a *App) handleMealItemCustomizeForm(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	itemID, err := parseID(r, "itemID")
@@ -55,8 +55,8 @@ func (a *App) handleMealItemCustomizeForm(w http.ResponseWriter, r *http.Request
 }
 
 // handleMealItemCustomizeSave POST /meal-items/{itemID}/customize?start=YYYY-MM-DD
-// Salva le variazioni personalizzate per l'item. Risponde con HX-Redirect alla
-// settimana corrente.
+// Saves the item's custom variations. Answers with HX-Redirect to the
+// current week.
 func (a *App) handleMealItemCustomizeSave(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	itemID, err := parseID(r, "itemID")
@@ -70,7 +70,7 @@ func (a *App) handleMealItemCustomizeSave(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Legge tutti i campi qty_{ingredientID} dal form.
+	// Read every qty_{ingredientID} field of the form.
 	var rows []db.CustomizationInput
 	for key, vals := range r.PostForm {
 		if !strings.HasPrefix(key, "qty_") {
@@ -86,7 +86,7 @@ func (a *App) handleMealItemCustomizeSave(w http.ResponseWriter, r *http.Request
 		}
 		qty, err := parseNonNegFloat(strings.TrimSpace(vals[0]))
 		if err != nil || qty <= 0 {
-			continue // salta ingredienti con quantità 0 o invalida
+			continue // skip ingredients with a 0 or invalid quantity
 		}
 		rows = append(rows, db.CustomizationInput{IngredientID: ingID, Quantity: qty})
 	}
@@ -105,7 +105,7 @@ func (a *App) handleMealItemCustomizeSave(w http.ResponseWriter, r *http.Request
 }
 
 // handleMealItemCustomizeReset POST /meal-items/{itemID}/customize/reset?start=
-// Rimuove tutte le personalizzazioni, ripristinando la ricetta base.
+// Removes every customization, restoring the base recipe.
 func (a *App) handleMealItemCustomizeReset(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	itemID, err := parseID(r, "itemID")
@@ -126,9 +126,9 @@ func (a *App) handleMealItemCustomizeReset(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// loadMealItemFull carica un singolo meal_item con tutti i dati risolti
-// (recipe + recipe_items + customizations). Ritorna nil se non trovato o
-// non appartenente all'utente.
+// loadMealItemFull loads a single meal_item with all its data resolved
+// (recipe + recipe_items + customizations). It returns nil when not found or
+// not the user's.
 func (a *App) loadMealItemFull(r *http.Request, userID, itemID int64) (*domain.MealItemFull, error) {
 	row := a.Store.DB.QueryRowContext(r.Context(), `
 		SELECT mi.id, mi.meal_id, mi.recipe_id, mi.ingredient_id, mi.quantity, mi.sort_order
@@ -146,7 +146,7 @@ func (a *App) loadMealItemFull(r *http.Request, userID, itemID int64) (*domain.M
 		return full, nil
 	}
 
-	// GetWithItems funziona sia per ricette proprie sia per pubbliche (viewerID check).
+	// GetWithItems works for the user's own recipes and for public ones (viewerID check).
 	rec, err := a.Recipes.GetWithItems(r.Context(), *it.RecipeID, userID)
 	if err == nil {
 		full.Recipe = &rec.Recipe
@@ -161,9 +161,9 @@ func (a *App) loadMealItemFull(r *http.Request, userID, itemID int64) (*domain.M
 	return full, nil
 }
 
-// buildCustomizeForm costruisce il view-model per il modal di personalizzazione.
-// Se l'item ha già personalizzazioni, le pre-carica; altrimenti pre-popola con
-// le quantità scalate della ricetta base.
+// buildCustomizeForm builds the view model of the customization dialog.
+// When the item already has customizations it preloads them; otherwise it
+// prefills the scaled quantities of the base recipe.
 func (a *App) buildCustomizeForm(r *http.Request, item *domain.MealItemFull, weekStart, errMsg string) customizeFormData {
 	data := customizeFormData{
 		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
@@ -176,7 +176,7 @@ func (a *App) buildCustomizeForm(r *http.Request, item *domain.MealItemFull, wee
 	}
 
 	if item.IsCustomized() {
-		// Pre-popola dalle personalizzazioni esistenti.
+		// Prefill from the existing customizations.
 		for _, c := range item.Customizations {
 			if c.Ingredient == nil {
 				continue
@@ -189,7 +189,7 @@ func (a *App) buildCustomizeForm(r *http.Request, item *domain.MealItemFull, wee
 			})
 		}
 	} else if item.Recipe != nil && len(item.RecipeItems) > 0 {
-		// Pre-popola dalle quantità scalate della ricetta base.
+		// Prefill from the scaled quantities of the base recipe.
 		scale := 1.0
 		if item.Recipe.Servings > 0 {
 			scale = item.Quantity / float64(item.Recipe.Servings)

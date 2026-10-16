@@ -2,23 +2,23 @@ package app
 
 import "unicode/utf8"
 
-// MaxNameLen e' il limite di lunghezza standard per campi "nome" (recipe,
-// template, slot, meal). Volutamente generoso per non frustrare l'utente
-// ma piccolo abbastanza da non far esplodere il DB su input malevoli.
+// MaxNameLen is the standard length limit for "name" fields (recipe,
+// template, slot, meal). Deliberately generous so as not to frustrate the
+// user, but small enough that malicious input cannot bloat the DB.
 const MaxNameLen = 200
 
-// MaxDescriptionLen vale per i campi descrizione lunga (recipe.description).
+// MaxDescriptionLen applies to the long description fields (recipe.description).
 const MaxDescriptionLen = 2000
 
-// withinLen ritorna true se la stringa s ha al piu' max RUNE (non byte:
-// UTF-8 italiano puo' avere caratteri 2-byte e contarli come 2 sarebbe
-// scorretto). Stringa vuota e' sempre ok dal punto di vista del limite.
+// withinLen returns true when the string s has at most max RUNES (not bytes:
+// Italian UTF-8 can have 2-byte characters and counting them as 2 would be
+// wrong). An empty string is always fine as far as the limit goes.
 func withinLen(s string, max int) bool {
 	return utf8.RuneCountInString(s) <= max
 }
 
-// truncateRunes taglia s a max rune, rispettando i confini UTF-8. Usato per
-// normalizzare i campi importati (es. da una pagina web) entro i limiti dei form.
+// truncateRunes cuts s to max runes, respecting UTF-8 boundaries. Used to
+// normalize imported fields (e.g. from a web page) within the form limits.
 func truncateRunes(s string, max int) string {
 	if utf8.RuneCountInString(s) <= max {
 		return s
