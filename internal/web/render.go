@@ -167,6 +167,22 @@ func funcMap() template.FuncMap {
 		"pickerRow": func(row, list any) PickerRowCtx {
 			return PickerRowCtx{Row: row, List: list}
 		},
+		// featureIcon sceglie l'icona di una funzionalita' premium dalla chiave.
+		"featureIcon": func(key string) string {
+			switch key {
+			case "auto_plan":
+				return "i-week"
+			case "tdee_adaptive":
+				return "i-stats"
+			case "coach_mode":
+				return "i-coach"
+			case "api_access":
+				return "i-key"
+			case "micronutrients":
+				return "i-ingredients"
+			}
+			return "i-star"
+		},
 		"navActive": navActive,
 		// nav costruisce una voce di navigazione della shell (sidebar e
 		// barra in basso): {{template "nav_link" (nav $.ActiveNav "/recipes" "Ricette" "i-recipes")}}.

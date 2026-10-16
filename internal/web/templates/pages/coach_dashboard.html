@@ -1,140 +1,106 @@
-{{define "title"}}Pannello Coach — Nutreek{{end}}
+{{define "title"}}Pannello coach — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-4xl">
-  <h1 class="text-3xl font-semibold mb-1">Pannello Coach</h1>
-  <p class="text-sm text-muted mb-6">Gestisci i tuoi clienti e la libreria di piani nutrizionali.</p>
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  <header>
+    <h1 class="h1">Pannello coach</h1>
+    <p class="text-muted mt-0.5">I tuoi clienti e i piani da assegnare.</p>
+  </header>
 
-  {{if .Flash}}
-  <div class="mb-4 rounded border border-accent/30 bg-accent/10 text-accent px-4 py-2 text-sm">{{.Flash}}</div>
-  {{end}}
-
-  {{/* ===== Clienti ===== */}}
-  <section class="bg-surface border border-border rounded mb-6">
-    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
-      <h2 class="text-base font-semibold">Clienti ({{len .Clients}})</h2>
-    </div>
-    {{if .Clients}}
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="border-b border-border bg-surface-2 text-left">
-          <th class="px-4 py-3 font-medium">Cliente</th>
-          <th class="px-4 py-3 font-medium">Piano assegnato</th>
-          <th class="px-4 py-3 font-medium text-right">Azioni</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-border">
+  <div class="grid gap-4 lg:gap-[18px] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-start">
+    <section class="card">
+      <div class="flex items-center gap-2 px-4 pt-3.5 pb-3"><h2 class="h2">Clienti</h2><span class="chip chip-n">{{len .Clients}}</span></div>
+      {{if .Clients}}
+      <ul class="border-t border-border divide-y divide-border">
+        <li class="list-head hidden lg:grid grid-cols-[minmax(0,1fr)_220px_32px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>Cliente</span><span>Piano assegnato</span><span></span></li>
         {{range .Clients}}
-        <tr>
-          <td class="px-4 py-3">
-            <p class="font-medium">{{.Client.DisplayName}}</p>
-            <p class="text-muted text-xs font-mono">{{.Client.Email}}</p>
-          </td>
-          <td class="px-4 py-3">
-            <form method="post" action="/coach/clients/{{.ClientID}}/assign-plan" class="inline-flex items-center gap-2">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <select name="plan_id"
-                      class="rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="">— Piano proprio del cliente —</option>
-                {{$assigned := .AssignedPlanID}}
-                {{range $.Plans}}
-                <option value="{{.ID}}" {{if and $assigned (eq .ID (deref $assigned))}}selected{{end}}>{{.Name}}</option>
-                {{end}}
-              </select>
-              <button type="submit"
-                      class="px-3 py-1.5 rounded bg-accent text-white text-xs font-medium hover:bg-accent/90 transition">
-                Assegna
-              </button>
-            </form>
-            {{if .AssignedPlanName}}
-            <p class="text-muted text-xs mt-1">Attuale: {{.AssignedPlanName}}</p>
-            {{end}}
-          </td>
-          <td class="px-4 py-3 text-right">
-            <form method="post" action="/coach/clients/{{.ClientID}}/remove" class="inline"
-                  onsubmit="return confirm('Rimuovere questo cliente?')">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button type="submit"
-                      class="px-3 py-1.5 rounded border border-danger/40 text-danger text-xs font-medium hover:bg-danger/10 transition">
-                Rimuovi
-              </button>
-            </form>
-          </td>
-        </tr>
+        <li class="grid grid-cols-[minmax(0,1fr)_32px] lg:grid-cols-[minmax(0,1fr)_220px_32px] gap-x-3 gap-y-2 items-center px-4 py-2.5">
+          <span class="flex items-center gap-3 min-w-0">
+            <span class="w-9 h-9 shrink-0 rounded-full bg-surface-2 grid place-items-center font-bold">{{initial .Client.DisplayName}}</span>
+            <span class="flex flex-col min-w-0"><b class="truncate">{{.Client.DisplayName}}</b><span class="text-[12.5px] text-muted truncate">{{.Client.Email}}</span></span>
+          </span>
+          <form method="post" action="/coach/clients/{{.ClientID}}/assign-plan" class="col-span-2 row-start-2 lg:col-span-1 lg:row-start-auto flex gap-2">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            {{$assigned := .AssignedPlanID}}
+            <select name="plan_id" class="field h-[34px] text-[13px]" data-autosubmit aria-label="Piano assegnato a {{.Client.DisplayName}}">
+              <option value="">Il suo piano</option>
+              {{range $.Plans}}<option value="{{.ID}}"{{if and $assigned (eq .ID (deref $assigned))}} selected{{end}}>{{.Name}}</option>{{end}}
+            </select>
+            <noscript><button class="btn-secondary h-[34px]">Assegna</button></noscript>
+          </form>
+          <div class="relative row-start-1 col-start-2 lg:col-start-3">
+            <button type="button" class="icon-action" data-popover="client-menu-{{.ClientID}}" aria-expanded="false" aria-controls="client-menu-{{.ClientID}}" aria-label="Azioni su {{.Client.DisplayName}}">{{template "icon" "i-dots"}}</button>
+            <div id="client-menu-{{.ClientID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-[220px] z-40 p-1.5">
+              <form method="post" action="/coach/clients/{{.ClientID}}/remove" data-confirm="Togliere {{.Client.DisplayName}} dai tuoi clienti? Il suo account resta.">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Togli dai clienti</button>
+              </form>
+            </div>
+          </div>
+        </li>
         {{end}}
-      </tbody>
-    </table>
-    {{else}}
-    <p class="px-6 py-8 text-center text-muted text-sm">Nessun cliente. Aggiungine uno con il form qui sotto.</p>
-    {{end}}
-    <div class="px-6 py-4 border-t border-border">
-      <form method="post" action="/coach/clients" class="flex flex-wrap items-center gap-2">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <input type="email" name="email" required placeholder="email del cliente"
-               class="flex-1 min-w-48 rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-        <button type="submit"
-                class="px-4 py-2 rounded bg-accent text-white text-sm font-medium hover:bg-accent/90 transition">
-          Aggiungi cliente
-        </button>
-      </form>
-      <p class="text-xs text-muted mt-2">Il cliente deve essere già registrato su questa istanza.</p>
-    </div>
-  </section>
-
-  {{/* ===== Libreria piani ===== */}}
-  <section class="bg-surface border border-border rounded">
-    <div class="px-6 py-4 border-b border-border">
-      <h2 class="text-base font-semibold">Libreria piani ({{len .Plans}})</h2>
-      <p class="text-xs text-muted mt-1">Il piano <em>attivo</em> è quello aperto nell'editor Piano Nutrizionale. I piani della libreria possono essere assegnati ai clienti.</p>
-    </div>
-    <ul class="divide-y divide-border">
-      {{range .Plans}}
-      <li class="px-6 py-3 flex flex-wrap items-center gap-3">
-        <div class="flex-1 min-w-40">
-          <span class="font-medium">{{.Name}}</span>
-          {{if .IsActive}}
-          <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent">Attivo nell'editor</span>
-          {{end}}
-        </div>
-        <form method="post" action="/coach/plans/{{.ID}}/rename" class="inline-flex items-center gap-1">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <input type="text" name="name" value="{{.Name}}" maxlength="200"
-                 class="w-40 rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-          <button type="submit" class="px-2 py-1 rounded border border-border text-xs hover:bg-surface-2 transition">Rinomina</button>
-        </form>
-        {{if not .IsActive}}
-        <form method="post" action="/coach/plans/{{.ID}}/open" class="inline">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" class="px-3 py-1.5 rounded border border-border text-xs font-medium hover:bg-surface-2 transition">
-            Apri nell'editor
-          </button>
-        </form>
-        <form method="post" action="/coach/plans/{{.ID}}/delete" class="inline"
-              onsubmit="return confirm('Cancellare questo piano? I contenuti andranno persi.')">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" class="px-3 py-1.5 rounded border border-danger/40 text-danger text-xs font-medium hover:bg-danger/10 transition">
-            Cancella
-          </button>
-        </form>
-        {{else}}
-        <a href="/piano-nutrizionale"
-           class="px-3 py-1.5 rounded bg-accent text-white text-xs font-medium hover:bg-accent/90 transition">
-          Modifica contenuti
-        </a>
-        {{end}}
-      </li>
+      </ul>
+      {{else}}
+      <p class="border-t border-border px-4 py-6 text-center text-muted">Nessun cliente per ora: aggiungilo con la sua email.</p>
       {{end}}
-    </ul>
-    <div class="px-6 py-4 border-t border-border">
-      <form method="post" action="/coach/plans" class="flex flex-wrap items-center gap-2">
+      <form method="post" action="/coach/clients" class="flex flex-wrap gap-2 px-4 py-3 border-t border-border">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <input type="text" name="name" required maxlength="200" placeholder="nome del nuovo piano (es. Massa 2700 kcal)"
-               class="flex-1 min-w-48 rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-        <button type="submit"
-                class="px-4 py-2 rounded bg-accent text-white text-sm font-medium hover:bg-accent/90 transition">
-          Nuovo piano
-        </button>
+        <input type="email" name="email" required placeholder="Email del cliente" aria-label="Email del cliente" class="field flex-1 min-w-[200px]">
+        <button class="btn-secondary">{{template "icon_sm" "i-plus"}}Aggiungi cliente</button>
       </form>
-    </div>
-  </section>
+      <p class="px-4 py-3 border-t border-border text-[12.5px] text-muted">Il cliente deve essere già registrato qui.</p>
+    </section>
+
+    <section class="card">
+      <div class="flex items-center gap-2 px-4 pt-3.5 pb-3"><h2 class="h2">Libreria piani</h2><span class="chip chip-n">{{len .Plans}}</span></div>
+      <ul class="border-t border-border divide-y divide-border">
+        {{range .Plans}}{{$n := index $.PlanClients .ID}}
+        <li class="grid grid-cols-[minmax(0,1fr)_auto_32px] gap-3 items-center px-4 py-2.5">
+          <span class="flex flex-col min-w-0"><b class="truncate">{{.Name}}</b><span class="text-[12.5px] text-muted">{{if eq $n 0}}nessun cliente{{else if eq $n 1}}1 cliente{{else}}{{$n}} clienti{{end}}</span></span>
+          {{if .IsActive}}
+          <a href="/piano-nutrizionale" class="chip chip-soft" title="È il piano che modifichi in Piano nutrizionale">Nell'editor</a>
+          {{else}}
+          <form method="post" action="/coach/plans/{{.ID}}/open">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button class="btn-secondary h-8 px-3">Apri nell'editor</button>
+          </form>
+          {{end}}
+          <div class="relative">
+            <button type="button" class="icon-action" data-popover="plan-menu-{{.ID}}" aria-expanded="false" aria-controls="plan-menu-{{.ID}}" aria-label="Azioni su {{.Name}}">{{template "icon" "i-dots"}}</button>
+            <div id="plan-menu-{{.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-[260px] z-40 p-1.5 flex flex-col gap-0.5">
+              <details>
+                <summary class="nav-link cursor-pointer list-none [&::-webkit-details-marker]:hidden">{{template "icon" "i-edit"}}Rinomina…</summary>
+                <form method="post" action="/coach/plans/{{.ID}}/rename" class="flex gap-2 px-2.5 pt-1 pb-2">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                  <input name="name" value="{{.Name}}" required maxlength="200" aria-label="Nuovo nome" class="field">
+                  <button class="btn-primary shrink-0">Salva</button>
+                </form>
+              </details>
+              {{if not .IsActive}}
+              <form method="post" action="/coach/plans/{{.ID}}/delete" data-confirm="Eliminare «{{.Name}}»? Varianti e voci andranno perse.">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina</button>
+              </form>
+              {{end}}
+            </div>
+          </div>
+        </li>
+        {{end}}
+      </ul>
+      <form method="post" action="/coach/plans" class="flex gap-2 px-4 py-3 border-t border-border">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input name="name" required maxlength="200" placeholder="Nome del nuovo piano" aria-label="Nome del nuovo piano" class="field flex-1">
+        <button class="btn-secondary btn-icon shrink-0" aria-label="Crea il piano" title="Crea il piano">{{template "icon" "i-plus"}}</button>
+      </form>
+      <p class="px-4 py-3 border-t border-border text-[12.5px] text-muted">Il piano «nell'editor» è quello che modifichi in Piano nutrizionale.</p>
+    </section>
+  </div>
 </div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+document.querySelectorAll("[data-autosubmit]").forEach(function (i) {
+  i.addEventListener("change", function () { i.form.requestSubmit(); });
+});
+</script>
 {{end}}

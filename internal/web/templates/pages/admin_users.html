@@ -1,96 +1,105 @@
 {{define "title"}}Utenti — Amministrazione — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-4xl">
-  <div class="flex items-center gap-3 mb-1">
-    <a href="/admin/panel" class="text-muted hover:text-text text-sm transition">← Pannello</a>
-    <span class="text-muted">/</span>
-    <h1 class="text-3xl font-semibold">Utenti</h1>
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  {{template "admin_header" "utenti"}}
+
+  {{if not .PremiumEnabled}}{{template "premium_off_note"}}{{end}}
+
+  <div class="flex flex-wrap items-center gap-2">
+    <label class="field-ico flex-1 min-w-[220px] max-w-[420px]">{{template "icon" "i-search"}}<input id="user-search" type="search" class="field" placeholder="Cerca per nome o email" aria-label="Cerca per nome o email"></label>
+    <div class="flex gap-1.5" role="group" aria-label="Filtra gli utenti">
+      <button type="button" class="filter is-on" data-user-filter="" aria-pressed="true">Tutti <span class="cnt">{{len .Users}}</span></button>
+      <button type="button" class="filter" data-user-filter="premium" aria-pressed="false">Premium <span class="cnt">{{.PremiumUsers}}</span></button>
+      <button type="button" class="filter" data-user-filter="coach" aria-pressed="false">Coach <span class="cnt">{{.CoachUsers}}</span></button>
+    </div>
   </div>
-  <p class="text-sm text-muted mb-6">Elenco di tutti gli utenti registrati ({{len .Users}} totali). Da qui puoi assegnare o revocare la sottoscrizione premium.</p>
 
-  {{if .Flash}}
-  <div class="mb-4 rounded border border-accent/30 bg-accent/10 text-accent px-4 py-2 text-sm">{{.Flash}}</div>
-  {{end}}
-
-  {{if not .PremiumEnabled}}
-  <div class="mb-4 rounded border border-amber-400/40 bg-amber-400/10 text-amber-700 px-4 py-2 text-sm">
-    Il gating premium è disattivato — le sottoscrizioni vengono salvate ma non hanno effetto finché <code>NUTREEK_PREMIUM_ENABLED=true</code>.
-  </div>
-  {{end}}
-
-  <div class="bg-surface border border-border rounded overflow-hidden">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="border-b border-border bg-surface-2 text-left">
-          <th class="px-4 py-3 font-medium">Nome</th>
-          <th class="px-4 py-3 font-medium">Email</th>
-          <th class="px-4 py-3 font-medium">Registrato</th>
-          <th class="px-4 py-3 font-medium">Ruolo</th>
-          <th class="px-4 py-3 font-medium">Piano</th>
-          <th class="px-4 py-3 font-medium text-right">Azioni</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-border">
-        {{range .Users}}
-        <tr>
-          <td class="px-4 py-3">{{.DisplayName}}</td>
-          <td class="px-4 py-3 font-mono text-xs">{{.Email}}</td>
-          <td class="px-4 py-3 text-muted">{{.CreatedAt}}</td>
-          <td class="px-4 py-3">
-            <form method="post" action="/admin/panel/users/{{.ID}}/role" class="inline-flex items-center gap-1">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <select name="role" onchange="this.form.submit()"
-                      class="rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="user" {{if eq .Role "user"}}selected{{end}}>Utente</option>
-                <option value="coach" {{if eq .Role "coach"}}selected{{end}}>Coach</option>
-              </select>
-            </form>
-          </td>
-          <td class="px-4 py-3">
+  <section class="card">
+    <ul class="divide-y divide-border">
+      <li class="list-head hidden lg:grid grid-cols-[minmax(0,1.6fr)_120px_100px_minmax(0,1.4fr)_32px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>Utente</span><span>Registrato</span><span>Ruolo</span><span>Piano</span><span></span></li>
+      {{range .Users}}
+      <li class="user-row grid grid-cols-[minmax(0,1fr)_auto_32px] lg:grid-cols-[minmax(0,1.6fr)_120px_100px_minmax(0,1.4fr)_32px] gap-3 items-center px-4 py-2.5"
+          data-search="{{.DisplayName}} {{.Email}}"{{if .Premium}} data-premium{{end}}{{if eq .Role "coach"}} data-coach{{end}}>
+        <span class="flex items-center gap-3 min-w-0">
+          <span class="w-9 h-9 shrink-0 rounded-full bg-surface-2 grid place-items-center font-bold">{{initial .DisplayName}}</span>
+          <span class="flex flex-col min-w-0"><b class="truncate">{{.DisplayName}}{{if .IsOwner}} <span class="chip chip-n ml-1">proprietario</span>{{end}}</b><span class="text-[12.5px] text-muted truncate">{{.Email}}</span></span>
+        </span>
+        <span class="hidden lg:block text-muted tabular-nums">{{.CreatedAt.Day}} {{monthName .CreatedAt}}{{if ne .CreatedAt.Year $.Now.Year}} {{.CreatedAt.Year}}{{end}}</span>
+        <span class="hidden lg:block">{{if eq .Role "coach"}}Coach{{else}}Utente{{end}}</span>
+        <span>
+          {{if .Premium}}
+          <span class="chip {{if .ExpiresSoon}}chip-warn{{else}}chip-soft{{end}}" title="Origine: {{.SubSource}}">{{with .SubExpires}}Premium fino al {{.Day}} {{monthName .}}{{else}}Premium, senza scadenza{{end}}</span>
+          {{else}}
+          <span class="chip chip-n">Free</span>
+          {{end}}
+        </span>
+        <div class="relative">
+          <button type="button" class="icon-action" data-popover="user-menu-{{.ID}}" aria-expanded="false" aria-controls="user-menu-{{.ID}}" aria-label="Azioni su {{.DisplayName}}">{{template "icon" "i-dots"}}</button>
+          <div id="user-menu-{{.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-[260px] z-40 p-1.5 flex flex-col gap-0.5">
             {{if .Premium}}
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent">
-                Premium{{if .SubExpires}} · fino al {{.SubExpires}}{{end}}
-              </span>
-              <p class="text-muted text-xs mt-0.5">origine: {{.SubSource}}</p>
-            {{else}}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-surface-2 text-muted">Free</span>
-            {{end}}
-          </td>
-          <td class="px-4 py-3 text-right">
-            {{if .Premium}}
-            <form method="post" action="/admin/panel/users/{{.ID}}/premium/revoke" class="inline">
+            <form method="post" action="/admin/panel/users/{{.ID}}/premium/revoke" data-confirm="Togliere Premium a {{.DisplayName}}?">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button type="submit"
-                      class="px-3 py-1.5 rounded border border-danger/40 text-danger text-xs font-medium hover:bg-danger/10 transition">
-                Revoca premium
-              </button>
+              <button class="nav-link w-full text-danger">{{template "icon" "i-star"}}Revoca premium</button>
             </form>
             {{else}}
-            <form method="post" action="/admin/panel/users/{{.ID}}/premium" class="inline-flex items-center gap-2 justify-end">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="date" name="expires_at" title="Scadenza (vuoto = senza scadenza)"
-                     class="rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent">
-              <button type="submit"
-                      class="px-3 py-1.5 rounded bg-accent text-white text-xs font-medium hover:bg-accent/90 transition">
-                Assegna premium
-              </button>
-            </form>
+            <details class="group">
+              <summary class="nav-link cursor-pointer list-none [&::-webkit-details-marker]:hidden">{{template "icon" "i-star"}}Assegna premium…</summary>
+              <form method="post" action="/admin/panel/users/{{.ID}}/premium" class="flex flex-col gap-2 px-2.5 pt-1 pb-2">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <label class="lab">Scade il <input type="date" name="expires_at" class="field"><span class="font-medium">Vuoto: senza scadenza.</span></label>
+                <button class="btn-primary">Assegna premium</button>
+              </form>
+            </details>
             {{end}}
-          </td>
-        </tr>
-        {{else}}
-        <tr>
-          <td colspan="6" class="px-4 py-8 text-center text-muted">Nessun utente registrato.</td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-  </div>
-
-  <p class="text-xs text-muted mt-4">
-    La sottoscrizione manuale è l'unica origine disponibile oggi. Lo schema è già predisposto
-    per origini <code>license</code> e <code>payment</code>: l'attivazione futura di licenze
-    o pagamenti creerà sottoscrizioni qui, senza modifiche al gating.
-  </p>
+            <form method="post" action="/admin/panel/users/{{.ID}}/role">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              {{if eq .Role "coach"}}
+              <input type="hidden" name="role" value="user">
+              <button class="nav-link w-full">{{template "icon" "i-user"}}Rendi utente</button>
+              {{else}}
+              <input type="hidden" name="role" value="coach">
+              <button class="nav-link w-full">{{template "icon" "i-coach"}}Rendi coach</button>
+              {{end}}
+            </form>
+          </div>
+        </div>
+      </li>
+      {{else}}
+      <li class="px-4 py-8 text-center text-muted">Nessun utente registrato.</li>
+      {{end}}
+    </ul>
+    <p id="user-empty" class="hidden px-4 py-8 text-center text-muted">Nessun utente corrisponde alla ricerca.</p>
+  </section>
+  <p class="text-[12.5px] text-muted">Il premium si assegna a mano; licenze e pagamenti useranno la stessa sottoscrizione.</p>
 </div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// Ricerca e filtri sull'elenco, senza ricaricare la pagina.
+(function () {
+  var q = document.getElementById("user-search"), rows = document.querySelectorAll(".user-row");
+  var empty = document.getElementById("user-empty"), filter = "";
+  function apply() {
+    var text = q.value.trim().toLowerCase(), shown = 0;
+    rows.forEach(function (r) {
+      var ok = r.dataset.search.toLowerCase().indexOf(text) !== -1 && (!filter || r.hasAttribute("data-" + filter));
+      r.classList.toggle("hidden", !ok);
+      if (ok) shown++;
+    });
+    empty.classList.toggle("hidden", shown > 0 || rows.length === 0);
+  }
+  q.addEventListener("input", apply);
+  document.querySelectorAll("[data-user-filter]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      filter = b.dataset.userFilter;
+      document.querySelectorAll("[data-user-filter]").forEach(function (o) {
+        o.classList.toggle("is-on", o === b);
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+      apply();
+    });
+  });
+})();
+</script>
 {{end}}
