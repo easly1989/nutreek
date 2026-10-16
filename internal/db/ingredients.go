@@ -96,7 +96,29 @@ func (r *Ingredients) GetByID(ctx context.Context, id int64) (*domain.Ingredient
 	return scanIngredient(row.Scan)
 }
 
-// GetByBarcode ritorna l'ingrediente OFF con quel barcode o ErrIngredientNotFound.
+// SetLocalBarcode collega un codice a barre a un ingrediente locale, creato a
+// mano perche' il prodotto non e' su OpenFoodFacts (scanner del picker). Il
+// codice sta nella stessa colonna degli import OFF, quindi resta unico:
+// ErrBarcodeAlreadyUsed se e' gia' preso, ErrIngredientNotFound se id non e'
+// un ingrediente locale.
+func (r *Ingredients) SetLocalBarcode(ctx context.Context, id int64, barcode string) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE ingredients SET off_barcode = ? WHERE id = ? AND source = 'local'`,
+		strings.TrimSpace(barcode), id)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return ErrBarcodeAlreadyUsed
+		}
+		return fmt.Errorf("set local barcode: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrIngredientNotFound
+	}
+	return nil
+}
+
+// GetByBarcode ritorna l'ingrediente con quel barcode (import OFF, oppure
+// locale collegato con SetLocalBarcode) o ErrIngredientNotFound.
 func (r *Ingredients) GetByBarcode(ctx context.Context, barcode string) (*domain.Ingredient, error) {
 	row := r.db.QueryRowContext(ctx,
 		selectIngredientCols+` FROM ingredients WHERE off_barcode = ?`,
@@ -206,6 +228,7 @@ func (r *Ingredients) LocalsToReconcile(ctx context.Context, limit int, since ti
 		FROM ingredients
 		WHERE source = 'local'
 		  AND superseded_by IS NULL
+		  AND off_barcode IS NULL -- con codice e' locale apposta (SetLocalBarcode)
 		  AND (last_verified_at IS NULL OR last_verified_at < ?)
 		ORDER BY last_verified_at IS NOT NULL, last_verified_at, id
 		LIMIT ?`,

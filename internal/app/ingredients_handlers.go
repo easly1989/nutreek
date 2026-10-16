@@ -443,6 +443,9 @@ func includeOFFParam(r *http.Request) bool {
 // `warn` resta nell'interfaccia per gestire eventuali errori SQL ma in
 // pratica e' sempre vuoto.
 func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ingredientRow, string, error) {
+	if code, ok := off.NormalizeBarcode(q); ok {
+		return a.searchBarcode(ctx, code, includeOFF)
+	}
 	var (
 		locals []*domain.Ingredient
 		err    error
@@ -485,6 +488,34 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 		rows = append(rows, ingredientRow{OFF: &p})
 	}
 	return rows, "", nil
+}
+
+// searchBarcode e' la ricerca per codice a barre (scanner del picker o cifre
+// scritte a mano): al massimo una riga. Prima i propri ingredienti (import
+// OFF o locali collegati al codice), poi la copia locale di OFF; la rete solo
+// con live=true, cioe' a digitazione ferma. Nessuna riga = non trovato.
+func (a *App) searchBarcode(ctx context.Context, code string, live bool) ([]ingredientRow, string, error) {
+	ing, err := a.Ingredients.GetByBarcode(ctx, code)
+	if err == nil {
+		rows := []ingredientRow{{Local: ing}}
+		a.attachTags(ctx, rows)
+		return rows, "", nil
+	}
+	if !errors.Is(err, db.ErrIngredientNotFound) {
+		return nil, "", err
+	}
+	if a.OFF == nil {
+		return nil, "", nil
+	}
+	p, err := a.OFF.FindByBarcode(ctx, code, live)
+	switch {
+	case errors.Is(err, off.ErrNotFound):
+		return nil, "", nil
+	case err != nil:
+		a.Logger.Warn("OFF barcode lookup failed", "err", err, "barcode", code)
+		return nil, "OpenFoodFacts non risponde: riprova tra poco, oppure crea l'ingrediente.", nil
+	}
+	return []ingredientRow{{OFF: p}}, "", nil
 }
 
 // attachTags carica in batch allergeni e categoria delle righe locali e li
@@ -740,8 +771,8 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 	if !errors.Is(err, db.ErrIngredientNotFound) {
 		return 0, err
 	}
-	// Non in DB: chiama OFF.
-	product, err := a.OFF.GetByBarcode(ctx, barcode)
+	// Non tra gli ingredienti: copia locale di OFF, poi la rete.
+	product, err := a.OFF.FindByBarcode(ctx, barcode, true)
 	if err != nil {
 		return 0, err
 	}
@@ -775,8 +806,8 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 }
 
 // handleOFFMacroCheck verifica i macro di un singolo prodotto OFF tramite
-// barcode lookup. Prima controlla off_products locale (nessuna chiamata HTTP),
-// poi cade su GetByBarcode live se il record locale manca o e' incompleto.
+// barcode lookup (FindByBarcode: off_products locale, poi la rete se il
+// record locale manca o e' incompleto).
 // Ritorna un fragment HTML con lo stato macro: green dot + valori, oppure
 // dot rosso + "macro non disponibili". Usato da ingredient_results.html
 // via HTMX lazy load (hx-trigger="load delay:500ms").
@@ -787,21 +818,7 @@ func (a *App) handleOFFMacroCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Cerca nel DB locale (off_products) per evitare chiamate HTTP inutili.
-	var name, brand string
-	var kcal, protein, carbs, fat float64
-	var hasFull int
-	err := a.Store.DB.QueryRowContext(r.Context(), `
-		SELECT product_name, brands, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, has_full_nutrients
-		FROM off_products WHERE barcode = ?`, barcode).Scan(
-		&name, &brand, &kcal, &protein, &carbs, &fat, &hasFull)
-	if err == nil && hasFull == 1 {
-		writeMacroFragment(w, true, kcal, protein, carbs, fat)
-		return
-	}
-
-	// 2. Live API check.
-	product, err := a.OFF.GetByBarcode(r.Context(), barcode)
+	product, err := a.OFF.FindByBarcode(r.Context(), barcode, true)
 	if err != nil || !product.HasFullNutrients {
 		writeMacroFragment(w, false, 0, 0, 0, 0)
 		return

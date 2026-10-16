@@ -1,0 +1,56 @@
+package app
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/off"
+)
+
+// Una ricerca che e' un codice a barre valido diventa una ricerca per codice:
+// prima i propri ingredienti, poi la copia locale di OFF, la rete solo a
+// digitazione ferma (includeOFF).
+func TestSearchMixedBarcode(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	liveCalls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		liveCalls++
+		http.Error(w, "giu'", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	a.OFF = off.NewClient(a.Store.DB, srv.URL, nil)
+
+	localID, _ := a.Ingredients.CreateLocal(ctx, "Biscotti del forno", nil, domain.UnitGram, 450, 7, 70, 15, nil, nil, nil, nil, nil, nil, nil)
+	if err := a.Ingredients.SetLocalBarcode(ctx, localID, "4006381333931"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.Store.DB.Exec(`INSERT INTO off_products (barcode, product_name, brands, quantity,
+		kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, has_full_nutrients, updated_at)
+		VALUES ('96385074', 'Fiocchi d''avena', 'Molino', '500 g', 372, 13.5, 58.7, 7, 1, 0)`); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, warn, err := a.searchMixed(ctx, "4 006381 333931", true)
+	if err != nil || warn != "" || len(rows) != 1 || rows[0].LocalID() != localID {
+		t.Errorf("ingrediente proprio: %+v, %q, %v", rows, warn, err)
+	}
+
+	rows, _, err = a.searchMixed(ctx, "96385074", false)
+	if err != nil || len(rows) != 1 || !rows[0].IsOFF() || rows[0].Barcode() != "96385074" {
+		t.Errorf("copia locale OFF: %+v, %v", rows, err)
+	}
+
+	rows, warn, err = a.searchMixed(ctx, "036000291452", false)
+	if err != nil || len(rows) != 0 || warn != "" || liveCalls != 0 {
+		t.Errorf("sconosciuto senza rete: %+v, %q, %v, %d chiamate", rows, warn, err, liveCalls)
+	}
+
+	rows, warn, err = a.searchMixed(ctx, "036000291452", true)
+	if err != nil || len(rows) != 0 || warn == "" || liveCalls != 1 {
+		t.Errorf("OFF giu': %+v, %q, %v, %d chiamate", rows, warn, err, liveCalls)
+	}
+}
