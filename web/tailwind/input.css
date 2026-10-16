@@ -204,6 +204,10 @@
   .field-unit { @apply relative block; }
   .field-unit > em { @apply absolute right-3 top-1/2 -translate-y-1/2 not-italic text-[13px] text-muted pointer-events-none; }
   .field-unit > .field { @apply pr-11; }
+  /* Password con Mostra/Nascondi a destra (partial pw_toggle). */
+  .field-pw { @apply relative block; }
+  .field-pw > .field { @apply pr-[92px]; }
+  .pw-toggle { @apply absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-2.5 rounded-lg text-[13px] font-semibold text-accent hover:bg-surface-2; }
   .lab { @apply flex flex-col gap-1.5 text-[12.5px] font-semibold text-muted; }
   .filter {
     @apply inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border bg-surface text-[13px] font-semibold text-text whitespace-nowrap hover:bg-surface-2 transition-colors;
