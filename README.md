@@ -1,8 +1,31 @@
-# Nutreek
+<p align="center">
+  <img src="docs/img/logo.svg" alt="Logo di Nutreek" width="96" height="96" />
+</p>
 
-Webapp self-hosted per gestire il piano nutrizionale settimanale: ingredienti (con integrazione OpenFoodFacts locale via FTS5), ricette, template di pasti, vista settimanale con calcolo macro (Kcal / Proteine / Carboidrati / Grassi) per pasto, giorno e settimana.
+<h1 align="center">Nutreek</h1>
 
-Eseguibile sia **nativamente** (binario Go, nessuna dipendenza esterna) sia in un **singolo container Docker** (nessun servizio esterno: SQLite embedded).
+<p align="center">
+  <strong>Il piano alimentare della settimana, a casa tua.</strong><br />
+  Webapp self-hosted per pianificare i pasti e tenere i macro per pasto, giorno e settimana.
+</p>
+
+<p align="center">
+  <a href="https://github.com/easly1989/nutreek/actions/workflows/ci.yml"><img src="https://github.com/easly1989/nutreek/actions/workflows/ci.yml/badge.svg" alt="Stato della CI" /></a>
+  <a href="https://github.com/easly1989/nutreek/pkgs/container/nutreek"><img src="https://img.shields.io/badge/ghcr.io-nutreek-2496ED?logo=docker&logoColor=white" alt="Immagine del container" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/Licenza-proprietaria-lightgrey" alt="Licenza: proprietaria" /></a>
+</p>
+
+<p align="center">
+  <a href="https://buymeacoffee.com/easly1989"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black" alt="Offrimi un caffè" /></a>
+  <a href="https://paypal.me/carloruggiero"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white" alt="Dona con PayPal" /></a>
+  <a href="https://buy.stripe.com/8x26oAeqA7h6dPk80hfbq00"><img src="https://img.shields.io/badge/Donate-Stripe-635BFF?logo=stripe&logoColor=white" alt="Dona con Stripe" /></a>
+  <a href="https://liberapay.com/amon2126/donate"><img src="https://img.shields.io/badge/Donate-Liberapay-F6C915?logo=liberapay&logoColor=black" alt="Dona con Liberapay" /></a>
+  <a href="https://github.com/sponsors/easly1989"><img src="https://img.shields.io/badge/Sponsor-GitHub-EA4AAA?logo=githubsponsors&logoColor=white" alt="Sponsor su GitHub" /></a>
+</p>
+
+Ingredienti con la copia locale di OpenFoodFacts (ricerca in meno di 50 ms, anche senza rete) e lo scanner del codice a barre, ricette, piano nutrizionale con varianti e generazione della settimana, lista della spesa, peso e TDEE adattivo, modalità coach. Si installa sul telefono come un'app.
+
+Gira **nativamente** (un binario Go, nessuna dipendenza esterna) o in **un solo container Docker**: SQLite è incluso, non c'è un database da gestire a parte.
 
 ---
 
@@ -10,8 +33,8 @@ Eseguibile sia **nativamente** (binario Go, nessuna dipendenza esterna) sia in u
 
 | Area | Funzionalità |
 |------|-------------|
-| **Piani settimanali** | Calendario settimanale, macro per pasto/giorno/settimana, sgarri, copia da settimana precedente |
-| **Ingredienti** | Ricerca locale FTS5 (<50 ms, offline), import da barcode/URL, riconciliazione OFF |
+| **Piani settimanali** | Un giorno alla volta con anello kcal e macro, pasti, acqua e allenamenti; macro per pasto/giorno/settimana, sgarri, copia da settimana precedente |
+| **Ingredienti** | Ricerca locale FTS5 (<50 ms, offline) con foto dei prodotti, scanner del codice a barre nei picker, riconciliazione OFF |
 | **Ricette** | Creazione con ingredienti, import automatico da URL (schema.org/Recipe) |
 | **Template** | Template settimanali riutilizzabili, applicazione one-click |
 | **Piano nutrizionista** | Varianti pasto, generazione automatica settimana con algoritmo greedy (target macro) |
@@ -23,50 +46,72 @@ Eseguibile sia **nativamente** (binario Go, nessuna dipendenza esterna) sia in u
 | **REST API v1** | Bearer token, endpoint per settimana, ingredienti, peso, idratazione, allenamenti |
 | **Admin panel** | Feature flags, gestione utenti, sottoscrizioni premium (owner-only) |
 | **Premium gating** | Middleware `requireFeature`, cache 60s, badge UI, redirect `/upgrade` |
-| **UI** | 4 temi (forest/ocean/sunset/mono), sidebar PIN, tour guidato, HTMX |
+| **Aspetto** | Stile «Sereno»: modalità chiaro / scuro / come il sistema × colore bosco / mare / tramonto / grafite; sidebar su desktop, barra in basso sul telefono; tour guidato |
+| **App sul telefono** | Installabile (manifest e icone nel colore scelto, service worker per i file statici); fotocamera e installazione richiedono https |
 
 ---
 
 ## Screenshot
 
-### Dashboard settimanale
+Dati demo. Lo stesso aspetto in chiaro e in scuro, su desktop e sul telefono.
 
-Calendario con pasti, macro per giorno e settimana, barre di aderenza ai target, idratazione inline.
+### La settimana
+
+Un giorno alla volta: le schede dei giorni con le kcal, i pasti con i macro, e a lato l'anello delle calorie, l'acqua e gli allenamenti.
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="800" alt="Dashboard settimanale con pasti e macro">
+  <img src="docs/screenshots/settimana.png" width="800" alt="La settimana: schede dei giorni, pasti con kcal e macro, anello delle calorie, acqua e allenamento">
 </p>
 
-### Statistiche & TDEE adattivo
-
-Riepilogo settimanale, stima del fabbisogno reale dal trend peso/intake con suggerimento di aggiornamento target.
-
 <p align="center">
-  <img src="docs/screenshots/stats.png" width="800" alt="Statistiche con TDEE adattivo">
+  <img src="docs/screenshots/settimana-scuro.png" width="800" alt="La stessa settimana in modalità scura">
 </p>
 
-### Pannello Coach
+### Aggiungere un alimento, anche col codice a barre
 
-Gestione clienti, assegnazione piani nutrizionali, libreria piani riutilizzabili.
+Il picker si apre sopra la settimana. Con la fotocamera si legge il codice della confezione e il prodotto compare già pronto: prima tra i tuoi ingredienti, poi nella copia locale di OpenFoodFacts.
 
 <p align="center">
-  <img src="docs/screenshots/coach-dashboard.png" width="800" alt="Pannello coach con clienti e libreria piani">
+  <img src="docs/screenshots/scanner.png" width="400" alt="Lo scanner aperto sopra il picker, con la fotocamera che inquadra un codice a barre">
+  <img src="docs/screenshots/picker-codice.png" width="400" alt="Il prodotto letto dal codice, aperto con proteine, carboidrati e grassi e la quantità da aggiungere">
 </p>
 
-### Admin panel
+### Ricette e piano nutrizionale
 
-Feature flags, gestione utenti e sottoscrizioni premium (solo owner).
+Ricette con kcal e macro per porzione; il piano nutrizionale con le varianti di ogni pasto, che alimentano il picker e la generazione della settimana.
 
 <p align="center">
-  <img src="docs/screenshots/admin-panel.png" width="800" alt="Pannello amministrazione">
+  <img src="docs/screenshots/ricette.png" width="400" alt="Elenco delle ricette con kcal e macro per porzione e i filtri">
+  <img src="docs/screenshots/piano-nutrizionale.png" width="400" alt="Piano nutrizionale con le varianti di colazione e pranzo">
 </p>
 
-### Token API
+### Lista della spesa e statistiche
 
-Creazione e revoca token per la REST API v1 dalle impostazioni.
+La spesa per reparto, con il carrello e la stampa in due colonne. Le statistiche con il fabbisogno stimato dal peso e da quanto hai mangiato.
 
 <p align="center">
-  <img src="docs/screenshots/settings-tokens.png" width="800" alt="Gestione token API nelle impostazioni">
+  <img src="docs/screenshots/spesa.png" width="400" alt="Lista della spesa raggruppata per reparto, con le voci aggiunte a mano">
+  <img src="docs/screenshots/statistiche-scuro.png" width="400" alt="Statistiche in modalità scura: sintesi, fabbisogno stimato, calorie e macro, peso">
+</p>
+
+### Sul telefono
+
+Barra in basso con le sezioni di tutti i giorni; si installa come app da Impostazioni.
+
+<p align="center">
+  <img src="docs/screenshots/telefono-settimana.png" width="200" alt="La settimana sul telefono">
+  <img src="docs/screenshots/telefono-scanner.png" width="200" alt="Lo scanner del codice a barre sul telefono">
+  <img src="docs/screenshots/telefono-spesa.png" width="200" alt="La lista della spesa sul telefono">
+  <img src="docs/screenshots/telefono-app.png" width="200" alt="Impostazioni, App sul telefono, con il bottone Installa l'app">
+</p>
+
+### Coach e amministrazione
+
+Il pannello coach con clienti e libreria dei piani; l'amministrazione (solo owner) con utenti, funzionalità e sincronizzazione di OpenFoodFacts.
+
+<p align="center">
+  <img src="docs/screenshots/coach.png" width="400" alt="Pannello coach con un cliente e la libreria dei piani">
+  <img src="docs/screenshots/admin.png" width="400" alt="Amministrazione: utenti, premium, funzionalità e stato di OpenFoodFacts">
 </p>
 
 ---
@@ -83,7 +128,7 @@ Creazione e revoca token per la REST API v1 dalle impostazioni.
 ## Requisiti
 
 Per sviluppo nativo (senza Docker):
-- Go 1.25 o superiore — https://go.dev/dl/
+- Go 1.27 o superiore — https://go.dev/dl/
 - Nient'altro. Il CLI standalone di Tailwind viene scaricato automaticamente in `./bin/`.
 
 Per deploy in container:
@@ -321,3 +366,15 @@ data/                 SQLite DB a runtime (gitignored)
 **Proprietaria — All Rights Reserved.** Vedi [LICENSE](LICENSE).
 
 Il codice è visibile ma **non** è open source: nessun uso, copia o distribuzione è consentito senza autorizzazione scritta del titolare.
+
+---
+
+## Supporta il progetto
+
+Nutreek è sviluppato da una persona sola, nel tempo libero. Se ti è utile, una donazione aiuta davvero ed è molto apprezzata. ♥ Il modo più semplice è
+[**Buy Me a Coffee**](https://buymeacoffee.com/easly1989). Se ne preferisci un altro, la
+[pagina delle donazioni](https://easly1989.github.io/donate.html) li elenca tutti:
+[PayPal](https://paypal.me/carloruggiero),
+[Stripe](https://buy.stripe.com/8x26oAeqA7h6dPk80hfbq00),
+[Liberapay](https://liberapay.com/amon2126/donate) o
+[GitHub Sponsors](https://github.com/sponsors/easly1989).
