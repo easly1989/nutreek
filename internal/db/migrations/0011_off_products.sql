@@ -1,11 +1,11 @@
 -- +goose Up
 -- +goose StatementBegin
--- off_products contiene il dump locale di OpenFoodFacts filtrato ai prodotti
--- venduti in Italia (countries_tags include en:italy). Aggiornato dal Syncer
--- in modo idempotente: il dump completo (~3.5M prodotti) viene streammato
--- riga per riga e solo i ~250k italiani finiscono qui.
--- Questa tabella sostituisce le chiamate live a it.openfoodfacts.org/cgi/search.pl
--- per la ricerca testuale: ricerche locali via FTS5, <50ms, zero 503.
+-- off_products holds the local OpenFoodFacts dump filtered to products sold
+-- in Italy (countries_tags includes en:italy). The Syncer updates it
+-- idempotently: the full dump (~3.5M products) is streamed line by line and
+-- only the ~250k Italian ones land here.
+-- This table replaces the live calls to it.openfoodfacts.org/cgi/search.pl
+-- for text search: local searches via FTS5, <50ms, zero 503s.
 CREATE TABLE off_products (
     barcode             TEXT PRIMARY KEY,
     product_name        TEXT NOT NULL,
@@ -21,10 +21,10 @@ CREATE TABLE off_products (
 -- +goose StatementEnd
 
 -- +goose StatementBegin
--- FTS5 con tokenizer unicode61 + remove_diacritics=2: "muesli" matcha
--- "Müesli" senza diacriticFold custom lato Go. content='off_products' usa
--- la tabella sorgente come storage (external content table), evitando di
--- duplicare i dati e mantenendoli sincronizzati via trigger sotto.
+-- FTS5 with the unicode61 tokenizer + remove_diacritics=2: "muesli" matches
+-- "Müesli" without a custom diacritic fold in Go. content='off_products' uses
+-- the source table as storage (external content table), so the data is not
+-- duplicated and stays in sync through the triggers below.
 CREATE VIRTUAL TABLE off_products_fts USING fts5(
     barcode UNINDEXED,
     product_name,
@@ -36,10 +36,10 @@ CREATE VIRTUAL TABLE off_products_fts USING fts5(
 -- +goose StatementEnd
 
 -- +goose StatementBegin
--- Trigger sync FTS5: pattern raccomandato da SQLite per external content
--- tables. Sull'INSERT propaghiamo rowid+colonne indicizzate; sulla DELETE
--- e UPDATE usiamo il comando speciale 'delete' (riga in fts ha solo il
--- riferimento al rowid sorgente).
+-- FTS5 sync triggers: the pattern SQLite recommends for external content
+-- tables. On INSERT we propagate rowid+indexed columns; on DELETE and
+-- UPDATE we use the special 'delete' command (the fts row only holds the
+-- reference to the source rowid).
 CREATE TRIGGER off_products_ai AFTER INSERT ON off_products BEGIN
     INSERT INTO off_products_fts(rowid, barcode, product_name, brands)
     VALUES (new.rowid, new.barcode, new.product_name, new.brands);
@@ -63,9 +63,9 @@ END;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
--- off_sync_state singleton (CHECK id=1): traccia stato sync per UI admin e
--- per il check "sync dovuta?" dello scheduler. dump_etag permette di
--- skippare il download se il server non ha aggiornato (If-None-Match).
+-- off_sync_state singleton (CHECK id=1): tracks the sync state for the admin
+-- UI and for the scheduler's "is a sync due?" check. dump_etag lets the
+-- download be skipped when the server has not updated (If-None-Match).
 CREATE TABLE off_sync_state (
     id                  INTEGER PRIMARY KEY CHECK (id = 1),
     last_synced_at      INTEGER,

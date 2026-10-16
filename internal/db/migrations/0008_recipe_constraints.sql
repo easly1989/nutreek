@@ -1,9 +1,9 @@
 -- +goose Up
 -- +goose StatementBegin
 
--- 1) Risolvi eventuali nomi duplicati per stesso utente (case-insensitive).
---    Mantieni il più vecchio (per created_at+id), gli altri prendono suffisso " (n)".
---    Nota: window function ROW_NUMBER() supportata da SQLite >= 3.25.
+-- 1) Resolve any duplicate names of the same user (case-insensitive).
+--    Keep the oldest (by created_at+id); the others get a " (n)" suffix.
+--    Note: the ROW_NUMBER() window function needs SQLite >= 3.25.
 WITH ranked AS (
   SELECT id,
          ROW_NUMBER() OVER (
@@ -16,13 +16,13 @@ UPDATE recipes
 SET name = name || ' (' || (SELECT rn FROM ranked WHERE ranked.id = recipes.id) || ')'
 WHERE id IN (SELECT id FROM ranked WHERE rn > 1);
 
--- 2) Vincolo unicità nome ricetta per utente (case-insensitive).
+-- 2) Unique recipe name per user (case-insensitive).
 CREATE UNIQUE INDEX uniq_recipes_user_name
   ON recipes(user_id, name COLLATE NOCASE);
 
--- 3) Cambia FK meal_items.recipe_id: da RESTRICT (default) a ON DELETE CASCADE.
---    SQLite non supporta ALTER per FK → ricreazione tabella.
---    Manteniamo lo schema attuale (sort_order da 0003 incluso).
+-- 3) Change the FK meal_items.recipe_id: from RESTRICT (the default) to ON DELETE CASCADE.
+--    SQLite has no ALTER for FKs → rebuild the table.
+--    Keep the current schema (sort_order from 0003 included).
 PRAGMA foreign_keys = OFF;
 
 CREATE TABLE meal_items_new (
@@ -53,7 +53,7 @@ PRAGMA foreign_keys = ON;
 
 DROP INDEX IF EXISTS uniq_recipes_user_name;
 
--- Ripristina FK RESTRICT su meal_items.recipe_id.
+-- Restore the RESTRICT FK on meal_items.recipe_id.
 PRAGMA foreign_keys = OFF;
 
 CREATE TABLE meal_items_old (

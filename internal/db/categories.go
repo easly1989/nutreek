@@ -91,7 +91,7 @@ func (c *Categories) ListAllergens(ctx context.Context) ([]domain.AllergenTag, e
 	return tags, rows.Err()
 }
 
-// GetIngredientAllergenIDs ritorna gli ID degli allergeni associati a un ingrediente.
+// GetIngredientAllergenIDs returns the IDs of the allergens tagged on an ingredient.
 func (c *Categories) GetIngredientAllergenIDs(ctx context.Context, ingredientID int64) (map[int64]bool, error) {
 	rows, err := c.db.QueryContext(ctx,
 		`SELECT allergen_id FROM ingredient_allergens WHERE ingredient_id = ?`, ingredientID,
@@ -112,7 +112,7 @@ func (c *Categories) GetIngredientAllergenIDs(ctx context.Context, ingredientID 
 	return ids, rows.Err()
 }
 
-// SetIngredientAllergens sostituisce gli allergeni di un ingrediente.
+// SetIngredientAllergens replaces an ingredient's allergens.
 func (c *Categories) SetIngredientAllergens(ctx context.Context, ingredientID int64, allergenIDs []int64) error {
 	tx, err := c.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -138,10 +138,10 @@ func (c *Categories) SetIngredientAllergens(ctx context.Context, ingredientID in
 	return tx.Commit()
 }
 
-// AllergensForIngredients carica in batch gli allergeni di piu' ingredienti,
-// evitando il pattern N+1 nei picker e nelle liste. Ritorna una mappa
-// ingredient_id -> allergeni (ordinati per nome). Gli ingredienti senza
-// allergeni semplicemente non compaiono nella mappa.
+// AllergensForIngredients loads the allergens of many ingredients in one batch,
+// avoiding the N+1 pattern in pickers and lists. It returns a map of
+// ingredient_id -> allergens (sorted by name). Ingredients without allergens
+// are simply absent from the map.
 func (c *Categories) AllergensForIngredients(ctx context.Context, ingredientIDs []int64) (map[int64][]domain.AllergenTag, error) {
 	out := make(map[int64][]domain.AllergenTag)
 	if len(ingredientIDs) == 0 {
@@ -179,9 +179,9 @@ func (c *Categories) AllergensForIngredients(ctx context.Context, ingredientIDs 
 	return out, rows.Err()
 }
 
-// CategoriesForIngredients carica in batch la categoria che userID ha dato a
-// piu' ingredienti: ingredient_id -> categoria. Gli ingredienti senza
-// categoria per quell'utente non compaiono; le scelte degli altri non contano.
+// CategoriesForIngredients loads in one batch the category userID gave to
+// many ingredients: ingredient_id -> category. Ingredients with no category
+// for that user are absent; other users' choices do not count.
 func (c *Categories) CategoriesForIngredients(ctx context.Context, userID int64, ingredientIDs []int64) (map[int64]domain.IngredientCategory, error) {
 	out := make(map[int64]domain.IngredientCategory)
 	if len(ingredientIDs) == 0 {
@@ -216,8 +216,8 @@ func (c *Categories) CategoriesForIngredients(ctx context.Context, userID int64,
 	return out, rows.Err()
 }
 
-// IngredientIDsByAllergen ritorna l'insieme degli ID ingrediente taggati con
-// uno specifico allergene. Usato dal filtro della lista /ingredients.
+// IngredientIDsByAllergen returns the set of ingredient IDs tagged with one
+// allergen. Used by the filter of the /ingredients list.
 func (c *Categories) IngredientIDsByAllergen(ctx context.Context, allergenID int64) (map[int64]bool, error) {
 	rows, err := c.db.QueryContext(ctx,
 		`SELECT ingredient_id FROM ingredient_allergens WHERE allergen_id = ?`, allergenID,
@@ -238,9 +238,9 @@ func (c *Categories) IngredientIDsByAllergen(ctx context.Context, allergenID int
 	return ids, rows.Err()
 }
 
-// SetIngredientCategory mette un ingrediente in una categoria di userID (nil
-// per toglierla). Vale solo per quell'utente; una categoria che non e' sua
-// risponde ErrCategoryNotFound e non cambia nulla.
+// SetIngredientCategory puts an ingredient in one of userID's categories (nil
+// removes it). It applies to that user only; a category that is not theirs
+// answers ErrCategoryNotFound and changes nothing.
 func (c *Categories) SetIngredientCategory(ctx context.Context, userID, ingredientID int64, categoryID *int64) error {
 	if categoryID == nil {
 		if _, err := c.db.ExecContext(ctx,

@@ -70,8 +70,8 @@ func (w *WeightLogs) ListWeightLogs(ctx context.Context, userID int64, limit int
 	return logs, rows.Err()
 }
 
-// ForRange ritorna tutti i weight log dell'utente in un intervallo di date
-// (estremi inclusi), ordinati per data crescente.
+// ForRange returns every weight log of the user in a date range (bounds
+// included), sorted by ascending date.
 func (w *WeightLogs) ForRange(ctx context.Context, userID int64, from, to time.Time) ([]domain.WeightLog, error) {
 	rows, err := w.db.QueryContext(ctx,
 		`SELECT id, user_id, measured_at, weight_kg, note, created_at
@@ -115,8 +115,8 @@ func (w *WeightLogs) DeleteWeightLog(ctx context.Context, id, userID int64) erro
 	return nil
 }
 
-// parseWeightDate legge measured_at: il driver puo' restituire la colonna
-// DATE come "2026-10-13" o come "2026-10-13T00:00:00Z".
+// parseWeightDate reads measured_at: the driver may return the DATE column
+// as "2026-10-13" or as "2026-10-13T00:00:00Z".
 func parseWeightDate(s string) time.Time {
 	t, _ := time.Parse("2006-01-02", strings.Split(s, "T")[0])
 	return t

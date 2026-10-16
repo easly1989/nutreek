@@ -12,16 +12,16 @@ func TestNutritionistPlans_LibraryAndActive(t *testing.T) {
 	ctx := context.Background()
 	coach := newTestUser(t, store, "coach@test.it")
 
-	// Il piano attivo viene creato al primo accesso.
+	// The active plan is created on first access.
 	active, err := np.GetOrCreateActivePlan(ctx, coach)
 	if err != nil {
 		t.Fatalf("GetOrCreateActivePlan: %v", err)
 	}
 	if !active.IsActive {
-		t.Error("il piano creato deve essere attivo")
+		t.Error("the created plan must be active")
 	}
 
-	// Nuovo piano libreria: non attivo.
+	// A new library plan: not active.
 	libID, err := np.CreatePlan(ctx, coach, "Massa 2700")
 	if err != nil {
 		t.Fatalf("CreatePlan: %v", err)
@@ -34,30 +34,30 @@ func TestNutritionistPlans_LibraryAndActive(t *testing.T) {
 		t.Fatalf("ListPlans: want 2 piani, got %d", len(plans))
 	}
 	if !plans[0].IsActive || plans[1].IsActive {
-		t.Errorf("ordinamento/flag attivo errato: %+v", plans)
+		t.Errorf("wrong order/active flag: %+v", plans)
 	}
 
-	// SetActivePlan sposta il flag mantenendo l'invariante.
+	// SetActivePlan moves the flag and keeps the invariant.
 	if err := np.SetActivePlan(ctx, coach, libID); err != nil {
 		t.Fatalf("SetActivePlan: %v", err)
 	}
 	nowActive, err := np.GetOrCreateActivePlan(ctx, coach)
 	if err != nil {
-		t.Fatalf("GetOrCreateActivePlan dopo switch: %v", err)
+		t.Fatalf("GetOrCreateActivePlan after switch: %v", err)
 	}
 	if nowActive.ID != libID {
-		t.Errorf("piano attivo: want %d, got %d", libID, nowActive.ID)
+		t.Errorf("active plan: want %d, got %d", libID, nowActive.ID)
 	}
 
-	// SetActivePlan su piano altrui: rifiutato.
+	// SetActivePlan on another user's plan: rejected.
 	other := newTestUser(t, store, "other@test.it")
 	if err := np.SetActivePlan(ctx, other, libID); !errors.Is(err, ErrNutritionistPlanNotFound) {
-		t.Errorf("SetActivePlan piano altrui: want ErrNutritionistPlanNotFound, got %v", err)
+		t.Errorf("SetActivePlan on another user's plan: want ErrNutritionistPlanNotFound, got %v", err)
 	}
 
-	// Il piano attivo non si puo' cancellare; quello inattivo si'.
+	// The active plan cannot be deleted; an inactive one can.
 	if err := np.DeletePlan(ctx, libID, coach); !errors.Is(err, ErrNutritionistPlanNotFound) {
-		t.Errorf("DeletePlan attivo: want errore, got %v", err)
+		t.Errorf("DeletePlan on the active plan: want an error, got %v", err)
 	}
 	if err := np.DeletePlan(ctx, active.ID, coach); err != nil {
 		t.Errorf("DeletePlan inattivo: %v", err)
@@ -77,12 +77,12 @@ func TestCoachRepository_ClientsAndAssignment(t *testing.T) {
 	if err := coachRepo.AddClient(ctx, coach, client); err != nil {
 		t.Fatalf("AddClient: %v", err)
 	}
-	// Un cliente ha al massimo un coach.
+	// A client has at most one coach.
 	if err := coachRepo.AddClient(ctx, otherCoach, client); !errors.Is(err, ErrClientHasCoach) {
 		t.Errorf("AddClient duplicato: want ErrClientHasCoach, got %v", err)
 	}
 
-	// Senza assegnazione: GetAssignment ha AssignedPlanID nil.
+	// Without an assignment: GetAssignment has a nil AssignedPlanID.
 	assignment, err := coachRepo.GetAssignment(ctx, client)
 	if err != nil {
 		t.Fatalf("GetAssignment: %v", err)
@@ -91,7 +91,7 @@ func TestCoachRepository_ClientsAndAssignment(t *testing.T) {
 		t.Errorf("assignment inatteso: %+v", assignment)
 	}
 
-	// Assegna un piano della libreria del coach.
+	// Assign a plan from the coach's library.
 	planID, err := np.CreatePlan(ctx, coach, "Definizione 2000")
 	if err != nil {
 		t.Fatalf("CreatePlan: %v", err)
@@ -101,22 +101,22 @@ func TestCoachRepository_ClientsAndAssignment(t *testing.T) {
 	}
 	assignment, err = coachRepo.GetAssignment(ctx, client)
 	if err != nil {
-		t.Fatalf("GetAssignment dopo assign: %v", err)
+		t.Fatalf("GetAssignment after assign: %v", err)
 	}
 	if assignment.AssignedPlanID == nil || *assignment.AssignedPlanID != planID {
 		t.Errorf("AssignedPlanID: want %d, got %+v", planID, assignment.AssignedPlanID)
 	}
 
-	// Un piano non del coach non e' assegnabile.
+	// A plan that is not the coach's cannot be assigned.
 	foreignPlan, err := np.CreatePlan(ctx, otherCoach, "Piano altrui")
 	if err != nil {
 		t.Fatalf("CreatePlan altrui: %v", err)
 	}
 	if err := coachRepo.AssignPlan(ctx, coach, client, foreignPlan); !errors.Is(err, ErrCoachClientNotFound) {
-		t.Errorf("AssignPlan piano altrui: want errore, got %v", err)
+		t.Errorf("AssignPlan with another coach's plan: want an error, got %v", err)
 	}
 
-	// ListClients riporta il piano assegnato.
+	// ListClients reports the assigned plan.
 	clients, err := coachRepo.ListClients(ctx, coach)
 	if err != nil {
 		t.Fatalf("ListClients: %v", err)
@@ -134,10 +134,10 @@ func TestCoachRepository_ClientsAndAssignment(t *testing.T) {
 	}
 	assignment, err = coachRepo.GetAssignment(ctx, client)
 	if err != nil {
-		t.Fatalf("GetAssignment dopo remove: %v", err)
+		t.Fatalf("GetAssignment after remove: %v", err)
 	}
 	if assignment != nil {
-		t.Errorf("dopo remove il cliente non deve avere coach: %+v", assignment)
+		t.Errorf("after remove the client must have no coach: %+v", assignment)
 	}
 }
 
@@ -159,9 +159,9 @@ func TestUsers_UpdateRole(t *testing.T) {
 	}
 	u, _ = users.GetByID(ctx, id)
 	if u.Role != "coach" {
-		t.Errorf("ruolo dopo update: want coach, got %q", u.Role)
+		t.Errorf("role after update: want coach, got %q", u.Role)
 	}
 	if err := users.UpdateRole(ctx, id, "superadmin"); err == nil {
-		t.Error("UpdateRole con ruolo non valido deve fallire")
+		t.Error("UpdateRole with an invalid role must fail")
 	}
 }

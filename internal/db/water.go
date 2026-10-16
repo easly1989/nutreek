@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// ErrWaterLogNotFound viene restituito quando non c'e' un log da cancellare.
+// ErrWaterLogNotFound is returned when there is no log to delete.
 var ErrWaterLogNotFound = errors.New("log idratazione non trovato")
 
 type WaterLogs struct {
@@ -19,8 +19,8 @@ func NewWaterLogs(db *sql.DB) *WaterLogs {
 	return &WaterLogs{db: db}
 }
 
-// Log registra un'assunzione d'acqua per la data data. Ogni chiamata e' un
-// nuovo record (i quick-log "+250ml" si sommano nel totale giornaliero).
+// Log records a water intake on the given date. Every call is a new record
+// (the "+250ml" quick logs add up in the daily total).
 func (w *WaterLogs) Log(ctx context.Context, userID int64, date time.Time, amountML int) error {
 	if amountML <= 0 {
 		return fmt.Errorf("quantita' non valida")
@@ -35,7 +35,7 @@ func (w *WaterLogs) Log(ctx context.Context, userID int64, date time.Time, amoun
 	return nil
 }
 
-// TotalForDate ritorna i ml totali bevuti dall'utente in una data.
+// TotalForDate returns the total ml the user drank on a date.
 func (w *WaterLogs) TotalForDate(ctx context.Context, userID int64, date time.Time) (int, error) {
 	var total int
 	err := w.db.QueryRowContext(ctx,
@@ -48,8 +48,8 @@ func (w *WaterLogs) TotalForDate(ctx context.Context, userID int64, date time.Ti
 	return total, nil
 }
 
-// ForDateRange ritorna una mappa data(YYYY-MM-DD) -> ml totali per l'intervallo
-// [from, to] inclusivo. Le date senza log non compaiono nella mappa.
+// ForDateRange returns a map date(YYYY-MM-DD) -> total ml for the inclusive
+// range [from, to]. Dates without logs are absent from the map.
 func (w *WaterLogs) ForDateRange(ctx context.Context, userID int64, from, to time.Time) (map[string]int, error) {
 	rows, err := w.db.QueryContext(ctx,
 		`SELECT logged_at, SUM(amount_ml) FROM water_logs
@@ -74,8 +74,8 @@ func (w *WaterLogs) ForDateRange(ctx context.Context, userID int64, from, to tim
 	return out, rows.Err()
 }
 
-// DeleteLast cancella il log piu' recente del giorno (undo del quick-log).
-// Ritorna ErrWaterLogNotFound se non c'e' nulla da cancellare.
+// DeleteLast deletes the day's latest log (undo for the quick log).
+// It returns ErrWaterLogNotFound when there is nothing to delete.
 func (w *WaterLogs) DeleteLast(ctx context.Context, userID int64, date time.Time) error {
 	res, err := w.db.ExecContext(ctx,
 		`DELETE FROM water_logs WHERE id = (

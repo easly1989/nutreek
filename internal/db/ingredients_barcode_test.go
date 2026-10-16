@@ -9,9 +9,9 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// Un ingrediente creato a mano dallo scanner tiene il codice: lo scanner
-// successivo lo trova, e il reconciler non lo tocca (e' locale apposta,
-// perche' su OpenFoodFacts il prodotto non c'era).
+// An ingredient created by hand from the scanner keeps its code: the next
+// scan finds it, and the reconciler leaves it alone (it is local on purpose,
+// because the product was not on OpenFoodFacts).
 func TestIngredientsLocalBarcode(t *testing.T) {
 	store := newTestStore(t)
 	ings := NewIngredients(store.DB)
@@ -29,16 +29,16 @@ func TestIngredientsLocalBarcode(t *testing.T) {
 		t.Fatalf("GetByBarcode: %+v, %v", got, err)
 	}
 
-	// Lo stesso codice non puo' finire su due ingredienti.
+	// The same code cannot end up on two ingredients.
 	other, _ := ings.CreateLocal(ctx, "Altro", nil, domain.UnitGram, 100, 1, 1, 1, nil, nil, nil, nil, nil, nil, nil)
 	if err := ings.SetLocalBarcode(ctx, other, "4006381333931"); !errors.Is(err, ErrBarcodeAlreadyUsed) {
-		t.Errorf("codice doppio: atteso ErrBarcodeAlreadyUsed, got %v", err)
+		t.Errorf("duplicate code: want ErrBarcodeAlreadyUsed, got %v", err)
 	}
 
-	// Solo per i locali: un import OFF ha gia' il suo codice.
+	// Locals only: an OFF import already has its code.
 	offID, _ := ings.CreateOFF(ctx, "96385074", "Latte", nil, domain.UnitMilliliter, 64, 3, 5, 3.6, nil, nil, nil, nil, nil, nil, nil)
 	if err := ings.SetLocalBarcode(ctx, offID, "036000291452"); !errors.Is(err, ErrIngredientNotFound) {
-		t.Errorf("su un OFF: atteso ErrIngredientNotFound, got %v", err)
+		t.Errorf("on an OFF row: want ErrIngredientNotFound, got %v", err)
 	}
 
 	locals, err := ings.LocalsToReconcile(ctx, 50, time.Now().Add(time.Hour))
@@ -47,10 +47,10 @@ func TestIngredientsLocalBarcode(t *testing.T) {
 	}
 	for _, l := range locals {
 		if l.ID == id {
-			t.Errorf("un locale con codice non va riconciliato")
+			t.Errorf("a local with a code must not be reconciled")
 		}
 	}
 	if len(locals) != 1 || locals[0].ID != other {
-		t.Errorf("da riconciliare: atteso solo %d, got %d voci", other, len(locals))
+		t.Errorf("to reconcile: want only %d, got %d items", other, len(locals))
 	}
 }

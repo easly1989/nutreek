@@ -10,17 +10,17 @@ import (
 	"time"
 )
 
-// BackupTo crea un backup consistente del database usando VACUUM INTO.
-// Sicuro in concorrenza WAL: SQLite garantisce uno snapshot-read durante
-// l'intera operazione, senza bloccare i reader né il writer corrente.
-// destPath viene creato (o sovrascritto) dall'operazione.
+// BackupTo writes a consistent backup of the database with VACUUM INTO.
+// Safe under WAL concurrency: SQLite reads from one snapshot for the whole
+// operation, without blocking readers or the current writer.
+// The operation creates (or overwrites) destPath.
 func (s *Store) BackupTo(ctx context.Context, destPath string) error {
 	if dir := filepath.Dir(destPath); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("backup: crea dir %q: %w", dir, err)
 		}
 	}
-	// Rimuove eventuale file pre-esistente: VACUUM INTO fallisce se il file esiste.
+	// Remove any existing file: VACUUM INTO fails when the file exists.
 	_ = os.Remove(destPath)
 	if _, err := s.DB.ExecContext(ctx, "VACUUM INTO ?", destPath); err != nil {
 		return fmt.Errorf("backup: vacuum into: %w", err)
@@ -28,9 +28,9 @@ func (s *Store) BackupTo(ctx context.Context, destPath string) error {
 	return nil
 }
 
-// PruneBackups mantiene al massimo keep file nella directory dir, eliminando
-// i più vecchi (ordine lessicografico, che corrisponde a ordine cronologico
-// se i nomi seguono il pattern nutreek-backup-YYYYMMDD-HHMMSS.db).
+// PruneBackups keeps at most keep files in dir, deleting the oldest
+// (lexicographic order, which is chronological order when the names follow
+// the nutreek-backup-YYYYMMDD-HHMMSS.db pattern).
 func PruneBackups(dir string, keep int) error {
 	if keep <= 0 {
 		return nil
@@ -60,7 +60,7 @@ func PruneBackups(dir string, keep int) error {
 	return nil
 }
 
-// BackupFileName genera un nome file per il backup usando il timestamp corrente.
+// BackupFileName builds a backup file name from the current timestamp.
 func BackupFileName(dir string, t time.Time) string {
 	return filepath.Join(dir, fmt.Sprintf("nutreek-backup-%s.db", t.UTC().Format("20060102-150405")))
 }

@@ -1,3 +1,3 @@
-// Package db gestisce la connessione SQLite, l'embedding delle migrazioni
-// e fornisce un wrapper attorno a *sql.DB per il resto dell'app.
+// Package db manages the SQLite connection and the embedded migrations,
+// and provides a wrapper around *sql.DB for the rest of the app.
 package db

@@ -17,7 +17,7 @@ func TestMealTemplatesCRUDAndActivate(t *testing.T) {
 	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
 	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
 
-	// Alice crea due template, Bob uno.
+	// Alice creates two templates, Bob one.
 	a1, err := tpls.Create(ctx, alice, "5 pasti")
 	if err != nil {
 		t.Fatalf("create a1: %v", err)
@@ -31,17 +31,17 @@ func TestMealTemplatesCRUDAndActivate(t *testing.T) {
 		t.Fatalf("create bob: %v", err)
 	}
 
-	// Lista per Alice → 2; per Bob → 1.
+	// List for Alice → 2; for Bob → 1.
 	aList, _ := tpls.ListByUser(ctx, alice)
 	if len(aList) != 2 {
-		t.Errorf("Alice ne ha %d, attesi 2", len(aList))
+		t.Errorf("Alice has %d, want 2", len(aList))
 	}
 	bList, _ := tpls.ListByUser(ctx, bob)
 	if len(bList) != 1 || bList[0].ID != bTpl {
-		t.Errorf("Bob list inatteso: %+v", bList)
+		t.Errorf("unexpected Bob list: %+v", bList)
 	}
 
-	// SetActive a1, poi a2 → solo a2 active per Alice; bTpl resta non-active.
+	// SetActive a1, then a2 → only a2 active for Alice; bTpl stays inactive.
 	if err := tpls.SetActive(ctx, a1, alice); err != nil {
 		t.Fatalf("SetActive a1: %v", err)
 	}
@@ -51,24 +51,24 @@ func TestMealTemplatesCRUDAndActivate(t *testing.T) {
 	aList, _ = tpls.ListByUser(ctx, alice)
 	for _, t1 := range aList {
 		if t1.ID == a2 && !t1.IsActive {
-			t.Error("a2 dovrebbe essere active")
+			t.Error("a2 should be active")
 		}
 		if t1.ID == a1 && t1.IsActive {
-			t.Error("a1 dovrebbe essere disattivato dopo SetActive su a2")
+			t.Error("a1 should be deactivated after SetActive on a2")
 		}
 	}
 
-	// Bob cerca di settare active su template di Alice → forbidden.
+	// Bob tries to activate Alice's template → forbidden.
 	if err := tpls.SetActive(ctx, a1, bob); !errors.Is(err, ErrMealTemplateForbidden) {
-		t.Errorf("atteso forbidden, got %v", err)
+		t.Errorf("want forbidden, got %v", err)
 	}
 
-	// Bob slot su template di Alice → forbidden.
+	// Bob adds a slot to Alice's template → forbidden.
 	if _, err := tpls.AddSlot(ctx, a1, bob, 0, "x"); !errors.Is(err, ErrMealTemplateForbidden) {
-		t.Errorf("atteso forbidden, got %v", err)
+		t.Errorf("want forbidden, got %v", err)
 	}
 
-	// Alice aggiunge 3 slot e verifica ordine.
+	// Alice adds 3 slots and checks the order.
 	if _, err := tpls.AddSlot(ctx, a2, alice, domain.DayOfWeekEvery, "Colazione"); err != nil {
 		t.Fatalf("slot1: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestMealTemplatesCRUDAndActivate(t *testing.T) {
 	if len(got.Slots) != 3 {
 		t.Fatalf("attese 3 slot, got %d", len(got.Slots))
 	}
-	// Ordine: -1 < 2 → prima Colazione/Pranzo, poi Allenamento.
+	// Order: -1 < 2 → Colazione/Pranzo first, then Allenamento.
 	wantOrder := []string{"Colazione", "Pranzo", "Allenamento"}
 	for i, s := range got.Slots {
 		if s.Name != wantOrder[i] {
@@ -94,20 +94,20 @@ func TestMealTemplatesCRUDAndActivate(t *testing.T) {
 		}
 	}
 
-	// Bob cerca di rimuovere slot di Alice → not found (privilege check via JOIN).
+	// Bob tries to remove Alice's slot → not found (privilege check via JOIN).
 	if err := tpls.RemoveSlot(ctx, wedSlotID, bob); !errors.Is(err, ErrSlotNotFound) {
-		t.Errorf("atteso ErrSlotNotFound, got %v", err)
+		t.Errorf("want ErrSlotNotFound, got %v", err)
 	}
 	if err := tpls.RemoveSlot(ctx, wedSlotID, alice); err != nil {
 		t.Fatalf("Alice RemoveSlot: %v", err)
 	}
 
-	// Bob non vede template di Alice.
+	// Bob does not see Alice's templates.
 	if _, err := tpls.GetWithSlots(ctx, a2, bob); !errors.Is(err, ErrMealTemplateForbidden) {
-		t.Errorf("Bob GetWithSlots di a2 dovrebbe forbidden, got %v", err)
+		t.Errorf("Bob GetWithSlots on a2 should be forbidden, got %v", err)
 	}
 
-	// Alice rinomina, cancella.
+	// Alice renames, then deletes.
 	if err := tpls.Rename(ctx, a2, alice, "5 pasti v2"); err != nil {
 		t.Fatalf("Rename: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestMealTemplatesCRUDAndActivate(t *testing.T) {
 		t.Fatalf("Delete: %v", err)
 	}
 	if _, err := tpls.GetWithSlots(ctx, a2, alice); !errors.Is(err, ErrMealTemplateNotFound) {
-		t.Errorf("dopo delete dovrebbe ErrMealTemplateNotFound, got %v", err)
+		t.Errorf("after delete want ErrMealTemplateNotFound, got %v", err)
 	}
 }
 
@@ -129,7 +129,7 @@ func TestReorderSlots(t *testing.T) {
 	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
 	tplID, _ := tpls.Create(ctx, alice, "Test")
 
-	// 3 slot per il giorno -1 (every).
+	// 3 slots for day -1 (every).
 	s1, _ := tpls.AddSlot(ctx, tplID, alice, domain.DayOfWeekEvery, "A")
 	s2, _ := tpls.AddSlot(ctx, tplID, alice, domain.DayOfWeekEvery, "B")
 	s3, _ := tpls.AddSlot(ctx, tplID, alice, domain.DayOfWeekEvery, "C")
@@ -139,15 +139,15 @@ func TestReorderSlots(t *testing.T) {
 	}
 	got, _ := tpls.GetWithSlots(ctx, tplID, alice)
 	if len(got.Slots) != 3 || got.Slots[0].ID != s3 || got.Slots[1].ID != s1 || got.Slots[2].ID != s2 {
-		t.Errorf("ordine = [%d %d %d], atteso [%d %d %d]",
+		t.Errorf("order = [%d %d %d], want [%d %d %d]",
 			got.Slots[0].ID, got.Slots[1].ID, got.Slots[2].ID, s3, s1, s2)
 	}
 
 	// Mismatch + ownership.
 	if err := tpls.ReorderSlots(ctx, tplID, alice, domain.DayOfWeekEvery, []int64{s1}); !errors.Is(err, ErrReorderMismatch) {
-		t.Errorf("parziale: atteso ErrReorderMismatch, got %v", err)
+		t.Errorf("partial: want ErrReorderMismatch, got %v", err)
 	}
 	if err := tpls.ReorderSlots(ctx, tplID, bob, domain.DayOfWeekEvery, []int64{s1, s2, s3}); !errors.Is(err, ErrMealTemplateForbidden) {
-		t.Errorf("bob: atteso forbidden, got %v", err)
+		t.Errorf("bob: want forbidden, got %v", err)
 	}
 }

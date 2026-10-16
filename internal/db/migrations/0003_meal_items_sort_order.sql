@@ -3,8 +3,8 @@
 
 ALTER TABLE meal_items ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
 
--- Popola le righe esistenti con sort_order = id, cosi' rimangono in ordine
--- di creazione anche dopo l'introduzione del campo.
+-- Fill the existing rows with sort_order = id, so they keep their creation
+-- order after the column is introduced.
 UPDATE meal_items SET sort_order = id WHERE sort_order = 0;
 
 CREATE INDEX idx_meal_items_meal_sort ON meal_items(meal_id, sort_order);

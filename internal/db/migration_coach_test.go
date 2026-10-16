@@ -8,10 +8,10 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// TestMigration0025_PreservaDatiNutrizionista verifica che la ricreazione
-// della catena nutritionist_* nella migration 0025 preservi i dati esistenti.
-// E' il punto critico: con FK attive un DROP del parent senza la sequenza
-// corretta farebbe cascade-delete su tipi pasto, varianti e item.
+// TestMigration0025_PreservaDatiNutrizionista checks that rebuilding the
+// nutritionist_* chain in migration 0025 keeps the existing data.
+// This is the critical point: with FKs on, dropping the parent without the
+// right sequence would cascade-delete meal types, variants and items.
 func TestMigration0025_PreservaDatiNutrizionista(t *testing.T) {
 	store, err := Open(filepath.Join(t.TempDir(), "mig.db"))
 	if err != nil {
@@ -24,12 +24,12 @@ func TestMigration0025_PreservaDatiNutrizionista(t *testing.T) {
 	if err := goose.SetDialect("sqlite3"); err != nil {
 		t.Fatalf("goose dialect: %v", err)
 	}
-	// Migra fino alla 0024 (pre coach-mode).
+	// Migrate up to 0024 (before coach mode).
 	if err := goose.UpToContext(ctx, store.DB, "migrations", 24); err != nil {
 		t.Fatalf("goose up-to 24: %v", err)
 	}
 
-	// Popola la catena con lo schema pre-0025.
+	// Fill the chain with the pre-0025 schema.
 	mustExec := func(q string, args ...any) {
 		t.Helper()
 		if _, err := store.DB.ExecContext(ctx, q, args...); err != nil {
@@ -44,12 +44,12 @@ func TestMigration0025_PreservaDatiNutrizionista(t *testing.T) {
 	mustExec(`INSERT INTO nutritionist_meal_variations (id, meal_type_id, name) VALUES (30, 20, 'Base')`)
 	mustExec(`INSERT INTO nutritionist_meal_items (id, variation_id, ingredient_id, quantity) VALUES (40, 30, 1, 100)`)
 
-	// Applica la 0025 (e successive).
+	// Apply 0025 (and later).
 	if err := goose.UpContext(ctx, store.DB, "migrations"); err != nil {
 		t.Fatalf("goose up: %v", err)
 	}
 
-	// La catena deve essere intatta e il piano migrato come attivo.
+	// The chain must be intact and the migrated plan active.
 	var n int
 	check := func(q string, want int) {
 		t.Helper()
@@ -66,11 +66,11 @@ func TestMigration0025_PreservaDatiNutrizionista(t *testing.T) {
 	check(`SELECT COUNT(*) FROM nutritionist_meal_items WHERE id = 40 AND variation_id = 30`, 1)
 	check(`SELECT COUNT(*) FROM users WHERE id = 1 AND role = 'user'`, 1)
 
-	// Il vincolo UNIQUE su user_id deve essere sparito: secondo piano ok.
+	// The UNIQUE constraint on user_id must be gone: a second plan is fine.
 	mustExec(`INSERT INTO nutritionist_plans (user_id, name, is_active) VALUES (1, 'Secondo', 0)`)
-	// Ma un secondo piano ATTIVO deve violare l'indice parziale.
+	// But a second ACTIVE plan must violate the partial index.
 	if _, err := store.DB.ExecContext(ctx,
 		`INSERT INTO nutritionist_plans (user_id, name, is_active) VALUES (1, 'Terzo', 1)`); err == nil {
-		t.Error("due piani attivi per lo stesso utente devono violare uniq_nutritionist_plans_active")
+		t.Error("two active plans for the same user must violate uniq_nutritionist_plans_active")
 	}
 }

@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// La data della pesata deve tornare intatta da entrambe le letture: le
-// Statistiche e il TDEE la usano per collocare il peso nelle settimane.
+// The weigh-in date must come back intact from both reads: Statistics and
+// the TDEE use it to place the weight in the right week.
 func TestWeightLogsKeepMeasuredAt(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)
@@ -25,13 +25,13 @@ func TestWeightLogsKeepMeasuredAt(t *testing.T) {
 		t.Fatalf("ListWeightLogs = %v, %v", list, err)
 	}
 	if !list[0].MeasuredAt.Equal(day) {
-		t.Errorf("ListWeightLogs: data = %v, attesa %v", list[0].MeasuredAt, day)
+		t.Errorf("ListWeightLogs: date = %v, want %v", list[0].MeasuredAt, day)
 	}
 	rng, err := logs.ForRange(ctx, alice, day.AddDate(0, 0, -7), day)
 	if err != nil || len(rng) != 1 {
 		t.Fatalf("ForRange = %v, %v", rng, err)
 	}
 	if !rng[0].MeasuredAt.Equal(day) {
-		t.Errorf("ForRange: data = %v, attesa %v", rng[0].MeasuredAt, day)
+		t.Errorf("ForRange: date = %v, want %v", rng[0].MeasuredAt, day)
 	}
 }

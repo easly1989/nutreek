@@ -1,8 +1,8 @@
 -- +goose Up
--- Porzione del prodotto in grammi (o ml), da serving_quantity di OFF (#136).
--- Il picker la propone come quantita' al posto della confezione intera.
--- NULL = porzione non nota; i sync successivi la riempiono.
+-- The product's serving in grams (or ml), from OFF's serving_quantity (#136).
+-- The picker proposes it as the quantity instead of the whole package.
+-- NULL = serving unknown; later syncs fill it.
 ALTER TABLE off_products ADD COLUMN serving_g REAL;
 
 -- +goose Down
--- Come in 0012: SQLite <3.35 non supporta DROP COLUMN, la colonna resta orfana.
+-- As in 0012: SQLite <3.35 does not support DROP COLUMN, the column stays orphaned.

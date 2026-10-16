@@ -10,16 +10,16 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// ErrMealTemplateNotFound viene restituito quando un template non esiste.
+// ErrMealTemplateNotFound is returned when a template does not exist.
 var ErrMealTemplateNotFound = errors.New("template non trovato")
 
-// ErrMealTemplateForbidden segnala accesso a template altrui.
+// ErrMealTemplateForbidden reports access to another user's template.
 var ErrMealTemplateForbidden = errors.New("template non di proprieta' dell'utente")
 
-// ErrSlotNotFound = slot non esistente / non appartenente all'utente.
+// ErrSlotNotFound means the slot does not exist or is not the user's.
 var ErrSlotNotFound = errors.New("slot non trovato")
 
-// MealTemplates e' il repo dei template di pasti.
+// MealTemplates is the meal templates repository.
 type MealTemplates struct {
 	db *sql.DB
 }
@@ -28,7 +28,7 @@ func NewMealTemplates(db *sql.DB) *MealTemplates {
 	return &MealTemplates{db: db}
 }
 
-// Create inserisce un nuovo template (vuoto, nessuna slot ancora).
+// Create inserts a new template (empty, no slots yet).
 func (r *MealTemplates) Create(ctx context.Context, userID int64, name string) (int64, error) {
 	res, err := r.db.ExecContext(ctx,
 		`INSERT INTO meal_templates (user_id, name) VALUES (?, ?)`,
@@ -40,7 +40,7 @@ func (r *MealTemplates) Create(ctx context.Context, userID int64, name string) (
 	return res.LastInsertId()
 }
 
-// Rename cambia solo il nome.
+// Rename changes the name only.
 func (r *MealTemplates) Rename(ctx context.Context, id, userID int64, name string) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE meal_templates SET name = ? WHERE id = ? AND user_id = ?`,
@@ -56,7 +56,7 @@ func (r *MealTemplates) Rename(ctx context.Context, id, userID int64, name strin
 	return nil
 }
 
-// Delete cancella template + slots (CASCADE).
+// Delete deletes the template + its slots (CASCADE).
 func (r *MealTemplates) Delete(ctx context.Context, id, userID int64) error {
 	res, err := r.db.ExecContext(ctx,
 		`DELETE FROM meal_templates WHERE id = ? AND user_id = ?`, id, userID,
@@ -71,8 +71,8 @@ func (r *MealTemplates) Delete(ctx context.Context, id, userID int64) error {
 	return nil
 }
 
-// SetActive attiva il template e disattiva tutti gli altri dello stesso
-// utente, in transazione: serve a mantenere l'invariante "max 1 attivo".
+// SetActive activates the template and deactivates every other template of
+// the same user, in a transaction, to keep the "at most 1 active" invariant.
 func (r *MealTemplates) SetActive(ctx context.Context, id, userID int64) error {
 	if err := r.assertOwner(ctx, id, userID); err != nil {
 		return err
@@ -95,7 +95,7 @@ func (r *MealTemplates) SetActive(ctx context.Context, id, userID int64) error {
 	return tx.Commit()
 }
 
-// ListByUser ritorna i template dell'utente, con il piu' recente prima.
+// ListByUser returns the user's templates, newest first.
 func (r *MealTemplates) ListByUser(ctx context.Context, userID int64) ([]*domain.MealTemplate, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, name, is_active, created_at
@@ -120,7 +120,7 @@ func (r *MealTemplates) ListByUser(ctx context.Context, userID int64) ([]*domain
 	return out, rows.Err()
 }
 
-// GetWithSlots carica template + slot ordinate per (day_of_week, sort_order).
+// GetWithSlots loads the template + its slots ordered by (day_of_week, sort_order).
 func (r *MealTemplates) GetWithSlots(ctx context.Context, id, userID int64) (*domain.MealTemplateWithSlots, error) {
 	row := r.db.QueryRowContext(ctx,
 		`SELECT id, user_id, name, is_active, created_at
@@ -161,7 +161,7 @@ func (r *MealTemplates) GetWithSlots(ctx context.Context, id, userID int64) (*do
 	return &out, rows.Err()
 }
 
-// AddSlot aggiunge una slot al template. day deve essere -1..6.
+// AddSlot adds a slot to the template. day must be -1..6.
 func (r *MealTemplates) AddSlot(ctx context.Context, templateID, userID int64, day int, name string) (int64, error) {
 	if err := r.assertOwner(ctx, templateID, userID); err != nil {
 		return 0, err
@@ -191,7 +191,7 @@ func (r *MealTemplates) AddSlot(ctx context.Context, templateID, userID int64, d
 	return res.LastInsertId()
 }
 
-// RemoveSlot cancella una slot, verificando ownership tramite join.
+// RemoveSlot deletes a slot, checking ownership through a join.
 func (r *MealTemplates) RemoveSlot(ctx context.Context, slotID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		DELETE FROM meal_template_slots
@@ -208,9 +208,9 @@ func (r *MealTemplates) RemoveSlot(ctx context.Context, slotID, userID int64) er
 	return nil
 }
 
-// ReorderSlots persiste l'ordine degli slot di un template per un giorno
-// specifico (incluso DayOfWeekEvery=-1). `ids` deve contenere ESATTAMENTE
-// l'insieme degli slot id presenti per quel (templateID, day).
+// ReorderSlots stores the order of a template's slots for one day
+// (DayOfWeekEvery=-1 included). `ids` must contain EXACTLY the set of
+// slot ids present for that (templateID, day).
 func (r *MealTemplates) ReorderSlots(ctx context.Context, templateID, userID int64, day int, ids []int64) error {
 	if err := r.assertOwner(ctx, templateID, userID); err != nil {
 		return err

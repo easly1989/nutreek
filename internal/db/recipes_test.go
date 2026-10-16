@@ -24,7 +24,7 @@ func TestRecipesVisibilityAndCRUD(t *testing.T) {
 		t.Fatalf("bob: %v", err)
 	}
 
-	// Una ricetta privata di Alice, una pubblica di Alice, una privata di Bob.
+	// A private recipe of Alice, a public one of Alice, a private one of Bob.
 	priv, err := recipes.Create(ctx, alice, "Privata Alice", nil, 2, false)
 	if err != nil {
 		t.Fatalf("priv: %v", err)
@@ -38,49 +38,49 @@ func TestRecipesVisibilityAndCRUD(t *testing.T) {
 		t.Fatalf("bobPriv: %v", err)
 	}
 
-	// Bob vede: la sua privata + la pubblica di Alice (2). Non vede la privata di Alice.
+	// Bob sees: his private one + Alice's public one (2). Not Alice's private one.
 	bobList, err := recipes.ListVisible(ctx, bob)
 	if err != nil {
 		t.Fatalf("ListVisible bob: %v", err)
 	}
 	if len(bobList) != 2 {
-		t.Fatalf("Bob vede %d ricette, attese 2", len(bobList))
+		t.Fatalf("Bob sees %d recipes, want 2", len(bobList))
 	}
 	for _, r := range bobList {
 		if r.ID == priv {
-			t.Errorf("Bob non dovrebbe vedere la privata di Alice")
+			t.Errorf("Bob should not see Alice's private recipe")
 		}
 	}
 
-	// Alice vede tutte le sue (2) + nessuna di Bob (priv).
+	// Alice sees all of hers (2) + none of Bob's (private).
 	aliceList, err := recipes.ListVisible(ctx, alice)
 	if err != nil {
 		t.Fatalf("ListVisible alice: %v", err)
 	}
 	if len(aliceList) != 2 {
-		t.Fatalf("Alice vede %d ricette, attese 2 (le sue)", len(aliceList))
+		t.Fatalf("Alice sees %d recipes, want 2 (her own)", len(aliceList))
 	}
 
-	// GetWithItems: Bob legge la pubblica di Alice OK, ma riceve forbidden per la privata.
+	// GetWithItems: Bob reads Alice's public recipe, but gets forbidden on the private one.
 	if _, err := recipes.GetWithItems(ctx, pub, bob); err != nil {
-		t.Errorf("Bob non riesce a leggere la pubblica di Alice: %v", err)
+		t.Errorf("Bob cannot read Alice's public recipe: %v", err)
 	}
 	if _, err := recipes.GetWithItems(ctx, priv, bob); !errors.Is(err, ErrRecipeForbidden) {
-		t.Errorf("atteso ErrRecipeForbidden per Bob su priv di Alice, got %v", err)
+		t.Errorf("want ErrRecipeForbidden for Bob on Alice's private recipe, got %v", err)
 	}
 	if _, err := recipes.GetWithItems(ctx, 9999, alice); !errors.Is(err, ErrRecipeNotFound) {
-		t.Errorf("atteso ErrRecipeNotFound, got %v", err)
+		t.Errorf("want ErrRecipeNotFound, got %v", err)
 	}
 
-	// Bob cerca di cancellare/aggiornare la pubblica di Alice → forbidden.
+	// Bob tries to delete/update Alice's public recipe → forbidden.
 	if err := recipes.Update(ctx, pub, bob, "hijack", nil, 1, true); !errors.Is(err, ErrRecipeForbidden) {
-		t.Errorf("Bob update altrui dovrebbe essere forbidden, got %v", err)
+		t.Errorf("Bob updating another user's recipe should be forbidden, got %v", err)
 	}
 	if err := recipes.Delete(ctx, pub, bob); !errors.Is(err, ErrRecipeForbidden) {
-		t.Errorf("Bob delete altrui dovrebbe essere forbidden, got %v", err)
+		t.Errorf("Bob deleting another user's recipe should be forbidden, got %v", err)
 	}
 
-	// Alice aggiunge un item alla pubblica.
+	// Alice adds an item to the public recipe.
 	ingID, err := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ingredient: %v", err)
@@ -95,33 +95,33 @@ func TestRecipesVisibilityAndCRUD(t *testing.T) {
 		t.Fatalf("GetWithItems after add: %v", err)
 	}
 	if len(got.Items) != 1 || got.Items[0].Quantity != 200 || got.Items[0].Ingredient.Name != "Pane" {
-		t.Errorf("item non come atteso: %+v", got.Items)
+		t.Errorf("item not as expected: %+v", got.Items)
 	}
 
-	// Bob non puo' cancellare l'item di Alice.
+	// Bob cannot delete Alice's item.
 	if err := recipes.RemoveItem(ctx, itemID, bob); !errors.Is(err, ErrRecipeItemNotFound) {
 		t.Errorf("Bob remove item altrui dovrebbe ErrRecipeItemNotFound, got %v", err)
 	}
-	// Bob non vede comunque la ricetta privata di Alice → bobPriv = sanity check rimasta privata.
+	// Bob's own private recipe → bobPriv = sanity check that it stayed private.
 	if _, err := recipes.GetWithItems(ctx, bobPriv, bob); err != nil {
-		t.Errorf("Bob legge la sua privata, got %v", err)
+		t.Errorf("Bob reads his own private recipe, got %v", err)
 	}
 
-	// Alice rimuove l'item.
+	// Alice removes the item.
 	if err := recipes.RemoveItem(ctx, itemID, alice); err != nil {
 		t.Fatalf("Alice RemoveItem: %v", err)
 	}
 	got, _ = recipes.GetWithItems(ctx, pub, alice)
 	if len(got.Items) != 0 {
-		t.Errorf("dopo RemoveItem ci sono %d item", len(got.Items))
+		t.Errorf("after RemoveItem there are %d items", len(got.Items))
 	}
 
-	// Alice cancella la ricetta privata.
+	// Alice deletes the private recipe.
 	if err := recipes.Delete(ctx, priv, alice); err != nil {
 		t.Fatalf("delete priv: %v", err)
 	}
 	if _, err := recipes.GetWithItems(ctx, priv, alice); !errors.Is(err, ErrRecipeNotFound) {
-		t.Errorf("dopo delete priv dovrebbe essere not-found, got %v", err)
+		t.Errorf("after delete the private recipe should be not found, got %v", err)
 	}
 }
 
@@ -145,30 +145,30 @@ func TestRecipesNameUniqueness(t *testing.T) {
 		t.Fatalf("first create: %v", err)
 	}
 
-	// Stesso nome stesso utente → ErrRecipeNameTaken.
+	// Same name, same user → ErrRecipeNameTaken.
 	if _, err := recipes.Create(ctx, alice, "Pasta al pomodoro", nil, 2, false); !errors.Is(err, ErrRecipeNameTaken) {
-		t.Errorf("atteso ErrRecipeNameTaken, got %v", err)
+		t.Errorf("want ErrRecipeNameTaken, got %v", err)
 	}
 	// Case-insensitive: "PASTA AL POMODORO" → ErrRecipeNameTaken.
 	if _, err := recipes.Create(ctx, alice, "PASTA AL POMODORO", nil, 2, false); !errors.Is(err, ErrRecipeNameTaken) {
-		t.Errorf("atteso ErrRecipeNameTaken case-insensitive, got %v", err)
+		t.Errorf("want ErrRecipeNameTaken case-insensitive, got %v", err)
 	}
-	// Stesso nome ma utente diverso → OK.
+	// Same name, different user → OK.
 	if _, err := recipes.Create(ctx, bob, "Pasta al pomodoro", nil, 2, false); err != nil {
-		t.Errorf("Bob deve poter usare lo stesso nome di Alice: %v", err)
+		t.Errorf("Bob must be able to use Alice's name: %v", err)
 	}
 
-	// Update a un nome già usato → ErrRecipeNameTaken.
+	// Update to a name already used → ErrRecipeNameTaken.
 	id2, err := recipes.Create(ctx, alice, "Carbonara", nil, 2, false)
 	if err != nil {
 		t.Fatalf("create id2: %v", err)
 	}
 	if err := recipes.Update(ctx, id2, alice, "Pasta al pomodoro", nil, 2, false); !errors.Is(err, ErrRecipeNameTaken) {
-		t.Errorf("rename a nome esistente: atteso ErrRecipeNameTaken, got %v", err)
+		t.Errorf("rename to an existing name: want ErrRecipeNameTaken, got %v", err)
 	}
-	// Update allo stesso nome (no-op) → OK.
+	// Update to the same name (no-op) → OK.
 	if err := recipes.Update(ctx, id1, alice, "Pasta al pomodoro", nil, 3, false); err != nil {
-		t.Errorf("update con stesso nome (no-op): %v", err)
+		t.Errorf("update with the same name (no-op): %v", err)
 	}
 	// NameExists helper.
 	exists, err := recipes.NameExists(ctx, alice, "pasta AL pomodoro", 0)
@@ -177,7 +177,7 @@ func TestRecipesNameUniqueness(t *testing.T) {
 	}
 	exists, _ = recipes.NameExists(ctx, alice, "pasta AL pomodoro", id1)
 	if exists {
-		t.Errorf("NameExists con excludeID = self deve restituire false")
+		t.Errorf("NameExists with excludeID = self must return false")
 	}
 }
 
@@ -205,7 +205,7 @@ func TestRecipesDuplicate(t *testing.T) {
 		t.Fatalf("Duplicate: %v", err)
 	}
 	if dupID == src {
-		t.Errorf("Duplicate ha ritornato lo stesso id")
+		t.Errorf("Duplicate returned the same id")
 	}
 	dup, err := recipes.GetWithItems(ctx, dupID, alice)
 	if err != nil {
@@ -215,14 +215,14 @@ func TestRecipesDuplicate(t *testing.T) {
 		t.Errorf("nome copia: %q", dup.Name)
 	}
 	if dup.Servings != 2 {
-		t.Errorf("servings non copiato: %d", dup.Servings)
+		t.Errorf("servings not copied: %d", dup.Servings)
 	}
 	if len(dup.Items) != 2 {
-		t.Errorf("items copiati: %d (attesi 2)", len(dup.Items))
+		t.Errorf("copied items: %d (want 2)", len(dup.Items))
 	}
-	// Stesso nome → blocco.
+	// Same name → blocked.
 	if _, err := recipes.Duplicate(ctx, src, alice, "Origine"); !errors.Is(err, ErrRecipeNameTaken) {
-		t.Errorf("duplicate con nome esistente: atteso ErrRecipeNameTaken, got %v", err)
+		t.Errorf("duplicate with an existing name: want ErrRecipeNameTaken, got %v", err)
 	}
 }
 
@@ -241,7 +241,7 @@ func TestRecipesIdenticalContent(t *testing.T) {
 	_, _ = recipes.AddItem(ctx, r1, alice, pane, 100)
 	_, _ = recipes.AddItem(ctx, r1, alice, pasta, 80)
 
-	// items = stesso set → match
+	// items = the same set → match
 	sameItems := []domain.RecipeItem{
 		{IngredientID: pane, Quantity: 100},
 		{IngredientID: pasta, Quantity: 80},
@@ -251,39 +251,39 @@ func TestRecipesIdenticalContent(t *testing.T) {
 		t.Fatalf("IdenticalContentRecipe: %v", err)
 	}
 	if name != "Ricetta A" {
-		t.Errorf("atteso match con Ricetta A, got %q", name)
+		t.Errorf("want a match with Ricetta A, got %q", name)
 	}
 
-	// Stesso set ma esclusa la sorgente → nessun match.
+	// The same set but with the source excluded → no match.
 	name, _ = recipes.IdenticalContentRecipe(ctx, alice, sameItems, r1)
 	if name != "" {
-		t.Errorf("con excludeID=r1: atteso no match, got %q", name)
+		t.Errorf("with excludeID=r1: want no match, got %q", name)
 	}
 
-	// Quantità diversa → no match.
+	// A different quantity → no match.
 	diff := []domain.RecipeItem{
 		{IngredientID: pane, Quantity: 99},
 		{IngredientID: pasta, Quantity: 80},
 	}
 	name, _ = recipes.IdenticalContentRecipe(ctx, alice, diff, 0)
 	if name != "" {
-		t.Errorf("qty diversa: atteso no match, got %q", name)
+		t.Errorf("different qty: want no match, got %q", name)
 	}
 
-	// Ordine diverso → match (firma è ordinata).
+	// A different order → match (the signature is sorted).
 	reversed := []domain.RecipeItem{
 		{IngredientID: pasta, Quantity: 80},
 		{IngredientID: pane, Quantity: 100},
 	}
 	name, _ = recipes.IdenticalContentRecipe(ctx, alice, reversed, 0)
 	if name != "Ricetta A" {
-		t.Errorf("ordine inverso: atteso match Ricetta A, got %q", name)
+		t.Errorf("reversed order: want a match with Ricetta A, got %q", name)
 	}
 
-	// Items vuoti → no match (ricette vuote non collidono).
+	// Empty items → no match (empty recipes do not collide).
 	name, _ = recipes.IdenticalContentRecipe(ctx, alice, nil, 0)
 	if name != "" {
-		t.Errorf("items vuoti: atteso no match, got %q", name)
+		t.Errorf("empty items: want no match, got %q", name)
 	}
 }
 
@@ -300,25 +300,25 @@ func TestRecipesBulkDeleteAndUsages(t *testing.T) {
 	r2, _ := recipes.Create(ctx, alice, "R2", nil, 1, false)
 	r3Bob, _ := recipes.Create(ctx, bob, "R3 Bob", nil, 1, false)
 
-	// Alice cancella r1, r2 e prova a cancellare r3Bob (non sua) → solo 2 cancellate.
+	// Alice deletes r1, r2 and tries to delete r3Bob (not hers) → only 2 deleted.
 	n, err := recipes.BulkDelete(ctx, []int64{r1, r2, r3Bob}, alice)
 	if err != nil {
 		t.Fatalf("BulkDelete: %v", err)
 	}
 	if n != 2 {
-		t.Errorf("BulkDelete: cancellate %d, attese 2 (r3Bob non di Alice)", n)
+		t.Errorf("BulkDelete: deleted %d, want 2 (r3Bob is not Alice's)", n)
 	}
-	// Verifica che r3Bob esista ancora.
+	// Check that r3Bob still exists.
 	if _, err := recipes.GetWithItems(ctx, r3Bob, bob); err != nil {
-		t.Errorf("r3Bob non dovrebbe essere stata cancellata: %v", err)
+		t.Errorf("r3Bob should not have been deleted: %v", err)
 	}
 
-	// CountMealUsages su ricetta inesistente → 0.
+	// CountMealUsages on a missing recipe → 0.
 	count, err := recipes.CountMealUsages(ctx, 99999)
 	if err != nil {
 		t.Fatalf("CountMealUsages: %v", err)
 	}
 	if count != 0 {
-		t.Errorf("count su ricetta inesistente: %d", count)
+		t.Errorf("count on a missing recipe: %d", count)
 	}
 }

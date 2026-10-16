@@ -1,9 +1,9 @@
 -- +goose Up
 -- +goose StatementBegin
--- meal_item_customizations: sovrascrittura ingredienti per una singola
--- occorrenza di una ricetta in un pasto. Se esistono righe per un meal_item,
--- i macro vengono calcolati su queste invece che sugli ingredienti base della
--- ricetta. La ricetta di base rimane invariata nel DB.
+-- meal_item_customizations: ingredient overrides for a single occurrence of
+-- a recipe in a meal. When rows exist for a meal_item, the macros are
+-- computed on them instead of on the recipe's base ingredients. The base
+-- recipe stays unchanged in the DB.
 CREATE TABLE meal_item_customizations (
     id            INTEGER PRIMARY KEY,
     meal_item_id  INTEGER NOT NULL REFERENCES meal_items(id) ON DELETE CASCADE,

@@ -23,19 +23,19 @@ func TestSubscriptions_GrantAndIsActive(t *testing.T) {
 	ctx := context.Background()
 	userID := newTestUser(t, store, "premium@test.it")
 
-	// Senza sottoscrizione: non attiva, GetByUser ritorna not found.
+	// Without a subscription: not active, GetByUser returns not found.
 	active, err := subs.IsActive(ctx, userID)
 	if err != nil {
 		t.Fatalf("IsActive: %v", err)
 	}
 	if active {
-		t.Error("IsActive: want false senza sottoscrizione")
+		t.Error("IsActive: want false without a subscription")
 	}
 	if _, err := subs.GetByUser(ctx, userID); !errors.Is(err, ErrSubscriptionNotFound) {
 		t.Errorf("GetByUser: want ErrSubscriptionNotFound, got %v", err)
 	}
 
-	// Grant senza scadenza.
+	// Grant without expiry.
 	if err := subs.Grant(ctx, userID, "manual", nil, "", "test"); err != nil {
 		t.Fatalf("Grant: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestSubscriptions_GrantAndIsActive(t *testing.T) {
 		t.Fatalf("IsActive: %v", err)
 	}
 	if !active {
-		t.Error("IsActive: want true dopo grant")
+		t.Error("IsActive: want true after grant")
 	}
 
 	sub, err := subs.GetByUser(ctx, userID)
@@ -62,7 +62,7 @@ func TestSubscriptions_Expiry(t *testing.T) {
 	ctx := context.Background()
 	userID := newTestUser(t, store, "expired@test.it")
 
-	// Scadenza nel passato → non attiva.
+	// Expiry in the past → not active.
 	past := time.Now().Add(-time.Hour)
 	if err := subs.Grant(ctx, userID, "manual", &past, "", ""); err != nil {
 		t.Fatalf("Grant: %v", err)
@@ -72,10 +72,10 @@ func TestSubscriptions_Expiry(t *testing.T) {
 		t.Fatalf("IsActive: %v", err)
 	}
 	if active {
-		t.Error("IsActive: want false con sottoscrizione scaduta")
+		t.Error("IsActive: want false with an expired subscription")
 	}
 
-	// Re-grant (upsert) con scadenza futura → attiva.
+	// Re-grant (upsert) with a future expiry → active.
 	future := time.Now().Add(24 * time.Hour)
 	if err := subs.Grant(ctx, userID, "manual", &future, "", ""); err != nil {
 		t.Fatalf("Grant upsert: %v", err)
@@ -85,7 +85,7 @@ func TestSubscriptions_Expiry(t *testing.T) {
 		t.Fatalf("IsActive: %v", err)
 	}
 	if !active {
-		t.Error("IsActive: want true dopo re-grant con scadenza futura")
+		t.Error("IsActive: want true after a re-grant with a future expiry")
 	}
 }
 
@@ -106,9 +106,9 @@ func TestSubscriptions_Revoke(t *testing.T) {
 		t.Fatalf("IsActive: %v", err)
 	}
 	if active {
-		t.Error("IsActive: want false dopo revoke")
+		t.Error("IsActive: want false after revoke")
 	}
-	// La riga resta per audit.
+	// The row stays for auditing.
 	sub, err := subs.GetByUser(ctx, userID)
 	if err != nil {
 		t.Fatalf("GetByUser: %v", err)
@@ -124,7 +124,7 @@ func TestSubscriptions_MapAndCount(t *testing.T) {
 	ctx := context.Background()
 	u1 := newTestUser(t, store, "a@test.it")
 	u2 := newTestUser(t, store, "b@test.it")
-	newTestUser(t, store, "c@test.it") // senza sottoscrizione
+	newTestUser(t, store, "c@test.it") // no subscription
 
 	if err := subs.Grant(ctx, u1, "manual", nil, "", ""); err != nil {
 		t.Fatalf("Grant u1: %v", err)
@@ -141,10 +141,10 @@ func TestSubscriptions_MapAndCount(t *testing.T) {
 		t.Fatalf("MapByUser: %v", err)
 	}
 	if len(m) != 2 {
-		t.Errorf("MapByUser: want 2 righe, got %d", len(m))
+		t.Errorf("MapByUser: want 2 rows, got %d", len(m))
 	}
 	if m[u2].LicenseKey == nil || *m[u2].LicenseKey != "NUTREEK-TEST-KEY" {
-		t.Errorf("LicenseKey u2 non salvata: %+v", m[u2])
+		t.Errorf("u2's LicenseKey not saved: %+v", m[u2])
 	}
 
 	n, err := subs.CountActive(ctx)

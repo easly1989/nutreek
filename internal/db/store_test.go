@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// TestOpenAndMigrate verifica che il DB venga creato sul filesystem,
-// i pragmas siano attivi e tutte le migrazioni embedded applicabili.
+// TestOpenAndMigrate checks that the DB is created on the filesystem, the
+// pragmas are on and every embedded migration applies.
 func TestOpenAndMigrate(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 
@@ -30,7 +30,7 @@ func TestOpenAndMigrate(t *testing.T) {
 		t.Fatalf("pragma foreign_keys: %v", err)
 	}
 	if fk != 1 {
-		t.Errorf("foreign_keys atteso 1, got %d", fk)
+		t.Errorf("foreign_keys want 1, got %d", fk)
 	}
 
 	var journal string
@@ -38,10 +38,10 @@ func TestOpenAndMigrate(t *testing.T) {
 		t.Fatalf("pragma journal_mode: %v", err)
 	}
 	if journal != "wal" {
-		t.Errorf("journal_mode atteso wal, got %s", journal)
+		t.Errorf("journal_mode want wal, got %s", journal)
 	}
 
-	// Le tabelle principali devono esistere.
+	// The main tables must exist.
 	tables := []string{
 		"users", "ingredients", "recipes", "recipe_ingredients",
 		"meal_templates", "meal_template_slots",
@@ -53,21 +53,21 @@ func TestOpenAndMigrate(t *testing.T) {
 			`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table,
 		).Scan(&name)
 		if err != nil {
-			t.Errorf("tabella %q non trovata dopo migrate: %v", table, err)
+			t.Errorf("table %q not found after migrate: %v", table, err)
 		}
 	}
 
-	// Re-run Migrate deve essere idempotente.
+	// Rerunning Migrate must be idempotent.
 	if err := store.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate secondario: %v", err)
 	}
 }
 
-// TestConcurrentReadThenWriteTx riproduce il pattern delle transazioni dei
-// repo (lettura, poi scrittura) da due goroutine. Con BEGIN deferred
-// entrambe prendono lo snapshot in lettura e la seconda a scrivere riceve
-// SQLITE_BUSY senza attendere busy_timeout; con _txlock=immediate la
-// seconda aspetta il commit della prima e poi procede.
+// TestConcurrentReadThenWriteTx reproduces the repositories' transaction
+// pattern (read, then write) from two goroutines. With a deferred BEGIN both
+// take the read snapshot and the second to write gets SQLITE_BUSY without
+// waiting for busy_timeout; with _txlock=immediate the second waits for the
+// first to commit and then proceeds.
 func TestConcurrentReadThenWriteTx(t *testing.T) {
 	store, err := Open(filepath.Join(t.TempDir(), "tx.db"))
 	if err != nil {
@@ -99,9 +99,9 @@ func TestConcurrentReadThenWriteTx(t *testing.T) {
 				if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM counter`).Scan(&n); err != nil {
 					return err
 				}
-				// Aspetta che anche l'altra transazione abbia letto. Con
-				// BEGIN IMMEDIATE l'altra e' ferma in BeginTx: il timeout
-				// evita di attenderla per sempre.
+				// Wait for the other transaction to have read too. With
+				// BEGIN IMMEDIATE the other one is blocked in BeginTx: the
+				// timeout avoids waiting for it forever.
 				bothRead.Done()
 				select {
 				case <-barrier:
@@ -118,7 +118,7 @@ func TestConcurrentReadThenWriteTx(t *testing.T) {
 	close(errs)
 	for err := range errs {
 		if err != nil {
-			t.Errorf("transazione concorrente fallita: %v", err)
+			t.Errorf("concurrent transaction failed: %v", err)
 		}
 	}
 }

@@ -11,14 +11,14 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// ErrIngredientNotFound viene restituito dalle Get quando la riga non esiste.
+// ErrIngredientNotFound is returned by the Get methods when the row does not exist.
 var ErrIngredientNotFound = errors.New("ingrediente non trovato")
 
-// ErrBarcodeAlreadyUsed viene restituito da CreateOFF se il barcode esiste gia'.
-// Il chiamante puo' recuperare la riga esistente con GetByBarcode.
+// ErrBarcodeAlreadyUsed is returned by CreateOFF when the barcode already exists.
+// The caller can fetch the existing row with GetByBarcode.
 var ErrBarcodeAlreadyUsed = errors.New("barcode gia' presente")
 
-// Ingredients e' il repository degli ingredienti.
+// Ingredients is the ingredients repository.
 type Ingredients struct {
 	db *sql.DB
 }
@@ -27,8 +27,8 @@ func NewIngredients(db *sql.DB) *Ingredients {
 	return &Ingredients{db: db}
 }
 
-// CreateLocal inserisce un nuovo ingrediente con source='local'. brand/createdBy
-// e unitWeightG possono essere nil. Ritorna l'id assegnato dal DB.
+// CreateLocal inserts a new ingredient with source='local'. brand/createdBy
+// and unitWeightG may be nil. It returns the id the DB assigned.
 func (r *Ingredients) CreateLocal(
 	ctx context.Context,
 	name string,
@@ -59,8 +59,8 @@ func (r *Ingredients) CreateLocal(
 	return id, nil
 }
 
-// Update aggiorna tutti i campi modificabili di un ingrediente.
-// Valido sia per ingredienti locali che per ingredienti OFF importati.
+// Update updates every editable field of an ingredient.
+// Valid for local ingredients and for imported OFF ingredients alike.
 func (r *Ingredients) Update(
 	ctx context.Context,
 	id int64,
@@ -90,17 +90,17 @@ func (r *Ingredients) Update(
 	return nil
 }
 
-// GetByID ritorna un ingrediente o ErrIngredientNotFound.
+// GetByID returns an ingredient or ErrIngredientNotFound.
 func (r *Ingredients) GetByID(ctx context.Context, id int64) (*domain.Ingredient, error) {
 	row := r.db.QueryRowContext(ctx, selectIngredientCols+` FROM ingredients WHERE id = ?`, id)
 	return scanIngredient(row.Scan)
 }
 
-// SetLocalBarcode collega un codice a barre a un ingrediente locale, creato a
-// mano perche' il prodotto non e' su OpenFoodFacts (scanner del picker). Il
-// codice sta nella stessa colonna degli import OFF, quindi resta unico:
-// ErrBarcodeAlreadyUsed se e' gia' preso, ErrIngredientNotFound se id non e'
-// un ingrediente locale.
+// SetLocalBarcode links a barcode to a local ingredient, created by hand
+// because the product is not on OpenFoodFacts (the picker's scanner). The
+// code lives in the same column as OFF imports, so it stays unique:
+// ErrBarcodeAlreadyUsed when it is taken, ErrIngredientNotFound when id is
+// not a local ingredient.
 func (r *Ingredients) SetLocalBarcode(ctx context.Context, id int64, barcode string) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE ingredients SET off_barcode = ? WHERE id = ? AND source = 'local'`,
@@ -117,8 +117,8 @@ func (r *Ingredients) SetLocalBarcode(ctx context.Context, id int64, barcode str
 	return nil
 }
 
-// GetByBarcode ritorna l'ingrediente con quel barcode (import OFF, oppure
-// locale collegato con SetLocalBarcode) o ErrIngredientNotFound.
+// GetByBarcode returns the ingredient with that barcode (an OFF import, or a
+// local one linked with SetLocalBarcode) or ErrIngredientNotFound.
 func (r *Ingredients) GetByBarcode(ctx context.Context, barcode string) (*domain.Ingredient, error) {
 	row := r.db.QueryRowContext(ctx,
 		selectIngredientCols+` FROM ingredients WHERE off_barcode = ?`,
@@ -127,12 +127,12 @@ func (r *Ingredients) GetByBarcode(ctx context.Context, barcode string) (*domain
 	return scanIngredient(row.Scan)
 }
 
-// CreateOFF inserisce un ingrediente importato da OpenFoodFacts. Setta
-// `last_verified_at = CURRENT_TIMESTAMP` perche' il dato e' appena stato
-// preso da OFF. Se il barcode esiste gia' ritorna ErrBarcodeAlreadyUsed.
-// servingG (la porzione OFF in g/ml, nil se ignota) diventa la quantita'
-// proposta nel picker (#136). createdBy e' chi l'ha importato (nil per il
-// reconciler): ne diventa l'autore, l'unico che lo modifica (#143).
+// CreateOFF inserts an ingredient imported from OpenFoodFacts. It sets
+// `last_verified_at = CURRENT_TIMESTAMP` because the data was just taken
+// from OFF. When the barcode already exists it returns ErrBarcodeAlreadyUsed.
+// servingG (the OFF serving in g/ml, nil when unknown) becomes the quantity
+// proposed in the picker (#136). createdBy is whoever imported it (nil for the
+// reconciler): they become its author, the only one who edits it (#143).
 func (r *Ingredients) CreateOFF(
 	ctx context.Context,
 	barcode, name string,
@@ -168,8 +168,8 @@ func (r *Ingredients) CreateOFF(
 	return id, nil
 }
 
-// SearchActive cerca ingredienti non superseded che hanno q come substring
-// nel nome o nel brand (case-insensitive). Limit hard-coded a 20 per HTMX.
+// SearchActive finds non-superseded ingredients with q as a substring of the
+// name or brand (case-insensitive). Limit hard-coded to 20 for HTMX.
 func (r *Ingredients) SearchActive(ctx context.Context, q string, limit int) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
@@ -191,8 +191,8 @@ func (r *Ingredients) SearchActive(ctx context.Context, q string, limit int) ([]
 	return collectIngredients(rows)
 }
 
-// ListActive ritorna gli ingredienti non superseded ordinati per nome,
-// paginati. offset/limit non controllati negativi: il chiamante li clamp-a.
+// ListActive returns the non-superseded ingredients ordered by name, paged.
+// offset/limit are not checked for negatives: the caller clamps them.
 func (r *Ingredients) ListActive(ctx context.Context, offset, limit int) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
@@ -214,15 +214,15 @@ func (r *Ingredients) ListActive(ctx context.Context, offset, limit int) ([]*dom
 	return collectIngredients(rows)
 }
 
-// LocalsToReconcile ritorna fino a `limit` ingredienti `source='local'`
-// non superseded la cui `last_verified_at` e' anteriore a `since` (o NULL).
-// Usato dal job di reconciliation OFF.
+// LocalsToReconcile returns up to `limit` non-superseded `source='local'`
+// ingredients whose `last_verified_at` is older than `since` (or NULL).
+// Used by the OFF reconciliation job.
 //
-// Note implementative: SQLite memorizza CURRENT_TIMESTAMP nel formato
-// "YYYY-MM-DD HH:MM:SS" (UTC). Per evitare differenze di formato fra il
-// param Go (time.Time) e quello stored, formattiamo `since` esplicitamente
-// nello stesso layout, cosi' il confronto lessicografico coincide con
-// quello cronologico.
+// Implementation note: SQLite stores CURRENT_TIMESTAMP as
+// "YYYY-MM-DD HH:MM:SS" (UTC). To avoid format differences between the Go
+// param (time.Time) and the stored value, `since` is formatted explicitly in
+// the same layout, so the lexicographic comparison matches the
+// chronological one.
 func (r *Ingredients) LocalsToReconcile(ctx context.Context, limit int, since time.Time) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 50
@@ -245,8 +245,8 @@ func (r *Ingredients) LocalsToReconcile(ctx context.Context, limit int, since ti
 	return collectIngredients(rows)
 }
 
-// MarkSuperseded segna `localID` come soppiantato da `byID`. Sicuro: aggiorna
-// solo se la riga era source='local' (un OFF non puo' essere superseded).
+// MarkSuperseded marks `localID` as superseded by `byID`. Safe: it updates
+// only when the row was source='local' (an OFF row cannot be superseded).
 func (r *Ingredients) MarkSuperseded(ctx context.Context, localID, byID int64) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE ingredients
@@ -264,8 +264,8 @@ func (r *Ingredients) MarkSuperseded(ctx context.Context, localID, byID int64) e
 	return nil
 }
 
-// TouchVerified aggiorna last_verified_at a CURRENT_TIMESTAMP per skip-pare
-// la riconciliazione di un local in N giorni anche se non ha trovato match.
+// TouchVerified sets last_verified_at to CURRENT_TIMESTAMP so a local is
+// skipped by reconciliation for N days even when no match was found.
 func (r *Ingredients) TouchVerified(ctx context.Context, id int64) error {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE ingredients SET last_verified_at = CURRENT_TIMESTAMP WHERE id = ?`,
@@ -303,7 +303,7 @@ func collectIngredients(rows *sql.Rows) ([]*domain.Ingredient, error) {
 	return out, nil
 }
 
-// scanFn astrae la firma di Row.Scan / Rows.Scan per condividere il body.
+// scanFn abstracts the Row.Scan / Rows.Scan signature to share the body.
 type scanFn func(dest ...any) error
 
 func scanIngredient(scan scanFn) (*domain.Ingredient, error) {
