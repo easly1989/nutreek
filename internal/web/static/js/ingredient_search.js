@@ -87,7 +87,7 @@
     function onInput() {
       var q = (input.value || '').trim();
       clearTimeout(dbTimer);
-      clearTimeout(offTimer);
+      clearTimeout(offTimer); offTimer = null;
 
       if (q === '') {
         // Reset: nessuna ricerca OFF da attendere, niente spinner.
@@ -108,6 +108,7 @@
       dbTimer = setTimeout(function () { dispatch(q, false); }, DB_DELAY_MS);
       if (!skipOFF) {
         offTimer = setTimeout(function () {
+          offTimer = null;
           // Rifletti l'ultima query nel momento in cui parte la chiamata OFF.
           var latest = (input.value || '').trim();
           if (latest === '') {
@@ -121,10 +122,21 @@
     }
 
     input.addEventListener('input', onInput);
+    // Codice a barre arrivato da una ricarica senza OFF (dopo «Nuovo
+    // ingrediente», cambio scheda): il partial lo segnala, qui parte la
+    // ricerca completa, se non e' gia' in arrivo.
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+      if (!e.target.matches || !e.target.matches(target)) return;
+      if (!e.target.querySelector('[data-barcode-pending]')) return;
+      if (offTimer || offInflight || noOFF()) return;
+      var q = (input.value || '').trim();
+      if (q) { showSpinner(); dispatch(q, true); }
+    });
     // Tasto Enter: forza subito la ricerca OFF senza aspettare debounce.
     input.addEventListener('search', function () {
       var q = (input.value || '').trim();
-      clearTimeout(offTimer);
+      clearTimeout(dbTimer);
+      clearTimeout(offTimer); offTimer = null;
       if (q === '') { hideSpinner(); return; }
       if (noOFF()) { dispatch(q, false); return; }
       showSpinner();

@@ -67,7 +67,7 @@
             <div class="flex items-center gap-2 px-4 py-3">
               <label class="field-ico grow">
                 {{template "icon" "i-search"}}
-                <input id="i-search" type="search" name="q" class="field" autocomplete="off"
+                <input id="recipe-ing-search" type="search" name="q" class="field" autocomplete="off"
                        placeholder="Aggiungi un ingrediente: cerca tra i tuoi e su OpenFoodFacts"
                        aria-label="Aggiungi un ingrediente"
                        data-ingredient-search
@@ -75,6 +75,7 @@
                        data-search-target="#picker-results"
                        data-search-spinner="#recipe-picker-spinner">
               </label>
+              {{template "scan_button" "#recipe-ing-search"}}
               <button type="button" class="btn-ghost shrink-0 px-2.5 sm:px-3.5" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML" aria-label="Nuovo ingrediente" title="Nuovo ingrediente">{{template "icon" "i-plus"}}<span class="hidden sm:inline">Nuovo ingrediente</span></button>
             </div>
             <p id="recipe-picker-spinner" class="hidden px-4 pb-2 text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco anche su OpenFoodFacts…</p>
@@ -83,7 +84,7 @@
           <script>
           // Dopo «Nuovo ingrediente» il picker si aggiorna con la query corrente.
           window.addEventListener('ingredient-created', function () {
-            var search = document.getElementById('i-search');
+            var search = document.getElementById('recipe-ing-search');
             htmx.ajax('GET', '/recipes/{{.Recipe.ID}}/picker?q=' + encodeURIComponent((search && search.value) || ''), {
               target: '#picker-results', swap: 'innerHTML'
             });

@@ -17,6 +17,10 @@
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
   {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2" role="alert">{{.Error}}</p>{{end}}
+  {{with .Form.Barcode}}
+  <input type="hidden" name="barcode" value="{{.}}">
+  <p class="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-[13px]">{{template "icon_sm" "i-barcode"}}<span>Codice <b class="tabular-nums">{{.}}</b>: resta collegato, la prossima scansione lo trova tra i tuoi.</span></p>
+  {{end}}
 
   <div class="grid grid-cols-2 gap-3">
     <label class="lab col-span-2">Nome<input name="name" required maxlength="200" value="{{.Form.Name}}" autofocus class="field"></label>
