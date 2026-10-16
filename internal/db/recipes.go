@@ -69,6 +69,25 @@ func (r *Recipes) Create(
 	return id, nil
 }
 
+// recipeVisibleTo verifica che l'utente possa usare la ricetta in una voce:
+// sua (anche bozza) o pubblica confermata. Altrimenti ErrRecipeNotFound,
+// senza distinguere tra inesistente e privata di altri.
+func recipeVisibleTo(ctx context.Context, db *sql.DB, recipeID, userID int64) error {
+	var ok int
+	err := db.QueryRowContext(ctx, `
+		SELECT 1 FROM recipes
+		WHERE id = ? AND (user_id = ? OR (is_public = 1 AND is_draft = 0))`,
+		recipeID, userID,
+	).Scan(&ok)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrRecipeNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("recipe visibility: %w", err)
+	}
+	return nil
+}
+
 // Update modifica i campi base. Verifica owner: se userID non e' il
 // proprietario, ritorna ErrRecipeForbidden senza toccare la riga.
 func (r *Recipes) Update(
