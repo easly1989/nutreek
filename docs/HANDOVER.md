@@ -14,7 +14,8 @@ configurazione completa vedi [README.md](../README.md).
 - **Documentazione**: README, CLAUDE.md (memoria di progetto), ROADMAP.md,
   CHANGELOG.md, questo asset pack, screenshot in `docs/screenshots/`.
 - **Tutti i diritti** sul codice e sul nome del progetto, secondo i termini
-  dell'accordo di vendita (la licenza nel repo è proprietaria: vedi `LICENSE`).
+  dell'accordo di vendita. Il codice è pubblicato con licenza AGPL-3.0 (vedi
+  `LICENSE`); chi detiene i diritti può concedere licenze diverse.
 
 ## Cosa NON è incluso (da predisporre a cura dell'acquirente)
 
@@ -28,7 +29,7 @@ configurazione completa vedi [README.md](../README.md).
 
 ## Prerequisiti
 
-- **Go 1.25+** (https://go.dev/dl/) — unico requisito per lo sviluppo nativo.
+- **Go 1.27+** (https://go.dev/dl/) — unico requisito per lo sviluppo nativo.
 - (Opzionale) **Docker 24+ / Compose v2** per il deploy in container.
 - Il CLI standalone di Tailwind viene scaricato automaticamente in `./bin/`.
 
