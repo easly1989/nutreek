@@ -14,6 +14,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 - Nutreek si installa sul telefono come app (#59): manifest e icone nel colore del tema, service worker con la cache dei soli file statici, sezione «App sul telefono» in Impostazioni (bottone «Installa l'app», passaggi per Safari su iPhone). Fotocamera e installazione richiedono https.
 
 ### Corretto
+- Le foto dei prodotti OpenFoodFacts si vedono di nuovo nella lista Ingredienti e nei picker: la CSP le bloccava. È consentito solo `images.openfoodfacts.org`, le foto si caricano senza referrer, e se una foto manca resta l'icona del codice a barre invece di un quadrato vuoto (#133)
 - Un codice sconosciuto a OpenFoodFacts (l'API risponde 404) è «non trovato» e non più un errore del servizio (#59)
 - Le pesate non perdono più la data in lettura (risultavano tutte all'1/1/0001); la tabella delle Statistiche non usa più un campo inesistente del fabbisogno (#123)
 - Sicurezza: varianti e voci del piano nutrizionale si creano solo nel proprio piano, e nelle voci (piano, pasti, sgarri) si possono usare solo ricette proprie o pubbliche; gli id di altri utenti rispondono 404 (#129)

@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/web"
 )
 
@@ -29,7 +30,8 @@ func securityHeaders(next http.Handler) http.Handler {
 			"default-src 'self'; "+
 				"script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; "+
 				"style-src 'self' 'unsafe-inline'; "+
-				"img-src 'self' data:; "+
+				// Miniature dei prodotti OFF (#133): solo il loro CDN, vedi off.ThumbURL.
+				"img-src 'self' data: https://"+off.ThumbHost+"; "+
 				"font-src 'self'")
 		next.ServeHTTP(w, r)
 	})
