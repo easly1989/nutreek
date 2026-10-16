@@ -57,6 +57,10 @@ func (a *App) Router() http.Handler {
 	// Static assets: serviti dal filesystem embedded.
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(web.Static()))))
 
+	// App installabile (#59): alla radice, fuori da /static.
+	r.Get("/manifest.webmanifest", a.handleManifest)
+	r.Get("/sw.js", a.handleServiceWorker)
+
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.Store.DB.PingContext(r.Context()); err != nil {
 			http.Error(w, "db down", http.StatusServiceUnavailable)

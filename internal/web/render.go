@@ -164,14 +164,16 @@ func funcMap() template.FuncMap {
 		"itemCtx": func(view any, struck, cheat bool, weekStart, csrf string) ItemCtx {
 			return ItemCtx{View: view, Struck: struck, Cheat: cheat, WeekStart: weekStart, CSRFToken: csrf}
 		},
-		// pickerRow passa a picker_row la riga insieme ai dati della lista
-		// (tipo di picker, id di destinazione, CSRF).
 		// barcode: il codice normalizzato se q e' un codice a barre valido,
-		// altrimenti "" (i picker mostrano allora l'esito dello scanner).
+		// altrimenti "". Con un codice i picker mostrano l'esito dello scanner.
 		"barcode": func(q string) string {
 			code, _ := off.NormalizeBarcode(q)
 			return code
 		},
+		// accentColor: il colore del tema per theme-color (#59).
+		"accentColor": AccentColor,
+		// pickerRow passa a picker_row la riga insieme ai dati della lista
+		// (tipo di picker, id di destinazione, CSRF).
 		"pickerRow": func(row, list any) PickerRowCtx {
 			return PickerRowCtx{Row: row, List: list}
 		},

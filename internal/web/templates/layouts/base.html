@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{block "title" .}}Nutreek{{end}}</title>
+  {{/* App installabile (#59): manifest e icone seguono il colore del tema. */}}
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="{{accentColor .Appearance.Accent}}">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-{{.Appearance.Accent}}-32.png">
+  <link rel="apple-touch-icon" href="/static/icons/apple-{{.Appearance.Accent}}-180.png">
+  <meta name="apple-mobile-web-app-title" content="Nutreek">
   <link rel="preload" href="/static/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/tailwind.css">
   <script src="/static/js/htmx.min.js" defer></script>
@@ -14,6 +20,7 @@
   <script src="/static/js/ingredient_search.js" defer></script>
   <script src="/static/js/picker.js" defer></script>
   <script src="/static/js/confirm.js" defer></script>
+  <script src="/static/js/pwa.js" defer></script>
   {{if .User}}<script src="/static/js/scanner.js" defer></script>{{end}}
   {{if .ShowTour}}
   <link rel="stylesheet" href="/static/css/shepherd.css">
