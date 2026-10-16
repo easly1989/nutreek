@@ -18,7 +18,7 @@ import (
 	"github.com/amon2126/nutreek/internal/web"
 )
 
-// newTestApp costruisce un'istanza App per i test con DB SQLite temporaneo.
+// newTestApp builds an App instance for tests with a temporary SQLite DB.
 func newTestApp(t *testing.T) *App {
 	t.Helper()
 	store, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
@@ -30,7 +30,7 @@ func newTestApp(t *testing.T) *App {
 		t.Fatalf("db.Migrate: %v", err)
 	}
 
-	sessions := scs.New() // store in-memory di default
+	sessions := scs.New() // in-memory store by default
 
 	renderer, err := web.NewRenderer(web.Templates())
 	if err != nil {
@@ -78,8 +78,8 @@ func newTestApp(t *testing.T) *App {
 	}
 }
 
-// mustCreateTestUser crea un utente con hash bcrypt a costo minimo per la
-// velocità dei test (bcrypt.MinCost = 4, vs costo produzione = 12).
+// mustCreateTestUser creates a user with a minimum-cost bcrypt hash for test
+// speed (bcrypt.MinCost = 4, vs the production cost = 12).
 func mustCreateTestUser(t *testing.T, a *App, email, password string) *domain.User {
 	t.Helper()
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
@@ -97,9 +97,9 @@ func mustCreateTestUser(t *testing.T, a *App, email, password string) *domain.Us
 	return user
 }
 
-// requestWithUser restituisce una copia della richiesta con l'utente iniettato
-// nel context. Usata per chiamare handler direttamente senza passare per il
-// middleware loadUserMiddleware.
+// requestWithUser returns a copy of the request with the user injected into
+// the context. Used to call handlers directly without going through the
+// loadUserMiddleware middleware.
 func requestWithUser(r *http.Request, u *domain.User) *http.Request {
 	return r.WithContext(contextWithUser(r.Context(), u))
 }

@@ -12,13 +12,13 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 )
 
-// parseID legge un URL path parameter come int64.
+// parseID reads a URL path parameter as int64.
 func parseID(r *http.Request, key string) (int64, error) {
 	return strconv.ParseInt(chi.URLParam(r, key), 10, 64)
 }
 
-// parseIDList interpreta il valore form `ids` come lista comma-separated e
-// ritorna gli int64 corrispondenti. Errore se vuoto o malformato.
+// parseIDList reads the `ids` form value as a comma-separated list and
+// returns the matching int64s. Error when empty or malformed.
 func parseIDList(s string) ([]int64, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -43,8 +43,8 @@ func parseIDList(s string) ([]int64, error) {
 	return out, nil
 }
 
-// parseWeekStart legge ?start=YYYY-MM-DD e normalizza a lunedì. Se mancante
-// o invalida, ritorna il lunedì della settimana corrente.
+// parseWeekStart reads ?start=YYYY-MM-DD and normalizes it to Monday. When
+// missing or invalid, it returns the Monday of the current week.
 func parseWeekStart(r *http.Request) time.Time {
 	q := strings.TrimSpace(r.URL.Query().Get("start"))
 	if q != "" {

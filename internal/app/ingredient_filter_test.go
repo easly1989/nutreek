@@ -40,17 +40,17 @@ func TestIngredientFilter(t *testing.T) {
 		f := parseIngredientFilter(httptest.NewRequest("GET", "/ingredients?"+c.query, nil))
 		got := names(f.apply(rows))
 		if len(got) != len(c.want) {
-			t.Errorf("%q: %v, atteso %v", c.query, got, c.want)
+			t.Errorf("%q: %v, want %v", c.query, got, c.want)
 		} else {
 			for i := range got {
 				if got[i] != c.want[i] {
-					t.Errorf("%q: %v, atteso %v", c.query, got, c.want)
+					t.Errorf("%q: %v, want %v", c.query, got, c.want)
 					break
 				}
 			}
 		}
 		if f.WantsOFF() != c.off {
-			t.Errorf("%q: wantsOFF = %v, atteso %v", c.query, f.WantsOFF(), c.off)
+			t.Errorf("%q: wantsOFF = %v, want %v", c.query, f.WantsOFF(), c.off)
 		}
 	}
 	f := ingredientFilter{Src: "mine", CategoryID: 3, AllergenID: 7}

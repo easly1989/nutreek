@@ -13,9 +13,9 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 )
 
-// csrfMiddleware installa la protezione CSRF via nosurf. Usa cookie
-// Secure+HttpOnly+SameSite=Lax. In dev il flag Secure e' disattivato
-// cosi' i browser accettano il cookie anche senza HTTPS.
+// csrfMiddleware installs CSRF protection via nosurf. It uses a
+// Secure+HttpOnly+SameSite=Lax cookie. In dev the Secure flag is off so
+// browsers accept the cookie without HTTPS too.
 func (a *App) csrfMiddleware(next http.Handler) http.Handler {
 	csrf := nosurf.New(next)
 	csrf.SetBaseCookie(http.Cookie{
@@ -25,10 +25,10 @@ func (a *App) csrfMiddleware(next http.Handler) http.Handler {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int((12 * time.Hour).Seconds()),
 	})
-	// Nosurf di default assume che ogni richiesta sia TLS: in dev (plain HTTP)
-	// questo fa fallire il confronto same-origin sul Referer. Qui deleghiamo
-	// la detection a r.TLS e a X-Forwarded-Proto, che e' quello che imposta
-	// un reverse proxy (Caddy/Traefik) davanti al container in prod.
+	// By default nosurf assumes every request is TLS: in dev (plain HTTP)
+	// that makes the same-origin check on the Referer fail. Here we delegate
+	// the detection to r.TLS and X-Forwarded-Proto, which is what a reverse
+	// proxy (Caddy/Traefik) in front of the container sets in prod.
 	csrf.SetIsTLSFunc(func(r *http.Request) bool {
 		if r.TLS != nil {
 			return true
@@ -43,15 +43,15 @@ func (a *App) csrfMiddleware(next http.Handler) http.Handler {
 		)
 		http.Error(w, "CSRF verification failed", http.StatusForbidden)
 	}))
-	// Endpoint admin e API sono machine-to-machine: esenti da CSRF.
+	// Admin and API endpoints are machine-to-machine: exempt from CSRF.
 	csrf.ExemptGlob("/admin/*")
 	csrf.ExemptGlob("/api/*")
 	return csrf
 }
 
-// loadUserMiddleware legge user_id dalla sessione e se presente carica
-// l'utente dal DB, iniettandolo nel context. Se l'utente referenziato e'
-// stato cancellato, ripulisce la sessione silenziosamente.
+// loadUserMiddleware reads user_id from the session and, when present, loads
+// the user from the DB and injects it into the context. When the referenced
+// user has been deleted, it silently clears the session.
 func (a *App) loadUserMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uid := a.Sessions.GetInt64(r.Context(), sessionKeyUserID)
@@ -73,7 +73,7 @@ func (a *App) loadUserMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// requireAuth redirige a /login se non c'e' utente in context.
+// requireAuth redirects to /login when there is no user in the context.
 func (a *App) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if userFromContext(r.Context()) == nil {
@@ -84,9 +84,9 @@ func (a *App) requireAuth(next http.Handler) http.Handler {
 	})
 }
 
-// requestLogger emette una riga slog per ogni richiesta con metodo, path,
-// status e durata. E' volutamente essenziale: upgrade a middleware piu'
-// evoluto (trace id, remote addr) in tappe successive.
+// requestLogger emits one slog line per request with method, path, status
+// and duration. Deliberately minimal: an upgrade to a richer middleware
+// (trace id, remote addr) comes in later stages.
 func (a *App) requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -119,8 +119,8 @@ func (s *statusWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
-// requireAPIToken autentica le richieste API via Bearer token.
-// Inietta l'utente nel context; risponde 401 JSON se assente o non valido.
+// requireAPIToken authenticates API requests via a Bearer token.
+// It injects the user into the context; answers 401 JSON when missing or invalid.
 func (a *App) requireAPIToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")

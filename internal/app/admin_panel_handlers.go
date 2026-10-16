@@ -10,8 +10,8 @@ import (
 
 // ---- /admin/panel -----------------------------------------------------------
 
-// adminPanelPageData e' la scheda Panoramica: numeri dell'istanza,
-// funzionalita' con i due interruttori, stato di OpenFoodFacts (via JS).
+// adminPanelPageData is the Overview tab: instance numbers, the features
+// with their two switches, the OpenFoodFacts state (via JS).
 type adminPanelPageData struct {
 	authPageData
 	UserCount      int
@@ -19,9 +19,9 @@ type adminPanelPageData struct {
 	PremiumCount   int
 	Features       []featureRow
 	ActiveCount    int
-	PremiumFeats   int // funzionalita' attive marcate premium
+	PremiumFeats   int // active features marked premium
 	PremiumEnabled bool
-	HasOFF         bool // il sync OpenFoodFacts e' configurato
+	HasOFF         bool // the OpenFoodFacts sync is configured
 }
 
 type featureRow struct {
@@ -78,8 +78,8 @@ func (a *App) handleAdminPanel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleAdminFeatures GET /admin/panel/features: le funzionalita' ora stanno
-// nella Panoramica; il vecchio indirizzo ci rimanda.
+// handleAdminFeatures GET /admin/panel/features: the features now live in the
+// Overview; the old address redirects there.
 func (a *App) handleAdminFeatures(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin/panel#funzionalita", http.StatusFound)
 }
@@ -133,7 +133,7 @@ func (a *App) handleAdminFeaturePremium(w http.ResponseWriter, r *http.Request) 
 type adminUsersPageData struct {
 	authPageData
 	Users          []*adminUserRow
-	PremiumUsers   int // per i filtri
+	PremiumUsers   int // for the filters
 	CoachUsers     int
 	PremiumEnabled bool
 	Now            time.Time
@@ -146,10 +146,10 @@ type adminUserRow struct {
 	CreatedAt   time.Time
 	Role        string // user | coach
 	IsOwner     bool
-	Premium     bool       // sottoscrizione attiva e non scaduta
+	Premium     bool       // active, unexpired subscription
 	SubSource   string     // manual | license | payment
-	SubExpires  *time.Time // nil = senza scadenza
-	ExpiresSoon bool       // scade entro 30 giorni
+	SubExpires  *time.Time // nil = no expiry
+	ExpiresSoon bool       // expires within 30 days
 }
 
 func (a *App) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
@@ -204,8 +204,8 @@ func (a *App) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleAdminUserGrantPremium POST /admin/panel/users/{id}/premium — assegna
-// (o riattiva) la sottoscrizione premium. Campo opzionale expires_at (date).
+// handleAdminUserGrantPremium POST /admin/panel/users/{id}/premium — grants
+// (or reactivates) the premium subscription. Optional expires_at field (date).
 func (a *App) handleAdminUserGrantPremium(w http.ResponseWriter, r *http.Request) {
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
@@ -220,7 +220,7 @@ func (a *App) handleAdminUserGrantPremium(w http.ResponseWriter, r *http.Request
 			http.Redirect(w, r, "/admin/panel/users", http.StatusSeeOther)
 			return
 		}
-		// fine giornata: la scadenza include il giorno indicato
+		// end of day: the expiry includes the given day
 		t = t.Add(24*time.Hour - time.Second)
 		expires = &t
 	}
@@ -232,7 +232,7 @@ func (a *App) handleAdminUserGrantPremium(w http.ResponseWriter, r *http.Request
 }
 
 // handleAdminUserRevokePremium POST /admin/panel/users/{id}/premium/revoke —
-// revoca la sottoscrizione premium (la riga resta per audit).
+// revokes the premium subscription (the row stays for auditing).
 func (a *App) handleAdminUserRevokePremium(w http.ResponseWriter, r *http.Request) {
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
@@ -246,8 +246,8 @@ func (a *App) handleAdminUserRevokePremium(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, "/admin/panel/users", http.StatusSeeOther)
 }
 
-// handleAdminUserRole POST /admin/panel/users/{id}/role — cambia il ruolo
-// dell'utente ('user' | 'coach').
+// handleAdminUserRole POST /admin/panel/users/{id}/role — changes the user's
+// role ('user' | 'coach').
 func (a *App) handleAdminUserRole(w http.ResponseWriter, r *http.Request) {
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
@@ -268,13 +268,13 @@ func (a *App) handleAdminUserRole(w http.ResponseWriter, r *http.Request) {
 type upgradePageData struct {
 	authPageData
 	PremiumFeatures []featureRow
-	BlockedName     string // funzionalita' da cui si arriva (?da=chiave)
+	BlockedName     string // the feature the user came from (?da=key)
 	HasPremium      bool
 	PremiumEnabled  bool
 }
 
-// handleUpgradePage GET /upgrade — pagina informativa sulle feature premium.
-// Destinazione dei redirect di requireFeature quando l'accesso e' negato.
+// handleUpgradePage GET /upgrade — an information page about the premium features.
+// Where requireFeature redirects when access is denied.
 func (a *App) handleUpgradePage(w http.ResponseWriter, r *http.Request) {
 	features, err := a.Features.List(r.Context())
 	if err != nil {

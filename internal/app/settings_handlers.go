@@ -21,10 +21,10 @@ type settingsPageData struct {
 	PasswordError string
 	PasswordOK    bool
 	APITokens     []domain.APIToken
-	NewTokenPlain string // valorizzato solo subito dopo la creazione
+	NewTokenPlain string // set only right after creation
 }
 
-// userProfileExport è il profilo utente sanitizzato per l'export (no hash).
+// userProfileExport is the sanitized user profile for the export (no hash).
 type userProfileExport struct {
 	ID          int64   `json:"id"`
 	Email       string  `json:"email"`
@@ -34,7 +34,7 @@ type userProfileExport struct {
 	CreatedAt   string  `json:"created_at"`
 }
 
-// userDataExport è il payload del JSON scaricato da GET /settings/export.
+// userDataExport is the payload of the JSON downloaded from GET /settings/export.
 type userDataExport struct {
 	ExportedAt  string              `json:"exported_at"`
 	User        userProfileExport   `json:"user"`

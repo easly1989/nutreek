@@ -15,7 +15,7 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// ingredientTestUser crea un utente con un nome visibile, per leggere «di Bob».
+// ingredientTestUser creates a user with a display name, to read «di Bob».
 func ingredientTestUser(t *testing.T, a *App, email, name string) *domain.User {
 	t.Helper()
 	id, err := a.Users.Create(context.Background(), email, "h", name)
@@ -29,7 +29,7 @@ func ingredientTestUser(t *testing.T, a *App, email, name string) *domain.User {
 	return u
 }
 
-// serveIngredient chiama h come u con il form dato e {id} nella route.
+// serveIngredient calls h as u with the given form and {id} in the route.
 func serveIngredient(a *App, h http.HandlerFunc, method string, u *domain.User, id int64, form url.Values) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(method, "/", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -51,8 +51,8 @@ func ingredientUpdateForm(name, kcal, categoryID string) url.Values {
 	}
 }
 
-// I dati di un ingrediente li modifica chi l'ha creato, o l'owner; gli altri
-// salvano solo la loro categoria, e una categoria altrui viene rifiutata (#143).
+// An ingredient's data is edited by whoever created it, or by the owner; the
+// others save only their category, and another user's category is rejected (#143).
 func TestIngredientUpdateOwnership(t *testing.T) {
 	a := newTestApp(t)
 	a.Cfg.OwnerEmail = "owner@x.com"
@@ -74,59 +74,59 @@ func TestIngredientUpdateOwnership(t *testing.T) {
 		return got[barretta].ID
 	}
 
-	// Alice prova a cambiare tutto: si salva solo la sua categoria.
+	// Alice tries to change everything: only her category is saved.
 	w := serveIngredient(a, a.handleIngredientUpdate, http.MethodPost, alice, barretta,
 		ingredientUpdateForm("Rinominata da Alice", "1", strconv.FormatInt(snackAlice, 10)))
 	if w.Code != http.StatusSeeOther {
-		t.Fatalf("Alice: code %d, atteso 303", w.Code)
+		t.Fatalf("Alice: code %d, want 303", w.Code)
 	}
 	ing, _ := a.Ingredients.GetByID(ctx, barretta)
 	if ing.Name != "Barretta" || ing.KcalPer100 != 380 {
-		t.Errorf("Alice ha cambiato i dati di Bob: %q %v kcal", ing.Name, ing.KcalPer100)
+		t.Errorf("Alice changed Bob's data: %q %v kcal", ing.Name, ing.KcalPer100)
 	}
 	if got := catOf(alice); got != snackAlice {
-		t.Errorf("categoria di Alice = %d, attesa %d", got, snackAlice)
+		t.Errorf("Alice's category = %d, want %d", got, snackAlice)
 	}
 	if got := catOf(bob); got != dolciBob {
-		t.Errorf("la categoria di Bob e' cambiata: %d, attesa %d", got, dolciBob)
+		t.Errorf("Bob's category changed: %d, want %d", got, dolciBob)
 	}
 
-	// Una categoria di Bob nel form di Alice: rifiutata, niente cambia.
+	// One of Bob's categories in Alice's form: rejected, nothing changes.
 	w = serveIngredient(a, a.handleIngredientUpdate, http.MethodPost, alice, barretta,
 		ingredientUpdateForm("Barretta", "380", strconv.FormatInt(dolciBob, 10)))
 	if w.Code != http.StatusUnprocessableEntity {
-		t.Errorf("categoria altrui: code %d, atteso 422", w.Code)
+		t.Errorf("another user's category: code %d, want 422", w.Code)
 	}
 	if got := catOf(alice); got != snackAlice {
-		t.Errorf("dopo il rifiuto la categoria di Alice e' %d, attesa %d", got, snackAlice)
+		t.Errorf("after the rejection Alice's category is %d, want %d", got, snackAlice)
 	}
 
-	// Bob, l'autore, modifica i dati; la categoria di Alice resta.
+	// Bob, the author, edits the data; Alice's category stays.
 	w = serveIngredient(a, a.handleIngredientUpdate, http.MethodPost, bob, barretta,
 		ingredientUpdateForm("Barretta al cacao", "390", strconv.FormatInt(dolciBob, 10)))
 	if w.Code != http.StatusSeeOther {
-		t.Fatalf("Bob: code %d, atteso 303", w.Code)
+		t.Fatalf("Bob: code %d, want 303", w.Code)
 	}
 	if ing, _ := a.Ingredients.GetByID(ctx, barretta); ing.Name != "Barretta al cacao" || ing.KcalPer100 != 390 {
-		t.Errorf("Bob non ha modificato il suo ingrediente: %q %v", ing.Name, ing.KcalPer100)
+		t.Errorf("Bob did not edit his own ingredient: %q %v", ing.Name, ing.KcalPer100)
 	}
 	if got := catOf(alice); got != snackAlice {
-		t.Errorf("il salvataggio di Bob ha toccato la categoria di Alice: %d", got)
+		t.Errorf("Bob's save touched Alice's category: %d", got)
 	}
 
-	// L'owner modifica anche quelli degli altri.
+	// The owner edits other users' ingredients too.
 	w = serveIngredient(a, a.handleIngredientUpdate, http.MethodPost, owner, barretta,
 		ingredientUpdateForm("Barretta corretta", "385", ""))
 	if w.Code != http.StatusSeeOther {
-		t.Fatalf("owner: code %d, atteso 303", w.Code)
+		t.Fatalf("owner: code %d, want 303", w.Code)
 	}
 	if ing, _ := a.Ingredients.GetByID(ctx, barretta); ing.Name != "Barretta corretta" {
-		t.Errorf("l'owner non ha modificato: %q", ing.Name)
+		t.Errorf("the owner did not edit: %q", ing.Name)
 	}
 }
 
-// La pagina di modifica di un ingrediente altrui e' in sola lettura: dice di
-// chi e', lascia attiva solo la categoria e salva solo quella.
+// The edit page of another user's ingredient is read-only: it says whose it
+// is, leaves only the category active and saves only that.
 func TestIngredientEditFormReadOnly(t *testing.T) {
 	a := newTestApp(t)
 	ctx := context.Background()
@@ -138,16 +138,16 @@ func TestIngredientEditFormReadOnly(t *testing.T) {
 	body := serveIngredient(a, a.handleIngredientEditForm, http.MethodGet, alice, barretta, nil).Body.String()
 	for _, want := range []string{"di Bob", "La tua categoria", "Salva categoria", `name="name" required maxlength="200" value="Barretta" class="field" disabled`} {
 		if !strings.Contains(body, want) {
-			t.Errorf("pagina di Alice senza %q", want)
+			t.Errorf("Alice's page lacks %q", want)
 		}
 	}
 	if strings.Contains(body, "Salva modifiche") {
-		t.Error("Alice vede «Salva modifiche» su un ingrediente di Bob")
+		t.Error("Alice sees «Salva modifiche» on one of Bob's ingredients")
 	}
 
 	body = serveIngredient(a, a.handleIngredientEditForm, http.MethodGet, bob, barretta, nil).Body.String()
 	if !strings.Contains(body, "Salva modifiche") || strings.Contains(body, "Salva categoria") || strings.Contains(body, " disabled") {
-		t.Error("la pagina di Bob, l'autore, non e' modificabile")
+		t.Error("the page of Bob, the author, is not editable")
 	}
 }
 
@@ -166,18 +166,18 @@ func TestCanEditIngredient(t *testing.T) {
 		want     bool
 	}{
 		{"autore", "owner@x.com", bob, diBob, true},
-		{"altro utente", "owner@x.com", alice, diBob, false},
-		{"owner su ingrediente altrui", "owner@x.com", owner, diBob, true},
-		{"senza autore, owner configurato: utente", "owner@x.com", alice, senzaAutore, false},
-		{"senza autore, owner configurato: owner", "owner@x.com", owner, senzaAutore, true},
-		{"senza autore, nessun owner", "", alice, senzaAutore, true},
-		{"altro utente, nessun owner", "", alice, diBob, false},
-		{"nessun utente", "", nil, senzaAutore, false},
+		{"another user", "owner@x.com", alice, diBob, false},
+		{"owner on another user's ingredient", "owner@x.com", owner, diBob, true},
+		{"no author, owner configured: user", "owner@x.com", alice, senzaAutore, false},
+		{"no author, owner configured: owner", "owner@x.com", owner, senzaAutore, true},
+		{"no author, no owner", "", alice, senzaAutore, true},
+		{"another user, no owner", "", alice, diBob, false},
+		{"no user", "", nil, senzaAutore, false},
 	}
 	for _, tc := range cases {
 		a := &App{Cfg: &config.Config{OwnerEmail: tc.ownerCfg}}
 		if got := a.canEditIngredient(tc.u, tc.ing); got != tc.want {
-			t.Errorf("%s: %v, atteso %v", tc.name, got, tc.want)
+			t.Errorf("%s: %v, want %v", tc.name, got, tc.want)
 		}
 	}
 }

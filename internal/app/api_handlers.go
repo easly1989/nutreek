@@ -10,7 +10,7 @@ import (
 	"github.com/amon2126/nutreek/internal/macros"
 )
 
-// ---- tipi risposta JSON -----------------------------------------------------
+// ---- JSON response types ----------------------------------------------------
 
 type apiUserResponse struct {
 	ID          int64   `json:"id"`
@@ -77,7 +77,7 @@ func (a *App) handleAPIMe(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---- handler GET /api/v1/week -----------------------------------------------
-// Query params: ?start=YYYY-MM-DD (default: settimana corrente)
+// Query params: ?start=YYYY-MM-DD (default: the current week)
 
 func (a *App) handleAPIWeek(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())

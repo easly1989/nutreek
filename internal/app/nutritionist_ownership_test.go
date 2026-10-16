@@ -12,8 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// Gli id di tipi pasto, varianti e voci di un altro utente rispondono 404
-// e non toccano il suo piano (#129).
+// The ids of another user's meal types, variations and items answer 404
+// and do not touch their plan (#129).
 func TestNutritionistHandlersOwnership(t *testing.T) {
 	a := newTestApp(t)
 	ctx := context.Background()
@@ -55,15 +55,15 @@ func TestNutritionistHandlersOwnership(t *testing.T) {
 		form url.Values
 		id   int64
 	}{
-		{"variante nel tipo pasto di Bob", a.handleNutritionistCreateVariation, url.Values{"meal_type_id": {id(bobMT)}}, 0},
-		{"voce nella variante di Bob", a.handleNutritionistAddItem, url.Values{"variation_id": {id(bobVar)}, "ingredient_id": {id(pane)}, "quantity": {"50"}}, 0},
-		{"elimina tipo pasto di Bob", a.handleNutritionistDeleteMealType, nil, bobMT},
-		{"elimina variante di Bob", a.handleNutritionistDeleteVariation, nil, bobVar},
-		{"elimina voce di Bob", a.handleNutritionistDeleteItem, nil, bobItem},
+		{"variation in Bob's meal type", a.handleNutritionistCreateVariation, url.Values{"meal_type_id": {id(bobMT)}}, 0},
+		{"item in Bob's variation", a.handleNutritionistAddItem, url.Values{"variation_id": {id(bobVar)}, "ingredient_id": {id(pane)}, "quantity": {"50"}}, 0},
+		{"delete Bob's meal type", a.handleNutritionistDeleteMealType, nil, bobMT},
+		{"delete Bob's variation", a.handleNutritionistDeleteVariation, nil, bobVar},
+		{"delete Bob's item", a.handleNutritionistDeleteItem, nil, bobItem},
 	}
 	for _, tc := range cases {
 		if code := post(tc.h, tc.form, tc.id); code != http.StatusNotFound {
-			t.Errorf("%s: code %d, atteso 404", tc.name, code)
+			t.Errorf("%s: code %d, want 404", tc.name, code)
 		}
 	}
 
@@ -72,6 +72,6 @@ func TestNutritionistHandlersOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(full.MealTypes) != 1 || len(full.MealTypes[0].Variations) != 1 || len(full.MealTypes[0].Variations[0].Items) != 1 {
-		t.Errorf("il piano di Bob e' cambiato: %+v", full.MealTypes)
+		t.Errorf("Bob's plan changed: %+v", full.MealTypes)
 	}
 }

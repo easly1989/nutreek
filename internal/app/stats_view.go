@@ -11,45 +11,45 @@ import (
 	"github.com/amon2126/nutreek/internal/web"
 )
 
-// statsWeek raccoglie i numeri di una settimana delle Statistiche.
+// statsWeek collects the numbers of one week of the Statistics.
 type statsWeek struct {
 	Start       time.Time
-	Total       macros.Macros // pasti della settimana (esclusi i giorni vuoti)
+	Total       macros.Macros // the week's meals (empty days excluded)
 	DaysLogged  int
 	WorkoutKcal float64
 	Workouts    int
 	Cheats      int
-	WaterML     int     // totale della settimana
-	Adherence   float64 // 0-100, valida solo se Planned
+	WaterML     int     // the week's total
+	Adherence   float64 // 0-100, valid only when Planned
 	Planned     bool
 }
 
-// statsInput e' tutto quello che serve per costruire la pagina.
+// statsInput is everything needed to build the page.
 type statsInput struct {
-	Weeks         []statsWeek        // dalla piu' vecchia alla piu' recente
-	Weights       []domain.WeightLog // in ordine di data
+	Weeks         []statsWeek        // from the oldest to the most recent
+	Weights       []domain.WeightLog // in date order
 	TDEE          *service.TDEEReport
 	TargetKcal    float64
 	WaterTargetML int
 	StreakDays    int
 }
 
-// statsTile e' una card di sintesi; i numeri arrivano gia' formattati.
+// statsTile is a summary card; the numbers arrive already formatted.
 type statsTile struct {
 	Label, Value, Unit, Sub string
 }
 
-// statsWeekRow e' una riga della tabella settimana per settimana.
+// statsWeekRow is a row of the week-by-week table.
 type statsWeekRow struct {
 	Start        time.Time
 	DaysLogged   int
-	PerDay       macros.Macros // medie sui giorni registrati
+	PerDay       macros.Macros // averages over the logged days
 	Adherence    float64
 	HasAdherence bool
 }
 
-// statsCharts sono le serie dei grafici, una voce per settimana (null dove
-// il dato manca). Passano alla pagina come JSON per static/js/charts.js.
+// statsCharts are the chart series, one entry per week (null where the data
+// is missing). They reach the page as JSON for static/js/charts.js.
 type statsCharts struct {
 	Labels       []string   `json:"labels"`
 	Target       float64    `json:"target"`
@@ -69,7 +69,7 @@ type statsCharts struct {
 type statsView struct {
 	AvgDayKcal float64
 	Tiles      []statsTile
-	Rows       []statsWeekRow // dalla piu' recente
+	Rows       []statsWeekRow // from the most recent
 	Charts     statsCharts
 
 	HasMacro, HasWeight, HasTDEEChart, HasAdherence bool
@@ -78,7 +78,7 @@ type statsView struct {
 
 var monthsShortIT = [12]string{"gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"}
 
-// shortDateIT scrive una data come sugli assi dei grafici: «12 ott».
+// shortDateIT writes a date as on the chart axes: «12 ott».
 func shortDateIT(t time.Time) string {
 	return fmt.Sprintf("%d %s", t.Day(), monthsShortIT[t.Month()-1])
 }
@@ -93,8 +93,8 @@ func buildStatsView(in statsInput) statsView {
 		Prot: make([]float64, n), Carb: make([]float64, n), Fat: make([]float64, n),
 		Workout: make([]float64, n), Cheats: make([]float64, n), Water: make([]float64, n),
 	}
-	// Chiave per data, non time.Time: due istanti uguali con fusi diversi
-	// non sarebbero la stessa chiave.
+	// Key by date, not time.Time: two equal instants in different time zones
+	// would not be the same key.
 	tdeeByWeek := map[string]float64{}
 	if in.TDEE != nil {
 		for _, wd := range in.TDEE.WeeklyData {
@@ -144,7 +144,7 @@ func buildStatsView(in statsInput) statsView {
 	v.HasWater = waterWeeks > 0
 	v.HasTDEEChart = in.TDEE != nil && in.TDEE.HasEnoughData && tdeePoints >= 2
 
-	// Peso: solo le pesate nella finestra delle settimane mostrate.
+	// Weight: only the weigh-ins within the window of the weeks shown.
 	var weights []domain.WeightLog
 	for _, wl := range in.Weights {
 		if n > 0 && wl.MeasuredAt.Before(in.Weeks[0].Start) {
@@ -207,7 +207,7 @@ func buildStatsView(in statsInput) statsView {
 	return v
 }
 
-// weightTrend descrive la variazione di peso: «−1,6 kg in 2 settimane».
+// weightTrend describes the weight change: «−1,6 kg in 2 settimane».
 func weightTrend(delta float64, span time.Duration) string {
 	if math.Abs(delta) < 0.05 {
 		return "stabile"

@@ -14,8 +14,8 @@ import (
 	"github.com/amon2126/nutreek/internal/macros"
 )
 
-// nutritionistWriteError risponde a un errore di scrittura sul piano: 404 se
-// l'elemento (o la ricetta) non e' dell'utente, 500 altrimenti.
+// nutritionistWriteError answers a write error on the plan: 404 when the
+// element (or the recipe) is not the user's, 500 otherwise.
 func (a *App) nutritionistWriteError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, db.ErrNutritionistItemNotFound) || errors.Is(err, db.ErrRecipeNotFound) {
 		a.notFound(w, r)
@@ -28,13 +28,13 @@ func (a *App) handleNutritionistPage(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusFound)
 }
 
-// slotMealType abbina uno slot name del template al corrispondente meal type del piano.
+// slotMealType pairs a template slot name with the matching meal type of the plan.
 type slotMealType struct {
 	SlotName string
 	MealType *domain.NutritionistMealTypeFull
 }
 
-// pianoNutrizionaleData è il view model della pagina unificata /piano-nutrizionale.
+// pianoNutrizionaleData is the view model of the unified /piano-nutrizionale page.
 type pianoNutrizionaleData struct {
 	authPageData
 	Plan              *domain.NutritionistPlanFull
@@ -42,17 +42,17 @@ type pianoNutrizionaleData struct {
 	ActiveTab         string // "piano" | "template"
 	SlotMealTypes     []slotMealType
 	HasActiveTemplate bool
-	ReadOnly          bool   // true se il piano mostrato e' assegnato dal coach
-	CoachName         string // nome del coach che ha assegnato il piano
-	ActiveTemplate    string // nome del template attivo da cui vengono i pasti
+	ReadOnly          bool   // true when the plan shown was assigned by the coach
+	CoachName         string // name of the coach who assigned the plan
+	ActiveTemplate    string // name of the active template the meals come from
 
-	// Kcal delle varianti e delle singole voci, per id.
+	// Kcal of the variations and of the single items, by id.
 	VariationKcal map[int64]float64
 	ItemKcal      map[int64]float64
 }
 
-// planKcal calcola le kcal di ogni variante e di ogni voce del piano. Le
-// ricette valgono porzioni × kcal per porzione (perServing, per id ricetta).
+// planKcal computes the kcal of every variation and every item of the plan.
+// Recipes count servings × kcal per serving (perServing, by recipe id).
 func planKcal(plan *domain.NutritionistPlanFull, perServing map[int64]macros.Macros) (variations, items map[int64]float64) {
 	variations = make(map[int64]float64)
 	items = make(map[int64]float64)
@@ -74,8 +74,8 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	ctx := r.Context()
 
-	// Se il coach ha assegnato un piano al cliente, quello e' il piano
-	// effettivo: viene mostrato in sola lettura.
+	// When the coach assigned a plan to the client, that is the effective
+	// plan: it is shown read-only.
 	var plan *domain.NutritionistPlanFull
 	var readOnly bool
 	var coachName string
@@ -109,15 +109,15 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 		tab = "piano"
 	}
 
-	// Costruisce la lista slot→meal-type dal template attivo (solo per il
-	// proprio piano: quello assegnato dal coach non va modificato).
+	// Build the slot→meal-type list from the active template (only for the
+	// user's own plan: the one assigned by the coach must not be changed).
 	var slotMealTypes []slotMealType
 	var hasActiveTemplate bool
 	if !readOnly && len(tpls) > 0 && tpls[0].IsActive {
 		hasActiveTemplate = true
 		activeWithSlots, err := a.MealTemplates.GetWithSlots(ctx, tpls[0].ID, user.ID)
 		if err == nil {
-			// Unique slot names in ordine di prima apparizione.
+			// Unique slot names in order of first appearance.
 			seen := make(map[string]bool)
 			var slotNames []string
 			for _, s := range activeWithSlots.Slots {
@@ -127,13 +127,13 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 					slotNames = append(slotNames, s.Name)
 				}
 			}
-			// Auto-crea i meal type mancanti.
+			// Auto-create the missing meal types.
 			for _, name := range slotNames {
 				_ = a.NutritionistPlans.EnsureMealType(ctx, plan.ID, name)
 			}
-			// Ricarica dopo gli upsert.
+			// Reload after the upserts.
 			plan, _ = a.NutritionistPlans.LoadPlanFull(ctx, user.ID)
-			// Indice per nome.
+			// Index by name.
 			mtByName := make(map[string]*domain.NutritionistMealTypeFull)
 			for i := range plan.MealTypes {
 				mtByName[strings.ToLower(plan.MealTypes[i].Name)] = &plan.MealTypes[i]
@@ -152,8 +152,8 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	// Il piano del coach puo' usare ricette private del coach: senza le sue
-	// quelle voci varrebbero 0 kcal.
+	// The coach's plan may use the coach's private recipes: without them
+	// those items would count 0 kcal.
 	if readOnly {
 		coachRecipes, err := a.Recipes.PerServingByRecipe(ctx, assignment.CoachID)
 		if err != nil {
@@ -274,8 +274,8 @@ func (a *App) handleNutritionistDeleteVariation(w http.ResponseWriter, r *http.R
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 }
 
-// handleNutritionistPicker GET /nutrizionista/picker — live search per il picker
-// inline nel tab Piano Pasti. Supporta kind=ingredient|recipe.
+// handleNutritionistPicker GET /nutrizionista/picker — live search for the
+// inline picker in the Piano Pasti tab. Supports kind=ingredient|recipe.
 func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
 	variationIDStr := r.URL.Query().Get("variation_id")
 	variationID, err := strconv.ParseInt(variationIDStr, 10, 64)
@@ -327,12 +327,12 @@ func (a *App) handleNutritionistAddItem(w http.ResponseWriter, r *http.Request) 
 	user := userFromContext(r.Context())
 	variationIDStr := strings.TrimSpace(r.PostFormValue("variation_id"))
 	quantityStr := strings.TrimSpace(r.PostFormValue("quantity"))
-	// Accetta sia "unit" (vecchio form) sia "qty_unit" (nuovo picker).
+	// Accepts both "unit" (old form) and "qty_unit" (new picker).
 	unit := strings.TrimSpace(r.PostFormValue("qty_unit"))
 	if unit == "" {
 		unit = strings.TrimSpace(r.PostFormValue("unit"))
 	}
-	// Accetta sia "ingredient_id" sia "ref_id" (pattern picker).
+	// Accepts both "ingredient_id" and "ref_id" (picker pattern).
 	ingredientIDStr := strings.TrimSpace(r.PostFormValue("ingredient_id"))
 	if ingredientIDStr == "" {
 		ingredientIDStr = strings.TrimSpace(r.PostFormValue("ref_id"))

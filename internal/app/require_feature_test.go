@@ -9,8 +9,8 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// Chi apre una funzionalita' premium senza averla arriva su /upgrade con la
-// funzionalita' nell'indirizzo, cosi' la pagina puo' dire quale e'.
+// Whoever opens a premium feature without having it lands on /upgrade with
+// the feature in the address, so the page can say which one it is.
 func TestRequireFeatureRedirectNamesFeature(t *testing.T) {
 	a := newTestApp(t)
 	a.Cfg.PremiumEnabled = true
@@ -24,7 +24,7 @@ func TestRequireFeatureRedirectNamesFeature(t *testing.T) {
 	}
 	user := &domain.User{ID: id, Email: "free@x.test"}
 
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("handler raggiunto senza premium") })
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("handler reached without premium") })
 	h := a.requireFeature("auto_plan")(next)
 
 	req := httptest.NewRequest("POST", "/week/generate", nil).WithContext(contextWithUser(ctx, user))

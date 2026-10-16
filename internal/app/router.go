@@ -16,29 +16,29 @@ import (
 
 const oneMinute = time.Minute
 
-// securityHeaders imposta gli header di sicurezza HTTP su ogni risposta.
+// securityHeaders sets the HTTP security headers on every response.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
-		// Fotocamera solo per lo scanner dei picker (#59); 'wasm-unsafe-eval'
-		// compila il lettore WebAssembly del polyfill, senza aprire eval().
+		// Camera only for the pickers' scanner (#59); 'wasm-unsafe-eval'
+		// compiles the polyfill's WebAssembly reader, without opening eval().
 		h.Set("Permissions-Policy", "camera=(self), microphone=()")
 		h.Set("Content-Security-Policy",
 			"default-src 'self'; "+
 				"script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; "+
 				"style-src 'self' 'unsafe-inline'; "+
-				// Miniature dei prodotti OFF (#133): solo il loro CDN, vedi off.ThumbURL.
+				// OFF product thumbnails (#133): only their CDN, see off.ThumbURL.
 				"img-src 'self' data: https://"+off.ThumbHost+"; "+
 				"font-src 'self'")
 		next.ServeHTTP(w, r)
 	})
 }
 
-// Router costruisce il chi.Mux con tutti gli handler montati, nel giusto
-// ordine di middleware. Il chiamante lo passa come http.Handler del server.
+// Router builds the chi.Mux with every handler mounted, in the right
+// middleware order. The caller passes it as the server's http.Handler.
 func (a *App) Router() http.Handler {
 	r := chi.NewRouter()
 
@@ -51,15 +51,15 @@ func (a *App) Router() http.Handler {
 	r.Use(a.csrfMiddleware)
 	r.Use(a.loadUserMiddleware)
 
-	// Pagina 404 stylata per i path non matchati. chi chiama questo
-	// handler dopo aver girato la chain dei middleware sopra: la pagina
-	// vede sessione/csrf/utente normalmente.
+	// Styled 404 page for unmatched paths. chi calls this handler after
+	// running the middleware chain above: the page sees the
+	// session/csrf/user as usual.
 	r.NotFound(a.notFound)
 
-	// Static assets: serviti dal filesystem embedded.
+	// Static assets: served from the embedded filesystem.
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(web.Static()))))
 
-	// App installabile (#59): alla radice, fuori da /static.
+	// Installable app (#59): at the root, outside /static.
 	r.Get("/manifest.webmanifest", a.handleManifest)
 	r.Get("/sw.js", a.handleServiceWorker)
 
@@ -82,7 +82,7 @@ func (a *App) Router() http.Handler {
 
 	searchLimiter := newIPRateLimiter(60, oneMinute)
 
-	// Sezioni protette: ingredienti / ricette / piano. Tutte sotto requireAuth.
+	// Protected sections: ingredients / recipes / plan. All under requireAuth.
 	r.Group(func(r chi.Router) {
 		r.Use(a.requireAuth)
 		r.Get("/ingredients", a.handleIngredientsList)
@@ -96,7 +96,7 @@ func (a *App) Router() http.Handler {
 		r.Post("/ingredients/categories", a.handleCategoryCreate)
 		r.Post("/ingredients/categories/{id}/delete", a.handleCategoryDelete)
 
-		// Quick-create modali (creazione al volo da picker / liste).
+		// Quick-create modals (creating on the fly from pickers / lists).
 		r.Get("/quick/ingredient", a.handleQuickIngredientForm)
 		r.Post("/quick/ingredient", a.handleQuickIngredientCreate)
 		r.Get("/quick/recipe", a.handleQuickRecipeForm)
@@ -116,15 +116,15 @@ func (a *App) Router() http.Handler {
 		r.Post("/recipes/{id}/items", a.handleRecipeAddItem)
 		r.Post("/recipes/{id}/items/{itemID}/delete", a.handleRecipeRemoveItem)
 
-		// Wizard di onboarding (post-registrazione e "Guida rapida" dalla sidebar).
+		// Onboarding wizard (after sign-up and "Guida rapida" from the sidebar).
 		r.Get("/onboarding", a.handleOnboardingPage)
 		r.Post("/onboarding", a.handleOnboardingStep)
 
-		// Tour guidato (dismiss + restart).
+		// Guided tour (dismiss + restart).
 		r.Post("/tour/dismiss", a.handleTourDismiss)
 		r.Post("/tour/restart", a.handleTourRestart)
 
-		// Piano Nutrizionale (pagina unificata nutrizionista + template).
+		// Nutrition plan (the unified nutritionist + template page).
 		r.Get("/piano-nutrizionale", a.handlePianoNutrizionale)
 
 		r.Get("/templates", a.handleTemplatesList)
@@ -138,14 +138,14 @@ func (a *App) Router() http.Handler {
 		r.Post("/templates/{id}/slots/{slotID}/delete", a.handleTemplateRemoveSlot)
 		r.Post("/templates/{id}/days/{day}/slots/reorder", a.handleReorderTemplateSlots)
 
-		// Piano settimanale (la dashboard e' montata su /).
+		// Weekly plan (the dashboard is mounted on /).
 		r.Post("/week/apply-template", a.handleApplyTemplate)
-		// Generazione automatica: feature premium (gating attivo solo con
-		// NUTREEK_PREMIUM_ENABLED=true, vedi HasFeature).
+		// Automatic generation: a premium feature (gating active only with
+		// NUTREEK_PREMIUM_ENABLED=true, see HasFeature).
 		r.With(a.requireFeature("auto_plan")).Post("/week/generate", a.handleGeneratePlan)
 		r.Post("/week/copy-previous", a.handleCopyPrevious)
 		r.Post("/week/reset", a.handleResetWeek)
-		r.Get("/days/{date}", a.handleDayCard) // partial HTMX per una singola card
+		r.Get("/days/{date}", a.handleDayCard) // HTMX partial for a single card
 		r.Post("/meals", a.handleAddMeal)
 		r.Post("/meals/reorder", a.handleReorderMeals)
 		r.Post("/meals/{mealID}/delete", a.handleRemoveMeal)
@@ -158,38 +158,38 @@ func (a *App) Router() http.Handler {
 		r.Post("/meal-items/{itemID}/customize", a.handleMealItemCustomizeSave)
 		r.Post("/meal-items/{itemID}/customize/reset", a.handleMealItemCustomizeReset)
 
-		// Sgarri (meal_cheat_items).
+		// Cheats (meal_cheat_items).
 		r.Post("/meals/{mealID}/cheat/items", a.handleAddMealCheat)
 		r.Post("/meals/{mealID}/cheat/clear", a.handleClearMealCheats)
 		r.Post("/meal-cheat-items/{cheatID}/delete", a.handleRemoveMealCheat)
 
-		// Lista della spesa.
-		// Profilo utente.
+		// Shopping list.
+		// User profile.
 		r.Get("/profile", a.handleProfilePage)
 		r.Post("/profile", a.handleProfileSave)
 
-		// Tracciamento peso.
+		// Weight tracking.
 		r.Get("/profile/peso", a.handleWeightPage)
 		r.Post("/profile/peso", a.handleWeightLog)
 		r.Post("/profile/peso/{id}/delete", a.handleWeightLogDelete)
 
-		// Log allenamento (inserimento dalla day card della dashboard).
+		// Workout log (entered from the dashboard's day card).
 		r.Post("/allenamento", a.handleWorkoutLog)
 		r.Post("/allenamento/{id}/delete", a.handleWorkoutLogDelete)
 
-		// Tracciamento idratazione (quick-log dalla day card).
+		// Hydration tracking (quick log from the day card).
 		r.Post("/water", a.handleWaterLog)
 		r.Post("/water/delete-last", a.handleWaterDelete)
 
-		// Statistiche e TDEE adattivo (accettazione suggerimento: premium).
+		// Statistics and adaptive TDEE (accepting the suggestion: premium).
 		r.Get("/stats", a.handleStats)
 		r.With(a.requireFeature("tdee_adaptive")).Post("/tdee/accept", a.handleAcceptTDEESuggestion)
 
-		// Export/Import piano settimanale.
+		// Weekly plan export/import.
 		r.Get("/week/{start}/export", a.handleWeekExport)
 		r.Post("/week/{start}/import", a.handleWeekImport)
 
-		// Piano nutrizionista.
+		// Nutrition plan.
 		r.Get("/nutrizionista", a.handleNutritionistPage)
 		r.Get("/nutrizionista/picker", a.handleNutritionistPicker)
 		r.Post("/nutrizionista/meal-types", a.handleNutritionistCreateMealType)
@@ -199,8 +199,8 @@ func (a *App) Router() http.Handler {
 		r.Post("/nutrizionista/items", a.handleNutritionistAddItem)
 		r.Post("/nutrizionista/items/{id}/delete", a.handleNutritionistDeleteItem)
 
-		// Owner-only: sync OFF manuale dal pannello profilo (vedi isOwner).
-		// Non in /admin/* perche' va via sessione, non X-Admin-Token.
+		// Owner-only: manual OFF sync from the profile panel (see isOwner).
+		// Not under /admin/* because it goes through the session, not X-Admin-Token.
 		r.Get("/profile/off-status", a.requireOwner(a.handleOwnerOFFStatus))
 		r.Post("/profile/off-sync", a.requireOwner(a.handleOwnerOFFRefresh))
 
@@ -211,10 +211,10 @@ func (a *App) Router() http.Handler {
 		r.Post("/shopping-list/user-items/{id}/toggle", a.handleToggleShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/delete", a.handleRemoveShoppingUserItem)
 
-		// Pagina upgrade premium (destinazione dei redirect di requireFeature).
+		// Premium upgrade page (target of requireFeature's redirects).
 		r.Get("/upgrade", a.handleUpgradePage)
 
-		// Impostazioni account (GDPR export, cambio password, cancellazione, token API).
+		// Account settings (GDPR export, password change, deletion, API tokens).
 		r.Get("/settings", a.handleSettingsPage)
 		r.Get("/settings/export", a.handleUserDataExport)
 		r.Post("/settings/password", a.handleChangePassword)
@@ -223,8 +223,8 @@ func (a *App) Router() http.Handler {
 		r.Post("/settings/api-tokens/{id}/revoke", a.handleSettingsAPITokenRevoke)
 	})
 
-	// REST API v1: autenticata via Bearer token, esente CSRF.
-	// requireFeature("api_access") blocca utenti senza subscription con PremiumEnabled=true.
+	// REST API v1: authenticated via Bearer token, exempt from CSRF.
+	// requireFeature("api_access") blocks users without a subscription when PremiumEnabled=true.
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(a.requireAPIToken)
 		r.Use(a.requireFeature("api_access"))
@@ -240,8 +240,8 @@ func (a *App) Router() http.Handler {
 
 	adminLimiter := newIPRateLimiter(30, oneMinute)
 
-	// Admin: protetto da X-Admin-Token (vedi requireAdmin). Esente CSRF
-	// (esclusione configurata in csrfMiddleware via ExemptGlob).
+	// Admin: protected by X-Admin-Token (see requireAdmin). Exempt from CSRF
+	// (exclusion configured in csrfMiddleware via ExemptGlob).
 	r.Group(func(r chi.Router) {
 		r.Use(adminLimiter.Middleware)
 		r.Post("/admin/reconcile-ingredients", a.requireAdmin(a.handleAdminReconcile))
@@ -249,7 +249,7 @@ func (a *App) Router() http.Handler {
 		r.Get("/admin/off-status", a.requireAdmin(a.handleAdminOFFStatus))
 	})
 
-	// Admin panel owner: accessibile via sessione, protetto da requireOwnerMiddleware.
+	// Owner admin panel: reached via the session, protected by requireOwnerMiddleware.
 	r.Group(func(r chi.Router) {
 		r.Use(a.requireAuth)
 		r.Use(a.requireOwnerMiddleware)
@@ -263,7 +263,7 @@ func (a *App) Router() http.Handler {
 		r.Post("/admin/panel/users/{id}/role", a.handleAdminUserRole)
 	})
 
-	// Coach mode: richiede ruolo 'coach' (feature premium predisposta).
+	// Coach mode: requires the 'coach' role (a premium feature, prepared).
 	r.Group(func(r chi.Router) {
 		r.Use(a.requireAuth)
 		r.Use(a.requireCoach)
@@ -283,13 +283,13 @@ func (a *App) Router() http.Handler {
 
 type reqIDKey struct{}
 
-// requestIDMiddleware genera un request ID esadecimale casuale (8 byte = 16 char)
-// per ogni richiesta, lo inietta nel context e lo aggiunge all'header di risposta
-// X-Request-ID per facilitare il correlamento nei log.
+// requestIDMiddleware generates a random hex request ID (8 bytes = 16 chars)
+// for every request, injects it into the context and adds it to the
+// X-Request-ID response header to ease correlation in the logs.
 func requestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// L'ID del client (es. da un reverse proxy) finisce in log e risposta:
-		// lo accettiamo solo se corto e fatto di caratteri innocui.
+		// The client's ID (e.g. from a reverse proxy) ends up in logs and the
+		// response: accept it only when short and made of harmless characters.
 		id := r.Header.Get("X-Request-ID")
 		if !validRequestID(id) {
 			b := make([]byte, 8)
@@ -302,8 +302,8 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// validRequestID accetta 1–64 caratteri tra lettere ASCII, cifre, '-' e '_'
-// (copre UUID e gli ID esadecimali dei proxy comuni).
+// validRequestID accepts 1–64 characters among ASCII letters, digits, '-' and
+// '_' (covers UUIDs and the hex IDs of common proxies).
 func validRequestID(id string) bool {
 	if id == "" || len(id) > 64 {
 		return false

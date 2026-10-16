@@ -10,8 +10,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// TestHandleWeekExport_ReturnsCSV verifica che un utente autenticato riceva
-// una risposta CSV valida con gli header corretti.
+// TestHandleWeekExport_ReturnsCSV checks that an authenticated user gets a
+// valid CSV response with the right headers.
 func TestHandleWeekExport_ReturnsCSV(t *testing.T) {
 	a := newTestApp(t)
 	user := mustCreateTestUser(t, a, "export@example.com", "password123")
@@ -21,7 +21,7 @@ func TestHandleWeekExport_ReturnsCSV(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/week/"+weekStart+"/export", nil)
 	r = requestWithUser(r, user)
 
-	// chi.URLParam richiede il route context: lo iniettamo manualmente.
+	// chi.URLParam needs the route context: inject it by hand.
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("start", weekStart)
 	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
@@ -40,10 +40,10 @@ func TestHandleWeekExport_ReturnsCSV(t *testing.T) {
 	if !strings.Contains(cd, "attachment") {
 		t.Errorf("week export: Content-Disposition dovrebbe contenere 'attachment', got %q", cd)
 	}
-	// Verifica che il CSV abbia l'header atteso.
+	// Check that the CSV has the expected header.
 	body := w.Body.String()
 	if !strings.Contains(body, "giorno") || !strings.Contains(body, "pasto") {
-		t.Errorf("week export: body CSV manca degli header attesi, got: %q", body[:min(len(body), 200)])
+		t.Errorf("week export: the CSV body lacks the expected headers, got: %q", body[:min(len(body), 200)])
 	}
 }
 

@@ -18,7 +18,7 @@ func statsFixture() statsInput {
 		Weeks: []statsWeek{
 			{Start: w1, Total: macros.Macros{Kcal: 14000, Protein: 840, Carbs: 1610, Fat: 455}, DaysLogged: 7,
 				WorkoutKcal: 900, Workouts: 3, Cheats: 1, WaterML: 14000, Adherence: 90, Planned: true},
-			{Start: w2}, // settimana vuota
+			{Start: w2}, // empty week
 			{Start: w3, Total: macros.Macros{Kcal: 9000, Protein: 600, Carbs: 1000, Fat: 300}, DaysLogged: 5,
 				WorkoutKcal: 300, Workouts: 1, Cheats: 2, Adherence: 80, Planned: true},
 		},
@@ -37,8 +37,8 @@ func statsFixture() statsInput {
 	}
 }
 
-// Il fabbisogno si abbina alla settimana per data, anche se le due date
-// arrivano con fusi diversi.
+// The energy needs are matched to the week by date, even when the two dates
+// arrive in different time zones.
 func TestBuildStatsViewTDEEMatchesByDate(t *testing.T) {
 	in := statsFixture()
 	rome := time.FixedZone("CEST", 2*3600)
@@ -48,16 +48,16 @@ func TestBuildStatsViewTDEEMatchesByDate(t *testing.T) {
 	}
 	c := buildStatsView(in).Charts
 	if c.TDEE[0] == nil || c.TDEE[2] == nil {
-		t.Errorf("fabbisogno = %v, attesi valori nella prima e nella terza settimana", c.TDEE)
+		t.Errorf("energy needs = %v, want values in the first and third week", c.TDEE)
 	}
 }
 
 func TestBuildStatsViewTiles(t *testing.T) {
 	v := buildStatsView(statsFixture())
 
-	// 23.000 kcal su 12 giorni registrati.
+	// 23,000 kcal over 12 logged days.
 	if v.AvgDayKcal < 1916 || v.AvgDayKcal > 1917 {
-		t.Errorf("media al giorno = %.1f, attesa 1916,7", v.AvgDayKcal)
+		t.Errorf("average per day = %.1f, want 1916.7", v.AvgDayKcal)
 	}
 	want := []statsTile{
 		{Label: "Media al giorno", Value: "1.917", Unit: "kcal", Sub: "obiettivo 2.100"},
@@ -71,7 +71,7 @@ func TestBuildStatsViewTiles(t *testing.T) {
 	}
 	for i := range want {
 		if v.Tiles[i] != want[i] {
-			t.Errorf("tile %d = %+v, attesa %+v", i, v.Tiles[i], want[i])
+			t.Errorf("tile %d = %+v, want %+v", i, v.Tiles[i], want[i])
 		}
 	}
 }
@@ -79,27 +79,27 @@ func TestBuildStatsViewTiles(t *testing.T) {
 func TestBuildStatsViewRowsAndCharts(t *testing.T) {
 	v := buildStatsView(statsFixture())
 
-	// La tabella parte dalla settimana piu' recente, con medie al giorno.
+	// The table starts from the most recent week, with daily averages.
 	if len(v.Rows) != 3 || !v.Rows[0].Start.Equal(statsDay(2026, 10, 12)) {
-		t.Fatalf("righe = %+v", v.Rows)
+		t.Fatalf("rows = %+v", v.Rows)
 	}
 	if r := v.Rows[0]; r.PerDay.Kcal != 1800 || r.PerDay.Protein != 120 || !r.HasAdherence || r.Adherence != 80 {
-		t.Errorf("riga recente = %+v", r)
+		t.Errorf("recent row = %+v", r)
 	}
 	if r := v.Rows[1]; r.DaysLogged != 0 || r.HasAdherence {
-		t.Errorf("settimana vuota = %+v", r)
+		t.Errorf("empty week = %+v", r)
 	}
 
 	c := v.Charts
 	if got := c.Labels; len(got) != 3 || got[0] != "28 set" || got[2] != "12 ott" {
 		t.Errorf("etichette = %v", got)
 	}
-	// Barre impilate: kcal al giorno da proteine (×4), carboidrati (×4), grassi (×9).
+	// Stacked bars: kcal per day from protein (×4), carbs (×4), fat (×9).
 	if c.Prot[0] != 480 || c.Carb[0] != 920 || c.Fat[0] != 585 || c.Prot[1] != 0 {
 		t.Errorf("macro = %v %v %v", c.Prot, c.Carb, c.Fat)
 	}
 	if c.TDEE[0] == nil || c.TDEE[1] != nil || c.TDEE[2] == nil {
-		t.Errorf("fabbisogno = %v, attesi valori solo nelle settimane stimate", c.TDEE)
+		t.Errorf("energy needs = %v, want values only in the estimated weeks", c.TDEE)
 	}
 	if c.Adherence[1] != nil || *c.Adherence[2] != 80 {
 		t.Errorf("aderenza = %v", c.Adherence)
@@ -107,7 +107,7 @@ func TestBuildStatsViewRowsAndCharts(t *testing.T) {
 	if c.Water[0] != 2 || c.Water[2] != 0 {
 		t.Errorf("acqua = %v", c.Water)
 	}
-	// Il peso si disegna solo nella finestra delle settimane mostrate.
+	// Weight is drawn only within the window of the weeks shown.
 	if len(c.Weight) != 2 || c.WeightLabels[0] != "28 set" {
 		t.Errorf("peso = %v %v", c.WeightLabels, c.Weight)
 	}
@@ -119,7 +119,7 @@ func TestBuildStatsViewRowsAndCharts(t *testing.T) {
 func TestBuildStatsViewEmpty(t *testing.T) {
 	v := buildStatsView(statsInput{Weeks: []statsWeek{{Start: statsDay(2026, 10, 12)}}})
 	if v.HasMacro || v.HasWeight || v.HasTDEEChart {
-		t.Errorf("senza dati nessun grafico: %+v", v)
+		t.Errorf("no data, no chart: %+v", v)
 	}
 	if v.Tiles[0].Value != "—" || v.Tiles[1].Sub != "nessuna pesata" {
 		t.Errorf("tile vuote = %+v", v.Tiles)

@@ -7,12 +7,12 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// shoppingOtherGroup raccoglie le voci il cui ingrediente non ha categoria.
+// shoppingOtherGroup collects the items whose ingredient has no category.
 const shoppingOtherGroup = "Altro"
 
-// shoppingView e' la lista della spesa come la mostra la pagina: voci da
-// prendere raggruppate per categoria, voci gia' nel carrello a parte, e
-// l'avanzamento. PrintGroups ha tutte le voci, per il foglio stampato.
+// shoppingView is the shopping list as the page shows it: items to buy
+// grouped by category, items already in the cart apart, and the progress.
+// PrintGroups has every item, for the printed sheet.
 type shoppingView struct {
 	Groups      []shoppingGroup
 	PrintGroups []shoppingGroup
@@ -22,7 +22,7 @@ type shoppingView struct {
 	Percent     int
 }
 
-// shoppingGroupKey ordina i gruppi: categorie per sort_order, «Altro» in fondo.
+// shoppingGroupKey orders the groups: categories by sort_order, «Altro» last.
 type shoppingGroupKey struct {
 	order int
 	name  string
@@ -36,12 +36,12 @@ type shoppingGroup struct {
 
 type shoppingItemView struct {
 	Item   domain.ShoppingListItem
-	Pieces int // 0 = l'ingrediente non si conta a pezzi
+	Pieces int // 0 = the ingredient is not counted in pieces
 }
 
-// buildShoppingView raggruppa le voci per categoria dell'ingrediente
-// (nell'ordine delle categorie, «Altro» in fondo) e separa le spuntate.
-// Dentro ogni gruppo resta l'ordine di items (alfabetico, da LoadFull).
+// buildShoppingView groups the items by the ingredient's category (in
+// category order, «Altro» last) and sets the checked ones apart.
+// Within every group the order of items stays (alphabetical, from LoadFull).
 func buildShoppingView(items []domain.ShoppingListItem, cats map[int64]domain.IngredientCategory) shoppingView {
 	v := shoppingView{Total: len(items)}
 	todo := map[shoppingGroupKey][]shoppingItemView{}
@@ -90,9 +90,9 @@ func sortedShoppingGroups(m map[shoppingGroupKey][]shoppingItemView) []shoppingG
 	return out
 }
 
-// shoppingPieces converte la quantita' in pezzi interi per gli ingredienti
-// che hanno un peso per pezzo: si comprano pezzi interi, quindi si arrotonda
-// per eccesso, tollerando i residui di arrotondamento (2,02 pz restano 2).
+// shoppingPieces turns the quantity into whole pieces for the ingredients
+// that have a weight per piece: whole pieces are bought, so it rounds up,
+// tolerating rounding residue (2.02 pz stays 2).
 func shoppingPieces(it domain.ShoppingListItem) int {
 	if it.Ingredient == nil || it.Ingredient.UnitWeightG == nil || *it.Ingredient.UnitWeightG <= 0 || it.TotalQuantity <= 0 {
 		return 0

@@ -13,13 +13,13 @@ import (
 	"github.com/amon2126/nutreek/internal/off"
 )
 
-// Quick handlers: form modal "crea al volo" per ingrediente locale e
-// ricetta vuota. Renderizzati dentro <dialog> in #modal-host (vedi
-// base.html). Su success ritornano 204 + HX-Trigger=ingredient-created
-// (o recipe-created): il client (modal.js) chiude il dialog e dispatcha
-// l'evento sui sortable/picker che possono ricaricarsi.
+// Quick handlers: "create on the fly" modal forms for a local ingredient and
+// an empty recipe. Rendered inside <dialog> in #modal-host (see base.html).
+// On success they return 204 + HX-Trigger=ingredient-created (or
+// recipe-created): the client (modal.js) closes the dialog and dispatches the
+// event to the sortables/pickers that can reload.
 
-// ---- ingrediente al volo --------------------------------------------------
+// ---- ingredient on the fly ------------------------------------------------
 
 type quickIngredientData struct {
 	authPageData
@@ -33,10 +33,10 @@ type modalDialogData struct {
 	InnerData any
 }
 
-// handleQuickIngredientForm GET /quick/ingredient — restituisce il dialog con
-// il form vuoto (o riempito di errori dopo un POST fallito).
-// ?barcode= arriva da «Crea l'ingrediente» dello scanner: il codice resta
-// collegato al nuovo ingrediente.
+// handleQuickIngredientForm GET /quick/ingredient — returns the dialog with
+// the empty form (or filled with errors after a failed POST).
+// ?barcode= comes from the scanner's «Crea l'ingrediente»: the code stays
+// linked to the new ingredient.
 func (a *App) handleQuickIngredientForm(w http.ResponseWriter, r *http.Request) {
 	form := ingredientForm{Unit: "g"}
 	form.Barcode, _ = off.NormalizeBarcode(r.URL.Query().Get("barcode"))
@@ -59,9 +59,9 @@ func (a *App) renderQuickIngredientModal(w http.ResponseWriter, r *http.Request,
 }
 
 func (a *App) renderQuickIngredientFormOnly(w http.ResponseWriter, r *http.Request, form ingredientForm, errMsg string) {
-	// Per re-render dopo errore di validazione: ritorniamo solo il form
-	// (hx-target=this hx-swap=outerHTML lo sostituisce dentro il dialog,
-	// che resta aperto). 200 e non 422: HTMX 1.x fa swap solo sui 2xx.
+	// Re-render after a validation error: return only the form
+	// (hx-target=this hx-swap=outerHTML replaces it inside the dialog, which
+	// stays open). 200 and not 422: HTMX 1.x swaps only on 2xx.
 	data := quickIngredientData{
 		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
 		Form:         form,
@@ -72,9 +72,9 @@ func (a *App) renderQuickIngredientFormOnly(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// handleQuickIngredientCreate POST /quick/ingredient — crea l'ingrediente.
-// Su success setta HX-Trigger=ingredient-created e ritorna 204 (no body):
-// modal.js chiude il dialog e i picker registrati ricaricano i risultati.
+// handleQuickIngredientCreate POST /quick/ingredient — creates the ingredient.
+// On success it sets HX-Trigger=ingredient-created and returns 204 (no body):
+// modal.js closes the dialog and the registered pickers reload their results.
 func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	form := ingredientForm{
@@ -88,7 +88,7 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 
 		UnitWeightG: strings.TrimSpace(r.PostFormValue("unit_weight_g")),
 	}
-	// Un codice non valido si ignora: l'ingrediente si crea comunque.
+	// An invalid code is ignored: the ingredient is created anyway.
 	form.Barcode, _ = off.NormalizeBarcode(r.PostFormValue("barcode"))
 	if form.Barcode != "" {
 		if got, err := a.Ingredients.GetByBarcode(r.Context(), form.Barcode); err == nil {
@@ -134,7 +134,7 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 	if form.Brand != "" {
 		brandPtr = &form.Brand
 	}
-	// Peso di un pezzo facoltativo: permette di aggiungerlo subito in «pz».
+	// Optional weight of one piece: lets it be added right away in «pz».
 	var unitWeightG *float64
 	if form.UnitWeightG != "" {
 		v, err := parseNonNegFloat(form.UnitWeightG)
@@ -151,17 +151,17 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if form.Barcode != "" {
-		// Il controllo sopra copre il caso normale; qui resta solo la corsa
-		// con un altro import dello stesso codice: l'ingrediente c'e' comunque.
+		// The check above covers the normal case; what remains here is the race
+		// with another import of the same code: the ingredient exists anyway.
 		if err := a.Ingredients.SetLocalBarcode(r.Context(), id, form.Barcode); err != nil {
-			a.Logger.Warn("collegamento codice al nuovo ingrediente fallito", "err", err, "barcode", form.Barcode)
+			a.Logger.Warn("linking the code to the new ingredient failed", "err", err, "barcode", form.Barcode)
 		}
 	}
 	w.Header().Set("HX-Trigger", `{"ingredient-created":{"id":`+strconv.FormatInt(id, 10)+`,"name":`+jsonString(form.Name)+`}}`)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// ---- ricetta al volo ------------------------------------------------------
+// ---- recipe on the fly ----------------------------------------------------
 
 type quickRecipeData struct {
 	authPageData
@@ -195,7 +195,7 @@ func (a *App) renderQuickRecipeFormOnly(w http.ResponseWriter, r *http.Request, 
 		Form:         form,
 		Error:        errMsg,
 	}
-	// 200 e non 422: HTMX 1.x fa swap solo sui 2xx.
+	// 200 and not 422: HTMX 1.x swaps only on 2xx.
 	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "quick_recipe_form", data); err != nil {
 		a.serverError(w, r, err)
 	}
@@ -229,9 +229,9 @@ func (a *App) handleQuickRecipeCreate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// jsonString fa un encoding minimale di una stringa JSON (escape solo
-// quote e backslash). Usato per il payload di HX-Trigger; per testi piu'
-// complessi useremmo encoding/json.
+// jsonString does a minimal encoding of a JSON string (escaping only quotes
+// and backslashes). Used for the HX-Trigger payload; for more complex texts
+// we would use encoding/json.
 func jsonString(s string) string {
 	out := make([]byte, 0, len(s)+2)
 	out = append(out, '"')

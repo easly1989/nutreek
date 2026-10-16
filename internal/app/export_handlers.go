@@ -132,7 +132,7 @@ func (a *App) handleWeekImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Costruisce un indice mealName→mealID per giorno.
+	// Build a mealName→mealID index per day.
 	type mealKey struct {
 		day  int
 		name string

@@ -12,8 +12,8 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// requireCoach blocca chi non ha ruolo 'coach'. Risponde 404 (non 403) per
-// non rivelare l'esistenza degli endpoint coach agli utenti normali.
+// requireCoach blocks anyone without the 'coach' role. It answers 404 (not 403)
+// so ordinary users do not learn the coach endpoints exist.
 func (a *App) requireCoach(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := userFromContext(r.Context())
@@ -31,7 +31,7 @@ type coachDashboardData struct {
 	authPageData
 	Clients     []domain.CoachClientInfo
 	Plans       []domain.NutritionistPlan
-	PlanClients map[int64]int // piano -> quanti clienti lo hanno assegnato
+	PlanClients map[int64]int // plan -> how many clients have it assigned
 }
 
 // handleCoachDashboard GET /coach — clienti, libreria piani e assegnazioni.
@@ -63,7 +63,7 @@ func (a *App) handleCoachDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleCoachAddClient POST /coach/clients — aggiunge un cliente per email.
+// handleCoachAddClient POST /coach/clients — adds a client by email.
 func (a *App) handleCoachAddClient(w http.ResponseWriter, r *http.Request) {
 	coach := userFromContext(r.Context())
 	email := strings.TrimSpace(r.PostFormValue("email"))
@@ -114,8 +114,8 @@ func (a *App) handleCoachRemoveClient(w http.ResponseWriter, r *http.Request) {
 	a.coachFlash(w, r, "Cliente rimosso.")
 }
 
-// handleCoachAssignPlan POST /coach/clients/{id}/assign-plan — assegna (o
-// rimuove, con plan_id vuoto) un piano della libreria del coach al cliente.
+// handleCoachAssignPlan POST /coach/clients/{id}/assign-plan — assigns (or
+// removes, with an empty plan_id) a plan from the coach's library to the client.
 func (a *App) handleCoachAssignPlan(w http.ResponseWriter, r *http.Request) {
 	coach := userFromContext(r.Context())
 	clientID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -152,9 +152,9 @@ func (a *App) handleCoachAssignPlan(w http.ResponseWriter, r *http.Request) {
 	a.coachFlash(w, r, "Piano assegnato al cliente.")
 }
 
-// ---- libreria piani del coach -------------------------------------------------
+// ---- the coach's plan library ---------------------------------------------------
 
-// handleCoachCreatePlan POST /coach/plans — crea un piano nella libreria.
+// handleCoachCreatePlan POST /coach/plans — creates a plan in the library.
 func (a *App) handleCoachCreatePlan(w http.ResponseWriter, r *http.Request) {
 	coach := userFromContext(r.Context())
 	name := strings.TrimSpace(r.PostFormValue("name"))
@@ -169,8 +169,8 @@ func (a *App) handleCoachCreatePlan(w http.ResponseWriter, r *http.Request) {
 	a.coachFlash(w, r, "Piano creato. Aprilo nell'editor per aggiungere i contenuti.")
 }
 
-// handleCoachOpenPlan POST /coach/plans/{id}/open — rende attivo il piano e
-// apre l'editor /piano-nutrizionale (l'editor lavora sempre sul piano attivo).
+// handleCoachOpenPlan POST /coach/plans/{id}/open — makes the plan active and
+// opens the /piano-nutrizionale editor (the editor always works on the active plan).
 func (a *App) handleCoachOpenPlan(w http.ResponseWriter, r *http.Request) {
 	coach := userFromContext(r.Context())
 	planID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -213,7 +213,7 @@ func (a *App) handleCoachRenamePlan(w http.ResponseWriter, r *http.Request) {
 	a.coachFlash(w, r, "Piano rinominato.")
 }
 
-// handleCoachDeletePlan POST /coach/plans/{id}/delete — solo piani non attivi.
+// handleCoachDeletePlan POST /coach/plans/{id}/delete — inactive plans only.
 func (a *App) handleCoachDeletePlan(w http.ResponseWriter, r *http.Request) {
 	coach := userFromContext(r.Context())
 	planID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -232,7 +232,7 @@ func (a *App) handleCoachDeletePlan(w http.ResponseWriter, r *http.Request) {
 	a.coachFlash(w, r, "Piano cancellato.")
 }
 
-// coachFlash imposta il flash e torna alla dashboard coach.
+// coachFlash sets the flash and goes back to the coach dashboard.
 func (a *App) coachFlash(w http.ResponseWriter, r *http.Request, msg string) {
 	a.Sessions.Put(r.Context(), "flash", msg)
 	http.Redirect(w, r, "/coach", http.StatusSeeOther)

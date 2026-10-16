@@ -12,15 +12,15 @@ func TestReadAppearance(t *testing.T) {
 		cookies map[string]string
 		want    Appearance
 	}{
-		{"nessun cookie: sistema + bosco", nil, Appearance{Mode: "sistema", Accent: "bosco"}},
+		{"no cookie: system + forest", nil, Appearance{Mode: "sistema", Accent: "bosco"}},
 		{"cookie nuovi validi", map[string]string{"tema_modo": "scuro", "tema_colore": "mare"}, Appearance{Mode: "scuro", Accent: "mare"}},
-		{"valori non validi: default", map[string]string{"tema_modo": "viola", "tema_colore": "<script>"}, Appearance{Mode: "sistema", Accent: "bosco"}},
+		{"invalid values: default", map[string]string{"tema_modo": "viola", "tema_colore": "<script>"}, Appearance{Mode: "sistema", Accent: "bosco"}},
 		{"legacy forest", map[string]string{"theme": "forest"}, Appearance{Mode: "chiaro", Accent: "bosco"}},
 		{"legacy ocean", map[string]string{"theme": "ocean"}, Appearance{Mode: "chiaro", Accent: "mare"}},
 		{"legacy sunset", map[string]string{"theme": "sunset"}, Appearance{Mode: "chiaro", Accent: "tramonto"}},
 		{"legacy mono diventa grafite scuro", map[string]string{"theme": "mono"}, Appearance{Mode: "scuro", Accent: "grafite"}},
-		{"i cookie nuovi vincono sul legacy", map[string]string{"theme": "mono", "tema_modo": "chiaro", "tema_colore": "tramonto"}, Appearance{Mode: "chiaro", Accent: "tramonto"}},
-		{"solo modo nuovo, colore dal legacy", map[string]string{"theme": "ocean", "tema_modo": "scuro"}, Appearance{Mode: "scuro", Accent: "mare"}},
+		{"the new cookies win over the legacy one", map[string]string{"theme": "mono", "tema_modo": "chiaro", "tema_colore": "tramonto"}, Appearance{Mode: "chiaro", Accent: "tramonto"}},
+		{"new mode only, color from the legacy cookie", map[string]string{"theme": "ocean", "tema_modo": "scuro"}, Appearance{Mode: "scuro", Accent: "mare"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

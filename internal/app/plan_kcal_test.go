@@ -25,12 +25,12 @@ func TestPlanKcal(t *testing.T) {
 	vars, items := planKcal(plan, map[int64]macros.Macros{9: {Kcal: 420}})
 	near := func(a, b float64) bool { return math.Abs(a-b) < 0.01 }
 	if !near(items[10], 78) || !near(items[11], 840) || !near(items[12], 52) {
-		t.Errorf("kcal voci = %v, attese 78 / 840 / 52", items)
+		t.Errorf("item kcal = %v, want 78 / 840 / 52", items)
 	}
 	if !near(vars[1], 970) {
-		t.Errorf("kcal variante = %.2f, attese 970", vars[1])
+		t.Errorf("variation kcal = %.2f, want 970", vars[1])
 	}
 	if v, i := planKcal(nil, nil); len(v) != 0 || len(i) != 0 {
-		t.Error("piano nil: mappe non vuote")
+		t.Error("nil plan: maps not empty")
 	}
 }
