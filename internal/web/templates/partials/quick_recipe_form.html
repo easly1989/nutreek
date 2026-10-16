@@ -8,32 +8,18 @@
       hx-post="/quick/recipe"
       hx-target="this"
       hx-swap="outerHTML"
-      class="space-y-3 text-sm">
+      class="flex flex-col gap-3">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-  {{if .Error}}
-    <p class="rounded border border-danger/30 bg-danger/10 text-danger px-3 py-2 text-xs">{{.Error}}</p>
-  {{end}}
+  {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2" role="alert">{{.Error}}</p>{{end}}
 
-  <p class="text-xs text-muted">La ricetta verra' creata vuota. Aprila da <a href="/recipes" class="underline">Ricette</a> per aggiungere gli ingredienti.</p>
+  <p class="text-muted">La ricetta nasce vuota: aprila da <a href="/recipes" class="underline">Ricette</a> per aggiungere gli ingredienti.</p>
+  <label class="lab">Nome<input name="name" required maxlength="200" value="{{.Form.Name}}" autofocus class="field"></label>
+  <label class="lab w-[120px]">Porzioni<input name="servings" required inputmode="numeric" value="{{.Form.Servings}}" class="field tabular-nums"></label>
 
-  <div>
-    <label class="block text-xs text-muted mb-1" for="qr-name">Nome ricetta</label>
-    <input id="qr-name" name="name" required value="{{.Form.Name}}" autofocus maxlength="200"
-           class="w-full rounded border border-border bg-surface px-2 py-1"
-           oninput="document.getElementById('qr-name-cnt').textContent=this.value.length">
-    <p class="text-xs text-muted/60 text-right mt-0.5"><span id="qr-name-cnt">{{len .Form.Name}}</span>/200</p>
-  </div>
-  <div>
-    <label class="block text-xs text-muted mb-1" for="qr-srv">Porzioni totali</label>
-    <input id="qr-srv" name="servings" required inputmode="numeric" value="{{.Form.Servings}}"
-           class="w-full rounded border border-border bg-surface px-2 py-1">
-  </div>
-
-  <div class="flex items-center justify-end gap-2 pt-2">
-    <button type="button" data-modal-close
-            class="text-xs text-muted hover:underline px-3 py-1">Annulla</button>
-    <button class="bg-accent text-accent-fg rounded px-3 py-1 hover:bg-accent/90 text-sm">Crea</button>
+  <div class="flex justify-end gap-2 pt-1">
+    <button type="button" data-modal-close class="btn-secondary">Annulla</button>
+    <button class="btn-primary">Crea ricetta</button>
   </div>
 </form>
 {{end}}
