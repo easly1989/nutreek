@@ -285,6 +285,21 @@
   .legend { @apply flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12.5px] text-muted; }
   .legend i { @apply inline-block w-2.5 h-2.5 rounded-[3px] mr-1.5 align-[-1px]; }
 
+  /* Barra di salvataggio: sul telefono resta in basso, sopra la barra di navigazione. */
+  @media (max-width: 1023px) {
+    .savebar { @apply sticky bottom-[84px] z-20 bg-surface border border-border rounded-xl px-3 py-2.5; box-shadow: var(--shadow); }
+  }
+
+  /* Impostazioni (#123): indice a sinistra, sezioni titolo | contenuto. */
+  .settings-toc { @apply px-2.5 py-[7px] rounded-lg text-[13px] font-semibold text-muted hover:text-text hover:bg-surface; }
+  .settings-toc[aria-current] { @apply bg-surface text-text; box-shadow: 0 0 0 1px var(--border); }
+  .settings-sec { @apply grid gap-2.5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5 px-4 py-[18px]; }
+  .settings-sec + .settings-sec { @apply border-t border-border; }
+  .settings-d { @apply text-[12.5px] text-muted mt-1; }
+  .mode-card { @apply flex flex-col gap-2 p-2.5 rounded-xl border border-border text-left text-[13px] font-semibold text-text hover:bg-surface-2; }
+  .mode-card[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .mode-pv { @apply grid grid-cols-[30%_1fr] h-[52px] rounded-lg border border-border overflow-hidden; }
+
   /* Foglio dal basso (telefono), costruito su <dialog>. */
   .sheet {
     @apply w-full max-w-none m-0 mt-auto p-0 bg-surface text-text border-0 border-t border-border rounded-t-2xl;

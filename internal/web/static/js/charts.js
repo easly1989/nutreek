@@ -1,15 +1,15 @@
-// Grafici delle Statistiche (#123), in SVG: linee da 2px, barre con
+// Grafici di Statistiche e Peso (#123), in SVG: linee da 2px, barre con
 // l'estremo arrotondato, griglia recessiva, valore diretto solo sull'ultimo
 // punto, tooltip al passaggio. I colori sono i token CSS, quindi seguono
 // chiaro/scuro e il colore scelto senza ridisegnare.
 //
-// Dati: <script type="application/json" id="stats-data">; ogni grafico e'
+// Dati: <script type="application/json" id="chart-data">; ogni grafico e'
 // un elemento con data-chart="<nome>" (vedi DRAW in fondo).
 (function () {
   "use strict";
   var data;
   try {
-    data = JSON.parse(document.getElementById("stats-data").textContent);
+    data = JSON.parse(document.getElementById("chart-data").textContent);
   } catch (e) {
     return;
   }

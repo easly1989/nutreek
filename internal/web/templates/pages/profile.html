@@ -1,328 +1,143 @@
 {{define "title"}}Profilo — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-2xl">
-  <h1 class="text-3xl font-semibold mb-1">Profilo</h1>
-  <p class="text-sm text-muted mb-6">Dati fisici, livello di attività e obiettivi macro giornalieri.</p>
+<div class="flex flex-col gap-4 lg:gap-[18px] max-w-5xl">
+  <header class="flex items-start justify-between gap-3">
+    <div>
+      <h1 class="h1">Profilo</h1>
+      <p class="text-muted mt-0.5">I tuoi dati fisici e gli obiettivi di ogni giorno.</p>
+    </div>
+    <a href="/profile/peso" class="btn-ghost shrink-0">{{template "icon" "i-weight"}}Storico peso</a>
+  </header>
 
   {{if .Error}}
-    <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.Error}}</div>
+  <p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>
   {{end}}
 
-  <form id="profile-form" method="post" action="/profile" class="space-y-4">
+  <form id="profile-form" method="post" action="/profile" class="grid gap-4 lg:gap-[18px] lg:grid-cols-[minmax(0,1fr)_300px] items-start">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-    {{/* ====================== Card 1: Dati fisici ====================== */}}
-    <section data-card class="bg-surface border border-border rounded">
-      <button type="button" data-card-toggle aria-expanded="true"
-              class="w-full flex items-center justify-between px-6 py-4 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-        <h2 class="text-base font-semibold text-text">Dati fisici</h2>
-        <svg data-card-chevron class="w-4 h-4 text-muted shrink-0 transition-transform rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 4.5l3 3 3-3"/>
-        </svg>
-      </button>
-      <div data-card-body class="px-6 pb-6 space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-          <div>
-            <label class="block text-sm font-medium text-text mb-1" for="f-weight">Peso</label>
-            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-              <input id="f-weight" name="weight_kg" inputmode="decimal" value="{{.Form.WeightKg}}"
-                     placeholder="es. 72.5"
-                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">kg</span>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-text mb-1" for="f-height">Altezza</label>
-            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-              <input id="f-height" name="height_cm" inputmode="decimal" value="{{.Form.HeightCm}}"
-                     placeholder="es. 175"
-                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">cm</span>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-text mb-1" for="f-birth">Anno di nascita</label>
-            <input id="f-birth" name="birth_year" inputmode="numeric" value="{{.Form.BirthYear}}"
-                   placeholder="es. 1990"
-                   class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-          </div>
-
-          <div>
-            <fieldset>
-              <legend class="block text-sm font-medium text-text mb-1">Sesso biologico</legend>
-              <div class="flex items-center gap-4 pt-2">
-                <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
-                  <input type="radio" name="sex" value="M" {{if eq .Form.Sex "M"}}checked{{end}} class="accent-accent"> Uomo
-                </label>
-                <label class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
-                  <input type="radio" name="sex" value="F" {{if eq .Form.Sex "F"}}checked{{end}} class="accent-accent"> Donna
-                </label>
-                <label class="inline-flex items-center gap-1.5 text-sm text-muted cursor-pointer">
-                  <input type="radio" name="sex" value="" {{if eq .Form.Sex ""}}checked{{end}} class="accent-accent"> —
-                </label>
-              </div>
-            </fieldset>
-            <p class="text-xs text-muted mt-1">Usato per il calcolo del BMR (Mifflin-St Jeor).</p>
-          </div>
-
-          <div class="col-span-2">
-            <label class="block text-sm font-medium text-text mb-1" for="f-activity">Livello di attività fisica</label>
-            <select id="f-activity" name="activity_level"
-                    class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-              <option value=""        {{if eq .Form.ActivityLevel ""}}selected{{end}}>Non specificato (×1.4 di default)</option>
-              <option value="sedentary" {{if eq .Form.ActivityLevel "sedentary"}}selected{{end}}>Sedentario — solo vita quotidiana (×1.2)</option>
-              <option value="light"     {{if eq .Form.ActivityLevel "light"}}selected{{end}}>Leggera — 1–3 allenamenti/settimana (×1.375)</option>
-              <option value="moderate"  {{if eq .Form.ActivityLevel "moderate"}}selected{{end}}>Moderata — 3–5 allenamenti/settimana (×1.55)</option>
-              <option value="active"    {{if eq .Form.ActivityLevel "active"}}selected{{end}}>Intensa — 6–7 allenamenti/settimana (×1.725)</option>
-              <option value="athlete"   {{if eq .Form.ActivityLevel "athlete"}}selected{{end}}>Atleta — allenamento quotidiano intenso o lavoro fisico (×1.9)</option>
-            </select>
-          </div>
-
+    <div class="flex flex-col gap-4">
+      <section class="card p-4 lg:p-5 flex flex-col gap-4">
+        <h2 class="h2">Dati fisici</h2>
+        <div class="grid grid-cols-2 gap-3.5">
+          <label class="lab">Peso
+            <span class="field-unit"><input id="f-weight" name="weight_kg" inputmode="decimal" value="{{.Form.WeightKg}}" placeholder="72,5" class="field"><em>kg</em></span>
+          </label>
+          <label class="lab">Altezza
+            <span class="field-unit"><input id="f-height" name="height_cm" inputmode="decimal" value="{{.Form.HeightCm}}" placeholder="175" class="field"><em>cm</em></span>
+          </label>
+          <label class="lab">Anno di nascita
+            <input id="f-birth" name="birth_year" inputmode="numeric" value="{{.Form.BirthYear}}" placeholder="1990" class="field">
+          </label>
         </div>
-      </div>
-    </section>
-
-    {{/* ====================== Card 2: Indici calcolati ====================== */}}
-    <section data-card class="bg-surface border border-border rounded">
-      <button type="button" data-card-toggle aria-expanded="true"
-              class="w-full flex items-center justify-between px-6 py-4 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-        <h2 class="text-base font-semibold text-text">Indici calcolati</h2>
-        <svg data-card-chevron class="w-4 h-4 text-muted shrink-0 transition-transform rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 4.5l3 3 3-3"/>
-        </svg>
-      </button>
-      <div data-card-body class="px-6 pb-6">
-        <div id="indices-dynamic" class="grid grid-cols-3 gap-3{{if not .HasIndices}} hidden{{end}}">
-          <div class="rounded border border-border bg-surface-2 px-3 py-3">
-            <div class="text-xs text-muted mb-1">BMI</div>
-            <div id="bmi-value" class="text-xl font-semibold text-text">{{if .HasIndices}}{{printf "%.1f" .BMIValue}}{{end}}</div>
-            <div id="bmi-category" class="text-xs text-muted mt-0.5">{{if .HasIndices}}{{.BMICategory}}{{end}}</div>
+        <fieldset class="lab">
+          <legend class="mb-1.5">Sesso biologico</legend>
+          <div class="segmented grid-cols-3">
+            <label><input type="radio" name="sex" value="M"{{if eq .Form.Sex "M"}} checked{{end}}>Uomo</label>
+            <label><input type="radio" name="sex" value="F"{{if eq .Form.Sex "F"}} checked{{end}}>Donna</label>
+            <label><input type="radio" name="sex" value=""{{if eq .Form.Sex ""}} checked{{end}}><span class="sm:hidden">Non lo dico</span><span class="hidden sm:inline">Preferisco non dirlo</span></label>
           </div>
-          <div class="rounded border border-border bg-surface-2 px-3 py-3">
-            <div class="text-xs text-muted mb-1">BMR <span class="font-normal">(kcal/g)</span></div>
-            <div id="bmr-value" class="text-xl font-semibold text-text">{{if .HasIndices}}{{printf "%.0f" .BMRValue}}{{end}}</div>
-            <div class="text-xs text-muted mt-0.5">basale a riposo</div>
-          </div>
-          <div class="rounded border border-border bg-surface-2 px-3 py-3">
-            <div class="text-xs text-muted mb-1">TDEE <span class="font-normal">(kcal/g)</span></div>
-            <div id="tdee-value" class="text-xl font-semibold text-text">{{if .HasTDEE}}{{printf "%.0f" .TDEEValue}}{{else}}—{{end}}</div>
-            <div id="tdee-label" class="text-xs text-muted mt-0.5">{{if .HasTDEE}}fabbisogno stimato{{else}}scegli livello attività{{end}}</div>
-          </div>
-        </div>
-
-        <p id="indices-placeholder" class="text-sm text-muted italic{{if .HasIndices}} hidden{{end}}">
-          Completa peso, altezza, anno di nascita e sesso per calcolare BMI e BMR.
-        </p>
-      </div>
-    </section>
-
-    {{/* ====================== Card 3: Obiettivi macro ====================== */}}
-    <section data-card class="bg-surface border border-border rounded">
-      <button type="button" data-card-toggle aria-expanded="true"
-              class="w-full flex items-center justify-between px-6 py-4 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-        <h2 class="text-base font-semibold text-text">Obiettivi macro giornalieri</h2>
-        <svg data-card-chevron class="w-4 h-4 text-muted shrink-0 transition-transform rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 4.5l3 3 3-3"/>
-        </svg>
-      </button>
-      <div data-card-body class="px-6 pb-6 space-y-4">
-        <p class="text-xs text-muted">
-          Lascia vuoto un campo per non impostare un obiettivo su quel macro.
-          Se almeno un target è presente, le card dei giorni mostreranno le barre di avanzamento.
-        </p>
-
-        {{/* Preset + Reset */}}
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="text-xs text-muted shrink-0">Preset:</span>
-          <button type="button" id="btn-maintenance"
-                  class="preset-btn rounded border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                  data-preset="maintenance" disabled title="Mantenimento: TDEE × 1.0 · 1.6 g/kg proteine (peso aggiustato se BMI≥30) · 28% kcal da grassi">
-            Mantenimento
-          </button>
-          <button type="button" id="btn-bulk"
-                  class="preset-btn rounded border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                  data-preset="bulk" disabled title="Massa: TDEE × 1.10 · 1.8 g/kg proteine · 25% kcal da grassi">
-            Massa
-          </button>
-          <button type="button" id="btn-cut"
-                  class="preset-btn rounded border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                  data-preset="cut" disabled title="Dimagrimento: TDEE × 0.80 · 2.0 g/kg proteine · 25% kcal da grassi">
-            Dimagrimento
-          </button>
-          <span id="presets-hint" class="text-xs text-muted italic">— inserisci i dati fisici per abilitare</span>
-          <span class="flex-1"></span>
-          <button type="button" id="btn-reset-macros"
-                  class="rounded border border-danger/50 text-danger px-3 py-1 text-xs hover:bg-danger/10 transition">
-            Reset macro
-          </button>
-        </div>
-
-        {{/* Griglia macro */}}
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-          <div>
-            <label class="block text-sm font-medium text-text mb-1" for="f-tk">Calorie</label>
-            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-              <input id="f-tk" name="target_kcal" inputmode="decimal" value="{{.Form.TargetKcal}}"
-                     placeholder="es. 2000"
-                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">kcal</span>
-            </div>
-            <p id="hint-f-tk" class="hidden text-xs text-muted mt-0.5"></p>
-            <p id="err-f-tk"  class="hidden text-xs text-danger mt-0.5"></p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-text mb-1" for="f-tp">Proteine</label>
-            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-              <input id="f-tp" name="target_protein" inputmode="decimal" value="{{.Form.TargetProtein}}"
-                     placeholder="es. 120"
-                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">g</span>
-            </div>
-            <p id="hint-f-tp" class="hidden text-xs text-muted mt-0.5"></p>
-            <p id="err-f-tp"  class="hidden text-xs text-danger mt-0.5"></p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-text mb-1" for="f-tc">Carboidrati</label>
-            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-              <input id="f-tc" name="target_carbs" inputmode="decimal" value="{{.Form.TargetCarbs}}"
-                     placeholder="es. 250"
-                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">g</span>
-            </div>
-            <p id="hint-f-tc" class="hidden text-xs text-muted mt-0.5"></p>
-            <p id="err-f-tc"  class="hidden text-xs text-danger mt-0.5"></p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-text mb-1" for="f-tf">Grassi</label>
-            <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent">
-              <input id="f-tf" name="target_fat" inputmode="decimal" value="{{.Form.TargetFat}}"
-                     placeholder="es. 70"
-                     class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-              <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">g</span>
-            </div>
-            <p id="hint-f-tf" class="hidden text-xs text-muted mt-0.5"></p>
-            <p id="err-f-tf"  class="hidden text-xs text-danger mt-0.5"></p>
-          </div>
-
-        </div>
-
-        {{/* Target idratazione giornaliero. */}}
-        <div class="pt-2 border-t border-border">
-          <label class="block text-sm font-medium text-text mb-1" for="f-water">💧 Target idratazione</label>
-          <div class="flex rounded border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent max-w-[12rem]">
-            <input id="f-water" name="water_target_ml" inputmode="numeric" value="{{.Form.WaterTargetML}}"
-                   placeholder="2000"
-                   class="flex-1 min-w-0 px-3 py-2 bg-surface border-0 focus:outline-none">
-            <span class="px-3 py-2 bg-surface-2 text-muted text-sm border-l border-border select-none">ml</span>
-          </div>
-          <p class="text-xs text-muted mt-0.5">Quanti ml d'acqua vuoi bere ogni giorno (default 2000).</p>
-        </div>
-
-        {{/* Pannello rebalance */}}
-        <div id="rebalance-panel" class="hidden rounded border border-accent/40 bg-accent-soft/20 px-4 py-3">
-          <p class="text-xs font-semibold text-text mb-1">Ricalcola gli altri macro?</p>
-          <p id="rebalance-text" class="text-xs text-muted mb-2"></p>
-          <div class="flex gap-2">
-            <button type="button" id="rebalance-apply"
-                    class="rounded bg-accent text-accent-fg px-3 py-1 text-xs hover:bg-accent/90">Applica</button>
-            <button type="button" id="rebalance-dismiss"
-                    class="rounded border border-border px-3 py-1 text-xs hover:bg-surface-2">Ignora</button>
-          </div>
-        </div>
-
-        {{/* Sommario macro */}}
-        <p id="macro-summary" class="hidden text-xs text-muted tabular-nums"></p>
-      </div>
-    </section>
-
-    <div class="flex items-center justify-between pt-2">
-      <div class="flex items-center gap-4">
-        <a href="/" class="text-sm text-muted hover:underline">← Torna al piano</a>
-        <a href="/profile/peso" class="text-sm text-muted hover:underline">Storico peso →</a>
-      </div>
-      <button id="profile-save-btn"
-              class="rounded bg-accent text-accent-fg px-5 py-2 font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition">
-        Salva profilo
-      </button>
-    </div>
-  </form>
-
-  {{if .IsOwner}}
-  {{/* ====================== Owner: sync OFF on-demand ====================== */}}
-  <section data-card class="bg-surface border border-border rounded mt-6" id="off-sync-card" data-csrf="{{.CSRFToken}}">
-    <button type="button" data-card-toggle aria-expanded="true"
-            class="w-full flex items-center justify-between px-6 py-4 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-      <h2 class="text-base font-semibold text-text">Sync OpenFoodFacts</h2>
-      <svg data-card-chevron class="w-4 h-4 text-muted shrink-0 transition-transform rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 4.5l3 3 3-3"/>
-      </svg>
-    </button>
-    <div data-card-body class="px-6 pb-6 space-y-4">
-      <p class="text-xs text-muted">
-        Pannello owner: scarica il dump OFF e ripopola il DB locale. Lo sync
-        gira in background (~10 min). Con <em>force</em> attivo l'ETag salvato
-        viene azzerato per forzare il re-download anche se il dump remoto
-        non e' cambiato (utile dopo modifiche al parser).
-      </p>
-
-      <div class="grid grid-cols-2 gap-3 text-sm tabular-nums">
-        <div class="rounded border border-border bg-surface-2 px-3 py-2">
-          <div class="text-xs text-muted mb-0.5">Prodotti indicizzati</div>
-          <div id="off-products-count" class="font-semibold">—</div>
-        </div>
-        <div class="rounded border border-border bg-surface-2 px-3 py-2">
-          <div class="text-xs text-muted mb-0.5">Ultimo sync</div>
-          <div id="off-last-synced" class="font-semibold">—</div>
-        </div>
-        <div class="rounded border border-border bg-surface-2 px-3 py-2">
-          <div class="text-xs text-muted mb-0.5">Macro completi</div>
-          <div id="off-full-count" class="font-semibold text-accent">—</div>
-        </div>
-        <div class="rounded border border-border bg-surface-2 px-3 py-2">
-          <div class="text-xs text-muted mb-0.5">Macro incompleti</div>
-          <div id="off-partial-count" class="font-semibold text-muted">—</div>
-        </div>
-        <div class="rounded border border-border bg-surface-2 px-3 py-2 col-span-2">
-          <div class="text-xs text-muted mb-0.5">Stato</div>
-          <div id="off-state" class="font-semibold">—</div>
-        </div>
-        <div id="off-error-row" class="hidden rounded border border-danger/30 bg-danger/10 text-danger px-3 py-2 col-span-2 text-xs">
-          <span class="font-semibold">Ultimo errore:</span> <span id="off-error-msg"></span>
-        </div>
-        <div id="off-sample-row" class="hidden col-span-2">
-          <div class="text-xs text-muted mb-1">Campione (prodotti con macro completi):</div>
-          <ul id="off-sample-list" class="text-xs space-y-0.5 text-muted font-mono"></ul>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-3 pt-2">
-        <label class="inline-flex items-center gap-2 text-sm cursor-pointer select-none">
-          <input type="checkbox" id="off-force" class="accent-accent">
-          <span>Force <span class="text-muted text-xs">(ignora ETag, re-download completo)</span></span>
+        </fieldset>
+        <label class="lab">Attività fisica
+          <select id="f-activity" name="activity_level" class="field">
+            <option value=""{{if eq .Form.ActivityLevel ""}} selected{{end}}>Non specificata</option>
+            <option value="sedentary"{{if eq .Form.ActivityLevel "sedentary"}} selected{{end}}>Sedentaria: solo vita quotidiana</option>
+            <option value="light"{{if eq .Form.ActivityLevel "light"}} selected{{end}}>Leggera: 1–3 allenamenti a settimana</option>
+            <option value="moderate"{{if eq .Form.ActivityLevel "moderate"}} selected{{end}}>Moderata: 3–5 allenamenti a settimana</option>
+            <option value="active"{{if eq .Form.ActivityLevel "active"}} selected{{end}}>Intensa: 6–7 allenamenti a settimana</option>
+            <option value="athlete"{{if eq .Form.ActivityLevel "athlete"}} selected{{end}}>Atleta: allenamento intenso ogni giorno o lavoro fisico</option>
+          </select>
         </label>
-        <span class="flex-1"></span>
-        <button type="button" id="off-sync-btn"
-                class="rounded bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2">
-          Avvia sync ora
-          <span id="off-sync-spinner" class="hidden htmx-spinner" aria-hidden="true"></span>
-        </button>
-      </div>
+        <p class="text-[12.5px] text-muted">Peso, altezza, età e sesso servono a stimare il metabolismo basale (Mifflin-St Jeor).</p>
+      </section>
 
-      <p id="off-feedback" class="hidden text-xs text-muted"></p>
+      <section class="card p-4 lg:p-5 flex flex-col gap-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="h2 mr-auto">Obiettivi di ogni giorno</h2>
+          <span class="text-[12.5px] text-muted">Parti da un modello:</span>
+          <span class="flex flex-wrap gap-1.5">
+            <button type="button" id="btn-maintenance" class="filter preset-btn disabled:opacity-40 disabled:cursor-not-allowed" data-preset="maintenance" disabled title="Fabbisogno × 1 · proteine 1,6 g/kg · grassi 28% delle kcal">Mantenimento</button>
+            <button type="button" id="btn-cut" class="filter preset-btn disabled:opacity-40 disabled:cursor-not-allowed" data-preset="cut" disabled title="Fabbisogno × 0,8 · proteine 2 g/kg · grassi 25% delle kcal">Dimagrimento</button>
+            <button type="button" id="btn-bulk" class="filter preset-btn disabled:opacity-40 disabled:cursor-not-allowed" data-preset="bulk" disabled title="Fabbisogno × 1,1 · proteine 1,8 g/kg · grassi 25% delle kcal">Massa</button>
+          </span>
+        </div>
+        <p id="presets-hint" class="-mt-2 text-[12.5px] text-muted">I modelli si attivano quando i dati fisici sono completi.</p>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {{template "profile_macro" (list "f-tk" "target_kcal" "Calorie" "kcal" "" "2000" .Form.TargetKcal)}}
+          {{template "profile_macro" (list "f-tp" "target_protein" "Proteine" "g" "--ch-prot" "120" .Form.TargetProtein)}}
+          {{template "profile_macro" (list "f-tc" "target_carbs" "Carboidrati" "g" "--ch-carb" "250" .Form.TargetCarbs)}}
+          {{template "profile_macro" (list "f-tf" "target_fat" "Grassi" "g" "--ch-fat" "70" .Form.TargetFat)}}
+        </div>
+
+        <div id="macro-split" class="hidden flex flex-col gap-1.5">
+          <div class="flex h-2.5 gap-0.5 rounded-full overflow-hidden bg-track" aria-hidden="true">
+            <span id="split-p" class="h-full" style="background:var(--ch-prot)"></span>
+            <span id="split-c" class="h-full" style="background:var(--ch-carb)"></span>
+            <span id="split-f" class="h-full" style="background:var(--ch-fat)"></span>
+          </div>
+          <p id="macro-summary" class="text-[12.5px] text-muted tabular-nums"></p>
+        </div>
+
+        <div id="rebalance-panel" class="hidden rounded-xl bg-accent-soft p-3 flex flex-col gap-2">
+          <p><b>Ricalcolo gli altri macro?</b> <span id="rebalance-text" class="tabular-nums"></span></p>
+          <div class="flex gap-2">
+            <button type="button" id="rebalance-apply" class="btn-primary">Ricalcola</button>
+            <button type="button" id="rebalance-dismiss" class="btn-ghost">Lascia così</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-3.5 border-t border-border items-end">
+          <label class="lab">Acqua
+            <span class="field-unit"><input id="f-water" name="water_target_ml" inputmode="numeric" value="{{.Form.WaterTargetML}}" placeholder="2000" class="field"><em>ml</em></span>
+          </label>
+          <button type="button" id="btn-reset-macros" class="btn-ghost justify-self-start lg:col-start-4 lg:justify-self-end">Svuota gli obiettivi</button>
+        </div>
+        <p class="-mt-2 text-[12.5px] text-muted">Un campo vuoto vuol dire nessun obiettivo per quel valore.</p>
+      </section>
+
+      <div class="savebar flex items-center gap-3">
+        <button id="profile-save-btn" class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">Salva profilo</button>
+        <a href="/onboarding?restart=true" class="btn-ghost">Rifai la configurazione iniziale</a>
+      </div>
     </div>
-  </section>
-  {{end}}
+
+    <aside class="card overflow-hidden lg:sticky lg:top-6">
+      <div class="flex items-baseline justify-between px-4 pt-3.5 pb-3">
+        <h2 class="h2">Indici</h2>
+        <span class="text-[12.5px] text-muted">calcolati ora</span>
+      </div>
+      <dl id="indices-dynamic" class="border-t border-border divide-y divide-border{{if not .HasIndices}} hidden{{end}}">
+        <div class="grid grid-cols-[1fr_auto] gap-x-2 px-4 py-3">
+          <dt class="text-muted">BMI</dt><dd id="bmi-value" class="text-xl font-bold tabular-nums">{{if .HasIndices}}{{dec .BMIValue 1}}{{end}}</dd>
+          <dd id="bmi-category" class="text-[12.5px] text-muted">{{if .HasIndices}}{{.BMICategory}}{{end}}</dd>
+        </div>
+        <div class="grid grid-cols-[1fr_auto] gap-x-2 px-4 py-3">
+          <dt class="text-muted">Metabolismo basale</dt><dd id="bmr-value" class="text-xl font-bold tabular-nums">{{if .HasIndices}}{{num .BMRValue}}{{end}}</dd>
+          <dd class="text-[12.5px] text-muted">kcal a riposo</dd>
+        </div>
+        <div class="grid grid-cols-[1fr_auto] gap-x-2 px-4 py-3">
+          <dt class="text-muted">Fabbisogno (TDEE)</dt><dd id="tdee-value" class="text-xl font-bold tabular-nums">{{if .HasTDEE}}{{num .TDEEValue}}{{else}}—{{end}}</dd>
+          <dd id="tdee-label" class="text-[12.5px] text-muted">{{if .HasTDEE}}kcal al giorno{{else}}scegli l'attività fisica{{end}}</dd>
+        </div>
+      </dl>
+      <p id="indices-placeholder" class="border-t border-border px-4 py-3 text-muted{{if .HasIndices}} hidden{{end}}">Completa peso, altezza, anno di nascita e sesso per calcolarli.</p>
+      <p class="border-t border-border px-4 py-3 text-[12.5px] text-muted">Si aggiornano mentre scrivi.</p>
+    </aside>
+  </form>
 </div>
 {{end}}
 
+{{/* Campo di un obiettivo: id, name, etichetta, unita', colore (token), esempio, valore. */}}
+{{define "profile_macro"}}{{$id := index . 0}}{{$color := index . 4}}
+<label class="lab min-w-0">
+  <span class="flex items-center gap-1.5">{{if $color}}<span class="w-2 h-2 rounded-full" style="background:var({{$color}})"></span>{{end}}{{index . 2}}</span>
+  <span class="field-unit"><input id="{{$id}}" name="{{index . 1}}" inputmode="decimal" placeholder="{{index . 5}}" value="{{index . 6}}" class="field"><em>{{index . 3}}</em></span>
+  <span id="pct-{{$id}}" class="text-[12px] font-medium text-muted min-h-[1em]"></span>
+  <span id="hint-{{$id}}" class="hidden text-[12px] font-medium text-accent"></span>
+  <span id="err-{{$id}}" class="hidden text-[12px] font-medium text-danger"></span>
+</label>{{end}}
+
 {{define "scripts"}}
 <script src="/static/js/profile.js" defer></script>
-{{if .IsOwner}}<script src="/static/js/off_sync.js" defer></script>{{end}}
 {{end}}
