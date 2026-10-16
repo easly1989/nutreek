@@ -179,6 +179,41 @@ func (c *Categories) AllergensForIngredients(ctx context.Context, ingredientIDs 
 	return out, rows.Err()
 }
 
+// CategoriesForIngredients carica in batch la categoria di piu' ingredienti:
+// ingredient_id -> categoria. Gli ingredienti senza categoria non compaiono.
+func (c *Categories) CategoriesForIngredients(ctx context.Context, ingredientIDs []int64) (map[int64]domain.IngredientCategory, error) {
+	out := make(map[int64]domain.IngredientCategory)
+	if len(ingredientIDs) == 0 {
+		return out, nil
+	}
+	placeholders := make([]string, len(ingredientIDs))
+	args := make([]any, len(ingredientIDs))
+	for i, id := range ingredientIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	rows, err := c.db.QueryContext(ctx,
+		`SELECT i.id, ic.id, ic.user_id, ic.name, ic.sort_order
+		   FROM ingredients i
+		   JOIN ingredient_categories ic ON ic.id = i.category_id
+		  WHERE i.id IN (`+strings.Join(placeholders, ",")+`)`,
+		args...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("categories for ingredients: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ingID int64
+		var cat domain.IngredientCategory
+		if err := rows.Scan(&ingID, &cat.ID, &cat.UserID, &cat.Name, &cat.SortOrder); err != nil {
+			return nil, fmt.Errorf("scan category row: %w", err)
+		}
+		out[ingID] = cat
+	}
+	return out, rows.Err()
+}
+
 // IngredientIDsByAllergen ritorna l'insieme degli ID ingrediente taggati con
 // uno specifico allergene. Usato dal filtro della lista /ingredients.
 func (c *Categories) IngredientIDsByAllergen(ctx context.Context, allergenID int64) (map[int64]bool, error) {
