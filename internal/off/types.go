@@ -28,6 +28,9 @@ type Product struct {
 	// UnitWeightG e' il peso in grammi per singola unita', estratto da
 	// product_quantity (es. "150 g" → 150). nil se non parsabile.
 	UnitWeightG *float64
+	// ServingG e' la porzione in grammi o ml (serving_quantity di OFF, o
+	// serving_size tipo "30 g"). nil se OFF non la conosce.
+	ServingG *float64
 	// Micronutrienti — nil se non presenti nel dataset OFF.
 	Fiber        *float64
 	Sugars       *float64
@@ -48,6 +51,10 @@ type rawProduct struct {
 	Nutriments         map[string]json.RawMessage `json:"nutriments"`
 	ImageFrontSmallURL string                     `json:"image_front_small_url"`
 	ImageURL           string                     `json:"image_url"`
+	// serving_quantity arriva come numero o come stringa, a seconda del prodotto.
+	ServingQuantity     json.RawMessage `json:"serving_quantity"`
+	ServingQuantityUnit string          `json:"serving_quantity_unit"`
+	ServingSize         string          `json:"serving_size"`
 }
 
 type productResponse struct {
@@ -68,6 +75,7 @@ func (r rawProduct) toProduct() Product {
 		Quantity:    r.Quantity,
 		ImageURL:    imgURL,
 		UnitWeightG: ParseUnitWeightG(r.Quantity),
+		ServingG:    ParseServingG(r.ServingQuantity, r.ServingQuantityUnit, r.ServingSize),
 	}
 	// Il dump JSONL usa chiavi bare ("proteins") mentre l'API usa "_100g"
 	// ("proteins_100g"). Proviamo entrambe per supportare le due sorgenti.
@@ -152,6 +160,41 @@ func ParseUnitWeightG(productQuantity string) *float64 {
 			if err == nil && v > 0 {
 				return &v
 			}
+		}
+	}
+	return nil
+}
+
+// maxServingG scarta le porzioni assurde (errori di inserimento su OFF): una
+// porzione proposta oltre il chilo farebbe piu' danni di un campo vuoto.
+const maxServingG = 1000
+
+// reServingSize matcha la parte in g/ml di serving_size: "30 g", "1 biscotto
+// (12,5 g)", "250ml".
+var reServingSize = regexp.MustCompile(`(?i)(\d+(?:[.,]\d+)?)\s*(g|ml)\b`)
+
+// ParseServingG ricava la porzione in grammi (o ml) dai campi OFF:
+// serving_quantity (numero o stringa) se la sua unita' e' g/ml o assente,
+// altrimenti la quantita' in g/ml scritta in serving_size. nil se nessuno dei
+// due da' un valore in (0, 1000].
+func ParseServingG(quantity json.RawMessage, unit, size string) *float64 {
+	valid := func(v float64) *float64 {
+		if v > 0 && v <= maxServingG {
+			return &v
+		}
+		return nil
+	}
+	switch strings.ToLower(strings.TrimSpace(unit)) {
+	case "", "g", "ml":
+		if v, ok := lookupNutrient(map[string]json.RawMessage{"q": quantity}, "q"); ok {
+			if p := valid(v); p != nil {
+				return p
+			}
+		}
+	}
+	if m := reServingSize.FindStringSubmatch(size); m != nil {
+		if v, err := strconv.ParseFloat(strings.ReplaceAll(m[1], ",", "."), 64); err == nil {
+			return valid(v)
 		}
 	}
 	return nil

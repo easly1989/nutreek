@@ -186,6 +186,60 @@ func (r ingredientRow) UnitWeightG() float64 {
 	return 0
 }
 
+// fromOFF dice se i dati vengono da OpenFoodFacts: riga non importata o
+// ingrediente importato. Per questi il peso di un «pezzo» e' quello della
+// confezione (o del pezzo, nelle multiple «6 × 25 g»), e la quantita'
+// predefinita e' la porzione OFF in g/ml.
+func (r ingredientRow) fromOFF() bool {
+	if r.Local != nil {
+		return r.Local.Source == domain.IngredientSourceOFF
+	}
+	return r.OFF != nil
+}
+
+// ServingG e' la porzione OFF in g/ml (0 se ignota): per un import e' la
+// quantita' predefinita salvata da CreateOFF.
+func (r ingredientRow) ServingG() float64 {
+	if !r.fromOFF() {
+		return 0
+	}
+	if r.Local == nil {
+		if r.OFF.ServingG != nil {
+			return *r.OFF.ServingG
+		}
+		return 0
+	}
+	return r.DefaultQuantity()
+}
+
+// PickQuantity e PickUnit sono la quantita' e l'unita' proposte nel picker
+// (#136). La quantita' viene solo da dati veri:
+//   - prodotto OFF: la porzione in g/ml, o campo vuoto (0) se ignota; mai
+//     «1 pz», che per OFF vale l'intera confezione;
+//   - ingrediente creato a mano: la quantita' predefinita (fino a 10 letta in
+//     pezzi se c'e' il peso di un pezzo, oltre in g/ml), altrimenti 1 pz se il
+//     pezzo e' noto, altrimenti campo vuoto.
+func (r ingredientRow) PickQuantity() float64 {
+	if r.fromOFF() {
+		return r.ServingG()
+	}
+	if q := r.DefaultQuantity(); q > 0 {
+		return q
+	}
+	if r.UnitWeightG() > 0 {
+		return 1
+	}
+	return 0
+}
+
+// PickUnit: vedi PickQuantity. "pz" solo per gli ingredienti creati a mano.
+func (r ingredientRow) PickUnit() string {
+	if !r.fromOFF() && r.UnitWeightG() > 0 && r.PickQuantity() <= 10 {
+		return "pz"
+	}
+	return r.Unit()
+}
+
 // HasMicronutrients ritorna true se il locale ha almeno un micronutriente.
 func (r ingredientRow) HasMicronutrients() bool {
 	if r.Local == nil {
@@ -746,7 +800,7 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 		product.Code, product.Name, brandPtr,
 		domain.UnitGram,
 		product.Kcal, product.Protein, product.Carbs, product.Fat,
-		product.UnitWeightG,
+		product.UnitWeightG, product.ServingG,
 		product.Fiber, product.Sugars, product.SaturatedFat, product.Sodium,
 	); err != nil && !errors.Is(err, db.ErrBarcodeAlreadyUsed) {
 		a.serverError(w, r, err)
@@ -799,7 +853,7 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 		product.Code, product.Name, brandPtr,
 		domain.UnitGram,
 		product.Kcal, product.Protein, product.Carbs, product.Fat,
-		product.UnitWeightG,
+		product.UnitWeightG, product.ServingG,
 		product.Fiber, product.Sugars, product.SaturatedFat, product.Sodium,
 	)
 	if err == nil {

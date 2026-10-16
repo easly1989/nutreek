@@ -81,10 +81,10 @@ func (c *Client) localByBarcode(ctx context.Context, code string) (*Product, err
 	err := c.DB.QueryRowContext(ctx, `
 		SELECT barcode, product_name, brands, quantity,
 		       kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-		       has_full_nutrients, image_url
+		       has_full_nutrients, image_url, serving_g
 		FROM off_products WHERE barcode = ?`, code).Scan(
 		&p.Code, &p.Name, &p.Brand, &p.Quantity,
-		&p.Kcal, &p.Protein, &p.Carbs, &p.Fat, &hasFull, &p.ImageURL)
+		&p.Kcal, &p.Protein, &p.Carbs, &p.Fat, &hasFull, &p.ImageURL, &p.ServingG)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
