@@ -29,8 +29,9 @@ func (a *App) requireCoach(next http.Handler) http.Handler {
 
 type coachDashboardData struct {
 	authPageData
-	Clients []domain.CoachClientInfo
-	Plans   []domain.NutritionistPlan
+	Clients     []domain.CoachClientInfo
+	Plans       []domain.NutritionistPlan
+	PlanClients map[int64]int // piano -> quanti clienti lo hanno assegnato
 }
 
 // handleCoachDashboard GET /coach — clienti, libreria piani e assegnazioni.
@@ -50,6 +51,12 @@ func (a *App) handleCoachDashboard(w http.ResponseWriter, r *http.Request) {
 		authPageData: a.baseData(r),
 		Clients:      clients,
 		Plans:        plans,
+		PlanClients:  map[int64]int{},
+	}
+	for _, c := range clients {
+		if c.AssignedPlanID != nil {
+			data.PlanClients[*c.AssignedPlanID]++
+		}
 	}
 	if err := a.Render.Render(w, http.StatusOK, "coach_dashboard", data); err != nil {
 		a.serverError(w, r, err)

@@ -309,6 +309,11 @@
   .sheet::backdrop { background: rgba(10, 12, 16, 0.45); }
 }
 
+/* Intestazione di colonna visibile solo da desktop: quando e' nascosta la
+   prima riga non deve avere il separatore sopra (sarebbe doppio col bordo). */
+@media (max-width: 1023px) { .list-head + * { border-top-width: 0 !important; } }
+@media (max-width: 639px) { .list-head-sm + * { border-top-width: 0 !important; } }
+
 /* ---- Grafici SVG -------------------------------------------------------- */
 [data-chart] { position: relative; min-height: 40px; }
 .chart { display: block; width: 100%; height: auto; touch-action: pan-y; }

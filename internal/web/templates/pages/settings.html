@@ -83,7 +83,7 @@
 
         {{if .APITokens}}
         <ul class="border-t border-border divide-y divide-border">
-          <li class="hidden sm:grid grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>Nome</span><span>Creato</span><span>Ultimo uso</span><span></span></li>
+          <li class="list-head-sm hidden sm:grid grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>Nome</span><span>Creato</span><span>Ultimo uso</span><span></span></li>
           {{range .APITokens}}
           <li class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 items-center px-4 py-2 min-h-12">
             <span class="flex items-center gap-2.5 min-w-0"><span class="thumb w-[30px] h-[30px]">{{template "icon_sm" "i-key"}}</span><b class="truncate">{{.Name}}</b></span>
