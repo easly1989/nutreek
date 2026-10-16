@@ -1,125 +1,130 @@
 # Changelog
 
-Tutte le modifiche notevoli a questo progetto sono documentate in questo file.
+All notable changes to this project are documented in this file.
 
-Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+The entries up to 2.0.0 link to issues and pull requests written in Italian: the project switched to English in #146.
 
 ---
 
-## [Non rilasciato]
+## [Unreleased]
 
-### Corretto
-- Sicurezza: i dati di un ingrediente (nome, marca, unità, macro, micronutrienti, porzione, allergeni) li modifica solo chi l'ha creato, o l'owner; gli altri lo vedono in sola lettura, con «di Bob» in lista. Un prodotto OpenFoodFacts importato ha come autore chi l'ha importato; quelli senza autore li modifica l'owner, o chiunque se l'istanza non ne ha uno (#143)
-- La categoria di un ingrediente è di ogni utente: mettere un ingrediente condiviso in una propria categoria non cambia più quella degli altri, e una categoria di un altro utente viene rifiutata. Le assegnazioni esistenti restano a chi possiede la categoria (migrazione 0028) (#143)
+### Fixed
+- Security: an ingredient's data (name, brand, unit, macros, micronutrients, portion, allergens) can be edited only by whoever created it, or by the owner; everyone else sees it read-only, with "by Bob" in the list. An imported OpenFoodFacts product belongs to whoever imported it; ingredients with no author are edited by the owner, or by anyone when the instance has no owner (#143)
+- An ingredient's category is per user: putting a shared ingredient in one of your categories no longer changes it for anyone else, and another user's category is rejected. Existing assignments stay with the category's owner (migration 0028) (#143)
+
+### Changed
+- The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)
 
 ---
 
 ## [2.0.0] — 2026-10-16
 
-Prima release pubblicata come immagine su GHCR: restyle «Sereno», app installabile con scanner del codice a barre, e le correzioni del giro di ripresa.
+First release published as an image on GHCR: the «Sereno» restyle, an installable app with a barcode scanner, and the fixes from the catch-up round.
 
-### Aggiunto
-- Immagine Docker privata su GHCR pubblicata a ogni release (`:latest`, `:vX.Y.Z`, `:vX.Y`), flag `nutreek -version` (#111)
-- Scanner del codice a barre nei picker di pasto, ricetta e piano nutrizionale (#59): la fotocamera legge il codice (BarcodeDetector nativo, altrimenti un lettore ZXing servito dall'app), il prodotto si apre già pronto da aggiungere, cercato prima tra i propri ingredienti e nella copia locale di OpenFoodFacts; se manca, «Crea l'ingrediente» lo crea con il codice collegato. Le cifre si possono anche scrivere a mano, e la ricerca riconosce un codice EAN-8/13 o UPC-A digitato.
-- Nutreek si installa sul telefono come app (#59): manifest e icone nel colore del tema, service worker con la cache dei soli file statici, sezione «App sul telefono» in Impostazioni (bottone «Installa l'app», passaggi per Safari su iPhone). Fotocamera e installazione richiedono https.
+### Added
+- Docker image on GHCR published with every release (`:latest`, `:vX.Y.Z`, `:vX.Y`), `nutreek -version` flag (#111)
+- Barcode scanner in the meal, recipe and nutrition plan pickers (#59): the camera reads the code (native BarcodeDetector, otherwise a ZXing reader served by the app), and the product opens ready to add, looked up first among your ingredients and in the local OpenFoodFacts copy; when it is missing, "Create the ingredient" creates it with the code attached. The digits can also be typed, and search recognizes a typed EAN-8/13 or UPC-A code.
+- Nutreek installs on the phone as an app (#59): manifest and icons in the theme color, a service worker caching only static files, an "App on your phone" section in Settings (an "Install the app" button, steps for Safari on iPhone). The camera and installing need https.
 
-### Corretto
-- Nel picker un prodotto OpenFoodFacts non si apre più su «1 pz», che valeva l'intera confezione (500 g di fiocchi d'avena con un clic). La quantità proposta è la porzione OFF in g/ml (`serving_quantity`, salvata nella copia locale e negli ingredienti importati); se la porzione non è nota il campo resta vuoto, in grammi. Gli ingredienti creati a mano non cambiano (#136)
-- Le foto dei prodotti OpenFoodFacts si vedono di nuovo nella lista Ingredienti e nei picker: la CSP le bloccava. È consentito solo `images.openfoodfacts.org`, le foto si caricano senza referrer, e se una foto manca resta l'icona del codice a barre invece di un quadrato vuoto (#133)
-- Un codice sconosciuto a OpenFoodFacts (l'API risponde 404) è «non trovato» e non più un errore del servizio (#59)
-- Sicurezza: il rate limit del login non si aggira più con un `X-Forwarded-For` inventato. L'header vale solo se la connessione arriva da un proxy in loopback o in rete privata; un `X-Request-ID` non valido viene sostituito (#115)
-- Due transazioni concorrenti che leggono e poi scrivono non falliscono più con `database is locked`: le transazioni SQLite prendono subito il lock di scrittura (`_txlock=immediate`) e si accodano (#116)
-- Le pesate non perdono più la data in lettura (risultavano tutte all'1/1/0001); la tabella delle Statistiche non usa più un campo inesistente del fabbisogno (#123)
-- Sicurezza: varianti e voci del piano nutrizionale si creano solo nel proprio piano, e nelle voci (piano, pasti, sgarri) si possono usare solo ricette proprie o pubbliche; gli id di altri utenti rispondono 404 (#129)
-- Le voci in pezzi («pz») valgono quantità × peso unitario dell'ingrediente nella settimana, nella generazione automatica e nella lista della spesa; prima contavano come grammi (#126)
-- Salvare un ingrediente modificato non azzera più la sua categoria; gli errori dei form rapidi «Nuovo ingrediente / Nuova ricetta» ora si vedono nella finestra invece di essere scartati; un errore aggiungendo un alimento ricarica la settimana invece di annidarla nel giorno (#122)
+### Fixed
+- In the picker an OpenFoodFacts product no longer opens on "1 pc", which meant the whole package (500 g of oat flakes in one click). The proposed quantity is the OFF serving in g/ml (`serving_quantity`, stored in the local copy and in imported ingredients); when the serving is unknown the field stays empty, in grams. Ingredients created by hand do not change (#136)
+- OpenFoodFacts product photos show again in the Ingredients list and in the pickers: the CSP was blocking them. Only `images.openfoodfacts.org` is allowed, photos load without a referrer, and when a photo is missing the barcode icon stays instead of an empty square (#133)
+- A code OpenFoodFacts does not know (the API answers 404) is "not found", no longer a service error (#59)
+- Security: the login rate limit can no longer be bypassed with a made-up `X-Forwarded-For`. The header counts only when the connection comes from a proxy on loopback or a private network; an invalid `X-Request-ID` is replaced (#115)
+- Two concurrent transactions that read and then write no longer fail with `database is locked`: SQLite transactions take the write lock immediately (`_txlock=immediate`) and queue up (#116)
+- Weigh-ins no longer lose their date on read (they all came back as 1/1/0001); the Statistics table no longer uses a nonexistent field of the energy requirement (#123)
+- Security: variants and nutrition plan items can only be created in your own plan, and items (plan, meals, cheats) can only use your own or public recipes; other users' ids answer 404 (#129)
+- Items in pieces ("pc") count as quantity × the ingredient's unit weight in the week, in automatic generation and in the shopping list; before, they counted as grams (#126)
+- Saving an edited ingredient no longer clears its category; errors in the quick "New ingredient / New recipe" forms now show in the dialog instead of being dropped; an error while adding a food reloads the week instead of nesting it inside the day (#122)
 
-### Cambiato
-- Nutreek è open source: licenza **GNU AGPL v3.0** al posto di quella proprietaria. Il README è in inglese, l'italiano è in `README.it.md`; l'immagine su GHCR è pubblica.
-- Restyle «Sereno», prima parte (#121): nuovo sistema di temi (modalità chiaro / scuro / come il sistema × colore bosco / mare / tramonto / grafite, in cookie e letto dal server), font Figtree servito dall'app, sidebar su desktop e barra in basso su telefono con il foglio «Altro», menu «Aspetto». La settimana mostra un giorno alla volta: schede dei giorni, riepilogo con anello kcal e macro, pasti, acqua e allenamenti; il giorno aperto è nell'URL (`?day=`). I vecchi cookie `theme` vengono convertiti.
-- Restyle «Sereno», seconda parte (#122): ricette con ricerca live, filtri, kcal e macro per porzione e ripartizione energetica nell'editor; ingredienti con filtri per provenienza, categoria e allergene e form a sezioni; piano nutrizionale a schede (pasti e varianti / template settimanali, che sostituisce `/templates`) con kcal per variante; editor dei template per giorno; il picker «Aggiungi alimento» si apre in una finestra sopra la settimana (foglio dal basso sul telefono) con anteprima kcal e unità g / pz.
-- Restyle «Sereno», terza parte (#123): lista della spesa per reparto con carrello, avanzamento, pezzi interi e stampa in due colonne; Statistiche con card di sintesi e grafici SVG nei colori del tema (Chart.js rimosso); Profilo con ripartizione dei macro e modelli, Peso con intervallo 30/90/365 giorni, Impostazioni con indice laterale e anteprima dei temi; Amministrazione a schede (funzionalità dentro la Panoramica, `/admin/panel/features` rimanda lì), Pannello coach e pagina Premium che dice quale funzionalità era bloccata (`/upgrade?da=`); accesso e registrazione con Mostra/Nascondi password, configurazione iniziale a tutta pagina con i modelli calcolati dal fabbisogno, home pubblica con anteprima della settimana, pagine 404/500 nuove. La sincronizzazione OpenFoodFacts si gestisce dall'Amministrazione e non più dal Profilo.
+### Changed
+- Nutreek is open source: **GNU AGPL v3.0** license instead of the proprietary one. The README is in English, the Italian one is in `README.it.md`; the image on GHCR is public.
+- «Sereno» restyle, part one (#121): a new theme system (light / dark / system mode × forest / sea / sunset / graphite color, stored in a cookie and read by the server), the Figtree font served by the app, a sidebar on desktop and a bottom bar on the phone with the "More" sheet, an "Appearance" menu. The week shows one day at a time: day tabs, a summary with a kcal ring and macros, meals, water and workouts; the open day is in the URL (`?day=`). Old `theme` cookies are converted.
+- «Sereno» restyle, part two (#122): recipes with live search, filters, kcal and macros per serving and the energy split in the editor; ingredients with filters by source, category and allergen and a form in sections; the nutrition plan in tabs (meals and variants / weekly templates, replacing `/templates`) with kcal per variant; the template editor by day; the "Add food" picker opens in a dialog over the week (a bottom sheet on the phone) with a kcal preview and g / pc units.
+- «Sereno» restyle, part three (#123): the shopping list by aisle with a cart, progress, whole pieces and two-column printing; Statistics with summary cards and SVG charts in the theme colors (Chart.js removed); Profile with the macro split and presets, Weight with 30/90/365-day ranges, Settings with a side index and a theme preview; Administration in tabs (features inside the Overview, `/admin/panel/features` redirects there), a Coach panel and a Premium page that says which feature was locked (`/upgrade?da=`); sign-in and sign-up with Show/Hide password, a full-page first-run setup with presets computed from the energy requirement, a public home with a preview of the week, new 404/500 pages. The OpenFoodFacts sync is managed from Administration, no longer from Profile.
 
-### Manutenzione
-- Go 1.27.2; chi 5.5, goose 3.29, modernc sqlite 1.60, x/crypto 0.58; SortableJS 1.15.7; GitHub Actions alle major correnti, golangci-lint fissato a v2.14.0; immagini base `golang:1.27-alpine` e `alpine:3.24`; `.gitattributes` con fine riga LF (#112)
-- Nessuno script da host esterni: la CSP non ammette più `cdn.jsdelivr.net` (Chart.js, prima vendorizzato e poi sostituito dai grafici SVG di #123). Tolto `sqlc.yaml`, che non generava nulla: il SQL è scritto a mano nei repo (#117)
-- README con badge e sezione «Supporta il progetto», `.github/FUNDING.yml` per il bottone «Sponsor», screenshot nuovi nello stile Sereno (#124)
+### Maintenance
+- Go 1.27.2; chi 5.5, goose 3.29, modernc sqlite 1.60, x/crypto 0.58; SortableJS 1.15.7; GitHub Actions on current majors, golangci-lint pinned to v2.14.0; base images `golang:1.27-alpine` and `alpine:3.24`; `.gitattributes` with LF line endings (#112)
+- No scripts from external hosts: the CSP no longer allows `cdn.jsdelivr.net` (Chart.js, first vendored and then replaced by the SVG charts of #123). Removed `sqlc.yaml`, which generated nothing: the SQL is hand-written in the repositories (#117)
+- README with badges and a "Support the project" section, `.github/FUNDING.yml` for the "Sponsor" button, new screenshots in the Sereno style (#124)
 
 ---
 
 ## [Round 5] — 2026-06-12
 
-### Aggiunto
-- **Coach mode** (#63): libreria piani nutrizionista, assegnazione a clienti, storico freeze piano, dashboard coach con aderenza per cliente
-- **REST API v1** (#65): autenticazione Bearer token, endpoint `GET /me`, `GET /week`, `GET /ingredients`, `GET /activities`, `POST /water`, `POST /weight`, `POST /workout`; gestione token in `/settings`
-- **Admin panel** (#66): pannello owner-only `/admin/panel` con gestione feature flags (abilitazione/disabilitazione/premium), elenco utenti, assegnazione sottoscrizioni premium
-- **Feature flag system**: tabella `features` con kill-switch + is_premium, middleware `requireFeature(key)`, helper `HasFeature(ctx, user, key)`, cache TTL 60s
-- **Subscriptions**: tabella `subscriptions` con date inizio/fine, metodo `IsActive`, gestione da admin panel
-- **API tokens**: tabella `api_tokens` (SHA-256), creazione/revoca da impostazioni, middleware `requireAPIToken`, `LastUsedAt` aggiornato ad ogni uso
+### Added
+- **Coach mode** (#63): a nutritionist plan library, assignment to clients, frozen plan history, a coach dashboard with adherence per client
+- **REST API v1** (#65): Bearer token authentication, endpoints `GET /me`, `GET /week`, `GET /ingredients`, `GET /activities`, `POST /water`, `POST /weight`, `POST /workout`; token management in `/settings`
+- **Admin panel** (#66): an owner-only `/admin/panel` managing feature flags (enable/disable/premium), the user list, premium subscriptions
+- **Feature flag system**: a `features` table with kill switch + is_premium, `requireFeature(key)` middleware, `HasFeature(ctx, user, key)` helper, 60 s TTL cache
+- **Subscriptions**: a `subscriptions` table with start/end dates, an `IsActive` method, managed from the admin panel
+- **API tokens**: an `api_tokens` table (SHA-256), created/revoked from settings, `requireAPIToken` middleware, `LastUsedAt` updated on every use
 
-### Tecnico
-- Migrazioni 0023 (coach), 0024 (subscriptions/features), 0025 (api_tokens)
-- Nuovi package: `internal/db` — `coach.go`, `api_tokens.go`, `features.go`, `subscriptions.go`
-- CSRF exempt su `/api/*` e `/admin/*`
-- Risposta JSON strutturata per tutti gli endpoint API
+### Technical
+- Migrations 0023 (coach), 0024 (subscriptions/features), 0025 (api_tokens)
+- New files in `internal/db`: `coach.go`, `api_tokens.go`, `features.go`, `subscriptions.go`
+- CSRF exempt on `/api/*` and `/admin/*`
+- Structured JSON responses for every API endpoint
 
 ---
 
 ## [Round 4] — 2026
 
-### Aggiunto
-- **Generazione automatica piano** (#62): algoritmo greedy che riempie la settimana pescando dalle varianti nutrizionista, puntando ai target macro
-- **Adherence analytics** (#64): score aderenza giornaliero/settimanale, streak rispetto piano, compliance % per tipo pasto, grafici nella pagina statistiche
+### Added
+- **Automatic plan generation** (#62): a greedy algorithm that fills the week from the nutritionist variants, aiming at the macro targets
+- **Adherence analytics** (#64): daily/weekly adherence score, streaks on the plan, compliance % per meal type, charts on the statistics page
 
-### Tecnico
-- Nuovi package: `internal/planner/`, `internal/service/planner.go`
-- Form "Genera settimana" nella dashboard (visibile solo a settimana vuota con piano attivo)
+### Technical
+- New packages: `internal/planner/`, `internal/service/planner.go`
+- A "Generate week" form on the dashboard (shown only for an empty week with an active plan)
 
 ---
 
 ## [Round 3] — 2026
 
-### Aggiunto
-- **TDEE adattivo** (#61): stima TDEE reale dal trend peso/intake delle ultime settimane, suggerimento automatico aggiustamento target macro, pulsante "Accetta" nella pagina statistiche
-- **Micronutrienti** (#60): fibre, zuccheri, grassi saturi, sodio estratti dal dump OFF; visualizzazione nel dettaglio ingrediente e ricetta
+### Added
+- **Adaptive TDEE** (#61): estimates the real TDEE from the weight/intake trend of the last weeks, suggests adjusting the macro targets, an "Accept" button on the statistics page
+- **Micronutrients** (#60): fiber, sugars, saturated fat and sodium extracted from the OFF dump; shown in the ingredient and recipe detail
 
-### Tecnico
-- Nuovi package: `internal/tdee/`, `internal/service/tdee.go`
-- Nuovi campi su `ingredients`: `fiber_g`, `sugar_g`, `saturated_fat_g`, `sodium_mg`
+### Technical
+- New packages: `internal/tdee/`, `internal/service/tdee.go`
+- New fields on `ingredients`: `fiber_g`, `sugar_g`, `saturated_fat_g`, `sodium_mg`
 
 ---
 
 ## [Round 2] — 2026
 
-### Aggiunto
-- **Tracciamento idratazione** (#58): log giornaliero `water_logs`, widget nella day card, target ml nel profilo, sparkline in statistiche
-- **Import ricetta da URL** (#57): parse `schema.org/Recipe` (JSON-LD e microdata), pre-compilazione automatica form ricetta
-- **Filtro allergeni** (#56): tag allergeni sulla scheda ingrediente, filtro multi-allergene nella lista ingredienti, warning inline nel piano e nei picker
+### Added
+- **Hydration tracking** (#58): a daily `water_logs` log, a widget in the day card, a ml target in the profile, a sparkline in the statistics
+- **Recipe import from a URL** (#57): parses `schema.org/Recipe` (JSON-LD and microdata), pre-fills the recipe form
+- **Allergen filter** (#56): allergen tags on the ingredient card, a multi-allergen filter in the ingredient list, inline warnings in the plan and the pickers
 
-### Tecnico
-- Nuovo package: `internal/recipeimport/`
-- Migrazione tabella `water_logs`
-- 14 allergeni pre-definiti (spec EU)
+### Technical
+- New package: `internal/recipeimport/`
+- `water_logs` table migration
+- 14 predefined allergens (EU list)
 
 ---
 
 ## [Round 1] — 2026
 
-### Aggiunto
-- **Ricerca OFF locale FTS5**: sync settimanale dump OFF (~250k prodotti italiani), ricerche <50ms, zero dipendenze runtime dalla rete
-- **Profilo utente**: peso/altezza, BMI/BMR calcolati, target macro personalizzati
-- **Allenamenti**: log allenamenti con calorie bruciate, dashboard settimanale attività
-- **Temi UI**: forest/ocean/sunset/mono, persistenza via cookie
-- **Sidebar PIN**: navigazione laterale collassabile, stato PIN persistito
-- **Tour guidato**: onboarding modale per nuovi utenti
-- **Statistiche grafici**: grafici peso, idratazione, macro settimanali con chart.js
-- **Piano nutrizionista**: struttura gerarchica meal types → varianti → items, assegnazione utente
+### Added
+- **Local OFF search over FTS5**: weekly sync of the OFF dump (~250k Italian products), searches under 50 ms, no network dependency at runtime
+- **User profile**: weight/height, computed BMI/BMR, personal macro targets
+- **Workouts**: workout log with calories burned, a weekly activity dashboard
+- **UI themes**: forest/ocean/sunset/mono, kept in a cookie
+- **Pinned sidebar**: a collapsible side navigation, pinned state kept
+- **Guided tour**: an onboarding dialog for new users
+- **Statistics charts**: weight, hydration and weekly macro charts with chart.js
+- **Nutrition plan**: a hierarchy of meal types → variants → items, assigned to the user
 
-### Tecnico
-- Package `internal/off/dump.go`: Syncer con stream-parse JSONL.gz
-- Migrazioni 0001–0022
-- Rate limiting per IP sul login
+### Technical
+- `internal/off/dump.go`: a Syncer that stream-parses the JSONL.gz dump
+- Migrations 0001–0022
+- Per-IP rate limiting on login
 - Security headers (HSTS, CSP, X-Frame-Options)
-- Export/import CSV piani settimanali
-- Export dati utente JSON (GDPR Art. 20)
-- Cancellazione account (GDPR Art. 17)
+- CSV export/import of weekly plans
+- User data export as JSON (GDPR Art. 20)
+- Account deletion (GDPR Art. 17)
