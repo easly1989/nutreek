@@ -28,7 +28,7 @@
         <span class="hidden lg:block">{{if eq .Role "coach"}}Coach{{else}}Utente{{end}}</span>
         <span>
           {{if .Premium}}
-          <span class="chip {{if .ExpiresSoon}}chip-warn{{else}}chip-soft{{end}}" title="Origine: {{.SubSource}}">{{with .SubExpires}}Premium fino al {{.Day}} {{monthName .}}{{else}}Premium, senza scadenza{{end}}</span>
+          <span class="chip {{if .ExpiresSoon}}chip-warn{{else}}chip-soft{{end}}" title="Origine: {{.SubSource}}"><span class="lg:hidden">Premium</span><span class="hidden lg:inline">{{with .SubExpires}}Premium fino al {{.Day}} {{monthName .}}{{else}}Premium, senza scadenza{{end}}</span></span>
           {{else}}
           <span class="chip chip-n">Free</span>
           {{end}}
