@@ -37,6 +37,21 @@ func statsFixture() statsInput {
 	}
 }
 
+// Il fabbisogno si abbina alla settimana per data, anche se le due date
+// arrivano con fusi diversi.
+func TestBuildStatsViewTDEEMatchesByDate(t *testing.T) {
+	in := statsFixture()
+	rome := time.FixedZone("CEST", 2*3600)
+	for i := range in.Weeks {
+		s := in.Weeks[i].Start
+		in.Weeks[i].Start = time.Date(s.Year(), s.Month(), s.Day(), 0, 0, 0, 0, rome)
+	}
+	c := buildStatsView(in).Charts
+	if c.TDEE[0] == nil || c.TDEE[2] == nil {
+		t.Errorf("fabbisogno = %v, attesi valori nella prima e nella terza settimana", c.TDEE)
+	}
+}
+
 func TestBuildStatsViewTiles(t *testing.T) {
 	v := buildStatsView(statsFixture())
 

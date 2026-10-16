@@ -7,7 +7,7 @@
   <p class="text-muted">{{index . 2}}</p>
   <div class="flex flex-wrap justify-center gap-2">
     <a href="/" class="btn-primary">{{template "icon_sm" "i-week"}}Torna alla settimana</a>
-    <button type="button" class="btn-secondary" onclick="history.back()">Indietro</button>
+    <button type="button" class="btn-secondary" onclick="if (history.length > 1) history.back(); else location.href = '/'">Indietro</button>
   </div>
 </div>
 {{end}}
