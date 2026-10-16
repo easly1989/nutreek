@@ -1,95 +1,94 @@
 # Handover — Nutreek
 
-Checklist e note operative per il passaggio di consegne a un nuovo proprietario
-del codice. Per l'architettura vedi [ARCHITECTURE.md](ARCHITECTURE.md); per la
-configurazione completa vedi [README.md](../README.md).
+Checklist and operational notes for handing the code over to a new owner. For
+the architecture see [ARCHITECTURE.md](ARCHITECTURE.md); for the full
+configuration see [README.md](../README.md).
 
 ---
 
-## Cosa viene trasferito
+## What is transferred
 
-- **Repository Git completo** con l'intera storia dei commit.
-- **Tutto il codice sorgente**: backend Go, template HTML/HTMX, sorgenti CSS
-  Tailwind, migrazioni SQL, query SQL scritte a mano nei repo.
-- **Documentazione**: README, CLAUDE.md (memoria di progetto), ROADMAP.md,
-  CHANGELOG.md, questo asset pack, screenshot in `docs/screenshots/`.
-- **Tutti i diritti** sul codice e sul nome del progetto, secondo i termini
-  dell'accordo di vendita. Il codice è pubblicato con licenza AGPL-3.0 (vedi
-  `LICENSE`); chi detiene i diritti può concedere licenze diverse.
+- **The complete Git repository**, with its full commit history.
+- **All the source code**: Go backend, HTML/HTMX templates, Tailwind CSS
+  sources, SQL migrations, the hand-written SQL in the repositories.
+- **Documentation**: README, CLAUDE.md (project memory), ROADMAP.md,
+  CHANGELOG.md, this asset pack, the screenshots in `docs/screenshots/`.
+- **All rights** to the code and the project name, under the terms of the sale
+  agreement. The code is published under the AGPL-3.0 license (see `LICENSE`);
+  whoever holds the rights can grant other licenses.
 
-## Cosa NON è incluso (da predisporre a cura dell'acquirente)
+## What is NOT included (for the buyer to set up)
 
-- Dominio, hosting, certificati TLS / reverse proxy.
-- Eventuale registrazione del marchio (non registrato).
-- Base utenti, dati di produzione, ricavi (il prodotto è pre-revenue).
-- Account o chiavi verso servizi terzi (nessuno è richiesto: OpenFoodFacts è
-  pubblico e non necessita di credenziali).
+- Domain, hosting, TLS certificates / reverse proxy.
+- A trademark registration (the name is not registered).
+- A user base, production data, revenue (the product is pre-revenue).
+- Accounts or keys for third-party services (none is needed: OpenFoodFacts is
+  public and needs no credentials).
 
 ---
 
-## Prerequisiti
+## Prerequisites
 
-- **Go 1.27+** (https://go.dev/dl/) — unico requisito per lo sviluppo nativo.
-- (Opzionale) **Docker 24+ / Compose v2** per il deploy in container.
-- Il CLI standalone di Tailwind viene scaricato automaticamente in `./bin/`.
+- **Go 1.27+** (https://go.dev/dl/) — the only requirement for native development.
+- (Optional) **Docker 24+ / Compose v2** for container deployment.
+- The standalone Tailwind CLI is downloaded automatically into `./bin/`.
 
-## Build & avvio
+## Build & run
 
 ```bash
-make setup       # scarica Tailwind CLI in ./bin/
-make generate    # rigenera il CSS Tailwind
+make setup       # download the Tailwind CLI into ./bin/
+make generate    # regenerate the Tailwind CSS
 make dev         # go run ./cmd/nutreek -> http://localhost:8080
-make build       # binario statico (CGO_ENABLED=0)
+make build       # static binary (CGO_ENABLED=0)
 make test        # go test ./...
 make docker-up   # docker compose up --build
 ```
 
-Il DB SQLite viene creato in `./data/nutreek.db` al primo avvio; le migrazioni
-sono applicate automaticamente. Il CSS generato è embeddato nel binario a
-compile-time: **rigenerarlo** (`make tailwind`) dopo modifiche a template o
-classi prima di `go build`.
+The SQLite DB is created in `./data/nutreek.db` on first start; migrations are
+applied automatically. The generated CSS is embedded in the binary at build
+time: **regenerate it** (`make tailwind`) after changing templates or classes,
+before `go build`.
 
 ---
 
-## Configurazione
+## Configuration
 
-Tutte le variabili `NUTREEK_*` sono documentate nella tabella in
-[README.md](../README.md#configurazione). Le più rilevanti per il deploy:
+Every `NUTREEK_*` variable is documented in the table in
+[README.md](../README.md#configuration). The most relevant for a deployment:
 
-| Variabile | Quando |
+| Variable | When |
 |-----------|--------|
-| `NUTREEK_SESSION_KEY` | **Obbligatoria in `prod`** — generare con `openssl rand -hex 32` |
-| `NUTREEK_ENV=prod` | Abilita secure cookies |
-| `NUTREEK_OWNER_EMAIL` | Email che ottiene accesso a `/admin/panel` |
-| `NUTREEK_PREMIUM_ENABLED` | `true` per attivare il gating premium |
-| `NUTREEK_DB_PATH` | Percorso del file SQLite (persistere su volume) |
+| `NUTREEK_SESSION_KEY` | **Required in `prod`** — generate it with `openssl rand -hex 32` |
+| `NUTREEK_ENV=prod` | Enables secure cookies |
+| `NUTREEK_OWNER_EMAIL` | The email that gets access to `/admin/panel` |
+| `NUTREEK_PREMIUM_ENABLED` | `true` to turn on premium gating |
+| `NUTREEK_DB_PATH` | Path of the SQLite file (keep it on a volume) |
 
 ---
 
-## Punti di attenzione operativi
+## Operational notes
 
-- **Primo avvio OFF**: la tabella `off_products` parte vuota; lo scheduler lancia
-  un sync iniziale in background (~0.9 GB di download, ~10 min). Le ricerche
-  ingredienti restano vuote finché il sync non completa. Disattivabile con
+- **First OFF start**: the `off_products` table starts empty; the scheduler runs
+  an initial sync in the background (~0.9 GB download, ~10 min). Ingredient
+  searches return nothing until the sync completes. It can be turned off with
   `NUTREEK_OFF_SYNC_ENABLED=false`.
-- **Backup**: il DB è un singolo file. Backup automatico via
-  `NUTREEK_BACKUP_ENABLED=true`; oppure a caldo con
+- **Backup**: the DB is a single file. Automatic backups with
+  `NUTREEK_BACKUP_ENABLED=true`, or a hot copy with
   `sqlite3 ./data/nutreek.db ".backup ./data/nutreek.backup.db"`.
-- **TLS**: il container non termina TLS — usare sempre un reverse proxy davanti
-  in produzione pubblica (esempio Caddy nel README).
-- **Healthcheck**: `nutreek -healthcheck` (probe HTTP locale su `/healthz`), già
-  configurato in `docker-compose.yml`.
-- **Dati sanitari**: peso/intake sono dati personali; valutare gli obblighi
-  GDPR applicabili nel proprio contesto di deploy. Esistono già export dati
-  utente (Art. 20) e cancellazione account (Art. 17).
+- **TLS**: the container does not terminate TLS — always put a reverse proxy in
+  front of a public deployment (a Caddy example is in the README).
+- **Healthcheck**: `nutreek -healthcheck` (a local HTTP probe on `/healthz`),
+  already configured in `docker-compose.yml`.
+- **Health data**: weight and intake are personal data; assess the GDPR
+  obligations that apply to your deployment. User data export (Art. 20) and
+  account deletion (Art. 17) already exist.
 
 ---
 
-## Primi passi consigliati per il nuovo proprietario
+## Suggested first steps for the new owner
 
-1. Clonare il repo, `make setup && make generate && make test` — verde atteso.
-2. `make dev`, registrare un utente con l'email impostata in
-   `NUTREEK_OWNER_EMAIL` e visitare `/admin/panel`.
-3. Leggere [ARCHITECTURE.md](ARCHITECTURE.md) per la mappa del codice.
-4. Aree di investimento naturali (oggi assenti): CI/CD, linter, test E2E,
-   eventuale PWA/scanner barcode (già predisposto lato backend — vedi ROADMAP).
+1. Clone the repo, `make setup && make generate && make test` — expect green.
+2. `make dev`, register a user with the email set in `NUTREEK_OWNER_EMAIL` and
+   open `/admin/panel`.
+3. Read [ARCHITECTURE.md](ARCHITECTURE.md) for a map of the code.
+4. A natural area of investment, missing today: end-to-end tests.

@@ -1,146 +1,148 @@
 # Nutreek — Roadmap
 
-> Posizionamento: **"Il sistema operativo nutrizionale self-hosted"** — l'unico strumento privacy-first che copre sia il tracking personale adattivo sia il workflow nutrizionista↔cliente, senza cloud, senza abbonamenti.
+> Historical: this page covers the rounds that led to the 2.0.0 release. Current work is tracked in [GitHub issues](https://github.com/easly1989/nutreek/issues), and the issues and pull requests linked below are written in Italian.
+
+> Positioning: **"The self-hosted nutrition operating system"** — the only privacy-first tool covering both adaptive personal tracking and the nutritionist↔client workflow, with no cloud and no subscriptions.
 
 ---
 
-## Stato di avanzamento
+## Progress
 
-| Sprint | Stato | Note |
+| Sprint | Status | Notes |
 |--------|-------|------|
-| Sprint 1 — Quick win | ✅ Completato | Round 1–3 |
-| Sprint 2 — Differenzianti | ✅ Completato | Round 3–4 |
-| Sprint 3 — Ambiziosi | ✅ Completato | Round 4–5 |
-| Monetizzazione | ✅ Completato | Round 5 |
-| Round 6 — Documentazione & Gating | 🔄 In corso | Issue #68, #69, #70 |
+| Sprint 1 — Quick wins | ✅ Done | Rounds 1–3 |
+| Sprint 2 — Differentiators | ✅ Done | Rounds 3–4 |
+| Sprint 3 — Ambitious | ✅ Done | Rounds 4–5 |
+| Monetization | ✅ Done | Round 5 |
+| Round 6 — Docs & gating | ✅ Done | #68, #69, #70 |
 
 ---
 
-## Asset differenzianti esistenti
+## Existing differentiators
 
-| Asset | Vantaggio vs concorrenti |
+| Asset | Advantage over competitors |
 |---|---|
-| Ricerca OFF locale FTS5 (<50ms, no rate limit) | Più veloce e affidabile di MyFitnessPal/Cronometer |
-| Tracking sgarri con override macro effettivi | Quasi unico: distingue "piano" da "mangiato davvero" |
-| Piani nutrizionista gerarchici (meal types → varianti → items) | Niche non servito nel self-hosted |
-| Template settimanali + lista spesa multi-settimana | In linea con Mealime/Paprika |
-| TDEE adattivo dal trend peso/intake | MacroFactor vende questa feature a $12/mese |
-| Coach mode: libreria piani, assegnazione clienti, storico freeze | Non servito in nessuna app self-hosted |
-| REST API v1 con Bearer token | Integrazione con Home Assistant, n8n, script personali |
-| Self-hosted, ~20 MB binario, zero cloud, zero CGO | Moat strutturale vs tutto il mercato cloud |
+| Local OFF search over FTS5 (<50 ms, no rate limit) | Faster and more reliable than MyFitnessPal/Cronometer |
+| Cheat tracking with effective macro overrides | Nearly unique: tells "planned" apart from "actually eaten" |
+| Hierarchical nutrition plans (meal types → variants → items) | A niche no self-hosted app serves |
+| Weekly templates + multi-week shopping list | On par with Mealime/Paprika |
+| Adaptive TDEE from the weight/intake trend | MacroFactor sells this feature at $12/month |
+| Coach mode: plan library, client assignment, frozen history | Not served by any self-hosted app |
+| REST API v1 with Bearer tokens | Integration with Home Assistant, n8n, personal scripts |
+| Self-hosted, ~20 MB binary, zero cloud, zero CGO | A structural moat against the whole cloud market |
 
 ---
 
-## Sprint 1 — Quick win ✅
+## Sprint 1 — Quick wins ✅
 
-### `#1` Filtro allergeni nell'UI — ✅ [#56](https://github.com/easly1989/nutreek/issues/56)
-Tag allergeni sulla scheda ingrediente, filtro nella lista, warning inline nel piano e nei picker.
+### `#1` Allergen filter in the UI — ✅ [#56](https://github.com/easly1989/nutreek/issues/56)
+Allergen tags on the ingredient card, a filter in the list, inline warnings in the plan and the pickers.
 
-### `#2` Import ricetta da URL — ✅ [#57](https://github.com/easly1989/nutreek/issues/57)
-Incolla un link a qualsiasi sito di ricette: parse del microdata `schema.org/Recipe` (JSON-LD o microdata), pre-compila nome, ingredienti, porzioni.
+### `#2` Recipe import from a URL — ✅ [#57](https://github.com/easly1989/nutreek/issues/57)
+Paste a link to any recipe site: parses the `schema.org/Recipe` data (JSON-LD or microdata) and pre-fills name, ingredients and servings.
 
-### `#3` Idratazione — ✅ [#58](https://github.com/easly1989/nutreek/issues/58)
-Tabella `water_logs`, widget nella day card, target giornaliero nel profilo, sparkline negli stats.
-
----
-
-## Sprint 2 — Differenzianti ✅
-
-### `#4` PWA + scanner barcode con fotocamera — ⏸ Deferred [#59](https://github.com/easly1989/nutreek/issues/59)
-Service worker + web manifest + BarcodeDetector. Rimandato a fase successiva.
-
-### `#5` Micronutrienti chiave — ✅ [#60](https://github.com/easly1989/nutreek/issues/60)
-Fibre, zuccheri, grassi saturi, sodio dal dump OFF. Esteso `ingredients`, `macros.go` e UI.
-
-### `#6` ⭐ TDEE adattivo (stile MacroFactor) — ✅ [#61](https://github.com/easly1989/nutreek/issues/61)
-Stima TDEE reale dal trend settimanale peso-vs-intake, suggerimento automatico aggiustamento target macro.
+### `#3` Hydration — ✅ [#58](https://github.com/easly1989/nutreek/issues/58)
+`water_logs` table, a widget in the day card, a daily target in the profile, a sparkline in the stats.
 
 ---
 
-## Sprint 3 — Ambiziosi ✅
+## Sprint 2 — Differentiators ✅
 
-### `#7` Generazione automatica del piano — ✅ [#62](https://github.com/easly1989/nutreek/issues/62)
-Algoritmo greedy: dati i target + pool varianti nutrizionista, riempie la settimana centrando i macro.
+### `#4` PWA + camera barcode scanner — ✅ [#59](https://github.com/easly1989/nutreek/issues/59)
+Service worker, web manifest and BarcodeDetector. Deferred at first, shipped in 2.0.0.
 
-### `#8` Coach mode multi-cliente — ✅ [#63](https://github.com/easly1989/nutreek/issues/63)
-Libreria piani, assegnazione clienti, storico freeze, dashboard coach con aderenza. RBAC implementato.
+### `#5` Key micronutrients — ✅ [#60](https://github.com/easly1989/nutreek/issues/60)
+Fiber, sugars, saturated fat and sodium from the OFF dump. Extended `ingredients`, `macros.go` and the UI.
 
-### `#9` Adherence analytics (piano vs reale) — ✅ [#64](https://github.com/easly1989/nutreek/issues/64)
-Score aderenza giornaliero/settimanale, streak rispetto piano, compliance % per tipo pasto.
+### `#6` ⭐ Adaptive TDEE (MacroFactor style) — ✅ [#61](https://github.com/easly1989/nutreek/issues/61)
+Estimates the real TDEE from the weekly weight-vs-intake trend and suggests adjusting the macro targets.
 
-### `#10` REST API + automazioni — ✅ [#65](https://github.com/easly1989/nutreek/issues/65)
+---
+
+## Sprint 3 — Ambitious ✅
+
+### `#7` Automatic plan generation — ✅ [#62](https://github.com/easly1989/nutreek/issues/62)
+A greedy algorithm: given the targets and the pool of nutrition plan variants, it fills the week hitting the macros.
+
+### `#8` Multi-client coach mode — ✅ [#63](https://github.com/easly1989/nutreek/issues/63)
+Plan library, client assignment, frozen history, a coach dashboard with adherence. RBAC implemented.
+
+### `#9` Adherence analytics (plan vs actual) — ✅ [#64](https://github.com/easly1989/nutreek/issues/64)
+Daily/weekly adherence score, streaks on the plan, compliance % per meal type.
+
+### `#10` REST API + automations — ✅ [#65](https://github.com/easly1989/nutreek/issues/65)
 Bearer token API v1: `GET /me`, `GET /week`, `GET /ingredients`, `GET /activities`, `POST /water`, `POST /weight`, `POST /workout`.
 
 ---
 
-## Monetizzazione ✅
+## Monetization ✅
 
-### `#11` Pannello admin + feature flag premium con sottoscrizioni — ✅ [#66](https://github.com/easly1989/nutreek/issues/66)
-Pannello web owner-only (`/admin/panel`). Feature flags con kill-switch + is_premium. Sottoscrizioni per-utente. Middleware `requireFeature`. Helper `HasFeature`. Cache 60s con invalidazione.
+### `#11` Admin panel + premium feature flags with subscriptions — ✅ [#66](https://github.com/easly1989/nutreek/issues/66)
+An owner-only web panel (`/admin/panel`). Feature flags with kill switch + is_premium. Per-user subscriptions. `requireFeature` middleware. `HasFeature` helper. 60 s cache with invalidation.
 
-Feature premium: `auto_plan`, `tdee_adaptive`, `coach_mode`, `api_access`.
-
----
-
-## Round 6 — Documentazione & Gating effettivo 🔄
-
-### `#68` Documentazione aggiornata — 🔄 In corso
-CLAUDE.md (nuove env vars, nuovi package, sezione premium), ROADMAP.md (questo file), CHANGELOG.md.
-
-### `#69` README con screenshot — 🔄 In corso
-README aggiornato con tabella funzionalità completa, env vars, esempi REST API, sezione Admin & Premium.
-
-### `#70` Premium gating effettivo — ✅ Implementato
-- `requireFeature("api_access")` aggiunto al gruppo `/api/v1/*`
-- `POST /settings/api-tokens` gated con `requireFeature("api_access")`
-- `Features map[string]bool` in `authPageData`, popolato in `baseData()` per ogni richiesta
-- Badge "Premium" nei template (dashboard, stats, settings)
-- Risposta JSON 403 dal middleware `requireFeature` per le route API
+Premium features: `auto_plan`, `tdee_adaptive`, `coach_mode`, `api_access`.
 
 ---
 
-## Matrice impatto / sforzo
+## Round 6 — Docs & actual gating ✅
+
+### `#68` Updated documentation — ✅
+CLAUDE.md (new env vars, new packages, premium section), ROADMAP.md (this file), CHANGELOG.md.
+
+### `#69` README with screenshots — ✅
+README updated with the full feature table, env vars, REST API examples, the Admin & Premium section.
+
+### `#70` Actual premium gating — ✅
+- `requireFeature("api_access")` added to the `/api/v1/*` group
+- `POST /settings/api-tokens` gated with `requireFeature("api_access")`
+- `Features map[string]bool` in `authPageData`, filled in `baseData()` on every request
+- "Premium" badges in the templates (dashboard, stats, settings)
+- JSON 403 response from the `requireFeature` middleware for API routes
+
+---
+
+## Impact / effort matrix
 
 ```
-Alto impatto
+High impact
      │
   #6 │         #8   #11
   #4 │    #7       #10
   #2 │  #5   #9
   #1 │        #3
-     └─────────────────── Alto sforzo
-      basso         alto
+     └─────────────────── High effort
+      low           high
 ```
 
-Ordine di esecuzione seguito: `#1` → `#2` → `#3` → `#5` → `#6` → `#9` → `#7` → `#8` → `#11` → `#10` → `#68/69/70`
+Order followed: `#1` → `#2` → `#3` → `#5` → `#6` → `#9` → `#7` → `#8` → `#11` → `#10` → `#68/69/70`
 
 ---
 
-## Note tecniche generali
+## General technical notes
 
-- Stack bloccato: Go 1.25+, chi, SQLite (modernc), HTMX, Tailwind v3.4.17
-- Nessuna dipendenza cloud obbligatoria per nessuna feature
-- Ogni feature su branch dedicato `feat/<scope>-<descrizione>` con conventional commits in italiano
-- `go build ./...` + `go test ./...` devono essere verdi prima di ogni push
+- Stack: Go, chi, SQLite (modernc), HTMX, Tailwind v3.4.17
+- No feature requires a cloud dependency
+- Each feature on its own branch `feat/<scope>-<description>` with Conventional Commits (in Italian at the time; in English since #146)
+- `go build ./...` + `go test ./...` must be green before every push
 
 ---
 
-## Issue GitHub (tutte le feature)
+## GitHub issues (every feature)
 
-| # | Titolo | Sprint | Stato |
+| # | Title | Sprint | Status |
 |---|---|---|---|
-| [#56](https://github.com/easly1989/nutreek/issues/56) | Filtro allergeni nell'UI | Sprint 1 | ✅ Chiusa |
-| [#57](https://github.com/easly1989/nutreek/issues/57) | Import ricetta da URL (schema.org/Recipe) | Sprint 1 | ✅ Chiusa |
-| [#58](https://github.com/easly1989/nutreek/issues/58) | Tracciamento idratazione | Sprint 1 | ✅ Chiusa |
-| [#59](https://github.com/easly1989/nutreek/issues/59) | PWA installabile + scanner barcode | Sprint 2 | ⏸ Deferred |
-| [#60](https://github.com/easly1989/nutreek/issues/60) | Micronutrienti chiave | Sprint 2 | ✅ Chiusa |
-| [#61](https://github.com/easly1989/nutreek/issues/61) | ⭐ TDEE adattivo (flagship) | Sprint 2 | ✅ Chiusa |
-| [#62](https://github.com/easly1989/nutreek/issues/62) | Generazione automatica del piano | Sprint 3 | ✅ Chiusa |
-| [#63](https://github.com/easly1989/nutreek/issues/63) | Coach mode multi-cliente (RBAC) | Sprint 3 | ✅ Chiusa |
-| [#64](https://github.com/easly1989/nutreek/issues/64) | Analytics aderenza + streak | Sprint 3 | ✅ Chiusa |
-| [#65](https://github.com/easly1989/nutreek/issues/65) | REST API + integrazioni self-hosted | Sprint 3 | ✅ Chiusa |
-| [#66](https://github.com/easly1989/nutreek/issues/66) | Pannello admin + feature flag + sottoscrizioni | Monetizzazione | ✅ Chiusa |
-| [#67](https://github.com/easly1989/nutreek/issues/67) | Roadmap tracking Round 5 | Tracking | ✅ Chiusa |
-| [#68](https://github.com/easly1989/nutreek/issues/68) | Documentazione aggiornata (CLAUDE.md, ROADMAP, CHANGELOG) | Round 6 | 🔄 In corso |
-| [#69](https://github.com/easly1989/nutreek/issues/69) | README con screenshot | Round 6 | 🔄 In corso |
-| [#70](https://github.com/easly1989/nutreek/issues/70) | Premium gating effettivo | Round 6 | ✅ Implementato |
+| [#56](https://github.com/easly1989/nutreek/issues/56) | Allergen filter in the UI | Sprint 1 | ✅ Closed |
+| [#57](https://github.com/easly1989/nutreek/issues/57) | Recipe import from a URL (schema.org/Recipe) | Sprint 1 | ✅ Closed |
+| [#58](https://github.com/easly1989/nutreek/issues/58) | Hydration tracking | Sprint 1 | ✅ Closed |
+| [#59](https://github.com/easly1989/nutreek/issues/59) | Installable PWA + barcode scanner | Sprint 2 | ✅ Closed (2.0.0) |
+| [#60](https://github.com/easly1989/nutreek/issues/60) | Key micronutrients | Sprint 2 | ✅ Closed |
+| [#61](https://github.com/easly1989/nutreek/issues/61) | ⭐ Adaptive TDEE (flagship) | Sprint 2 | ✅ Closed |
+| [#62](https://github.com/easly1989/nutreek/issues/62) | Automatic plan generation | Sprint 3 | ✅ Closed |
+| [#63](https://github.com/easly1989/nutreek/issues/63) | Multi-client coach mode (RBAC) | Sprint 3 | ✅ Closed |
+| [#64](https://github.com/easly1989/nutreek/issues/64) | Adherence analytics + streaks | Sprint 3 | ✅ Closed |
+| [#65](https://github.com/easly1989/nutreek/issues/65) | REST API + self-hosted integrations | Sprint 3 | ✅ Closed |
+| [#66](https://github.com/easly1989/nutreek/issues/66) | Admin panel + feature flags + subscriptions | Monetization | ✅ Closed |
+| [#67](https://github.com/easly1989/nutreek/issues/67) | Round 5 roadmap tracking | Tracking | ✅ Closed |
+| [#68](https://github.com/easly1989/nutreek/pull/68) | Updated docs (CLAUDE.md, ROADMAP, CHANGELOG) | Round 6 | ✅ Merged |
+| [#69](https://github.com/easly1989/nutreek/pull/69) | README with screenshots | Round 6 | ✅ Merged |
+| [#70](https://github.com/easly1989/nutreek/pull/70) | Actual premium gating | Round 6 | ✅ Merged |

@@ -1,29 +1,29 @@
-# Architettura — Nutreek
+# Architecture — Nutreek
 
-Documento tecnico di riferimento per la valutazione (due-diligence) e l'onboarding
-di uno sviluppatore. Descrive struttura, flussi principali e decisioni di design.
+Technical reference for evaluating the project (due diligence) and for onboarding
+a developer. It describes the structure, the main flows and the design decisions.
 
-Per l'esecuzione e la configurazione vedi [README.md](../README.md); per il
-passaggio di consegne vedi [HANDOVER.md](HANDOVER.md).
-
----
-
-## Panoramica
-
-Nutreek è un'applicazione web monolitica self-hosted scritta in Go. Server-side
-rendering con `html/template` + HTMX; nessuna SPA, nessun build frontend
-complesso. Persistenza su SQLite embedded (pure Go, no CGO). Il binario è statico
-e include template, CSS e migrazioni via `embed` — un singolo file eseguibile
-senza dipendenze esterne a runtime.
-
-**Numeri del progetto** (codice applicativo, escluso generato):
-- ~16.900 righe Go applicative + ~4.450 righe di test (32 file, 116 funzioni di test)
-- 127 route HTTP, 42 template HTML, 26 migrazioni SQL, 13 package interni
-- 7 dipendenze dirette, CGO disabilitato
+For running and configuring the app see [README.md](../README.md); for the
+handover see [HANDOVER.md](HANDOVER.md).
 
 ---
 
-## Flusso di una richiesta
+## Overview
+
+Nutreek is a self-hosted monolithic web application written in Go. Server-side
+rendering with `html/template` + HTMX: no SPA, no complex frontend build.
+Storage is embedded SQLite (pure Go, no CGO). The binary is static and carries
+the templates, CSS and migrations through `embed`: a single executable with no
+runtime dependencies.
+
+**Project size** (application code, generated code excluded, at the time of writing):
+- ~16,900 lines of application Go + ~4,450 lines of tests (32 files, 116 test functions)
+- 127 HTTP routes, 42 HTML templates, 26 SQL migrations, 13 internal packages
+- 7 direct dependencies, CGO disabled
+
+---
+
+## Request flow
 
 ```
 HTTP request
@@ -35,158 +35,161 @@ chi router  (internal/app/router.go)
 middleware stack  (internal/app/middleware.go)
    ├─ SCS session load/save        (cookie + sessions table)
    ├─ nosurf CSRF                   (exempt: /api/*, /admin/*)
-   ├─ rate limiter per-IP           (internal/app/rate_limit.go, login)
-   ├─ requireAuth                   (redirect /login se non loggato)
-   ├─ requireFeature(key)           (gating premium, opzionale per route)
-   └─ requireCoach / requireAdmin   (RBAC, opzionale per route)
+   ├─ per-IP rate limiter           (internal/app/rate_limit.go, login)
+   ├─ requireAuth                   (redirects to /login when signed out)
+   ├─ requireFeature(key)           (premium gating, optional per route)
+   └─ requireCoach / requireAdmin   (RBAC, optional per route)
    │
    ▼
 handler  (internal/app/*_handlers.go)
-   ├─ validazione input             (withinLen, parsing form/JSON)
-   ├─ chiamata a service o repo
-   └─ render template  /  risposta JSON
+   ├─ input validation              (withinLen, form/JSON parsing)
+   ├─ call a service or repository
+   └─ render a template  /  JSON response
    │
    ▼
-service  (internal/service/*)         orchestrazione business logic
+service  (internal/service/*)         business logic orchestration
    │
    ▼
-db repo  (internal/db/*.go)           SQL scritto a mano (database/sql)
+db repository  (internal/db/*.go)     hand-written SQL (database/sql)
    │
    ▼
-SQLite  (modernc.org/sqlite, file singolo)
+SQLite  (modernc.org/sqlite, single file)
 ```
 
-I package "puri" (`macros`, `planner`, `tdee`, `domain`) non hanno side-effect e
-sono testati in isolamento; i `service` li orchestrano con i repository DB.
+The "pure" packages (`macros`, `planner`, `tdee`, `domain`) have no side effects
+and are tested in isolation; the `service` package combines them with the DB
+repositories.
 
 ---
 
-## Package interni (`internal/`)
+## Internal packages (`internal/`)
 
-| Package | Responsabilità |
+| Package | Responsibility |
 |---------|----------------|
-| `app/` | Router chi, middleware, handler HTTP, rate limiter, validazione |
-| `auth/` | Hashing password (bcrypt cost 12), helper sessioni |
-| `config/` | Caricamento variabili d'ambiente `NUTREEK_*` |
-| `db/` | Repository per ogni dominio; SQL inline nei repo, `db/migrations/` embedded e applicate da goose |
-| `domain/` | Struct di dominio pure (nessuna business logic) |
-| `macros/` | Calcoli macro (Kcal/Proteine/Carbo/Grassi) puri e testati |
-| `off/` | Client OpenFoodFacts, sync del dump locale, reconciler periodico |
-| `planner/` | Algoritmo greedy di generazione del piano settimanale |
-| `profile/` | Calcolo profilo utente (BMI, BMR, target macro) |
-| `recipeimport/` | Import ricetta da URL (`schema.org/Recipe`, JSON-LD/microdata) |
-| `service/` | Orchestrazione: `PlannerService`, `TDEEService` |
-| `tdee/` | Stima TDEE adattiva (algoritmo puro su trend peso/intake) |
-| `web/` | Template HTML + asset statici, embeddati nel binary |
+| `app/` | chi router, middleware, HTTP handlers, rate limiter, validation |
+| `auth/` | Password hashing (bcrypt cost 12), session helpers |
+| `config/` | Loading the `NUTREEK_*` environment variables |
+| `db/` | One repository per domain; inline SQL, `db/migrations/` embedded and applied by goose |
+| `domain/` | Plain domain structs (no business logic) |
+| `macros/` | Pure, tested macro calculations (kcal/protein/carbs/fat) |
+| `off/` | OpenFoodFacts client, local dump sync, periodic reconciler |
+| `planner/` | Greedy weekly plan generation |
+| `profile/` | User profile calculations (BMI, BMR, macro targets) |
+| `recipeimport/` | Recipe import from a URL (`schema.org/Recipe`, JSON-LD/microdata) |
+| `service/` | Orchestration: `PlannerService`, `TDEEService` |
+| `tdee/` | Adaptive TDEE estimate (pure algorithm over the weight/intake trend) |
+| `web/` | HTML templates + static assets, embedded in the binary |
 
 ---
 
-## Flussi chiave
+## Key flows
 
-### Autenticazione e sessioni
-Registrazione/login in `internal/app/auth_handlers.go`; password con bcrypt
-(`internal/auth`). Le sessioni usano SCS v2 con store SQLite (tabella `sessions`).
-Il middleware in `internal/app/middleware.go` carica la sessione, applica CSRF
-(nosurf) e popola l'utente nel context. Ogni risorsa è scoped all'utente
-autenticato.
+### Authentication and sessions
+Sign-up and sign-in live in `internal/app/auth_handlers.go`; passwords use bcrypt
+(`internal/auth`). Sessions use SCS v2 with a SQLite store (`sessions` table).
+The middleware in `internal/app/middleware.go` loads the session, applies CSRF
+(nosurf) and puts the user in the context. Every resource is scoped to the
+authenticated user.
 
-### Feature gating premium
-Cuore del modello di monetizzazione. `HasFeature(ctx, user, key)` in
-`internal/app/features.go` decide l'accesso:
-- `NUTREEK_PREMIUM_ENABLED=false` → tutto accessibile (default);
-- owner (`NUTREEK_OWNER_EMAIL`) → accesso totale;
-- feature disabilitata (kill-switch) → bloccata per tutti;
-- feature non-premium → accessibile;
-- feature premium → richiede sottoscrizione attiva (`internal/db/subscriptions.go`).
+### Premium feature gating
+The core of the monetization model. `HasFeature(ctx, user, key)` in
+`internal/app/features.go` decides access:
+- `NUTREEK_PREMIUM_ENABLED=false` → everything available (default);
+- owner (`NUTREEK_OWNER_EMAIL`) → full access;
+- disabled feature (kill switch) → blocked for everyone;
+- non-premium feature → available;
+- premium feature → needs an active subscription (`internal/db/subscriptions.go`).
 
-Il middleware `requireFeature(key)` protegge le route (HTML→redirect `/upgrade`,
-HTMX→`HX-Redirect`, API→`403 JSON`). Le definizioni feature stanno in
-`internal/db/features.go`; una cache in-memory (`sync.RWMutex`, TTL 60s) evita
-query ripetute ed è invalidata ad ogni toggle dall'admin panel.
+The `requireFeature(key)` middleware protects routes (HTML → redirect to `/upgrade`,
+HTMX → `HX-Redirect`, API → `403 JSON`). Feature definitions live in
+`internal/db/features.go`; an in-memory cache (`sync.RWMutex`, 60 s TTL) avoids
+repeated queries and is invalidated on every toggle from the admin panel.
 
-### Generazione automatica del piano
-`internal/planner/generator.go` implementa un algoritmo greedy che riempie la
-settimana pescando dalle varianti del piano nutrizionista per avvicinarsi ai
-target macro dell'utente. Orchestrato da `internal/service/planner_service.go`.
+### Automatic plan generation
+`internal/planner/generator.go` implements a greedy algorithm that fills the
+week from the variants of the nutrition plan to get close to the user's macro
+targets. Orchestrated by `internal/service/planner_service.go`.
 
-### TDEE adattivo
-`internal/tdee/estimator.go` stima il fabbisogno calorico reale dal trend
-settimanale peso-vs-intake (dati da `weight_logs` + storico pasti).
-`internal/service/tdee_service.go` espone il calcolo e il suggerimento di
-aggiornamento target.
+### Adaptive TDEE
+`internal/tdee/estimator.go` estimates the real energy expenditure from the
+weekly weight-vs-intake trend (data from `weight_logs` and the meal history).
+`internal/service/tdee_service.go` exposes the calculation and the suggested
+target update.
 
-### OpenFoodFacts (ricerca locale)
-`internal/off/dump.go` scarica settimanalmente il dump pubblico OFF, lo
-stream-parsa filtrando i prodotti italiani e popola `off_products` +
-indice FTS5 `off_products_fts`. Le ricerche sono 100% locali (<50ms), zero
-chiamate HTTP nel search-path. Il lookup per barcode resta live verso l'API OFF
-(`internal/off/client.go`), usato solo al primo import di un prodotto nuovo.
-Dettagli e motivazione in [CLAUDE.md](../CLAUDE.md#strategia-openfoodfacts-off).
+### OpenFoodFacts (local search)
+`internal/off/dump.go` downloads the public OFF dump weekly, stream-parses it
+keeping Italian products, and fills `off_products` and the
+`off_products_fts` FTS5 index. Searches are fully local (<50 ms), with no HTTP
+calls on the search path. Barcode lookup stays live against the OFF API
+(`internal/off/client.go`), used only the first time a new product is imported.
+Details and rationale in [CLAUDE.md](../CLAUDE.md#openfoodfacts-off-strategy).
 
 ### REST API v1
-`internal/app/api_handlers.go` espone endpoint JSON sotto `/api/v1/*`,
-autenticati con Bearer token. I token sono generati come `nutreek_<hex>` e
-memorizzati come hash SHA-256 (`internal/db/api_tokens.go`). Il gruppo route è
-protetto da `requireAPIToken` + `requireFeature("api_access")`.
+`internal/app/api_handlers.go` exposes JSON endpoints under `/api/v1/*`,
+authenticated with a Bearer token. Tokens are generated as `nutreek_<hex>` and
+stored as SHA-256 hashes (`internal/db/api_tokens.go`). The route group is
+protected by `requireAPIToken` + `requireFeature("api_access")`.
 
 ### Coach mode (RBAC)
-Gli utenti con ruolo `coach` accedono al gruppo `/coach/*`
-(`internal/app/coach_handlers.go`). Possono gestire una libreria di piani
-nutrizionali e assegnarli ai clienti collegati (`internal/db/coach.go`,
-tabella `coach_clients`). Protetto da `requireCoach` + `requireFeature("coach_mode")`.
+Users with the `coach` role reach the `/coach/*` group
+(`internal/app/coach_handlers.go`). They manage a library of nutrition plans
+and assign them to linked clients (`internal/db/coach.go`, `coach_clients`
+table). Protected by `requireCoach` + `requireFeature("coach_mode")`.
 
 ### Admin panel
-`internal/app/admin_panel_handlers.go` espone `/admin/panel`, accessibile solo
-all'owner (email in `NUTREEK_OWNER_EMAIL`). Gestisce feature flags, lista utenti
-e assegnazione sottoscrizioni premium.
+`internal/app/admin_panel_handlers.go` serves `/admin/panel`, reachable only by
+the owner (the email in `NUTREEK_OWNER_EMAIL`). It manages feature flags, the
+user list and premium subscriptions.
 
 ---
 
-## Schema dati (alto livello)
+## Data model (high level)
 
-Tabelle principali raggruppate per dominio (dettaglio completo in
-`internal/db/migrations/`):
+Main tables grouped by domain (full detail in `internal/db/migrations/`):
 
-- **Utenti & sessioni**: `users` (con profilo, ruolo, target macro), `sessions`
-- **Piani & pasti**: `weekly_plans`, `meals`, `meal_items`,
+- **Users & sessions**: `users` (with profile, role, macro targets), `sessions`
+- **Plans & meals**: `weekly_plans`, `meals`, `meal_items`,
   `meal_item_customizations`, `meal_cheat_items`, `meal_templates`,
   `meal_template_slots`
-- **Piano nutrizionista**: `nutritionist_plans`, `nutritionist_meal_types`,
+- **Nutrition plan**: `nutritionist_plans`, `nutritionist_meal_types`,
   `nutritionist_meal_variations`, `nutritionist_meal_items`
-- **Ingredienti & OFF**: `ingredients`, `ingredient_categories`, `allergen_tags`,
-  `ingredient_allergens`, `off_products`, `off_products_fts` (FTS5), `off_sync_state`
-- **Ricette**: `recipes`, `recipe_ingredients`
+- **Ingredients & OFF**: `ingredients`, `ingredient_categories`,
+  `ingredient_user_categories`, `allergen_tags`, `ingredient_allergens`,
+  `off_products`, `off_products_fts` (FTS5), `off_sync_state`
+- **Recipes**: `recipes`, `recipe_ingredients`
 - **Tracking**: `weight_logs`, `water_logs`, `workout_activities`, `workout_logs`
-- **Lista spesa**: `shopping_lists`, `shopping_list_items`, `shopping_user_items`
+- **Shopping list**: `shopping_lists`, `shopping_list_items`, `shopping_user_items`
 - **Coach**: `coach_clients`
-- **Monetizzazione**: `features`, `subscriptions`, `api_tokens`
+- **Monetization**: `features`, `subscriptions`, `api_tokens`
 
-Le migrazioni Goose sono embeddate ed eseguite automaticamente all'avvio.
-
----
-
-## Decisioni di design notevoli
-
-- **SQLite pure-Go (no CGO)**: `modernc.org/sqlite`. Build statica
-  (`CGO_ENABLED=0`), cross-compile banale, immagine Docker distroless ~20 MB.
-- **OFF locale invece che runtime**: gli endpoint pubblici OFF non sono
-  affidabili per search-as-you-type (rate limit, latenza, ~20% 503). Eliminare
-  la dipendenza runtime è l'unica via 100% affidabile.
-- **Embedding di template/CSS/migrazioni**: un singolo binario senza file esterni
-  da deployare; il CSS Tailwind è generato a compile-time e va rigenerato dopo
-  modifiche.
-- **Cache feature 60s**: il gating premium è sul path di ogni richiesta; la cache
-  evita query DB ripetute mantenendo reattività ai toggle admin (invalidazione).
-- **Server-side + HTMX**: nessun build frontend, nessuna SPA da mantenere;
-  interattività via HTMX e piccoli script vanilla.
+Goose migrations are embedded and run automatically at startup.
 
 ---
 
-## Stato test e qualità
+## Notable design decisions
 
-- `go test ./...` verde. Copertura su: auth, macros, db layer (tutti i repo),
-  OFF client/reconciler, rate limiter, API tokens, features, planner, tdee.
-- Pattern: tabelle di test, `t.Cleanup()`, SQLite temporaneo per isolamento.
-- **Non presente**: test end-to-end/UI, pipeline CI/CD, linter configurato.
-  Sono le aree naturali di investimento per un acquirente che voglia
-  industrializzare il prodotto.
+- **Pure-Go SQLite (no CGO)**: `modernc.org/sqlite`. Static build
+  (`CGO_ENABLED=0`), trivial cross-compiling, a ~20 MB distroless Docker image.
+- **Local OFF instead of runtime calls**: the public OFF endpoints are not
+  reliable for search-as-you-type (rate limit, latency, ~20% 503s). Dropping
+  the runtime dependency is the only fully reliable way.
+- **Embedded templates, CSS and migrations**: a single binary with no external
+  files to deploy; the Tailwind CSS is generated at build time and must be
+  regenerated after changes.
+- **60 s feature cache**: premium gating sits on every request's path; the
+  cache avoids repeated DB queries while staying responsive to admin toggles
+  (invalidation).
+- **Server-side + HTMX**: no frontend build, no SPA to maintain; interactivity
+  through HTMX and small vanilla scripts.
+
+---
+
+## Tests and quality
+
+- `go test ./...` is green. Covered: auth, macros, the db layer (every
+  repository), OFF client/reconciler, rate limiter, API tokens, features,
+  planner, tdee, ownership checks on handlers.
+- Pattern: table tests, `t.Cleanup()`, a temporary SQLite DB for isolation.
+- GitHub Actions CI runs the tests with `-race`, golangci-lint, the binary and
+  Docker builds and govulncheck on every pull request.
+- **Not present**: end-to-end/UI tests.

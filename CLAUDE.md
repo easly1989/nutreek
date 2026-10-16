@@ -1,234 +1,243 @@
-# Nutreek — Memoria per Claude Code
+# Nutreek — Project memory for Claude Code
 
-## Panoramica progetto
+## Overview
 
-**Nutreek** è un'app web self-hosted per la gestione di piani nutrizionali settimanali, scritta interamente in italiano. Sviluppatore singolo (amon2126), open source con licenza AGPL-3.0, MVP attivo. README in inglese (`README.md`), versione italiana in `README.it.md`: vanno tenuti allineati.
+**Nutreek** is a self-hosted web app for planning weekly meals and tracking nutrition. Single developer (amon2126), open source under AGPL-3.0, active MVP. The README is in English (`README.md`) with an Italian version in `README.it.md`: keep the two aligned.
 
-Funzionalità principali: gestione ingredienti (integrazione OpenFoodFacts locale FTS5), ricette, template settimanali, piani pasto con calcolo macro (Kcal, Proteine, Carboidrati, Grassi), lista della spesa, tracciamento sgarri, TDEE adattivo, generazione automatica settimana, coach mode multi-cliente, REST API v1, admin panel con feature flag e sottoscrizioni premium.
+Main features: ingredients (local OpenFoodFacts search over FTS5), recipes, weekly templates, meal plans with macro totals (kcal, protein, carbs, fat), shopping list, cheat tracking, adaptive TDEE, automatic week generation, multi-client coach mode, REST API v1, admin panel with feature flags and premium subscriptions.
 
 ---
 
-## Stack tecnico
+## Language
 
-| Layer | Tecnologia |
+- **Code, docs, commits, issues and pull requests are in English** (#146): comments, doc comments, test names and messages, log messages, `CHANGELOG.md`, everything under `docs/`.
+- **The text users see is still Italian**, written directly in templates and handlers. It moves into translation catalogs with #141; until then, leave it as it is.
+- History stays as written: commits, issues and pull requests before #146 are in Italian, and the CHANGELOG entries up to 2.0.0 link to them.
+- `README.it.md` is the Italian README and stays Italian.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
 |-------|-----------|
 | Backend | Go 1.27+, chi router |
 | Database | SQLite (`modernc.org/sqlite`, pure Go, no CGO) |
-| Query | SQL scritto a mano su `database/sql` (repo in `internal/db/*.go`) |
+| Queries | Hand-written SQL on `database/sql` (repositories in `internal/db/*.go`) |
 | Migrations | Goose |
 | Sessions | SCS v2 + SQLite store |
-| Auth | bcrypt (cost 12), NOSURF CSRF |
+| Auth | bcrypt (cost 12), nosurf CSRF |
 | Frontend | `html/template` + HTMX + Tailwind CSS v3.4.17 |
 | Deploy | Static binary / Docker distroless (~20 MB) |
 
 ---
 
-## Struttura directory
+## Directory layout
 
 ```
 cmd/nutreek/          → entrypoint (main.go, -healthcheck subcommand)
 internal/
-  app/                → handler HTTP, router (chi), middleware, rate limiter, validazione
-  auth/               → hashing password (bcrypt), helper sessioni
-  config/             → caricamento variabili d'ambiente (NUTREEK_*)
+  app/                → HTTP handlers, router (chi), middleware, rate limiter, validation
+  auth/               → password hashing (bcrypt), session helpers
+  config/             → environment variables (NUTREEK_*)
   db/
-    migrations/       → SQL goose (0001…0025+, embedded)
-  domain/             → struct di dominio pure (nessuna business logic)
-  macros/             → calcoli macro puri (zero side-effect, testati)
-  off/                → client OpenFoodFacts + sync dump locale + reconciler periodico
-  planner/            → algoritmo greedy generazione piano settimanale (GenerateWeek)
-  profile/            → logica salvataggio profilo utente (BMI, BMR, target macro)
-  recipeimport/       → import ricetta da URL (schema.org/Recipe, JSON-LD/microdata)
-  service/            → orchestrazione: PlannerService (GenerateWeek, EffectivePlanFull),
-                        TDEEService (calcolo TDEE adattivo da trend peso/intake)
-  tdee/               → calcolo TDEE adattivo puro (algoritmo, nessun side-effect)
+    migrations/       → goose SQL (0001…0028+, embedded)
+  domain/             → plain domain structs (no business logic)
+  macros/             → pure macro calculations (no side effects, tested)
+  off/                → OpenFoodFacts client + local dump sync + periodic reconciler
+  planner/            → greedy weekly plan generation (GenerateWeek)
+  profile/            → user profile logic (BMI, BMR, macro targets)
+  recipeimport/       → recipe import from a URL (schema.org/Recipe, JSON-LD/microdata)
+  service/            → orchestration: PlannerService (GenerateWeek, EffectivePlanFull),
+                        TDEEService (adaptive TDEE from weight/intake trends)
+  tdee/               → pure adaptive TDEE algorithm (no side effects)
   web/
-    templates/        → HTML con HTMX (embedded nel binary al compile time)
-    static/css/       → tailwind.css generato — NON editare direttamente
-web/tailwind/         → tailwind.config.js + input.css (sorgenti CSS)
-scripts/              → PowerShell helpers per Windows
-data/                 → SQLite DB a runtime (gitignored)
+    templates/        → HTML with HTMX (embedded in the binary at compile time)
+    static/css/       → generated tailwind.css — do NOT edit by hand
+web/tailwind/         → tailwind.config.js + input.css (CSS sources)
+scripts/              → PowerShell helpers for Windows
+data/                 → SQLite DB at runtime (gitignored)
 ```
 
 ---
 
-## Comandi principali
+## Main commands
 
 ```bash
-make setup            # scarica Tailwind CLI v3.4.17 in ./bin/
-make generate         # alias di tailwind (eseguire dopo modifiche a template o CSS)
-make tailwind         # solo build CSS
+make setup            # download Tailwind CLI v3.4.17 into ./bin/
+make generate         # alias of tailwind (run after changing templates or CSS)
+make tailwind         # CSS build only
 make tailwind-watch   # watch CSS in dev
 make dev              # go run ./cmd/nutreek  →  localhost:8080
 make test             # go test ./...
-make build            # binary statico (CGO_ENABLED=0)
+make build            # static binary (CGO_ENABLED=0)
 make docker-up        # docker compose up --build
 ```
 
 ---
 
-## Variabili d'ambiente
+## Environment variables
 
-| Variabile | Default | Note |
+| Variable | Default | Notes |
 |-----------|---------|------|
 | `NUTREEK_ADDR` | `:8080` | |
 | `NUTREEK_DB_PATH` | `./data/nutreek.db` | |
-| `NUTREEK_ENV` | `dev` | `prod` abilita secure cookies |
-| `NUTREEK_SESSION_KEY` | auto in dev | **richiesto in prod** (hex ≥64 chars) |
-| `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | host product lookup (barcode) live |
-| `NUTREEK_OFF_DUMP_URL` | `https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz` | URL del dump JSONL.gz scaricato dal Syncer |
-| `NUTREEK_OFF_SYNC_INTERVAL` | `168h` (7 giorni) | frequenza minima del sync automatico |
-| `NUTREEK_OFF_SYNC_ENABLED` | `true` | abilita lo scheduler del sync |
+| `NUTREEK_ENV` | `dev` | `prod` enables secure cookies |
+| `NUTREEK_SESSION_KEY` | auto in dev | **required in prod** (hex ≥64 chars) |
+| `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | live product lookup host (barcode) |
+| `NUTREEK_OFF_DUMP_URL` | `https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz` | JSONL.gz dump URL downloaded by the Syncer |
+| `NUTREEK_OFF_SYNC_INTERVAL` | `168h` (7 days) | minimum interval of the automatic sync |
+| `NUTREEK_OFF_SYNC_ENABLED` | `true` | enables the sync scheduler |
 | `NUTREEK_RECONCILE_INTERVAL` | `24h` | |
 | `NUTREEK_RECONCILE_ENABLED` | `true` | |
-| `NUTREEK_ADMIN_TOKEN` | (nessuno) | token per admin endpoints legacy |
-| `NUTREEK_OWNER_EMAIL` | (nessuno) | email utente owner — accesso esclusivo a `/admin/panel` |
-| `NUTREEK_PREMIUM_ENABLED` | `false` | se `true`, attiva il gating premium sulle feature marcate come tali |
-| `NUTREEK_BACKUP_ENABLED` | `false` | abilita backup SQLite automatico periodico |
-| `NUTREEK_BACKUP_DIR` | `./data/backups` | directory dove salvare i backup |
-| `NUTREEK_BACKUP_INTERVAL` | `24h` | frequenza backup automatici |
-| `NUTREEK_BACKUP_KEEP` | `7` | numero di backup da conservare (i più vecchi vengono eliminati) |
+| `NUTREEK_ADMIN_TOKEN` | (none) | token for the legacy admin endpoints |
+| `NUTREEK_OWNER_EMAIL` | (none) | owner's email — sole access to `/admin/panel` |
+| `NUTREEK_PREMIUM_ENABLED` | `false` | when `true`, gates the features marked premium |
+| `NUTREEK_BACKUP_ENABLED` | `false` | enables periodic automatic SQLite backups |
+| `NUTREEK_BACKUP_DIR` | `./data/backups` | where backups are written |
+| `NUTREEK_BACKUP_INTERVAL` | `24h` | automatic backup interval |
+| `NUTREEK_BACKUP_KEEP` | `7` | backups to keep (the oldest are deleted) |
 
-## Strategia OpenFoodFacts (OFF)
+## OpenFoodFacts (OFF) strategy
 
-Tutta la ricerca testuale OFF e' **locale** via SQLite FTS5. Il `Syncer`
-(`internal/off/dump.go`) scarica settimanalmente il dump pubblico OFF
-(~0.9GB compressi), lo stream-parsa filtrando i prodotti italiani
-(`countries_tags` contiene `en:italy`, ~250k prodotti) e popola la
-tabella `off_products` + indice FTS5 `off_products_fts`. Risultato:
-ricerche <50ms, zero chiamate HTTP in search-path, mai piu' 503.
+All OFF text search is **local**, via SQLite FTS5. The `Syncer`
+(`internal/off/dump.go`) downloads the public OFF dump weekly
+(~0.9 GB compressed), stream-parses it keeping Italian products
+(`countries_tags` contains `en:italy`, ~250k products) and fills
+the `off_products` table and the `off_products_fts` FTS5 index.
+Result: searches under 50 ms, no HTTP calls on the search path, no
+more 503s.
 
-Motivazione: gli endpoint pubblici OFF non sono affidabili per
-search-as-you-type. `cgi/search.pl` ha rate limit ufficiale 10 req/min
-+ latenza 3-12s + ~20% 503. Search-a-licious ha gap d'indicizzazione.
-L'unica via 100% affidabile e' eliminare la dipendenza runtime dalla
-ricerca OFF.
+Why: the public OFF endpoints are not reliable for search-as-you-type.
+`cgi/search.pl` has an official rate limit of 10 req/min, 3–12 s
+latency and ~20% 503s. Search-a-licious has indexing gaps. The only
+fully reliable way is to drop the runtime dependency on OFF search.
 
-Lookup per barcode (`OFF.GetByBarcode`) resta live verso
-`world.openfoodfacts.org/api/v2/product/{code}.json`: endpoint
-puntuale, affidabile, usato solo al primo import di un prodotto nuovo.
+Barcode lookup (`OFF.GetByBarcode`) stays live against
+`world.openfoodfacts.org/api/v2/product/{code}.json`: a single-product
+endpoint, reliable, used only the first time a new product is imported.
 
-Trigger manuale: `POST /admin/refresh-off-dump` (richiede
-`X-Admin-Token`). Stato corrente: `GET /admin/off-status`.
+Manual trigger: `POST /admin/refresh-off-dump` (needs
+`X-Admin-Token`). Current state: `GET /admin/off-status`.
 
-**Bootstrap**: al primo avvio `off_products` e' vuota; lo scheduler
-lancia un sync iniziale in background. Le ricerche restano vuote
-finche' il sync non completa (~10 min, ~0.9GB di banda).
+**Bootstrap**: on first start `off_products` is empty; the scheduler
+starts an initial sync in the background. Searches return nothing
+until it completes (~10 min, ~0.9 GB of bandwidth).
 
 ---
 
-## Feature Premium
+## Premium features
 
-### Logica `HasFeature`
+### `HasFeature` logic
 
-`app.HasFeature(ctx, user, key) bool` — funzione centrale per l'accesso premium:
+`app.HasFeature(ctx, user, key) bool` — the single entry point for premium access:
 
-- `PremiumEnabled=false` → **sempre `true`** (tutto accessibile, default dev)
-- Utente è owner (`isOwner`) → **sempre `true`**
-- `feature.enabled = false` → **`false`** per tutti (kill-switch)
-- `feature.is_premium = false` → **`true`** (feature pubblica abilitata)
+- `PremiumEnabled=false` → **always `true`** (everything available, dev default)
+- The user is the owner (`isOwner`) → **always `true`**
+- `feature.enabled = false` → **`false`** for everyone (kill switch)
+- `feature.is_premium = false` → **`true`** (public feature, enabled)
 - `feature.is_premium = true` → **`Subscriptions.IsActive(userID)`**
-- Errore DB o feature sconosciuta → `true` (fallback permissivo)
+- DB error or unknown feature → `true` (permissive fallback)
 
-### Middleware `requireFeature`
+### `requireFeature` middleware
 
-`app.requireFeature(key)` — middleware chi per proteggere le route:
+`app.requireFeature(key)` — chi middleware that protects routes:
 
-- Richiesta HTML browser → `302 /upgrade`
-- Richiesta HTMX (`HX-Request: true`) → `HX-Redirect: /upgrade` + `403`
-- Richiesta API/JSON → `403 {"error": "funzionalità non disponibile nel tuo piano"}`
+- Browser HTML request → `302 /upgrade`
+- HTMX request (`HX-Request: true`) → `HX-Redirect: /upgrade` + `403`
+- API/JSON request → `403 {"error": "funzionalità non disponibile nel tuo piano"}`
 
 ### Cache
 
-`featureCache` — `sync.RWMutex` + TTL 60s, invaldata automaticamente dopo ogni toggle admin (`invalidateFeatureCache()`).
+`featureCache` — `sync.RWMutex` + 60 s TTL, invalidated after every admin toggle (`invalidateFeatureCache()`).
 
-### Feature keys in uso
+### Feature keys in use
 
-| Key | Funzionalità | Route protette |
+| Key | Feature | Protected routes |
 |-----|-------------|---------------|
-| `auto_plan` | Generazione automatica settimana | `POST /week/generate` |
-| `tdee_adaptive` | TDEE adattivo | `POST /tdee/accept` |
-| `coach_mode` | Pannello coach | gruppo `/coach/*` |
-| `api_access` | REST API v1 | gruppo `/api/v1/*`, `POST /settings/api-tokens` |
+| `auto_plan` | Automatic week generation | `POST /week/generate` |
+| `tdee_adaptive` | Adaptive TDEE | `POST /tdee/accept` |
+| `coach_mode` | Coach panel | group `/coach/*` |
+| `api_access` | REST API v1 | group `/api/v1/*`, `POST /settings/api-tokens` |
 
-### `Features` nei template
+### `Features` in templates
 
-`authPageData.Features map[string]bool` — popolato in `baseData()` per ogni richiesta autenticata (cheap: usa cache 60s). Usato nei template con `{{if index .Features "key"}}` per mostrare badge Premium e messaggi upgrade prima che l'utente clicchi.
+`authPageData.Features map[string]bool` — filled in `baseData()` on every authenticated request (cheap: uses the 60 s cache). Templates use `{{if index .Features "key"}}` to show Premium badges and upgrade messages before the user clicks.
 
 ---
 
-## Convenzioni codice
+## Code conventions
 
-- **Lingua**: italiano per commenti, UI, messaggi di commit
-- **Commit style**: Conventional Commits con scope  
-  Esempi: `feat(shopping): aggiungi dropdown settimane passate`, `fix(plan): correggi calcolo macro cheat`
-- **Nomi handler**: `handle{Sezione}{Azione}` (es. `handleIngredientCreate`)
-- **Nomi aggregati**: `{Entity}Full` per struct con relazioni caricate (es. `RecipeWithItems`)
-- **Errori**: sentinel errors per dominio (es. `ErrIngredientNotFound`), wrapping con `%w`
-- **Validazione**: `withinLen(s, max)` per lunghezze UTF-8 aware; `MaxNameLen=200`, `MaxDescriptionLen=2000`
+- **Language**: English for code, comments, commits and docs; see [Language](#language). User-facing text stays Italian until #141.
+- **Commit style**: Conventional Commits with a scope, in English
+  Examples: `feat(shopping): add past weeks dropdown`, `fix(plan): correct cheat macro totals`
+- **Handler names**: `handle{Section}{Action}` (e.g. `handleIngredientCreate`)
+- **Aggregate names**: `{Entity}Full` for structs with loaded relations (e.g. `RecipeWithItems`)
+- **Errors**: sentinel errors per domain (e.g. `ErrIngredientNotFound`), wrapped with `%w`
+- **Validation**: `withinLen(s, max)` for UTF-8-aware lengths; `MaxNameLen=200`, `MaxDescriptionLen=2000`
 
-### Regole build
+### Build rules
 
-- Le migrazioni `db/migrations/*.sql` sono embedded e applicate da goose all'avvio: nessuna generazione
-- Dopo modifiche a `web/tailwind/input.css` o `tailwind.config.js` → `make tailwind`
-- I template HTML e il CSS sono embedded nel binary → serve rebuild per vederli nei test
-- **Tailwind bloccato a v3.4.17** — NON aggiornare a v4 senza task dedicato
+- The `db/migrations/*.sql` migrations are embedded and applied by goose at startup: nothing to generate
+- After changing `web/tailwind/input.css` or `tailwind.config.js` → `make tailwind`
+- HTML templates and CSS are embedded in the binary → rebuild to see them in tests
+- **Tailwind is pinned to v3.4.17** — do NOT upgrade to v4 without a dedicated task
 
 ---
 
 ## Testing
 
-- `go test ./...` copre: auth, macros, db layer (tutti i repo), OFF client/reconciler, rate limiter, API tokens, features
-- Pattern: tabella di test, `t.Cleanup()` per risorse, SQLite temporaneo per isolamento
-- CI GitHub Actions (`.github/workflows/ci.yml`): test `-race`, golangci-lint (`.golangci.yml`), build binario + immagine Docker, govulncheck
-- Release (`.github/workflows/release.yml`): pubblicare una GitHub Release `vX.Y.Z` costruisce e pusha `ghcr.io/easly1989/nutreek` (privata) con tag `:latest`, `:vX.Y.Z`, `:vX.Y`
-- Test UI manuali: `make dev` → `localhost:8080`
+- `go test ./...` covers: auth, macros, the db layer (every repository), OFF client/reconciler, rate limiter, API tokens, features
+- Pattern: table tests, `t.Cleanup()` for resources, a temporary SQLite DB for isolation
+- GitHub Actions CI (`.github/workflows/ci.yml`): tests with `-race`, golangci-lint (`.golangci.yml`), binary and Docker image build, govulncheck
+- Release (`.github/workflows/release.yml`): publishing a GitHub Release `vX.Y.Z` builds and pushes the public image `ghcr.io/easly1989/nutreek` tagged `:latest`, `:vX.Y.Z`, `:vX.Y`
+- Manual UI testing: `make dev` → `localhost:8080`
 
 ---
 
-## Workflow branch — da seguire sempre
+## Branch workflow — always follow it
 
-Una issue → un branch → una PR verso `main`, con `Closes #N` nella descrizione.
+One issue → one branch → one PR to `main`, with `Closes #N` in the description.
 
-1. Branch dedicato con prefisso `feat/ fix/ chore/ ci/ refactor/ test/ docs/` (es. `feat/shopping-settimane-passate`)
-2. Commit atomici con conventional commits in italiano
-3. Push: `git push -u origin <branch>`, poi PR verso `main`; la CI deve essere verde
-4. Issue e PR che toccano l'interfaccia portano immagini (mockup nell'issue, screenshot reali nella PR)
-5. **NON fare push diretto su `main`**
+1. A dedicated branch with a `feat/ fix/ chore/ ci/ refactor/ test/ docs/` prefix (e.g. `feat/shopping-past-weeks`)
+2. Atomic commits, Conventional Commits in English
+3. Push: `git push -u origin <branch>`, then a PR to `main`; CI must be green
+4. Issues and PRs that touch the UI carry images (a mockup in the issue, real screenshots in the PR)
+5. **Never push directly to `main`**
 
 ---
 
-## Guida rapida ai file per task comuni
+## Quick guide: files for common tasks
 
-| Task | File principali |
+| Task | Main files |
 |------|----------------|
-| Nuovo endpoint | `internal/app/router.go` + `internal/app/*_handlers.go` |
-| Nuova query DB | metodo sul repo in `internal/db/*.go` (SQL inline) + test |
-| Nuova migrazione DB | `internal/db/migrations/000N_*.sql` (goose auto-run all'avvio) |
-| Nuovo modello di dominio | `internal/domain/*.go` |
-| Nuova pagina HTML | `internal/web/templates/pages/*.html` + renderer se serve |
-| Nuovo partial HTMX | `internal/web/templates/partials/*.html` |
-| Modifica CSS / nuovo tema | `web/tailwind/input.css` → `make tailwind` |
+| New endpoint | `internal/app/router.go` + `internal/app/*_handlers.go` |
+| New DB query | a method on the repository in `internal/db/*.go` (inline SQL) + test |
+| New DB migration | `internal/db/migrations/000N_*.sql` (goose runs it at startup) |
+| New domain model | `internal/domain/*.go` |
+| New HTML page | `internal/web/templates/pages/*.html` + renderer if needed |
+| New HTMX partial | `internal/web/templates/partials/*.html` |
+| CSS change / new theme | `web/tailwind/input.css` → `make tailwind` |
 | Business logic | `internal/service/*.go` |
-| Calcoli macro | `internal/macros/macros.go` |
-| Integrazione OpenFoodFacts | `internal/off/client.go`, `internal/off/reconciler.go` |
+| Macro calculations | `internal/macros/macros.go` |
+| OpenFoodFacts integration | `internal/off/client.go`, `internal/off/reconciler.go` |
 | Feature flags | `internal/db/features.go`, `internal/app/features.go` |
 | Subscriptions | `internal/db/subscriptions.go`, migration `0024_*` |
 | Coach mode | `internal/db/coach.go`, `internal/app/coach_handlers.go` |
 | REST API | `internal/app/api_handlers.go`, `internal/db/api_tokens.go` |
 | Admin panel | `internal/app/admin_panel_handlers.go` |
-| Generazione piano | `internal/planner/`, `internal/service/planner.go` |
-| TDEE adattivo | `internal/tdee/`, `internal/service/tdee.go` |
-| Import ricetta da URL | `internal/recipeimport/` |
+| Plan generation | `internal/planner/`, `internal/service/planner.go` |
+| Adaptive TDEE | `internal/tdee/`, `internal/service/tdee.go` |
+| Recipe import from URL | `internal/recipeimport/` |
 
 ---
 
-## Sicurezza (note operative)
+## Security (operational notes)
 
-- CSRF attivo su tutti i form (token nosurf embedded in ogni template)
-- Rate limiting per IP sul login (`internal/app/rate_limit.go`)
-- Ogni risorsa (ricette, piani, template) è scoped all'utente autenticato
-- In prod: `NUTREEK_SESSION_KEY` deve essere generato con `openssl rand -hex 32`
+- CSRF on every form (nosurf token embedded in every template)
+- Per-IP rate limiting on login (`internal/app/rate_limit.go`)
+- Every resource (recipes, plans, templates) is scoped to the authenticated user
+- In prod: generate `NUTREEK_SESSION_KEY` with `openssl rand -hex 32`
 
 ## Agent skills
 
