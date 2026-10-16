@@ -86,6 +86,10 @@ func TestShoppingPezziInGrammi(t *testing.T) {
 	got := map[string]float64{}
 	for _, it := range full.Items {
 		got[it.Ingredient.Name] = it.TotalQuantity
+		// La lista mostra anche i pezzi, quindi le serve il peso per pezzo.
+		if it.Ingredient.Name == "Mela" && (it.Ingredient.UnitWeightG == nil || *it.Ingredient.UnitWeightG != 150) {
+			t.Errorf("Mela: peso per pezzo = %v, atteso 150", it.Ingredient.UnitWeightG)
+		}
 	}
 	if !approxEqual(got["Mela"], 400) { // 2 pz × 150 g + 100 g
 		t.Errorf("Mela = %.2f, atteso 400", got["Mela"])

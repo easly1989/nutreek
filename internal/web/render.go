@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/amon2126/nutreek/internal/domain"
 )
 
 // Renderer mantiene i template parsati e offre Render per scriverli sulla
@@ -91,23 +89,6 @@ func (r *Renderer) RenderPartial(w http.ResponseWriter, status int, page, partia
 	return err
 }
 
-// ShoppingRowAutoData e' il view-model per il partial shopping_row_auto.
-// Esposto come tipo pubblico cosi' il funcMap puo' istanziarlo dentro
-// un range del template.
-type ShoppingRowAutoData struct {
-	Item      *domain.ShoppingListItem
-	WeekStart string
-	CSRFToken string
-}
-
-// ShoppingRowUserData e' il view-model per shopping_row_user.
-type ShoppingRowUserData struct {
-	Item      domain.ShoppingUserItem
-	Duplicate bool
-	WeekStart string
-	CSRFToken string
-}
-
 func funcMap() template.FuncMap {
 	return template.FuncMap{
 		"add": func(a, b int) int { return a + b },
@@ -132,17 +113,9 @@ func funcMap() template.FuncMap {
 			}
 			return "?"
 		},
-		// rowAuto costruisce il view-model per shopping_row_auto da
-		// dentro un range del template (html/template non permette
-		// struct literal). Riceve l'item per valore (Items[i] in range).
-		"rowAuto": func(item domain.ShoppingListItem, weekStart, csrf string) ShoppingRowAutoData {
-			return ShoppingRowAutoData{Item: &item, WeekStart: weekStart, CSRFToken: csrf}
-		},
-		// rowUser idem per shopping_row_user (chiamato come
-		// {{template "shopping_row_user" (rowUser .Item .Duplicate $ws $csrf)}}).
-		"rowUser": func(item domain.ShoppingUserItem, dup bool, weekStart, csrf string) ShoppingRowUserData {
-			return ShoppingRowUserData{Item: item, Duplicate: dup, WeekStart: weekStart, CSRFToken: csrf}
-		},
+		// row passa a un template di riga la riga e la pagina che la
+		// contiene (CSRF, settimana): html/template non permette struct literal.
+		"row": func(row, page any) RowCtx { return RowCtx{Row: row, Page: page} },
 		// neg restituisce il negativo di un float64. Usato nei template per
 		// invertire il segno senza eseguire operazioni aritmetiche inline.
 		"neg": func(v float64) float64 { return -v },
@@ -168,7 +141,8 @@ func funcMap() template.FuncMap {
 			pct = math.Max(0, math.Min(pct, 100))
 			return fmt.Sprintf("%.1f %.1f", pct/100*c, c)
 		},
-		"weekRange": weekRange,
+		"weekRange":  weekRange,
+		"weeksRange": weeksRange,
 		"dayTitle": func(t time.Time) string {
 			return weekdaysIT[(int(t.Weekday())+6)%7] + " " + strconv.Itoa(t.Day())
 		},
@@ -233,6 +207,12 @@ type PickerRowCtx struct {
 	Row, List any
 }
 
+// RowCtx e' il view-model generico di una riga ripetuta: Row e' la riga,
+// Page i dati della pagina.
+type RowCtx struct {
+	Row, Page any
+}
+
 // NavItem e' il view-model di una voce di navigazione della shell.
 type NavItem struct {
 	Href, Label, Icon string
@@ -276,8 +256,12 @@ func formatDec(v float64, digits int) string {
 
 // weekRange descrive la settimana che inizia il lunedi' start:
 // "12–18 ottobre", "29 settembre – 5 ottobre", "29 dicembre 2025 – 4 gennaio 2026".
-func weekRange(start time.Time) string {
-	end := start.AddDate(0, 0, 6)
+func weekRange(start time.Time) string { return weeksRange(start, 1) }
+
+// weeksRange descrive n settimane consecutive dal lunedi' start alla
+// domenica dell'ultima: "12 ottobre – 1 novembre".
+func weeksRange(start time.Time, n int) string {
+	end := start.AddDate(0, 0, 7*max(n, 1)-1)
 	switch {
 	case start.Year() != end.Year():
 		return fmt.Sprintf("%d %s %d – %d %s %d", start.Day(), monthsIT[start.Month()-1], start.Year(), end.Day(), monthsIT[end.Month()-1], end.Year())

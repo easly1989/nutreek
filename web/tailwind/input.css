@@ -251,6 +251,20 @@
     }
   }
 
+  /* Lista della spesa (#123): riga da 48 px toccabile per intero. */
+  .shop-item {
+    @apply w-full flex items-center gap-3 min-h-12 px-4 py-1 text-left hover:bg-surface-2 transition-colors;
+  }
+  .shop-box {
+    @apply w-[22px] h-[22px] shrink-0 grid place-items-center rounded-md border-[1.5px] border-border bg-surface;
+  }
+  .shop-item[aria-pressed="true"] .shop-box { @apply bg-accent border-accent text-accent-fg; }
+  .shop-name { @apply flex-1 min-w-0; }
+  .shop-qty { @apply text-right tabular-nums whitespace-nowrap; }
+  .shop-qty small { @apply ml-1 text-[12.5px] text-muted; }
+  .shop-item[aria-pressed="true"] .shop-name,
+  .shop-item[aria-pressed="true"] .shop-qty b { @apply text-muted line-through; }
+
   /* Foglio dal basso (telefono), costruito su <dialog>. */
   .sheet {
     @apply w-full max-w-none m-0 mt-auto p-0 bg-surface text-text border-0 border-t border-border rounded-t-2xl;
@@ -337,6 +351,19 @@
     color: #ffffff !important;
     border-color: #000000 !important;
   }
+
+  /* Lista della spesa: due colonne, un quadratino per voce. */
+  .shop-print { font-size: 12.5px; }
+  .shop-print h1 { font-size: 20px; font-weight: 700; }
+  .shop-print > p { color: #333333; margin-top: 2px; }
+  .shop-print-cols { columns: 2; column-gap: 40px; margin-top: 24px; }
+  .shop-print section { break-inside: avoid; margin-bottom: 16px; }
+  .shop-print h2 { font-size: 12px; font-weight: 700; border-bottom: 1px solid #000000; padding-bottom: 3px; margin-bottom: 4px; }
+  .shop-print-line { display: flex; align-items: center; gap: 8px; min-height: 24px; border-bottom: 1px dotted #bbbbbb; }
+  .shop-print-line i { width: 12px; height: 12px; border: 1.2px solid #000000; flex: none; }
+  .shop-print-line span { flex: 1; }
+  .shop-print-line b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  @page { margin: 14mm 16mm; }
 }
 
 /* ---- Shepherd.js tour — override per adattarsi al tema Nutreek ---------- */
