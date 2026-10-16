@@ -12,6 +12,7 @@ Il formato segue [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 - Immagine Docker privata su GHCR pubblicata a ogni release (`:latest`, `:vX.Y.Z`, `:vX.Y`), flag `nutreek -version` (#111)
 
 ### Corretto
+- Sicurezza: varianti e voci del piano nutrizionale si creano solo nel proprio piano, e nelle voci (piano, pasti, sgarri) si possono usare solo ricette proprie o pubbliche; gli id di altri utenti rispondono 404 (#129)
 - Le voci in pezzi («pz») valgono quantità × peso unitario dell'ingrediente nella settimana, nella generazione automatica e nella lista della spesa; prima contavano come grammi (#126)
 - Salvare un ingrediente modificato non azzera più la sua categoria; gli errori dei form rapidi «Nuovo ingrediente / Nuova ricetta» ora si vedono nella finestra invece di essere scartati; un errore aggiungendo un alimento ricarica la settimana invece di annidarla nel giorno (#122)
 

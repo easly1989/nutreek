@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -8,9 +9,20 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/justinas/nosurf"
 
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/macros"
 )
+
+// nutritionistWriteError risponde a un errore di scrittura sul piano: 404 se
+// l'elemento (o la ricetta) non e' dell'utente, 500 altrimenti.
+func (a *App) nutritionistWriteError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, db.ErrNutritionistItemNotFound) || errors.Is(err, db.ErrRecipeNotFound) {
+		a.notFound(w, r)
+		return
+	}
+	a.serverError(w, r, err)
+}
 
 func (a *App) handleNutritionistPage(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusFound)
@@ -208,13 +220,14 @@ func (a *App) handleNutritionistDeleteMealType(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if err := a.NutritionistPlans.DeleteMealType(r.Context(), id, plan.ID); err != nil {
-		a.serverError(w, r, err)
+		a.nutritionistWriteError(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 }
 
 func (a *App) handleNutritionistCreateVariation(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
 	mealTypeIDStr := strings.TrimSpace(r.PostFormValue("meal_type_id"))
 	nameStr := strings.TrimSpace(r.PostFormValue("name"))
 
@@ -230,8 +243,13 @@ func (a *App) handleNutritionistCreateVariation(w http.ResponseWriter, r *http.R
 		namePtr = &nameStr
 	}
 
-	if _, err := a.NutritionistPlans.CreateVariation(r.Context(), mealTypeID, namePtr); err != nil {
+	plan, err := a.NutritionistPlans.GetOrCreateActivePlan(r.Context(), user.ID)
+	if err != nil {
 		a.serverError(w, r, err)
+		return
+	}
+	if _, err := a.NutritionistPlans.CreateVariation(r.Context(), plan.ID, mealTypeID, namePtr); err != nil {
+		a.nutritionistWriteError(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
@@ -250,7 +268,7 @@ func (a *App) handleNutritionistDeleteVariation(w http.ResponseWriter, r *http.R
 		return
 	}
 	if err := a.NutritionistPlans.DeleteVariation(r.Context(), id, plan.ID); err != nil {
-		a.serverError(w, r, err)
+		a.nutritionistWriteError(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
@@ -305,6 +323,7 @@ func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleNutritionistAddItem(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
 	variationIDStr := strings.TrimSpace(r.PostFormValue("variation_id"))
 	quantityStr := strings.TrimSpace(r.PostFormValue("quantity"))
 	// Accetta sia "unit" (vecchio form) sia "qty_unit" (nuovo picker).
@@ -365,8 +384,13 @@ func (a *App) handleNutritionistAddItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if _, err := a.NutritionistPlans.AddItem(r.Context(), variationID, recipeIDPtr, ingIDPtr, quantity, unit); err != nil {
+	plan, err := a.NutritionistPlans.GetOrCreateActivePlan(r.Context(), user.ID)
+	if err != nil {
 		a.serverError(w, r, err)
+		return
+	}
+	if _, err := a.NutritionistPlans.AddItem(r.Context(), plan.ID, variationID, recipeIDPtr, ingIDPtr, quantity, unit); err != nil {
+		a.nutritionistWriteError(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
@@ -385,7 +409,7 @@ func (a *App) handleNutritionistDeleteItem(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := a.NutritionistPlans.DeleteItem(r.Context(), id, plan.ID); err != nil {
-		a.serverError(w, r, err)
+		a.nutritionistWriteError(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
