@@ -15,28 +15,28 @@ func TestAPITokens_CreateListRevokeAuthenticate(t *testing.T) {
 
 	userID := newTestUser(t, store, "token@test.it")
 
-	// Lista inizialmente vuota.
+	// The list starts empty.
 	list, err := tokens.List(ctx, userID)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
 	if len(list) != 0 {
-		t.Errorf("lista iniziale: want 0, got %d", len(list))
+		t.Errorf("initial list: want 0, got %d", len(list))
 	}
 
-	// Creazione: il token in chiaro ha il prefisso corretto.
+	// Create: the plaintext token has the right prefix.
 	plain, err := tokens.Create(ctx, userID, "test-token")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	if !strings.HasPrefix(plain, "nutreek_") {
-		t.Errorf("token senza prefisso nutreek_: %q", plain)
+		t.Errorf("token without the nutreek_ prefix: %q", plain)
 	}
 
-	// Dopo la creazione la lista ha un elemento.
+	// After creation the list has one item.
 	list, err = tokens.List(ctx, userID)
 	if err != nil {
-		t.Fatalf("List dopo create: %v", err)
+		t.Fatalf("List after create: %v", err)
 	}
 	if len(list) != 1 {
 		t.Fatalf("List: want 1, got %d", len(list))
@@ -45,10 +45,10 @@ func TestAPITokens_CreateListRevokeAuthenticate(t *testing.T) {
 		t.Errorf("nome token: want test-token, got %q", list[0].Name)
 	}
 	if list[0].LastUsedAt != nil {
-		t.Error("last_used_at deve essere nil alla creazione")
+		t.Error("last_used_at must be nil at creation")
 	}
 
-	// Authenticate: token valido restituisce l'utente e aggiorna last_used_at.
+	// Authenticate: a valid token returns the user and updates last_used_at.
 	user, err := tokens.Authenticate(ctx, plain)
 	if err != nil {
 		t.Fatalf("Authenticate: %v", err)
@@ -57,34 +57,34 @@ func TestAPITokens_CreateListRevokeAuthenticate(t *testing.T) {
 		t.Errorf("userID: want %d, got %d", userID, user.ID)
 	}
 
-	// Dopo authenticate last_used_at è valorizzato.
+	// After Authenticate, last_used_at is set.
 	list, _ = tokens.List(ctx, userID)
 	if list[0].LastUsedAt == nil {
-		t.Error("last_used_at deve essere valorizzato dopo Authenticate")
+		t.Error("last_used_at must be set after Authenticate")
 	}
 
-	// Authenticate con token errato: ErrAPITokenNotFound.
+	// Authenticate with a wrong token: ErrAPITokenNotFound.
 	_, err = tokens.Authenticate(ctx, "nutreek_invalido")
 	if !errors.Is(err, ErrAPITokenNotFound) {
 		t.Errorf("token errato: want ErrAPITokenNotFound, got %v", err)
 	}
 
-	// Revoca con userID errato: ErrAPITokenNotFound.
+	// Revoke with the wrong userID: ErrAPITokenNotFound.
 	other := newTestUser(t, store, "other-token@test.it")
 	if err := tokens.Revoke(ctx, list[0].ID, other); !errors.Is(err, ErrAPITokenNotFound) {
 		t.Errorf("revoca altrui: want ErrAPITokenNotFound, got %v", err)
 	}
 
-	// Revoca corretta: lista vuota, token non più autenticabile.
+	// A correct revoke: empty list, the token no longer authenticates.
 	if err := tokens.Revoke(ctx, list[0].ID, userID); err != nil {
 		t.Fatalf("Revoke: %v", err)
 	}
 	list, _ = tokens.List(ctx, userID)
 	if len(list) != 0 {
-		t.Errorf("dopo revoca: want 0, got %d", len(list))
+		t.Errorf("after revoke: want 0, got %d", len(list))
 	}
 	_, err = tokens.Authenticate(ctx, plain)
 	if !errors.Is(err, ErrAPITokenNotFound) {
-		t.Errorf("autenticazione dopo revoca: want ErrAPITokenNotFound, got %v", err)
+		t.Errorf("authenticate after revoke: want ErrAPITokenNotFound, got %v", err)
 	}
 }

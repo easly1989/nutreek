@@ -1,10 +1,10 @@
 -- +goose Up
 -- +goose StatementBegin
 
--- Sgarri ("cheat") associati a un meal: stessa struttura di meal_items
--- (recipe_id XOR ingredient_id, quantity > 0). Quando un meal ha almeno
--- una riga in questa tabella, il calcolo macro del pasto sostituisce gli
--- items "ufficiali" con questi cheat (vedi macros.ForMealEffective).
+-- Cheats attached to a meal: the same structure as meal_items
+-- (recipe_id XOR ingredient_id, quantity > 0). When a meal has at least one
+-- row in this table, the meal's macro total replaces the "official" items
+-- with these cheats (see macros.ForMealEffective).
 CREATE TABLE meal_cheat_items (
     id            INTEGER PRIMARY KEY,
     meal_id       INTEGER NOT NULL REFERENCES meals(id) ON DELETE CASCADE,

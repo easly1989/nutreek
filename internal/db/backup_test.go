@@ -17,10 +17,10 @@ func TestBackupTo_CreatesFile(t *testing.T) {
 	}
 	info, err := os.Stat(dest)
 	if err != nil {
-		t.Fatalf("backup file non trovato: %v", err)
+		t.Fatalf("backup file not found: %v", err)
 	}
 	if info.Size() == 0 {
-		t.Error("backup file vuoto")
+		t.Error("empty backup file")
 	}
 }
 
@@ -32,7 +32,7 @@ func TestBackupTo_OverwritesExisting(t *testing.T) {
 	if err := store.BackupTo(context.Background(), dest); err != nil {
 		t.Fatalf("primo BackupTo: %v", err)
 	}
-	// Secondo backup — sovrascrittura
+	// Second backup: overwrite
 	if err := store.BackupTo(context.Background(), dest); err != nil {
 		t.Fatalf("secondo BackupTo: %v", err)
 	}
@@ -41,17 +41,17 @@ func TestBackupTo_OverwritesExisting(t *testing.T) {
 func TestPruneBackups_KeepsN(t *testing.T) {
 	dir := t.TempDir()
 
-	// Crea 5 file di backup fittizi con timestamp progressivi
+	// Create 5 fake backup files with increasing timestamps
 	for i := range 5 {
 		name := BackupFileName(dir, time.Now().Add(time.Duration(i)*time.Second))
 		f, err := os.Create(name)
 		if err != nil {
-			t.Fatalf("crea file test: %v", err)
+			t.Fatalf("create test file: %v", err)
 		}
 		_ = f.Close()
 	}
 
-	// Mantieni solo 3
+	// Keep only 3
 	if err := PruneBackups(dir, 3); err != nil {
 		t.Fatalf("PruneBackups: %v", err)
 	}

@@ -7,18 +7,18 @@ import (
 	"fmt"
 )
 
-// ErrCheatNotFound = sgarro inesistente o non di proprieta' dell'utente.
+// ErrCheatNotFound means the cheat does not exist or is not the user's.
 var ErrCheatNotFound = errors.New("sgarro non trovato")
 
-// AddCheat aggiunge una riga di sgarro a un meal. Recipe XOR ingredient.
-// Quantity > 0. SortOrder calcolato come MAX(sort_order)+1 nel meal.
+// AddCheat adds a cheat row to a meal. Recipe XOR ingredient.
+// Quantity > 0. SortOrder is MAX(sort_order)+1 within the meal.
 func (r *WeeklyPlans) AddCheat(
 	ctx context.Context,
 	mealID, userID int64,
 	recipeID, ingredientID *int64,
 	quantity float64,
 ) (int64, error) {
-	// Verifica meal owner via JOIN su weekly_plans.user_id.
+	// Check the meal's owner with a JOIN on weekly_plans.user_id.
 	var planUser int64
 	err := r.db.QueryRowContext(ctx, `
 		SELECT wp.user_id
@@ -63,7 +63,7 @@ func (r *WeeklyPlans) AddCheat(
 	return res.LastInsertId()
 }
 
-// RemoveCheat cancella una singola riga di sgarro (ownership via JOIN).
+// RemoveCheat deletes a single cheat row (ownership via JOIN).
 func (r *WeeklyPlans) RemoveCheat(ctx context.Context, cheatID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		DELETE FROM meal_cheat_items
@@ -83,8 +83,8 @@ func (r *WeeklyPlans) RemoveCheat(ctx context.Context, cheatID, userID int64) er
 	return nil
 }
 
-// ClearCheats rimuove tutte le righe di sgarro per il meal indicato.
-// Riporta il pasto allo stato "ufficiale" (le sue macro tornano dagli items).
+// ClearCheats removes every cheat row of the meal.
+// The meal goes back to its "official" state (its macros come from the items again).
 func (r *WeeklyPlans) ClearCheats(ctx context.Context, mealID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		DELETE FROM meal_cheat_items
@@ -101,8 +101,8 @@ func (r *WeeklyPlans) ClearCheats(ctx context.Context, mealID, userID int64) err
 	return nil
 }
 
-// ReorderCheats persiste l'ordine degli sgarri di un meal. Stesso pattern
-// di ReorderMealItems: ids deve coincidere con l'insieme corrente.
+// ReorderCheats stores the order of a meal's cheats. Same pattern as
+// ReorderMealItems: ids must match the current set.
 func (r *WeeklyPlans) ReorderCheats(ctx context.Context, mealID, userID int64, ids []int64) error {
 	var planUser int64
 	err := r.db.QueryRowContext(ctx, `

@@ -16,13 +16,13 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-// Store avvolge *sql.DB e centralizza apertura e migrazioni.
+// Store wraps *sql.DB and centralizes opening and migrations.
 type Store struct {
 	DB *sql.DB
 }
 
-// Open apre (o crea) il database SQLite al path indicato, applica pragmas
-// sicuri e verifica la connessione. La directory parent viene creata se mancante.
+// Open opens (or creates) the SQLite database at path, applies safe pragmas
+// and checks the connection. The parent directory is created when missing.
 func Open(path string) (*Store, error) {
 	if dir := filepath.Dir(path); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -41,13 +41,13 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
 
-	// WAL permette letture concorrenti + un writer. Le transazioni partono
-	// IMMEDIATE (vedi buildDSN) cosi' i writer concorrenti si accodano su
-	// busy_timeout invece di fallire.
+	// WAL allows concurrent reads + one writer. Transactions start
+	// IMMEDIATE (see buildDSN), so concurrent writers queue up on
+	// busy_timeout instead of failing.
 	return &Store{DB: sqldb}, nil
 }
 
-// Migrate applica tutte le migrazioni UP embedded.
+// Migrate applies every embedded UP migration.
 func (s *Store) Migrate(ctx context.Context) error {
 	goose.SetBaseFS(migrationsFS)
 	if err := goose.SetDialect("sqlite3"); err != nil {
@@ -59,24 +59,24 @@ func (s *Store) Migrate(ctx context.Context) error {
 	return nil
 }
 
-// Close chiude la connessione sottostante.
+// Close closes the underlying connection.
 func (s *Store) Close() error {
 	return s.DB.Close()
 }
 
-// buildDSN costruisce il DSN modernc.org/sqlite con i pragmas richiesti.
-// Ogni pragma passato come query arg viene applicato sulle connessioni nuove.
+// buildDSN builds the modernc.org/sqlite DSN with the required pragmas.
+// Every pragma passed as a query arg is applied to new connections.
 func buildDSN(path string) string {
-	// Usiamo url.Values per evitare problemi di escaping con path Windows.
+	// url.Values avoids escaping problems with Windows paths.
 	q := url.Values{}
 	q.Add("_pragma", "busy_timeout(5000)")
 	q.Add("_pragma", "journal_mode(WAL)")
 	q.Add("_pragma", "foreign_keys(ON)")
 	q.Add("_pragma", "synchronous(NORMAL)")
-	// BEGIN IMMEDIATE: le transazioni prendono subito il lock di scrittura.
-	// Con BEGIN deferred due transazioni lettura→scrittura concorrenti
-	// fanno fallire la seconda con SQLITE_BUSY senza attendere
-	// busy_timeout (vedi TestConcurrentReadThenWriteTx).
+	// BEGIN IMMEDIATE: transactions take the write lock right away.
+	// With a deferred BEGIN, two concurrent read→write transactions make the
+	// second fail with SQLITE_BUSY without waiting for busy_timeout (see
+	// TestConcurrentReadThenWriteTx).
 	q.Add("_txlock", "immediate")
 	return fmt.Sprintf("file:%s?%s", filepath.ToSlash(path), q.Encode())
 }

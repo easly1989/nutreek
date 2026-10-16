@@ -1,5 +1,5 @@
 -- +goose Up
--- Quantità predefinita suggerita nel picker (es. 1 pz per una banana).
+-- Default quantity suggested in the picker (e.g. 1 pz for a banana).
 ALTER TABLE ingredients ADD COLUMN default_quantity REAL;
 
 -- +goose Down

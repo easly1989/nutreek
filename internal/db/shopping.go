@@ -12,28 +12,28 @@ import (
 	"github.com/amon2126/nutreek/internal/macros"
 )
 
-// Errori del repo shopping.
+// Errors of the shopping repository.
 var (
 	ErrShoppingListNotFound = errors.New("lista della spesa non trovata")
 	ErrShoppingItemNotFound = errors.New("voce della lista non trovata")
 )
 
-// ShoppingLists e' il repo delle liste della spesa.
+// ShoppingLists is the shopping lists repository.
 type ShoppingLists struct {
 	db    *sql.DB
 	plans *WeeklyPlans
 }
 
-// NewShoppingLists costruisce il repo. Riceve anche WeeklyPlans perche'
-// Generate ha bisogno di caricare i piani settimanali per aggregare.
+// NewShoppingLists builds the repository. It also takes WeeklyPlans because
+// Generate needs to load the weekly plans to aggregate them.
 func NewShoppingLists(db *sql.DB, plans *WeeklyPlans) *ShoppingLists {
 	return &ShoppingLists{db: db, plans: plans}
 }
 
-// GetOrCreateList ritorna la lista per (user, weekStart). Se non esiste
-// la crea con weekCount specificato; se esiste e weekCount differisce
-// dal record, aggiorna in DB (l'utente ha cambiato il numero di
-// settimane via dropdown).
+// GetOrCreateList returns the list for (user, weekStart). When it does not
+// exist it creates it with the given weekCount; when it exists and weekCount
+// differs from the record, it updates the DB (the user changed the number of
+// weeks in the dropdown).
 func (r *ShoppingLists) GetOrCreateList(ctx context.Context, userID int64, weekStart time.Time, weekCount int) (*domain.ShoppingList, error) {
 	if weekCount < 1 {
 		weekCount = 1
@@ -50,7 +50,7 @@ func (r *ShoppingLists) GetOrCreateList(ctx context.Context, userID int64, weekS
 	); err != nil {
 		return nil, fmt.Errorf("upsert shopping list: %w", err)
 	}
-	// Aggiorna week_count se il record esisteva con valore diverso.
+	// Update week_count when the record existed with a different value.
 	if _, err := r.db.ExecContext(ctx,
 		`UPDATE shopping_lists SET week_count = ? WHERE user_id = ? AND week_start = ? AND week_count != ?`,
 		weekCount, userID, dateStr, weekCount,
@@ -76,16 +76,16 @@ func (r *ShoppingLists) GetOrCreateList(ctx context.Context, userID int64, weekS
 	return &list, nil
 }
 
-// Generate ricalcola gli shopping_list_items aggregando gli ingredienti
-// dei piani delle weekCount settimane consecutive a partire da
-// list.WeekStart. Ignora i meal_cheat_items (gli sgarri sono gia'
-// consumati). Espande le ricette in ingredienti via
-// RecipeItem.Quantity * (mealItem.Quantity / Recipe.Servings). Aggrega
-// per ingredient_id sommando le quantita'. DELETE-then-INSERT degli
-// items, ma preserva checked=true se l'ingrediente esisteva con la
-// stessa quantita' (entro epsilon 0.01).
+// Generate recomputes the shopping_list_items by aggregating the ingredients
+// of the plans of weekCount consecutive weeks starting at list.WeekStart.
+// It ignores meal_cheat_items (cheats have already been eaten). Recipes are
+// expanded into ingredients via
+// RecipeItem.Quantity * (mealItem.Quantity / Recipe.Servings), and quantities
+// are summed per ingredient_id. Items are DELETEd then INSERTed, but
+// checked=true is kept when the ingredient existed with the same quantity
+// (within an epsilon of 0.01).
 func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) error {
-	// Ownership + carica lista.
+	// Ownership + load the list.
 	var owner int64
 	var weekStartStr string
 	var weekCount int
@@ -109,8 +109,8 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 		weekCount = 1
 	}
 
-	// Aggrega ingredienti su tutte le settimane coperte.
-	totals := make(map[int64]float64) // ingredientID -> quantita' totale
+	// Aggregate the ingredients over every week covered.
+	totals := make(map[int64]float64) // ingredientID -> total quantity
 	for w := 0; w < weekCount; w++ {
 		ws := weekStart.AddDate(0, 0, 7*w)
 		plan, err := r.plans.GetOrCreateForWeek(ctx, userID, ws)
@@ -124,11 +124,11 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 		for d := 0; d < 7; d++ {
 			for _, meal := range full.Days[d] {
 				if meal.HasCheats() {
-					continue // sgarri ignorati: gia' consumati, non vanno comprati
+					continue // cheats are ignored: already eaten, nothing to buy
 				}
 				for _, it := range meal.Items {
 					if it.Ingredient != nil {
-						// Le voci in pezzi si comprano a peso: «2 pz» di mele = 300 g.
+						// Items in pieces are bought by weight: «2 pz» of apples = 300 g.
 						totals[it.Ingredient.ID] += macros.Grams(it.Quantity, it.QuantityUnit, it.Ingredient)
 					}
 					if it.Recipe != nil && it.Recipe.Servings > 0 {
@@ -142,7 +142,7 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 		}
 	}
 
-	// Carica i checked esistenti per merge.
+	// Load the existing checked flags to merge them.
 	existing := make(map[int64]struct {
 		Quantity float64
 		Checked  bool
@@ -195,7 +195,7 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 
 	idx := 0
 	for ingID, qty := range totals {
-		// Preserva checked se quantita' identica (epsilon 0.01).
+		// Keep checked when the quantity is the same (epsilon 0.01).
 		checked := 0
 		if prev, ok := existing[ingID]; ok && prev.Checked {
 			if diff := qty - prev.Quantity; diff < 0.01 && diff > -0.01 {
@@ -210,8 +210,8 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 	return tx.Commit()
 }
 
-// LoadFull carica la lista, gli items auto (con Ingredient resolved
-// alfabeticamente) e gli items utente. Ownership obbligatoria.
+// LoadFull loads the list, the auto items (with Ingredient resolved, sorted
+// alphabetically) and the user items. Ownership is required.
 func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*domain.ShoppingListFull, error) {
 	var list domain.ShoppingList
 	var dateScan string
@@ -233,7 +233,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 	}
 	out := &domain.ShoppingListFull{ShoppingList: list}
 
-	// Items auto + ingredienti in JOIN, ordinati alfabeticamente per nome.
+	// Auto items + ingredients in a JOIN, sorted alphabetically by name.
 	itemRows, err := r.db.QueryContext(ctx, `
 		SELECT sli.id, sli.shopping_list_id, sli.ingredient_id, sli.total_quantity, sli.checked, sli.sort_order,
 		       i.id, i.source, i.off_barcode, i.name, i.brand, i.unit,
@@ -270,7 +270,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 	}
 	itemRows.Close()
 
-	// Items utente.
+	// User items.
 	userRows, err := r.db.QueryContext(ctx, `
 		SELECT id, shopping_list_id, description, COALESCE(quantity_text, ''), checked, sort_order, created_at
 		FROM shopping_user_items
@@ -295,7 +295,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 	return out, nil
 }
 
-// ToggleItem inverte lo stato checked di un item auto.
+// ToggleItem flips the checked state of an auto item.
 func (r *ShoppingLists) ToggleItem(ctx context.Context, itemID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		UPDATE shopping_list_items
@@ -313,8 +313,8 @@ func (r *ShoppingLists) ToggleItem(ctx context.Context, itemID, userID int64) er
 	return nil
 }
 
-// AddUserItem inserisce un item manuale. Description obbligatoria, qty
-// libera. SortOrder = MAX+1 per la lista.
+// AddUserItem inserts a manual item. Description is required, qty is free
+// text. SortOrder = MAX+1 within the list.
 func (r *ShoppingLists) AddUserItem(ctx context.Context, listID, userID int64, description, qtyText string) (int64, error) {
 	description = strings.TrimSpace(description)
 	if description == "" {
@@ -353,7 +353,7 @@ func (r *ShoppingLists) AddUserItem(ctx context.Context, listID, userID int64, d
 	return res.LastInsertId()
 }
 
-// ToggleUserItem inverte checked su un item manuale.
+// ToggleUserItem flips checked on a manual item.
 func (r *ShoppingLists) ToggleUserItem(ctx context.Context, itemID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		UPDATE shopping_user_items
@@ -371,7 +371,7 @@ func (r *ShoppingLists) ToggleUserItem(ctx context.Context, itemID, userID int64
 	return nil
 }
 
-// RemoveUserItem cancella un item manuale.
+// RemoveUserItem deletes a manual item.
 func (r *ShoppingLists) RemoveUserItem(ctx context.Context, itemID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
 		DELETE FROM shopping_user_items
@@ -388,7 +388,7 @@ func (r *ShoppingLists) RemoveUserItem(ctx context.Context, itemID, userID int64
 	return nil
 }
 
-// ReorderUserItems persiste l'ordine degli items utente di una lista.
+// ReorderUserItems stores the order of a list's user items.
 func (r *ShoppingLists) ReorderUserItems(ctx context.Context, listID, userID int64, ids []int64) error {
 	var owner int64
 	err := r.db.QueryRowContext(ctx, `SELECT user_id FROM shopping_lists WHERE id = ?`, listID).Scan(&owner)

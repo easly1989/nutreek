@@ -9,8 +9,8 @@ import (
 	"github.com/amon2126/nutreek/internal/macros"
 )
 
-// TestMealItemCustomizationsPipeline verifica il ciclo completo:
-// salva variazioni → LoadFull → ForMealItem usa le variazioni.
+// TestMealItemCustomizationsPipeline checks the full cycle:
+// save variations → LoadFull → ForMealItem uses the variations.
 func TestMealItemCustomizationsPipeline(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
@@ -21,10 +21,10 @@ func TestMealItemCustomizationsPipeline(t *testing.T) {
 	plans := NewWeeklyPlans(store.DB)
 	customs := NewMealItemCustomizations(store.DB)
 
-	// Setup: utente, due ingredienti con valori nutrizionali distinti.
+	// Setup: a user, two ingredients with different nutrition values.
 	uid, _ := users.Create(ctx, "test@ex.com", "h", "Test")
 
-	// Müesli: 480 kcal/100g, Latte: 48 kcal/100ml (ratio 10:1).
+	// Muesli: 480 kcal/100g, milk: 48 kcal/100ml (ratio 10:1).
 	muesliID, err := ings.CreateLocal(ctx, "Müesli test", nil, domain.UnitGram, 480, 10, 60, 14, &uid, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateLocal muesli: %v", err)
@@ -34,7 +34,7 @@ func TestMealItemCustomizationsPipeline(t *testing.T) {
 		t.Fatalf("CreateLocal latte: %v", err)
 	}
 
-	// Ricetta: 100g müesli + 300ml latte → 480+144 = 624 kcal (1 porzione).
+	// Recipe: 100g muesli + 300ml milk → 480+144 = 624 kcal (1 serving).
 	recID, _ := recipes.Create(ctx, uid, "Colazione test", nil, 1, false)
 	if _, err := recipes.AddItem(ctx, recID, uid, muesliID, 100); err != nil {
 		t.Fatalf("AddItem muesli: %v", err)
@@ -43,30 +43,30 @@ func TestMealItemCustomizationsPipeline(t *testing.T) {
 		t.Fatalf("AddItem latte: %v", err)
 	}
 
-	// Piano: aggiungi 1 porzione della ricetta al lunedì.
+	// Plan: add 1 serving of the recipe to Monday.
 	monday, _ := time.Parse("2006-01-02", "2026-05-26")
 	plan, _ := plans.GetOrCreateForWeek(ctx, uid, monday)
 	mealID, _ := plans.AddMeal(ctx, plan.ID, uid, 0, "Colazione")
 	itemID, err := plans.AddItem(ctx, mealID, uid, &recID, nil, 1, "g")
 	if err != nil {
-		t.Fatalf("AddItem piano: %v", err)
+		t.Fatalf("AddItem plan: %v", err)
 	}
 
-	// Verifica macro SENZA variazioni: 624 kcal.
+	// Check the macros WITHOUT variations: 624 kcal.
 	full, err := plans.LoadFull(ctx, plan)
 	if err != nil {
 		t.Fatalf("LoadFull: %v", err)
 	}
 	item := findItem(t, full, itemID)
 	if item.IsCustomized() {
-		t.Error("non dovrebbe avere variazioni prima di Replace")
+		t.Error("there should be no variations before Replace")
 	}
 	baseKcal := macros.ForMealItem(*item).Kcal
 	if baseKcal < 623.9 || baseKcal > 624.1 {
 		t.Errorf("kcal base: got %.2f want ~624", baseKcal)
 	}
 
-	// Salva variazioni: 45g müesli + 300ml latte → 360 kcal.
+	// Save variations: 45g muesli + 300ml milk → 360 kcal.
 	muesliIng, _ := ings.GetByID(ctx, muesliID)
 	latteIng, _ := ings.GetByID(ctx, latteID)
 	err = customs.Replace(ctx, itemID, uid, []CustomizationInput{
@@ -77,21 +77,21 @@ func TestMealItemCustomizationsPipeline(t *testing.T) {
 		t.Fatalf("Replace: %v", err)
 	}
 
-	// Ricarica il piano e verifica che le variazioni siano usate.
+	// Reload the plan and check the variations are used.
 	full, err = plans.LoadFull(ctx, plan)
 	if err != nil {
-		t.Fatalf("LoadFull dopo variazioni: %v", err)
+		t.Fatalf("LoadFull after variations: %v", err)
 	}
 	item = findItem(t, full, itemID)
 	if !item.IsCustomized() {
-		t.Fatal("item deve essere customizzato dopo Replace")
+		t.Fatal("the item must be customized after Replace")
 	}
 	if len(item.Customizations) != 2 {
 		t.Fatalf("variazioni: got %d want 2", len(item.Customizations))
 	}
 	for _, c := range item.Customizations {
 		if c.Ingredient == nil {
-			t.Fatal("Ingredient deve essere popolato nelle variazioni")
+			t.Fatal("Ingredient must be filled in the variations")
 		}
 	}
 
@@ -101,11 +101,11 @@ func TestMealItemCustomizationsPipeline(t *testing.T) {
 		t.Errorf("kcal variazioni 45g+300ml: got %.2f want ~360", customKcal)
 	}
 	if customKcal >= baseKcal-0.1 && customKcal <= baseKcal+0.1 {
-		t.Error("le variazioni devono cambiare i macro rispetto alla ricetta base")
+		t.Error("the variations must change the macros against the base recipe")
 	}
 
-	// Cambia variazioni: 50g müesli + 250ml latte → ancora 360 kcal (coincidenza M=10L).
-	// Le proteine però cambiano: 45g→4.5g vs 50g→5g (müesli), 300ml→10.5g vs 250ml→8.75g (latte).
+	// Change the variations: 50g muesli + 250ml milk → still 360 kcal (coincidence M=10L).
+	// Protein changes though: 45g→4.5g vs 50g→5g (muesli), 300ml→10.5g vs 250ml→8.75g (milk).
 	err = customs.Replace(ctx, itemID, uid, []CustomizationInput{
 		{IngredientID: muesliIng.ID, Quantity: 50},
 		{IngredientID: latteIng.ID, Quantity: 250},
@@ -116,27 +116,27 @@ func TestMealItemCustomizationsPipeline(t *testing.T) {
 	full, _ = plans.LoadFull(ctx, plan)
 	item = findItem(t, full, itemID)
 	m50 := macros.ForMealItem(*item)
-	// kcal: 50*4.80 + 250*0.48 = 240+120 = 360 (stesso, coincidenza numerica)
+	// kcal: 50*4.80 + 250*0.48 = 240+120 = 360 (the same, a numeric coincidence)
 	if m50.Kcal < 359.9 || m50.Kcal > 360.1 {
 		t.Errorf("kcal variazioni 50g+250ml: got %.2f want ~360", m50.Kcal)
 	}
-	// proteine: 50*0.1 + 250*0.035 = 5+8.75 = 13.75 (diverso da 45g+300ml=15g)
+	// protein: 50*0.1 + 250*0.035 = 5+8.75 = 13.75 (unlike 45g+300ml=15g)
 	if m50.Protein > 13.8 || m50.Protein < 13.7 {
 		t.Errorf("proteine 50g+250ml: got %.4f want ~13.75", m50.Protein)
 	}
 
-	// Reset: rimuove tutte le variazioni.
+	// Reset: remove every variation.
 	if err := customs.Replace(ctx, itemID, uid, nil); err != nil {
 		t.Fatalf("Reset: %v", err)
 	}
 	full, _ = plans.LoadFull(ctx, plan)
 	item = findItem(t, full, itemID)
 	if item.IsCustomized() {
-		t.Error("dopo reset non ci devono essere variazioni")
+		t.Error("after reset there must be no variations")
 	}
 	resetKcal := macros.ForMealItem(*item).Kcal
 	if resetKcal < 623.9 || resetKcal > 624.1 {
-		t.Errorf("kcal dopo reset: got %.2f want ~624 (ricetta base)", resetKcal)
+		t.Errorf("kcal after reset: got %.2f want ~624 (base recipe)", resetKcal)
 	}
 }
 
@@ -151,6 +151,6 @@ func findItem(t *testing.T, full *domain.WeeklyPlanFull, itemID int64) *domain.M
 			}
 		}
 	}
-	t.Fatalf("item %d non trovato nel piano", itemID)
+	t.Fatalf("item %d not found in the plan", itemID)
 	return nil
 }

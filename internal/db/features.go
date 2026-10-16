@@ -7,17 +7,17 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// Features gestisce la tabella features (feature flags).
+// Features manages the features table (feature flags).
 type Features struct {
 	db *sql.DB
 }
 
-// NewFeatures crea un repository Features.
+// NewFeatures creates a Features repository.
 func NewFeatures(db *sql.DB) *Features {
 	return &Features{db: db}
 }
 
-// List restituisce tutte le feature ordinate per sort_order.
+// List returns every feature ordered by sort_order.
 func (f *Features) List(ctx context.Context) ([]domain.Feature, error) {
 	rows, err := f.db.QueryContext(ctx,
 		`SELECT key, name, COALESCE(description,''), is_premium, enabled, sort_order
@@ -41,7 +41,7 @@ func (f *Features) List(ctx context.Context) ([]domain.Feature, error) {
 	return out, rows.Err()
 }
 
-// SetEnabled imposta il kill-switch globale di una feature.
+// SetEnabled sets a feature's global kill switch.
 func (f *Features) SetEnabled(ctx context.Context, key string, enabled bool) error {
 	v := 0
 	if enabled {
@@ -52,7 +52,7 @@ func (f *Features) SetEnabled(ctx context.Context, key string, enabled bool) err
 	return err
 }
 
-// SetPremium cambia il flag is_premium di una feature.
+// SetPremium changes a feature's is_premium flag.
 func (f *Features) SetPremium(ctx context.Context, key string, premium bool) error {
 	v := 0
 	if premium {
