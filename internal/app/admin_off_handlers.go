@@ -10,9 +10,9 @@ import (
 	"github.com/amon2126/nutreek/internal/off"
 )
 
-// handleAdminOFFStatus GET /admin/off-status — ritorna stato corrente del
-// dump OFF locale (last_synced_at, products_count, eventuale errore).
-// Utile per pannello admin e per verifiche operative via curl.
+// handleAdminOFFStatus GET /admin/off-status — returns the current state of
+// the local OFF dump (last_synced_at, products_count, any error).
+// Useful for the admin panel and for operational checks with curl.
 func (a *App) handleAdminOFFStatus(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
 		http.Error(w, "OFF syncer non configurato", http.StatusServiceUnavailable)
@@ -27,14 +27,14 @@ func (a *App) handleAdminOFFStatus(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(offStatusJSON(state))
 }
 
-// handleAdminOFFRefresh POST /admin/refresh-off-dump — lancia un sync
-// manuale del dump OFF in goroutine separata (non blocca la response).
-// Ritorna 202 + stato corrente, oppure 409 se un sync e' gia' in corso.
+// handleAdminOFFRefresh POST /admin/refresh-off-dump — starts a manual sync
+// of the OFF dump in a separate goroutine (it does not block the response).
+// Returns 202 + the current state, or 409 when a sync is already running.
 //
-// Il sync vero dura ~10 minuti (download + parse + insert): farlo sincrono
-// terrebbe la connessione aperta troppo a lungo. Il chiamante puo' poi
-// pollare /admin/off-status per vedere il progresso (products_count si
-// aggiorna a fine sync, non in streaming — accettabile per use case admin).
+// The real sync takes ~10 minutes (download + parse + insert): running it
+// synchronously would keep the connection open too long. The caller can then
+// poll /admin/off-status to see progress (products_count updates at the end
+// of the sync, not while streaming — acceptable for an admin use case).
 func (a *App) handleAdminOFFRefresh(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
 		http.Error(w, "OFF syncer non configurato", http.StatusServiceUnavailable)
@@ -48,8 +48,8 @@ func (a *App) handleAdminOFFRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Lancia il sync con un context indipendente dalla request: la response
-	// va via subito, il sync continua in background. Timeout generoso.
+	// Start the sync with a context independent of the request: the response
+	// goes out at once, the sync continues in the background. Generous timeout.
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Hour)
 		defer cancel()
@@ -69,7 +69,7 @@ func (a *App) handleAdminOFFRefresh(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(offStatusJSON(state))
 }
 
-// offStatusJSON serializza off.State per le response admin.
+// offStatusJSON serializes off.State for the admin responses.
 func offStatusJSON(s *off.State) map[string]any {
 	if s == nil {
 		return map[string]any{}

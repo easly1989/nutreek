@@ -15,14 +15,14 @@ func TestSplitSuggested(t *testing.T) {
 
 	sugg, rest := splitSuggested([]*domain.Ingredient{mela, riso}, rows, "MEL")
 	if len(sugg) != 1 || sugg[0].Name() != "Mela" {
-		t.Errorf("suggeriti = %v, atteso solo Mela", sugg)
+		t.Errorf("suggested = %v, want only Mela", sugg)
 	}
 	if len(rest) != 2 || rest[0].Name() != "Melone" || rest[1].Name() != "Mela Golden" {
-		t.Errorf("altre righe = %v, attese Melone e Mela Golden", rest)
+		t.Errorf("other rows = %v, want Melone and Mela Golden", rest)
 	}
 
 	sugg, rest = splitSuggested([]*domain.Ingredient{mela, riso}, nil, "")
 	if len(sugg) != 2 || len(rest) != 0 {
-		t.Errorf("senza ricerca: %d suggeriti, %d altre righe", len(sugg), len(rest))
+		t.Errorf("without a search: %d suggested, %d other rows", len(sugg), len(rest))
 	}
 }

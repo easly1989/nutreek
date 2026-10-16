@@ -11,24 +11,24 @@ import (
 	"github.com/amon2126/nutreek/internal/profile"
 )
 
-// onboardingData è il view-model della pagina wizard onboarding.
+// onboardingData is the view model of the onboarding wizard page.
 type onboardingData struct {
 	authPageData
 	Step      int
 	Restart   bool
-	Steps     [5]int // [1,2,3,4,5] — usato nel template per lo stepper
+	Steps     [5]int // [1,2,3,4,5] — used in the template for the stepper
 	Form      profileForm
 	Templates []*domain.MealTemplate
-	TDEE      float64 // fabbisogno dai dati del passo 1, 0 se non calcolabile
-	Weight    float64 // per i modelli del passo 2 (g/kg di proteine)
+	TDEE      float64 // energy needs from the step 1 data, 0 when it cannot be computed
+	Weight    float64 // for the step 2 presets (g/kg of protein)
 }
 
-// handleOnboardingPage GET /onboarding — mostra lo step corrente del wizard.
+// handleOnboardingPage GET /onboarding — shows the wizard's current step.
 func (a *App) handleOnboardingPage(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	restart := r.URL.Query().Get("restart") == "true"
 
-	// Utente già onboardato senza restart: redirect alla dashboard.
+	// User already onboarded with no restart: redirect to the dashboard.
 	if user.OnboardingCompletedAt != nil && !restart {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
@@ -52,7 +52,7 @@ func (a *App) handleOnboardingPage(w http.ResponseWriter, r *http.Request) {
 	data.TDEE = onboardingTDEE(user)
 	data.Weight = derefFloat(user.WeightKg)
 
-	// Step 4 ha bisogno dei template disponibili.
+	// Step 4 needs the available templates.
 	if step == 4 {
 		tpls, _ := a.MealTemplates.ListByUser(r.Context(), user.ID)
 		data.Templates = tpls
@@ -63,7 +63,7 @@ func (a *App) handleOnboardingPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleOnboardingStep POST /onboarding — gestisce il submit di ogni step.
+// handleOnboardingStep POST /onboarding — handles the submit of every step.
 func (a *App) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	ctx := r.Context()
@@ -79,21 +79,21 @@ func (a *App) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 
 	switch step {
 	case 1:
-		// Salva dati fisici — permissivo: se parsing fallisce si salta silenziosamente.
+		// Save the physical data — permissive: when parsing fails, skip silently.
 		if inp := parseOnboardingPhysical(r); inp != nil {
 			_ = a.Users.UpdateProfile(ctx, user.ID, *inp)
 		}
 		http.Redirect(w, r, "/onboarding?step=2"+restartSuffix, http.StatusSeeOther)
 
 	case 2:
-		// Salva obiettivi macro — permissivo.
+		// Save the macro goals — permissive.
 		if inp := parseOnboardingMacros(r); inp != nil {
 			_ = a.Users.UpdateProfile(ctx, user.ID, *inp)
 		}
 		http.Redirect(w, r, "/onboarding?step=3"+restartSuffix, http.StatusSeeOther)
 
 	case 3:
-		// Crea template se nome fornito (step opzionale).
+		// Create a template when a name is given (optional step).
 		name := strings.TrimSpace(r.FormValue("template_name"))
 		if name != "" && withinLen(name, MaxNameLen) {
 			_, _ = a.MealTemplates.Create(ctx, user.ID, name)
@@ -101,7 +101,7 @@ func (a *App) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/onboarding?step=4"+restartSuffix, http.StatusSeeOther)
 
 	case 4:
-		// Applica template alla settimana corrente (opzionale).
+		// Apply the template to the current week (optional).
 		tplID, _ := strconv.ParseInt(r.FormValue("template_id"), 10, 64)
 		if tplID > 0 {
 			weekStart := db.MondayOf(time.Now())
@@ -125,8 +125,8 @@ func (a *App) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// parseOnboardingPhysical estrae i dati fisici dal form step 1.
-// Restituisce nil se tutti i campi sono vuoti (nessun aggiornamento necessario).
+// parseOnboardingPhysical extracts the physical data from the step 1 form.
+// Returns nil when every field is empty (no update needed).
 func parseOnboardingPhysical(r *http.Request) *db.UserProfileInput {
 	weightKg, _ := parseOptionalPositiveFloat(strings.TrimSpace(r.FormValue("weight_kg")))
 	heightCm, _ := parseOptionalPositiveFloat(strings.TrimSpace(r.FormValue("height_cm")))
@@ -166,7 +166,7 @@ func parseOnboardingPhysical(r *http.Request) *db.UserProfileInput {
 	}
 }
 
-// parseOnboardingMacros estrae i target macro dal form step 2.
+// parseOnboardingMacros extracts the macro targets from the step 2 form.
 func parseOnboardingMacros(r *http.Request) *db.UserProfileInput {
 	targetKcal, _ := parseOptionalNonNegFloat(strings.TrimSpace(r.FormValue("target_kcal")))
 	targetProtein, _ := parseOptionalNonNegFloat(strings.TrimSpace(r.FormValue("target_protein")))
@@ -185,15 +185,15 @@ func parseOnboardingMacros(r *http.Request) *db.UserProfileInput {
 	}
 }
 
-// onboardingTDEE stima il fabbisogno dai dati fisici del profilo, 0 se
-// mancano. Ricalcola il BMR invece di leggere quello salvato, che puo'
-// mancare o non essere aggiornato.
+// onboardingTDEE estimates the energy needs from the profile's physical data,
+// 0 when missing. It recomputes the BMR instead of reading the saved one,
+// which may be missing or stale.
 func onboardingTDEE(user *domain.User) float64 {
 	if !profile.CanComputeIndices(user.WeightKg, user.HeightCm, user.BirthYear, user.Sex) {
 		return 0
 	}
 	bmr := profile.BMR(*user.WeightKg, *user.HeightCm, profile.AgeFromBirthYear(*user.BirthYear), *user.Sex)
-	mult := 1.4 // attivita' non indicata, come in profile.js
+	mult := 1.4 // activity not given, as in profile.js
 	if user.ActivityLevel != nil {
 		mult = profile.ActivityFactor(*user.ActivityLevel)
 	}

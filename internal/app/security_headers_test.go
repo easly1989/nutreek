@@ -7,15 +7,15 @@ import (
 	"testing"
 )
 
-// Lo scanner (#59) usa la fotocamera dalla pagina stessa e, senza
-// BarcodeDetector nativo, compila il lettore WebAssembly vendorizzato.
+// The scanner (#59) uses the camera from the page itself and, without a
+// native BarcodeDetector, compiles the vendored WebAssembly reader.
 func TestSecurityHeadersAllowScanner(t *testing.T) {
 	h := securityHeaders(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	if got := rec.Header().Get("Permissions-Policy"); !strings.Contains(got, "camera=(self)") || !strings.Contains(got, "microphone=()") {
-		t.Errorf("Permissions-Policy = %q, voglio camera=(self) e microfono spento", got)
+		t.Errorf("Permissions-Policy = %q, want camera=(self) and the microphone off", got)
 	}
 	csp := rec.Header().Get("Content-Security-Policy")
 	var script string
@@ -25,15 +25,15 @@ func TestSecurityHeadersAllowScanner(t *testing.T) {
 		}
 	}
 	if !strings.Contains(script, "'wasm-unsafe-eval'") {
-		t.Errorf("script-src = %q, manca 'wasm-unsafe-eval'", script)
+		t.Errorf("script-src = %q, missing 'wasm-unsafe-eval'", script)
 	}
 	if strings.Contains(script, "'unsafe-eval'") {
-		t.Errorf("script-src = %q: 'unsafe-eval' non serve", script)
+		t.Errorf("script-src = %q: 'unsafe-eval' is not needed", script)
 	}
 }
 
-// Le miniature dei prodotti OFF arrivano dal loro CDN (#133): consentito
-// solo quell'host, non tutto openfoodfacts.org ne' altre origini.
+// OFF product thumbnails come from their CDN (#133): only that host is
+// allowed, not all of openfoodfacts.org nor other origins.
 func TestSecurityHeadersAllowOFFImages(t *testing.T) {
 	h := securityHeaders(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	rec := httptest.NewRecorder()
@@ -47,11 +47,11 @@ func TestSecurityHeadersAllowOFFImages(t *testing.T) {
 	}
 	want := map[string]bool{"'self'": true, "data:": true, "https://images.openfoodfacts.org": true}
 	if len(img) != len(want) {
-		t.Fatalf("img-src = %v, voglio esattamente %v", img, want)
+		t.Fatalf("img-src = %v, want exactly %v", img, want)
 	}
 	for _, s := range img {
 		if !want[s] {
-			t.Errorf("img-src: sorgente inattesa %q", s)
+			t.Errorf("img-src: unexpected source %q", s)
 		}
 	}
 }

@@ -10,8 +10,8 @@ import (
 )
 
 // handleAddMealCheat POST /meals/{mealID}/cheat/items — recipe XOR ingredient.
-// Identico ad handleAddMealItem ma scrive in meal_cheat_items via
-// WeeklyPlans.AddCheat. Supporta `barcode` per auto-import OFF.
+// The same as handleAddMealItem but writes to meal_cheat_items via
+// WeeklyPlans.AddCheat. Supports `barcode` for OFF auto-import.
 func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	weekStart := parseWeekStart(r)
@@ -64,8 +64,8 @@ func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// I cheat sono memorizzati sempre in grammi/ml: se l'utente sceglie "pz"
-	// nel picker, converti subito moltiplicando per il peso medio dell'unita'.
+	// Cheats are always stored in grams/ml: when the user picks "pz" in the
+	// picker, convert right away by multiplying by the unit's average weight.
 	if iPtr != nil && strings.TrimSpace(r.PostFormValue("qty_unit")) == "pz" {
 		ing, gerr := a.Ingredients.GetByID(r.Context(), *iPtr)
 		if gerr == nil && ing.UnitWeightG != nil && *ing.UnitWeightG > 0 {
@@ -94,7 +94,7 @@ func (a *App) handleRemoveMealCheat(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	// Risolve il day del meal a partire dal cheat (per lo swap card).
+	// Resolve the meal's day from the cheat (for the card swap).
 	var day int
 	dayErr := a.Store.DB.QueryRowContext(r.Context(),
 		`SELECT m.day_of_week FROM meals m
@@ -116,7 +116,7 @@ func (a *App) handleRemoveMealCheat(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleClearMealCheats POST /meals/{mealID}/cheat/clear?start=YYYY-MM-DD
-// Rimuove tutti gli sgarri del pasto, riporta lo stato a "ufficiale".
+// Removes every cheat of the meal, bringing it back to its "official" state.
 func (a *App) handleClearMealCheats(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	weekStart := parseWeekStart(r)

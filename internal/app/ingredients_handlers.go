@@ -21,27 +21,27 @@ import (
 
 // ---- view models -----------------------------------------------------------
 
-// ingredientRow rappresenta una riga della lista risultati: puo' essere un
-// ingrediente gia' nel DB oppure un prodotto OFF candidato all'import.
+// ingredientRow is a row of the result list: either an ingredient already in
+// the DB or an OFF product that can be imported.
 type ingredientRow struct {
-	Local *domain.Ingredient // nil se la riga e' un OFF non ancora importato
-	OFF   *off.Product       // nil se la riga e' gia' nel DB
+	Local *domain.Ingredient // nil when the row is an OFF product not imported yet
+	OFF   *off.Product       // nil when the row is already in the DB
 
-	// Allergens e Category sono popolati (batch) solo per le righe locali:
-	// i template li mostrano come chip nel picker e nella lista.
+	// Allergens and Category are filled (in batch) only for local rows:
+	// the templates show them as chips in the picker and the list.
 	Allergens []domain.AllergenTag
 	Category  *domain.IngredientCategory
 
-	// CanEdit dice se chi guarda puo' modificare i dati dell'ingrediente;
-	// Author e' il nome di chi l'ha creato, mostrato quando non e' lui (#143).
+	// CanEdit says whether the viewer may edit the ingredient's data;
+	// Author is the name of whoever created it, shown when it is someone else (#143).
 	CanEdit bool
 	Author  string
 }
 
-// IsOFF e' usato dal template per decidere se mostrare il pulsante Importa.
+// IsOFF is used by the template to decide whether to show the Import button.
 func (r ingredientRow) IsOFF() bool { return r.Local == nil && r.OFF != nil }
 
-// Name normalizza il nome per il template.
+// Name normalizes the name for the template.
 func (r ingredientRow) Name() string {
 	if r.Local != nil {
 		return r.Local.Name
@@ -52,7 +52,7 @@ func (r ingredientRow) Name() string {
 	return ""
 }
 
-// Brand normalizza il brand per il template.
+// Brand normalizes the brand for the template.
 func (r ingredientRow) Brand() string {
 	if r.Local != nil && r.Local.Brand != nil {
 		return *r.Local.Brand
@@ -63,7 +63,7 @@ func (r ingredientRow) Brand() string {
 	return ""
 }
 
-// SourceLabel ritorna la label per il badge.
+// SourceLabel returns the label for the badge.
 func (r ingredientRow) SourceLabel() string {
 	if r.Local != nil {
 		if r.Local.Source == domain.IngredientSourceOFF {
@@ -74,8 +74,8 @@ func (r ingredientRow) SourceLabel() string {
 	return "OpenFoodFacts (importabile)"
 }
 
-// Kcal/Protein/Carbs/Fat/Unit espongono i macro per il template.
-// I template Go non possono unpackare multi-return, quindi un getter per campo.
+// Kcal/Protein/Carbs/Fat/Unit expose the macros to the template.
+// Go templates cannot unpack multiple returns, hence one getter per field.
 func (r ingredientRow) Kcal() float64 {
 	if r.Local != nil {
 		return r.Local.KcalPer100
@@ -119,7 +119,7 @@ func (r ingredientRow) Unit() string {
 	return "g"
 }
 
-// LocalID ritorna l'ID DB dell'ingrediente locale (0 se la riga e' solo OFF).
+// LocalID returns the DB ID of the local ingredient (0 when the row is OFF only).
 func (r ingredientRow) LocalID() int64 {
 	if r.Local != nil {
 		return r.Local.ID
@@ -127,7 +127,7 @@ func (r ingredientRow) LocalID() int64 {
 	return 0
 }
 
-// Barcode espone l'identificatore OFF per la form di import.
+// Barcode exposes the OFF identifier for the import form.
 func (r ingredientRow) Barcode() string {
 	if r.OFF != nil {
 		return r.OFF.Code
@@ -135,20 +135,21 @@ func (r ingredientRow) Barcode() string {
 	return ""
 }
 
-// Importable indica se la riga OFF puo' essere proposta per l'import. Sempre
-// true per gli OFF risultanti dalla FTS locale: il dump esportato da OFF ha
-// nutrienti incompleti per quasi tutti i prodotti italiani (volontari che
-// inseriscono solo nome/barcode), ma l'import vero passa per GetByBarcode
-// sulla live API, che invece ha i dati aggiornati. La validazione finale
-// "ha macro completi?" avviene quindi nell'handler di import, non qui.
+// Importable says whether the OFF row can be offered for import. Always true
+// for OFF rows from the local FTS: OFF's exported dump has incomplete
+// nutrients for nearly every Italian product (volunteers entering only name
+// and barcode), but the actual import goes through GetByBarcode on the live
+// API, which has up-to-date data. The final "are the macros complete?" check
+// therefore happens in the import handler, not here.
 func (r ingredientRow) Importable() bool {
 	return r.OFF != nil
 }
 
-// HasFullNutrients indica al template se mostrare i macro o un placeholder.
-// I locali hanno sempre macro completi (validati al create). Gli OFF derivati
-// dal dump spesso no (per i prodotti italiani il dump e' quasi sempre vuoto);
-// in quel caso il template mostra un hint invece dei valori 0/0/0/0 fuorvianti.
+// HasFullNutrients tells the template whether to show the macros or a
+// placeholder. Local rows always have complete macros (validated on create).
+// OFF rows from the dump often do not (for Italian products the dump is
+// nearly always empty); then the template shows a hint instead of a
+// misleading 0/0/0/0.
 func (r ingredientRow) HasFullNutrients() bool {
 	if r.Local != nil {
 		return true
@@ -156,10 +157,10 @@ func (r ingredientRow) HasFullNutrients() bool {
 	return r.OFF != nil && r.OFF.HasFullNutrients
 }
 
-// ImageURL espone la URL del thumbnail OFF, solo sull'host consentito dalla
-// CSP (off.ThumbURL). Se il dump non ha image_url (prodotti importati prima
-// della migrazione 0012) o ne ha una non mostrabile, costruisce una URL CDN
-// best-effort dal barcode: se non esiste, il template mostra l'icona.
+// ImageURL exposes the OFF thumbnail URL, only on the host the CSP allows
+// (off.ThumbURL). When the dump has no image_url (products imported before
+// migration 0012) or one that cannot be shown, it builds a best-effort CDN URL
+// from the barcode: when that does not exist, the template shows the icon.
 func (r ingredientRow) ImageURL() string {
 	if r.OFF == nil {
 		return ""
@@ -170,7 +171,7 @@ func (r ingredientRow) ImageURL() string {
 	return off.ThumbURL(off.OFFCDNImageURL(r.OFF.Code))
 }
 
-// DefaultQuantity ritorna la quantita' predefinita per il picker (0 = non impostata).
+// DefaultQuantity returns the default quantity for the picker (0 = not set).
 func (r ingredientRow) DefaultQuantity() float64 {
 	if r.Local != nil && r.Local.DefaultQuantity != nil {
 		return *r.Local.DefaultQuantity
@@ -178,9 +179,9 @@ func (r ingredientRow) DefaultQuantity() float64 {
 	return 0
 }
 
-// UnitWeightG espone il peso medio per unita' se disponibile (parsing OFF o
-// override manuale). Restituisce 0 se non noto: il template usa questo per
-// decidere se mostrare il selettore g/pz nel picker.
+// UnitWeightG exposes the average weight per unit when known (OFF parsing or
+// a manual override). It returns 0 when unknown: the template uses it to
+// decide whether to show the g/pz selector in the picker.
 func (r ingredientRow) UnitWeightG() float64 {
 	if r.Local != nil && r.Local.UnitWeightG != nil {
 		return *r.Local.UnitWeightG
@@ -191,10 +192,10 @@ func (r ingredientRow) UnitWeightG() float64 {
 	return 0
 }
 
-// fromOFF dice se i dati vengono da OpenFoodFacts: riga non importata o
-// ingrediente importato. Per questi il peso di un «pezzo» e' quello della
-// confezione (o del pezzo, nelle multiple «6 × 25 g»), e la quantita'
-// predefinita e' la porzione OFF in g/ml.
+// fromOFF says whether the data comes from OpenFoodFacts: a row not imported
+// or an imported ingredient. For these the weight of a "piece" is the
+// package's (or the piece's, in multipacks like "6 × 25 g"), and the default
+// quantity is the OFF serving in g/ml.
 func (r ingredientRow) fromOFF() bool {
 	if r.Local != nil {
 		return r.Local.Source == domain.IngredientSourceOFF
@@ -202,8 +203,8 @@ func (r ingredientRow) fromOFF() bool {
 	return r.OFF != nil
 }
 
-// ServingG e' la porzione OFF in g/ml (0 se ignota): per un import e' la
-// quantita' predefinita salvata da CreateOFF.
+// ServingG is the OFF serving in g/ml (0 when unknown): for an import it is
+// the default quantity stored by CreateOFF.
 func (r ingredientRow) ServingG() float64 {
 	if !r.fromOFF() {
 		return 0
@@ -217,13 +218,13 @@ func (r ingredientRow) ServingG() float64 {
 	return r.DefaultQuantity()
 }
 
-// PickQuantity e PickUnit sono la quantita' e l'unita' proposte nel picker
-// (#136). La quantita' viene solo da dati veri:
-//   - prodotto OFF: la porzione in g/ml, o campo vuoto (0) se ignota; mai
-//     «1 pz», che per OFF vale l'intera confezione;
-//   - ingrediente creato a mano: la quantita' predefinita (fino a 10 letta in
-//     pezzi se c'e' il peso di un pezzo, oltre in g/ml), altrimenti 1 pz se il
-//     pezzo e' noto, altrimenti campo vuoto.
+// PickQuantity and PickUnit are the quantity and unit proposed in the picker
+// (#136). The quantity comes only from real data:
+//   - OFF product: the serving in g/ml, or an empty field (0) when unknown;
+//     never "1 pz", which for OFF means the whole package;
+//   - ingredient created by hand: the default quantity (up to 10 read as
+//     pieces when a piece weight exists, above that as g/ml), otherwise 1 pz
+//     when the piece is known, otherwise an empty field.
 func (r ingredientRow) PickQuantity() float64 {
 	if r.fromOFF() {
 		return r.ServingG()
@@ -237,7 +238,7 @@ func (r ingredientRow) PickQuantity() float64 {
 	return 0
 }
 
-// PickUnit: vedi PickQuantity. "pz" solo per gli ingredienti creati a mano.
+// PickUnit: see PickQuantity. "pz" only for ingredients created by hand.
 func (r ingredientRow) PickUnit() string {
 	if !r.fromOFF() && r.UnitWeightG() > 0 && r.PickQuantity() <= 10 {
 		return "pz"
@@ -245,7 +246,7 @@ func (r ingredientRow) PickUnit() string {
 	return r.Unit()
 }
 
-// HasMicronutrients ritorna true se il locale ha almeno un micronutriente.
+// HasMicronutrients returns true when the local row has at least one micronutrient.
 func (r ingredientRow) HasMicronutrients() bool {
 	if r.Local == nil {
 		return false
@@ -254,7 +255,7 @@ func (r ingredientRow) HasMicronutrients() bool {
 		r.Local.SaturatedFatPer100 != nil || r.Local.SodiumPer100 != nil
 }
 
-// FiberPer100Val ritorna le fibre per 100g/ml (0 se non disponibili).
+// FiberPer100Val returns fiber per 100g/ml (0 when not available).
 func (r ingredientRow) FiberPer100Val() float64 {
 	if r.Local != nil && r.Local.FiberPer100 != nil {
 		return *r.Local.FiberPer100
@@ -262,7 +263,7 @@ func (r ingredientRow) FiberPer100Val() float64 {
 	return 0
 }
 
-// SugarsPer100Val ritorna gli zuccheri per 100g/ml (0 se non disponibili).
+// SugarsPer100Val returns sugars per 100g/ml (0 when not available).
 func (r ingredientRow) SugarsPer100Val() float64 {
 	if r.Local != nil && r.Local.SugarsPer100 != nil {
 		return *r.Local.SugarsPer100
@@ -270,7 +271,7 @@ func (r ingredientRow) SugarsPer100Val() float64 {
 	return 0
 }
 
-// SaturatedFatPer100Val ritorna i grassi saturi per 100g/ml (0 se non disponibili).
+// SaturatedFatPer100Val returns saturated fat per 100g/ml (0 when not available).
 func (r ingredientRow) SaturatedFatPer100Val() float64 {
 	if r.Local != nil && r.Local.SaturatedFatPer100 != nil {
 		return *r.Local.SaturatedFatPer100
@@ -278,7 +279,7 @@ func (r ingredientRow) SaturatedFatPer100Val() float64 {
 	return 0
 }
 
-// SodiumPer100Val ritorna il sodio per 100g/ml (0 se non disponibili).
+// SodiumPer100Val returns sodium per 100g/ml (0 when not available).
 func (r ingredientRow) SodiumPer100Val() float64 {
 	if r.Local != nil && r.Local.SodiumPer100 != nil {
 		return *r.Local.SodiumPer100
@@ -290,26 +291,26 @@ type ingredientsListData struct {
 	authPageData
 	Rows       []ingredientRow
 	Query      string
-	OFFWarning string // riempito se la search OFF locale e' fallita (raro)
+	OFFWarning string // filled when the local OFF search failed (rare)
 
-	// Filtri della pagina /ingredients (non usati dai picker).
+	// Filters of the /ingredients page (not used by the pickers).
 	Filter        ingredientFilter
 	AllAllergens  []domain.AllergenTag
 	AllCategories []domain.IngredientCategory
 
-	// Campi di context del picker. Quando il partial e' renderizzato in
-	// modalita' "picker" (es. dentro la pagina recipe-edit o nella card
-	// di un meal), questi campi guidano il form action e i parametri.
-	// PickerKind = "" -> modalita' display (pagina /ingredients), nessun
-	// bottone "Aggiungi" (solo "Importa" sui soli OFF).
+	// Picker context fields. When the partial is rendered in "picker" mode
+	// (e.g. inside the recipe-edit page or in a meal's card), these fields
+	// drive the form action and its parameters.
+	// PickerKind = "" -> display mode (the /ingredients page), no "Add"
+	// button (only "Import" on OFF rows).
 	PickerKind        string          // "recipe_item" | "meal_item" | "nutritionist_item" | ""
-	RecipeID          int64           // se PickerKind == "recipe_item"
-	MealID            int64           // se PickerKind == "meal_item"
-	VariationID       int64           // se PickerKind == "nutritionist_item"
-	WeekStart         string          // YYYY-MM-DD, per redirect post-add da meal_item
-	InDialog          bool            // picker nella finestra sopra la settimana (form HTMX)
-	SearchedOFF       bool            // la ricerca e' arrivata anche alla rete di OFF (off=1)
-	NutritionistItems []ingredientRow // suggeriti dal piano nutrizionista
+	RecipeID          int64           // when PickerKind == "recipe_item"
+	MealID            int64           // when PickerKind == "meal_item"
+	VariationID       int64           // when PickerKind == "nutritionist_item"
+	WeekStart         string          // YYYY-MM-DD, for the redirect after adding a meal_item
+	InDialog          bool            // picker in the dialog over the week (HTMX form)
+	SearchedOFF       bool            // the search also reached the OFF network (off=1)
+	NutritionistItems []ingredientRow // suggestions from the nutrition plan
 }
 
 type ingredientsNewData struct {
@@ -319,11 +320,11 @@ type ingredientsNewData struct {
 	Categories        []domain.IngredientCategory
 	Allergens         []domain.AllergenTag
 	SelectedAllergens map[int64]bool
-	ReadOnly          bool // sempre false: il partial ingredient_fields lo legge
+	ReadOnly          bool // always false: the ingredient_fields partial reads it
 }
 
-// ingredientForm cattura i campi del form "nuovo/modifica ingrediente" per poter
-// rifare il render in caso di errore senza perdere i valori inseriti.
+// ingredientForm captures the fields of the "new/edit ingredient" form so it
+// can be rendered again after an error without losing what was entered.
 type ingredientForm struct {
 	Name            string
 	Brand           string
@@ -332,12 +333,12 @@ type ingredientForm struct {
 	Protein         string
 	Carbs           string
 	Fat             string
-	UnitWeightG     string  // opzionale: peso per unita' in g (es. "150")
-	DefaultQuantity string  // opzionale: quantita' predefinita nel picker
-	CategoryID      string  // opzionale: ID categoria
-	Barcode         string  // opzionale: codice letto dallo scanner (solo «Nuovo ingrediente» rapido)
-	AllergenIDs     []int64 // opzionale: ID allergeni selezionati
-	// Micronutrienti opzionali (per 100 g/ml)
+	UnitWeightG     string  // optional: weight per unit in g (e.g. "150")
+	DefaultQuantity string  // optional: default quantity in the picker
+	CategoryID      string  // optional: category ID
+	Barcode         string  // optional: code read by the scanner (quick "New ingredient" only)
+	AllergenIDs     []int64 // optional: IDs of the selected allergens
+	// Optional micronutrients (per 100 g/ml)
 	Fiber        string
 	Sugars       string
 	SaturatedFat string
@@ -349,8 +350,8 @@ type ingredientForm struct {
 func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	f := parseIngredientFilter(r)
-	// Render iniziale SSR: includi OFF solo se l'utente arriva gia' con una
-	// query in URL (link condiviso, refresh). Senza q, lista solo locali.
+	// Initial SSR render: include OFF only when the user arrives with a query
+	// already in the URL (shared link, refresh). Without q, local rows only.
 	rows, warn, err := a.searchMixed(r.Context(), q, q != "" && f.WantsOFF())
 	if err != nil {
 		a.serverError(w, r, err)
@@ -373,9 +374,9 @@ func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleIngredientsSearchPartial risponde a HTMX con il solo partial
-// dei risultati. Usato dall'input live-search.
-// Param `off=1` per includere OpenFoodFacts; senza, solo DB locale (veloce).
+// handleIngredientsSearchPartial answers HTMX with just the results partial.
+// Used by the live-search input.
+// Param `off=1` includes OpenFoodFacts; without it, the local DB only (fast).
 func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	f := parseIngredientFilter(r)
@@ -384,7 +385,7 @@ func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Requ
 		a.serverError(w, r, err)
 		return
 	}
-	// CSRF token serve nel partial per il form Importa.
+	// The partial needs the CSRF token for the Import form.
 	data := ingredientsListData{
 		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
 		Rows:         f.apply(rows),
@@ -397,9 +398,9 @@ func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// ingredientFilter sono i filtri della pagina /ingredients: provenienza
-// (Src: "" tutti, "mine" nel database, "off" solo OpenFoodFacts non
-// importati), categoria e allergene (0 = nessun filtro).
+// ingredientFilter holds the filters of the /ingredients page: source
+// (Src: "" all, "mine" in the database, "off" only OpenFoodFacts products not
+// imported), category and allergen (0 = no filter).
 type ingredientFilter struct {
 	Src        string
 	CategoryID int64
@@ -421,8 +422,8 @@ func parseIngredientFilter(r *http.Request) ingredientFilter {
 	return f
 }
 
-// WantsOFF dice se cercare anche su OpenFoodFacts: i prodotti non importati
-// non hanno categoria ne' allergeni, quindi quei filtri li escludono comunque.
+// WantsOFF says whether to search OpenFoodFacts too: products not imported
+// have no category or allergens, so those filters exclude them anyway.
 func (f ingredientFilter) WantsOFF() bool {
 	return f.Src != "mine" && f.CategoryID == 0 && f.AllergenID == 0
 }
@@ -441,11 +442,11 @@ func (f ingredientFilter) values() url.Values {
 	return v
 }
 
-// Query sono i parametri dei filtri (senza q) per la ricerca live.
+// Query is the filter parameters (without q) for the live search.
 func (f ingredientFilter) Query() string { return f.values().Encode() }
 
-// Href e' il link alla lista con la ricerca q e questi filtri. E' costruito
-// qui perche' html/template codificherebbe & e = di una query interpolata.
+// Href is the link to the list with the search q and these filters. It is
+// built here because html/template would encode the & and = of an interpolated query.
 func (f ingredientFilter) Href(q string) template.URL {
 	v := f.values()
 	if q != "" {
@@ -457,14 +458,14 @@ func (f ingredientFilter) Href(q string) template.URL {
 	return template.URL("/ingredients?" + v.Encode())
 }
 
-// WithSrc e WithoutTags derivano i filtri dei link (provenienza, azzera).
+// WithSrc and WithoutTags derive the filters of the links (source, reset).
 func (f ingredientFilter) WithSrc(src string) ingredientFilter { f.Src = src; return f }
 func (f ingredientFilter) WithoutTags() ingredientFilter {
 	f.CategoryID, f.AllergenID = 0, 0
 	return f
 }
 
-// apply tiene le righe che passano tutti i filtri.
+// apply keeps the rows that pass every filter.
 func (f ingredientFilter) apply(rows []ingredientRow) []ingredientRow {
 	out := make([]ingredientRow, 0, len(rows))
 	for _, row := range rows {
@@ -490,21 +491,21 @@ func hasAllergen(tags []domain.AllergenTag, id int64) bool {
 	return false
 }
 
-// includeOFFParam ritorna true se il client ha richiesto esplicitamente
-// l'integrazione con OpenFoodFacts (param off=1). Default false: il DB
-// locale risponde a ogni keystroke, OFF viene chiamato solo a digitazione
-// ferma per evitare query parziali.
+// includeOFFParam returns true when the client explicitly asked for the
+// OpenFoodFacts integration (param off=1). Default false: the local DB
+// answers every keystroke, OFF is called only once typing stops, to avoid
+// partial queries.
 func includeOFFParam(r *http.Request) bool {
 	v := r.URL.Query().Get("off")
 	return v == "1" || v == "true"
 }
 
-// searchMixed esegue search locale e, se includeOFF==true e q != "",
-// integra i risultati OpenFoodFacts deduplicati per barcode.
-// Ora la search OFF e' interamente locale via SQLite FTS5 (popolata dal
-// Syncer dal dump pubblico), quindi <50ms, niente timeout, niente 503.
-// `warn` resta nell'interfaccia per gestire eventuali errori SQL ma in
-// pratica e' sempre vuoto.
+// searchMixed runs the local search and, when includeOFF==true and q != "",
+// merges the OpenFoodFacts results deduplicated by barcode.
+// The OFF search is now fully local via SQLite FTS5 (filled by the Syncer
+// from the public dump), so <50ms, no timeouts, no 503s.
+// `warn` stays in the interface to handle any SQL errors but in practice it
+// is always empty.
 func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ingredientRow, string, error) {
 	if code, ok := off.NormalizeBarcode(q); ok {
 		return a.searchBarcode(ctx, code, includeOFF)
@@ -542,21 +543,21 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 		a.Logger.Warn("OFF search failed", "err", offErr, "q", q)
 		return rows, "Ricerca OpenFoodFacts non disponibile, mostro solo gli ingredienti locali.", nil
 	}
-	// FTS5 fa AND nativo fra token + prefix match: nessun filtro aggiuntivo necessario.
+	// FTS5 does a native AND across tokens + prefix match: no extra filter needed.
 	for i := range products {
 		p := products[i]
 		if knownBarcodes[p.Code] {
-			continue // gia' importato
+			continue // already imported
 		}
 		rows = append(rows, ingredientRow{OFF: &p})
 	}
 	return rows, "", nil
 }
 
-// searchBarcode e' la ricerca per codice a barre (scanner del picker o cifre
-// scritte a mano): al massimo una riga. Prima i propri ingredienti (import
-// OFF o locali collegati al codice), poi la copia locale di OFF; la rete solo
-// con live=true, cioe' a digitazione ferma. Nessuna riga = non trovato.
+// searchBarcode is the search by barcode (the picker's scanner or digits
+// typed by hand): at most one row. First the user's own ingredients (OFF
+// imports or local ones linked to the code), then the local copy of OFF; the
+// network only with live=true, that is once typing stops. No row = not found.
 func (a *App) searchBarcode(ctx context.Context, code string, live bool) ([]ingredientRow, string, error) {
 	ing, err := a.Ingredients.GetByBarcode(ctx, code)
 	if err == nil {
@@ -583,10 +584,10 @@ func (a *App) searchBarcode(ctx context.Context, code string, live bool) ([]ingr
 	return []ingredientRow{{OFF: p}}, "", nil
 }
 
-// attachTags carica in batch allergeni e categoria (quella di chi guarda)
-// delle righe locali e li assegna in-place, cosi' il picker e la lista possono
-// mostrarli senza query N+1; segna anche chi puo' modificarle e di chi sono.
-// Le righe OFF non importate non hanno ne' allergeni ne' categoria.
+// attachTags loads in batch the allergens and the category (the viewer's) of
+// the local rows and assigns them in place, so the picker and the list can
+// show them without N+1 queries; it also marks who may edit them and whose
+// they are. OFF rows not imported have neither allergens nor a category.
 func (a *App) attachTags(ctx context.Context, rows []ingredientRow) {
 	if a.Categories == nil {
 		return
@@ -628,10 +629,10 @@ func (a *App) attachTags(ctx context.Context, rows []ingredientRow) {
 	}
 }
 
-// canEditIngredient dice se u puo' modificare i dati dell'ingrediente (#143):
-// li modifica chi l'ha creato, o l'owner. Un ingrediente senza autore (creato
-// prima di #143, o dal reconciler) lo modifica l'owner; se l'istanza non ha
-// un owner, chiunque, come prima.
+// canEditIngredient says whether u may edit the ingredient's data (#143):
+// whoever created it edits it, or the owner. An ingredient with no author
+// (created before #143, or by the reconciler) is edited by the owner; when
+// the instance has no owner, by anyone, as before.
 func (a *App) canEditIngredient(u *domain.User, ing *domain.Ingredient) bool {
 	if u == nil || ing == nil {
 		return false
@@ -645,8 +646,8 @@ func (a *App) canEditIngredient(u *domain.User, ing *domain.Ingredient) bool {
 	return a.Cfg.OwnerEmail == ""
 }
 
-// ingredientAuthor ritorna il nome di chi ha creato l'ingrediente, "" se non
-// ha autore. cache evita di rileggere lo stesso utente in una lista.
+// ingredientAuthor returns the name of whoever created the ingredient, "" when
+// it has no author. cache avoids reading the same user again in a list.
 func (a *App) ingredientAuthor(ctx context.Context, ing *domain.Ingredient, cache map[int64]string) string {
 	if ing.CreatedBy == nil {
 		return ""
@@ -665,8 +666,8 @@ func (a *App) ingredientAuthor(ctx context.Context, ing *domain.Ingredient, cach
 	return name
 }
 
-// ownCategory interpreta il category_id di un form: nil se vuoto, errore se
-// non e' una categoria di userID (anche un id inventato o altrui).
+// ownCategory parses a form's category_id: nil when empty, an error when it
+// is not one of userID's categories (an invented id or another user's too).
 func (a *App) ownCategory(ctx context.Context, userID int64, raw string) (*int64, error) {
 	if raw == "" {
 		return nil, nil
@@ -687,8 +688,8 @@ func (a *App) ownCategory(ctx context.Context, userID int64, raw string) (*int64
 	return nil, db.ErrCategoryNotFound
 }
 
-// allergenIDSet converte una slice di ID in un set per il rendering dei
-// checkbox "selezionati" nel form ingrediente.
+// allergenIDSet turns a slice of IDs into a set for rendering the "selected"
+// checkboxes in the ingredient form.
 func allergenIDSet(ids []int64) map[int64]bool {
 	set := make(map[int64]bool, len(ids))
 	for _, id := range ids {
@@ -730,7 +731,7 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		Carbs:       strings.TrimSpace(r.PostFormValue("carbs")),
 		Fat:         strings.TrimSpace(r.PostFormValue("fat")),
 		UnitWeightG: strings.TrimSpace(r.PostFormValue("unit_weight_g")),
-		// DefaultQuantity serve solo a ripresentare il valore dopo un errore.
+		// DefaultQuantity only serves to show the value again after an error.
 		DefaultQuantity: strings.TrimSpace(r.PostFormValue("default_quantity")),
 		CategoryID:      strings.TrimSpace(r.PostFormValue("category_id")),
 		AllergenIDs:     parsedAllergenIDs,
@@ -791,7 +792,7 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// unit_weight_g opzionale: peso per unità (es. 150 per una banana da 150g).
+	// optional unit_weight_g: weight per unit (e.g. 150 for a 150g banana).
 	var unitWeightG *float64
 	if s := strings.TrimSpace(r.PostFormValue("unit_weight_g")); s != "" {
 		if v, err2 := parseNonNegFloat(s); err2 == nil && v > 0 {
@@ -799,7 +800,7 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// default_quantity opzionale: quantità predefinita nel picker.
+	// optional default_quantity: the default quantity in the picker.
 	var defaultQuantity *float64
 	if s := strings.TrimSpace(r.PostFormValue("default_quantity")); s != "" {
 		if v, err2 := parseNonNegFloat(s); err2 == nil && v > 0 {
@@ -815,11 +816,11 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Salva categoria (opzionale), di chi crea.
+	// Save the category (optional), the creator's.
 	if categoryID != nil {
 		_ = a.Categories.SetIngredientCategory(r.Context(), user.ID, ingID, categoryID)
 	}
-	// Salva allergeni (opzionale).
+	// Save the allergens (optional).
 	if len(form.AllergenIDs) > 0 {
 		_ = a.Categories.SetIngredientAllergens(r.Context(), ingID, form.AllergenIDs)
 	}
@@ -828,8 +829,8 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 
-// handleIngredientOFFImport importa per barcode dal pulsante "Importa".
-// Idempotente: se gia' presente in DB, flash "gia' presente" senza errore.
+// handleIngredientOFFImport imports by barcode from the "Importa" button.
+// Idempotent: when already in the DB, an "already there" flash with no error.
 func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) {
 	barcode := strings.TrimSpace(r.PostFormValue("barcode"))
 	if barcode == "" {
@@ -837,7 +838,7 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Pre-check: gia' importato?
+	// Pre-check: already imported?
 	existing, err := a.Ingredients.GetByBarcode(r.Context(), barcode)
 	if err != nil && !errors.Is(err, db.ErrIngredientNotFound) {
 		a.serverError(w, r, err)
@@ -860,9 +861,9 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if !product.HasFullNutrients {
-		// Anche la live API non ha i 4 macro per questo barcode (dato di OFF
-		// genuinamente incompleto). Redirige con flash invece di errore raw:
-		// l'utente puo' creare un ingrediente locale manualmente.
+		// The live API lacks the 4 macros for this barcode too (OFF data
+		// genuinely incomplete). Redirect with a flash instead of a raw error:
+		// the user can create a local ingredient by hand.
 		a.Sessions.Put(r.Context(), "flash",
 			"OpenFoodFacts non ha i macro completi per questo prodotto. Creane uno locale.")
 		http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
@@ -889,19 +890,19 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 
-// resolveOFFBarcode importa l'OFF identificato dal barcode nel DB locale e
-// ritorna l'id dell'ingrediente locale corrispondente. Idempotente: se il
-// barcode e' gia' nel DB, ritorna l'esistente senza richiamare OFF.
-// Se OFF non ha tutti i nutrienti, ritorna errore.
+// resolveOFFBarcode imports the OFF product identified by the barcode into
+// the local DB and returns the id of the matching local ingredient.
+// Idempotent: when the barcode is already in the DB, it returns the existing
+// one without calling OFF again. When OFF lacks some nutrients, it returns an error.
 //
-// Usato sia da handleRecipeAddItem (auto-import al click) sia (in tappa
-// 16) dal flow meal_item, per evitare duplicare la logica.
+// Used both by handleRecipeAddItem (auto-import on click) and (in stage 16)
+// by the meal_item flow, to avoid duplicating the logic.
 func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, error) {
 	barcode = strings.TrimSpace(barcode)
 	if barcode == "" {
 		return 0, errEmpty
 	}
-	// Pre-check DB: evita una chiamata HTTP se gia' importato.
+	// DB pre-check: avoids an HTTP call when already imported.
 	existing, err := a.Ingredients.GetByBarcode(ctx, barcode)
 	if err == nil {
 		return existing.ID, nil
@@ -909,8 +910,8 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 	if !errors.Is(err, db.ErrIngredientNotFound) {
 		return 0, err
 	}
-	// Non tra gli ingredienti: l'API di OFF, che porta anche i micronutrienti.
-	// Se OFF non risponde basta la copia locale, se ha i macro.
+	// Not among the ingredients: OFF's API, which brings the micronutrients too.
+	// When OFF does not answer, the local copy is enough, if it has the macros.
 	product, err := a.OFF.GetByBarcode(ctx, barcode)
 	if err != nil && !errors.Is(err, off.ErrNotFound) {
 		if local, lerr := a.OFF.FindByBarcode(ctx, barcode, false); lerr == nil && local.HasFullNutrients {
@@ -940,7 +941,7 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 		return id, nil
 	}
 	if errors.Is(err, db.ErrBarcodeAlreadyUsed) {
-		// Race / barcode appena creato da un altro path: recupera.
+		// Race / barcode just created by another path: recover it.
 		got, gerr := a.Ingredients.GetByBarcode(ctx, product.Code)
 		if gerr != nil {
 			return 0, gerr
@@ -950,8 +951,8 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 	return 0, err
 }
 
-// importerID e' l'autore di un prodotto OFF importato: l'utente della
-// richiesta, nil fuori da una richiesta autenticata.
+// importerID is the author of an imported OFF product: the request's user,
+// nil outside an authenticated request.
 func importerID(ctx context.Context) *int64 {
 	if u := userFromContext(ctx); u != nil {
 		id := u.ID
@@ -960,12 +961,12 @@ func importerID(ctx context.Context) *int64 {
 	return nil
 }
 
-// handleOFFMacroCheck verifica i macro di un singolo prodotto OFF tramite
-// barcode lookup (FindByBarcode: off_products locale, poi la rete se il
-// record locale manca o e' incompleto).
-// Ritorna un fragment HTML con lo stato macro: green dot + valori, oppure
-// dot rosso + "macro non disponibili". Usato da ingredient_results.html
-// via HTMX lazy load (hx-trigger="load delay:500ms").
+// handleOFFMacroCheck checks the macros of a single OFF product through a
+// barcode lookup (FindByBarcode: local off_products, then the network when
+// the local record is missing or incomplete).
+// Returns an HTML fragment with the macro state: green dot + values, or a
+// red dot + "macro non disponibili". Used by ingredient_results.html via an
+// HTMX lazy load (hx-trigger="load delay:500ms").
 func (a *App) handleOFFMacroCheck(w http.ResponseWriter, r *http.Request) {
 	barcode := chi.URLParam(r, "barcode")
 	if barcode == "" {
@@ -981,8 +982,8 @@ func (a *App) handleOFFMacroCheck(w http.ResponseWriter, r *http.Request) {
 	writeMacroFragment(w, true, product.Kcal, product.Protein, product.Carbs, product.Fat)
 }
 
-// writeMacroFragment scrive kcal e macro per 100 g di un prodotto OFF nel
-// formato delle righe di ingredient_results.
+// writeMacroFragment writes the kcal and macros per 100 g of an OFF product
+// in the format of the ingredient_results rows.
 func writeMacroFragment(w http.ResponseWriter, full bool, kcal, protein, carbs, fat float64) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if full {
@@ -1007,8 +1008,8 @@ type ingredientEditData struct {
 	Categories        []domain.IngredientCategory
 	Allergens         []domain.AllergenTag
 	SelectedAllergens map[int64]bool
-	// ReadOnly: chi guarda non puo' modificare i dati, solo la sua categoria
-	// (#143). Author e' il nome di chi l'ha creato ("" se senza autore).
+	// ReadOnly: the viewer may not edit the data, only their own category
+	// (#143). Author is the name of whoever created it ("" when there is none).
 	ReadOnly bool
 	Author   string
 }
@@ -1030,7 +1031,7 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	selected, _ := a.Categories.GetIngredientAllergenIDs(r.Context(), id)
 
 	form := ingredientFormFrom(ing)
-	// Senza questa pre-selezione il salvataggio azzerava la categoria.
+	// Without this preselection, saving cleared the category.
 	current, err := a.Categories.CategoriesForIngredients(r.Context(), user.ID, []int64{id})
 	if err != nil {
 		a.serverError(w, r, err)
@@ -1058,7 +1059,7 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ingredientFormFrom riempie il form di modifica con i dati salvati.
+// ingredientFormFrom fills the edit form with the saved data.
 func ingredientFormFrom(ing *domain.Ingredient) ingredientForm {
 	form := ingredientForm{
 		Name:    ing.Name,
@@ -1098,7 +1099,7 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	// Verifica che esista.
+	// Check that it exists.
 	ing, err := a.Ingredients.GetByID(r.Context(), id)
 	if err != nil {
 		a.notFound(w, r)
@@ -1215,19 +1216,19 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Aggiorna la categoria di chi salva.
+	// Update the category of whoever saves.
 	_ = a.Categories.SetIngredientCategory(r.Context(), user.ID, id, categoryID)
 
-	// Aggiorna allergeni (replace: lista vuota = rimuove tutti i tag).
+	// Update the allergens (replace: an empty list removes every tag).
 	_ = a.Categories.SetIngredientAllergens(r.Context(), id, form.AllergenIDs)
 
 	a.Sessions.Put(r.Context(), "flash", "Ingrediente aggiornato.")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 
-// saveIngredientCategoryOnly e' il salvataggio di chi non puo' modificare
-// l'ingrediente (#143): vale solo la sua categoria, gli altri campi del POST
-// sono ignorati.
+// saveIngredientCategoryOnly is the save of whoever may not edit the
+// ingredient (#143): only their category counts, the POST's other fields
+// are ignored.
 func (a *App) saveIngredientCategoryOnly(w http.ResponseWriter, r *http.Request, ing *domain.Ingredient) {
 	user := userFromContext(r.Context())
 	raw := strings.TrimSpace(r.PostFormValue("category_id"))
@@ -1278,8 +1279,8 @@ func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form
 	}
 }
 
-// parseOptionalFloat analoga a parseNonNegFloat ma ritorna nil invece di
-// errore se s e' vuota. Usata per micronutrienti opzionali.
+// parseOptionalFloat is like parseNonNegFloat but returns nil instead of an
+// error when s is empty. Used for optional micronutrients.
 func parseOptionalFloat(s string) *float64 {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -1292,8 +1293,8 @@ func parseOptionalFloat(s string) *float64 {
 	return &v
 }
 
-// parseNonNegFloat accetta numeri con virgola o punto come separatore
-// decimale (i form italiani spesso usano la virgola).
+// parseNonNegFloat accepts numbers with a comma or a dot as the decimal
+// separator (Italian forms often use the comma).
 func parseNonNegFloat(s string) (float64, error) {
 	s = strings.ReplaceAll(s, ",", ".")
 	if s == "" {
@@ -1309,7 +1310,7 @@ func parseNonNegFloat(s string) (float64, error) {
 	return v, nil
 }
 
-// errori esposti come var per dare messaggi parlanti senza pkg errors.
+// errors exposed as vars to give meaningful messages without pkg errors.
 var (
 	errEmpty    = simpleErr("valore mancante")
 	errNegative = simpleErr("valore negativo")

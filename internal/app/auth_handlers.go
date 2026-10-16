@@ -26,12 +26,12 @@ type authPageData struct {
 	Error      string
 	Form       authFormData
 	Appearance Appearance
-	ActiveNav  string // URL path corrente, per evidenziare il link attivo nella sidebar
-	ShowTour   bool   // true se il tour guidato deve essere mostrato sulla dashboard
-	Bare       bool   // pagina senza barra laterale ne' barra in basso (onboarding)
-	IsOwner    bool   // true se l'utente corrente è l'owner dell'istanza
-	// Features mappa key→bool: indica se l'utente ha accesso alla feature.
-	// Quando PremiumEnabled=false è sempre tutto true (nessun gating).
+	ActiveNav  string // current URL path, to highlight the active link in the sidebar
+	ShowTour   bool   // true when the guided tour must be shown on the dashboard
+	Bare       bool   // a page with no sidebar and no bottom bar (onboarding)
+	IsOwner    bool   // true when the current user is the instance owner
+	// Features maps key→bool: whether the user has access to the feature.
+	// With PremiumEnabled=false everything is always true (no gating).
 	Features map[string]bool
 }
 
@@ -80,7 +80,7 @@ func (a *App) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
-	// Rate limit per IP: max 5 tentativi per minuto, in-memory.
+	// Per-IP rate limit: at most 5 attempts per minute, in memory.
 	limiter := a.loginRateLimiter()
 	ip := remoteIP(r)
 	if !limiter.allow(ip) {
@@ -118,8 +118,8 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Login riuscito: reset del rate limiter cosi' un utente legittimo
-	// non resta sotto threshold per i tentativi falliti precedenti.
+	// Successful login: reset the rate limiter so a legitimate user does not
+	// stay under the threshold because of earlier failed attempts.
 	limiter.reset(ip)
 
 	// Regenerate the session id on privilege change to prevent fixation.
@@ -217,9 +217,9 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 // ---- helpers ---------------------------------------------------------------
 
-// serverError logga, prova a renderizzare la pagina di errore 500 con
-// layout, e in caso di doppio fallimento fa il fallback a http.Error
-// testuale: meglio una pagina brutta che una connessione mezza scritta.
+// serverError logs, tries to render the 500 error page with the layout, and
+// if that fails too falls back to a plain-text http.Error: an ugly page is
+// better than a half-written connection.
 func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	a.Logger.Error("server error", "err", err, "path", r.URL.Path)
 	if rerr := a.Render.Render(w, http.StatusInternalServerError, "error_500", a.baseData(r)); rerr != nil {
@@ -227,8 +227,8 @@ func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 }
 
-// notFound renderizza la pagina 404 con layout. Il fallback testuale
-// vale quanto sopra.
+// notFound renders the 404 page with the layout. The plain-text fallback
+// works as above.
 func (a *App) notFound(w http.ResponseWriter, r *http.Request) {
 	if rerr := a.Render.Render(w, http.StatusNotFound, "error_404", a.baseData(r)); rerr != nil {
 		http.NotFound(w, r)

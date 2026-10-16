@@ -8,12 +8,12 @@ import (
 	"github.com/justinas/nosurf"
 )
 
-// maxWaterLogML limita un singolo quick-log a 3 litri: oltre e' quasi sempre
-// un errore di battitura.
+// maxWaterLogML limits a single quick log to 3 liters: beyond that it is
+// nearly always a typo.
 const maxWaterLogML = 3000
 
-// handleWaterLog POST /water — registra un'assunzione d'acqua per la data e
-// risponde con il widget aggiornato (HTMX outerHTML su #water-widget-{date}).
+// handleWaterLog POST /water — logs a water intake for the date and answers
+// with the updated widget (HTMX outerHTML on #water-widget-{date}).
 func (a *App) handleWaterLog(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	date, ok := a.parseWaterDate(w, r)
@@ -32,8 +32,8 @@ func (a *App) handleWaterLog(w http.ResponseWriter, r *http.Request) {
 	a.renderWaterWidget(w, r, user.ID, date)
 }
 
-// handleWaterDelete POST /water/delete-last — annulla l'ultimo quick-log del
-// giorno. Idempotente: se non c'e' nulla, ri-renderizza comunque il widget.
+// handleWaterDelete POST /water/delete-last — undoes the day's last quick
+// log. Idempotent: when there is nothing, it re-renders the widget anyway.
 func (a *App) handleWaterDelete(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	date, ok := a.parseWaterDate(w, r)
@@ -44,7 +44,7 @@ func (a *App) handleWaterDelete(w http.ResponseWriter, r *http.Request) {
 	a.renderWaterWidget(w, r, user.ID, date)
 }
 
-// parseWaterDate legge il campo `date` (YYYY-MM-DD) dal form; default a oggi.
+// parseWaterDate reads the `date` field (YYYY-MM-DD) from the form; defaults to today.
 func (a *App) parseWaterDate(w http.ResponseWriter, r *http.Request) (time.Time, bool) {
 	raw := r.PostFormValue("date")
 	if raw == "" {
@@ -58,7 +58,7 @@ func (a *App) parseWaterDate(w http.ResponseWriter, r *http.Request) (time.Time,
 	return date, true
 }
 
-// renderWaterWidget scrive il partial water_widget aggiornato per la data.
+// renderWaterWidget writes the updated water_widget partial for the date.
 func (a *App) renderWaterWidget(w http.ResponseWriter, r *http.Request, userID int64, date time.Time) {
 	user := userFromContext(r.Context())
 	ml, err := a.WaterLogs.TotalForDate(r.Context(), userID, date)

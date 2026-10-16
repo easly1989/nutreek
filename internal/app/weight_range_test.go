@@ -10,7 +10,7 @@ func TestParseWeightRange(t *testing.T) {
 	cases := map[string]int{"": 90, "?giorni=30": 30, "?giorni=365": 365, "?giorni=7": 90, "?giorni=abc": 90}
 	for q, want := range cases {
 		if got := parseWeightRange(httptest.NewRequest("GET", "/profile/peso"+q, nil)); got != want {
-			t.Errorf("%q: %d giorni, attesi %d", q, got, want)
+			t.Errorf("%q: %d days, want %d", q, got, want)
 		}
 	}
 }
@@ -29,7 +29,7 @@ func TestWeightTrend(t *testing.T) {
 	}
 	for _, c := range cases {
 		if got := weightTrend(c.delta, c.span); got != c.want {
-			t.Errorf("weightTrend(%v, %v) = %q, atteso %q", c.delta, c.span, got, c.want)
+			t.Errorf("weightTrend(%v, %v) = %q, want %q", c.delta, c.span, got, c.want)
 		}
 	}
 }

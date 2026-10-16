@@ -39,30 +39,30 @@ func TestBuildRecipesList(t *testing.T) {
 	for _, c := range cases {
 		d := buildRecipesList(all, c.filter, c.query)
 		if d.Filter != c.wantFilter {
-			t.Errorf("filtro %q: Filter = %q, atteso %q", c.filter, d.Filter, c.wantFilter)
+			t.Errorf("filter %q: Filter = %q, want %q", c.filter, d.Filter, c.wantFilter)
 		}
 		got := names(d)
 		if len(got) != len(c.want) {
-			t.Errorf("filtro %q, ricerca %q: %v, atteso %v", c.filter, c.query, got, c.want)
+			t.Errorf("filter %q, search %q: %v, want %v", c.filter, c.query, got, c.want)
 			continue
 		}
 		for i := range got {
 			if got[i] != c.want[i] {
-				t.Errorf("filtro %q, ricerca %q: %v, atteso %v", c.filter, c.query, got, c.want)
+				t.Errorf("filter %q, search %q: %v, want %v", c.filter, c.query, got, c.want)
 				break
 			}
 		}
 	}
 
-	// I conteggi dei chip ignorano la ricerca.
+	// The chip counts ignore the search.
 	d := buildRecipesList(all, "mine", "zzz")
 	want := map[string]int{"mine": 3, "others": 1, "used": 1, "public": 1}
 	for _, f := range d.Filters {
 		if f.Count != want[f.Key] {
-			t.Errorf("chip %s = %d, atteso %d", f.Key, f.Count, want[f.Key])
+			t.Errorf("chip %s = %d, want %d", f.Key, f.Count, want[f.Key])
 		}
 	}
 	if d.MineN != 3 || d.OthersN != 1 {
-		t.Errorf("MineN/OthersN = %d/%d, atteso 3/1", d.MineN, d.OthersN)
+		t.Errorf("MineN/OthersN = %d/%d, want 3/1", d.MineN, d.OthersN)
 	}
 }

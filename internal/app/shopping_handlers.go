@@ -11,28 +11,28 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// shoppingListData e' il view-model passato a shopping_list.html.
+// shoppingListData is the view model passed to shopping_list.html.
 type shoppingListData struct {
 	authPageData
 	List          *domain.ShoppingListFull
 	View          shoppingView
-	UserItemViews []shoppingUserItemView // per badge duplicati
+	UserItemViews []shoppingUserItemView // for the duplicate badges
 	WeekStart     string                 // YYYY-MM-DD
 	WeekCount     int
 	NextWeek      string
 	PrevWeek      string
 }
 
-// shoppingUserItemView arricchisce ShoppingUserItem con il flag
-// "duplicato": true se la description corrisponde (case-insensitive)
-// al nome di un ingrediente auto presente in lista.
+// shoppingUserItemView enriches ShoppingUserItem with the "duplicate" flag:
+// true when the description matches (case-insensitive) the name of an auto
+// ingredient in the list.
 type shoppingUserItemView struct {
 	Item      domain.ShoppingUserItem
 	Duplicate bool
 }
 
-// parseShoppingWeek normalizza il param `week` (default = lunedi'
-// prossimo) e `weeks` (1..4, default 1).
+// parseShoppingWeek normalizes the `week` param (default = next Monday) and
+// `weeks` (1..4, default 1).
 func parseShoppingWeek(r *http.Request) (time.Time, int) {
 	weekStart := nextMonday(time.Now())
 	if v := strings.TrimSpace(r.URL.Query().Get("week")); v != "" {
@@ -54,11 +54,11 @@ func parseShoppingWeek(r *http.Request) (time.Time, int) {
 	return weekStart, weeks
 }
 
-// nextMonday ritorna il lunedi' della settimana corrente o successiva.
-// Se oggi e' lunedi' resta oggi.
+// nextMonday returns the Monday of the current or next week.
+// When today is Monday it stays today.
 func nextMonday(t time.Time) time.Time {
 	m := db.MondayOf(t)
-	// Se oggi e' la stessa settimana del lunedi' calcolato, va bene.
+	// When today is in the same week as the computed Monday, that is fine.
 	return m
 }
 
@@ -71,8 +71,8 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	// Se la lista non ha ancora items auto, generala on-demand al primo
-	// load. Anche se l'utente cambia weeks dropdown.
+	// When the list has no auto items yet, generate it on demand on the first
+	// load. Also when the user changes the weeks dropdown.
 	full, err := a.ShoppingLists.LoadFull(r.Context(), list.ID, user.ID)
 	if err != nil {
 		a.serverError(w, r, err)
@@ -89,8 +89,8 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// Calcola flag duplicati: voce utente con description che matcha
-	// (case-insensitive) il nome di un auto-item presente.
+	// Compute the duplicate flags: a user item whose description matches
+	// (case-insensitive) the name of an auto item in the list.
 	autoNames := make(map[string]bool, len(full.Items))
 	for _, it := range full.Items {
 		if it.Ingredient != nil {
@@ -131,8 +131,8 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAddShoppingUserItem POST /shopping-list/{id}/user-items
-// Body: description, quantity_text. Aggiunge una voce manuale.
-// HX-Request: torna la pagina intera (semplifica) tramite redirect.
+// Body: description, quantity_text. Adds a manual item.
+// HX-Request: returns the whole page (simpler) through a redirect.
 func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	listID, err := parseID(r, "id")
@@ -220,8 +220,8 @@ func (a *App) handleShoppingGenerate(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleShoppingToggle POST /shopping-list/items/{id}/toggle
-// Torna sempre alla lista: la voce spuntata cambia gruppo e l'avanzamento
-// cambia, quindi HTMX segue il redirect e ne prende la lista (hx-select).
+// Always goes back to the list: the checked item changes group and the
+// progress changes, so HTMX follows the redirect and takes its list (hx-select).
 func (a *App) handleShoppingToggle(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	itemID, err := parseID(r, "id")
@@ -240,8 +240,8 @@ func (a *App) handleShoppingToggle(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 }
 
-// shoppingListURL e' l'indirizzo della lista da cui arriva la richiesta,
-// ricostruito da week/weeks validati (mai copiati dall'input).
+// shoppingListURL is the address of the list the request comes from,
+// rebuilt from the validated week/weeks (never copied from the input).
 func shoppingListURL(r *http.Request) string {
 	weekStart, weeks := parseShoppingWeek(r)
 	return "/shopping-list?week=" + weekStart.Format("2006-01-02") + "&weeks=" + strconv.Itoa(weeks)

@@ -1,3 +1,3 @@
-// Package app contiene il router HTTP, il middleware e gli handler che
-// compongono l'interfaccia web di Nutreek (SSR + HTMX).
+// Package app holds the HTTP router, the middleware and the handlers that
+// make up Nutreek's web interface (SSR + HTMX).
 package app
