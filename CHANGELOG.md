@@ -20,6 +20,7 @@ Prima release pubblicata come immagine su GHCR: restyle «Sereno», app installa
 - Nutreek si installa sul telefono come app (#59): manifest e icone nel colore del tema, service worker con la cache dei soli file statici, sezione «App sul telefono» in Impostazioni (bottone «Installa l'app», passaggi per Safari su iPhone). Fotocamera e installazione richiedono https.
 
 ### Corretto
+- Nel picker un prodotto OpenFoodFacts non si apre più su «1 pz», che valeva l'intera confezione (500 g di fiocchi d'avena con un clic). La quantità proposta è la porzione OFF in g/ml (`serving_quantity`, salvata nella copia locale e negli ingredienti importati); se la porzione non è nota il campo resta vuoto, in grammi. Gli ingredienti creati a mano non cambiano (#136)
 - Le foto dei prodotti OpenFoodFacts si vedono di nuovo nella lista Ingredienti e nei picker: la CSP le bloccava. È consentito solo `images.openfoodfacts.org`, le foto si caricano senza referrer, e se una foto manca resta l'icona del codice a barre invece di un quadrato vuoto (#133)
 - Un codice sconosciuto a OpenFoodFacts (l'API risponde 404) è «non trovato» e non più un errore del servizio (#59)
 - Sicurezza: il rate limit del login non si aggira più con un `X-Forwarded-For` inventato. L'header vale solo se la connessione arriva da un proxy in loopback o in rete privata; un `X-Request-ID` non valido viene sostituito (#115)
