@@ -1,101 +1,136 @@
 {{define "title"}}{{.Template.Name}} — Template{{end}}
 {{define "content"}}
-<div class="max-w-3xl">
-  <div class="flex items-baseline justify-between mb-1">
-    <h1 class="text-3xl font-semibold">{{.Template.Name}}</h1>
-    <a href="/templates" class="text-sm text-muted hover:underline">&larr; Tutti i template</a>
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <a href="/piano-nutrizionale?tab=template" class="crumb">{{template "icon_sm" "i-chevron-left"}}Piano nutrizionale</a>
+      <h1 class="h1 flex flex-wrap items-center gap-2">{{.Template.Name}}{{if .Template.IsActive}} <span class="chip chip-soft">Attivo</span>{{end}}</h1>
+      <p class="text-muted mt-1">Lo schema dei pasti: la settimana e il piano nutrizionale partono da qui.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      {{if not .Template.IsActive}}
+        <form method="post" action="/templates/{{.Template.ID}}/activate">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="next" value="/templates/{{.Template.ID}}">
+          <button class="btn-primary">Attiva</button>
+        </form>
+      {{end}}
+      <div class="relative">
+        <button type="button" class="btn-secondary btn-icon" data-popover="template-actions" aria-expanded="false" aria-controls="template-actions" aria-label="Altre azioni">{{template "icon" "i-dots"}}</button>
+        <div id="template-actions" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5">
+          <form method="post" action="/templates/{{.Template.ID}}/delete" data-confirm="Eliminare il template «{{.Template.Name}}»? L’operazione non è reversibile.">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina template</button>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
-  <p class="text-xs text-muted mb-6">
-    {{if .Template.IsActive}}<span class="text-accent">Attivo</span>{{else}}Non attivo{{end}}
-  </p>
 
-  <!-- Slots, raggruppati per giorno (drag-and-drop intra-gruppo) -->
-  <section class="mb-8">
-    <h2 class="text-lg font-medium mb-3">Pasti</h2>
-    {{if .Template.Slots}}
-      <div class="space-y-3">
-        {{range .SlotGroups}}
+  {{if .SlotError}}<p class="rounded-xl bg-danger-soft text-danger px-4 py-2.5" role="alert">{{.SlotError}}</p>{{end}}
+
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-3 lg:gap-[18px] items-start">
+    <div class="flex flex-col gap-3 min-w-0">
+      {{range .SlotGroups}}
+        {{- $empty := not .Slots -}}
+        {{/* «Ogni giorno» c'e' sempre; i singoli giorni solo se hanno pasti
+             o se l'utente li apre dai chip qui sotto. */}}
+        <section id="day-group-{{.Day}}" class="card{{if and $empty (ge .Day 0)}} hidden{{end}}" data-day-group="{{.Day}}">
+          <div class="flex items-baseline gap-2.5 px-4 py-3">
+            <h2 class="h2">{{.Label}}</h2>
+            <span class="text-[12.5px] text-muted">{{if ge .Day 0}}in più rispetto a ogni giorno{{else}}{{len .Slots}} {{if eq (len .Slots) 1}}pasto{{else}}pasti{{end}}{{end}}</span>
+          </div>
           {{if .Slots}}
-            <div class="rounded border border-border bg-surface">
-              <p class="px-4 py-2 text-xs uppercase text-muted border-b border-border">{{.Label}}</p>
-              <ul class="divide-y divide-border" data-sortable="slots"
-                  data-sort-url="/templates/{{$.Template.ID}}/days/{{.Day}}/slots/reorder">
-                {{range .Slots}}
-                  <li class="px-4 py-3 flex items-baseline justify-between gap-4" data-id="{{.ID}}">
-                    <div class="flex items-baseline gap-2">
-                      <span class="cursor-grab text-muted/60 select-none" aria-hidden="true">⠿</span>
-                      <p class="text-text">{{.Name}}</p>
-                    </div>
-                    <form method="post" action="/templates/{{$.Template.ID}}/slots/{{.ID}}/delete" class="shrink-0">
-                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                      <button class="text-xs text-danger hover:underline">Rimuovi</button>
-                    </form>
-                  </li>
-                {{end}}
-              </ul>
+            <div class="border-t border-border divide-y divide-border" data-sortable="slots" data-sortable-handle="[data-grip]"
+                 data-sort-url="/templates/{{$.Template.ID}}/days/{{.Day}}/slots/reorder">
+              {{range .Slots}}
+                <div class="flex items-center gap-2 min-h-[42px] pl-2.5 pr-2 bg-surface" data-id="{{.ID}}">
+                  <span data-grip class="w-6 h-8 grid place-items-center text-muted cursor-grab touch-none" title="Trascina per riordinare" aria-hidden="true">{{template "icon_sm" "i-grip"}}</span>
+                  <span class="grow">{{.Name}}</span>
+                  <form method="post" action="/templates/{{$.Template.ID}}/slots/{{.ID}}/delete">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                    <button class="icon-action" aria-label="Rimuovi {{.Name}}" title="Rimuovi">{{template "icon_sm" "i-trash"}}</button>
+                  </form>
+                </div>
+              {{end}}
             </div>
           {{end}}
-        {{end}}
-      </div>
-    {{else}}
-      <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
-        Nessun pasto nel template. Aggiungine uno qui sotto.
-      </p>
-    {{end}}
+          <form method="post" action="/templates/{{$.Template.ID}}/slots" class="flex gap-2 px-3 py-2.5 border-t border-border">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="day_of_week" value="{{.Day}}">
+            <input name="slot_name" required maxlength="200" placeholder="Aggiungi un pasto a {{if ge .Day 0}}{{.Label}}{{else}}ogni giorno{{end}}" aria-label="Nome del pasto"
+                   class="field" data-day-input="{{.Day}}"
+                   {{if eq (printf "%d" .Day) $.SlotForm.DayOfWeek}}value="{{$.SlotForm.Name}}"{{end}}>
+            <button class="btn-secondary">{{template "icon_sm" "i-plus"}}Aggiungi</button>
+          </form>
+        </section>
+      {{end}}
 
-    {{if .SlotError}}
-      <div class="mt-3 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.SlotError}}</div>
-    {{end}}
-    <form method="post" action="/templates/{{.Template.ID}}/slots" class="mt-4 flex flex-wrap items-end gap-3 bg-surface border border-border rounded p-4">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <div class="grow min-w-[10rem]">
-        <label class="block text-xs text-muted mb-1" for="s-name">Nome pasto</label>
-        <input id="s-name" name="slot_name" required value="{{.SlotForm.Name}}" placeholder="Colazione, Pranzo, ..."
-               class="w-full rounded border border-border px-3 py-2">
+      <div class="flex flex-wrap items-center gap-2" data-day-chips>
+        <span class="w-full text-[12.5px] text-muted">Pasti solo per un giorno:</span>
+        {{range .SlotGroups}}{{if and (ge .Day 0) (not .Slots)}}
+          <button type="button" class="filter" data-day-open="{{.Day}}">{{template "icon_sm" "i-plus"}}{{.Label}}</button>
+        {{end}}{{end}}
       </div>
-      <div>
-        <label class="block text-xs text-muted mb-1" for="s-day">Giorno</label>
-        <select id="s-day" name="day_of_week" class="rounded border border-border px-3 py-2">
-          {{range .DayOptions}}
-            <option value="{{.Value}}" {{if eq (printf "%d" .Value) $.SlotForm.DayOfWeek}}selected{{end}}>{{.Label}}</option>
-          {{end}}
-        </select>
-      </div>
-      <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Aggiungi</button>
-    </form>
-  </section>
+      <noscript><style>[data-day-group]{display:block!important}[data-day-chips]{display:none}</style></noscript>
+    </div>
 
-  <!-- Rename -->
-  <section class="mb-8">
-    <h2 class="text-lg font-medium mb-3">Impostazioni</h2>
-    {{if .NameError}}
-      <div class="mb-3 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.NameError}}</div>
-    {{end}}
-    <form method="post" action="/templates/{{.Template.ID}}" class="space-y-4 bg-surface border border-border rounded p-6">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <div>
-        <label class="block text-sm font-medium text-text mb-1" for="f-name">Nome</label>
-        <input id="f-name" name="name" required value="{{.NameForm}}" class="w-full rounded border border-border px-3 py-2">
-      </div>
-      <button class="bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Salva nome</button>
-    </form>
-  </section>
-
-  <!-- Activate / Delete -->
-  <div class="flex items-center justify-between">
-    {{if not .Template.IsActive}}
-      <form method="post" action="/templates/{{.Template.ID}}/activate">
+    <aside class="flex flex-col gap-3">
+      <form method="post" action="/templates/{{.Template.ID}}" class="card p-4 flex flex-col gap-3">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <button class="text-sm text-accent hover:underline">Attiva questo template</button>
+        {{if .NameError}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2" role="alert">{{.NameError}}</p>{{end}}
+        <label class="lab">Nome del template<input name="name" required maxlength="200" value="{{.NameForm}}" class="field"></label>
+        <button class="btn-secondary self-start">Salva nome</button>
       </form>
-    {{else}}
-      <span></span>
-    {{end}}
-    <form method="post" action="/templates/{{.Template.ID}}/delete"
-          data-confirm="Eliminare il template? Operazione non reversibile.">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button class="text-xs text-danger hover:underline">Elimina template</button>
-    </form>
+      <section class="card">
+        <div class="flex items-center gap-2.5 px-4 py-3">
+          <h2 class="h2">I tuoi template</h2>
+          <a href="/templates/new" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2">{{template "icon_sm" "i-plus"}}Nuovo</a>
+        </div>
+        <div class="divide-y divide-border border-t border-border">
+          {{range .Templates}}
+            <div class="flex items-center gap-2.5 min-h-[48px] pl-4 pr-3{{if eq .ID $.Template.ID}} bg-surface-2{{end}}">
+              <a href="/templates/{{.ID}}" class="grow min-w-0 truncate hover:underline{{if eq .ID $.Template.ID}} font-bold{{end}}"{{if eq .ID $.Template.ID}} aria-current="page"{{end}}>{{.Name}}</a>
+              {{if .IsActive}}
+                <span class="chip chip-soft">Attivo</span>
+              {{else}}
+                <form method="post" action="/templates/{{.ID}}/activate">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                  <input type="hidden" name="next" value="/templates/{{$.Template.ID}}">
+                  <button class="btn-secondary h-[30px] px-2.5 text-[12.5px]">Attiva</button>
+                </form>
+              {{end}}
+            </div>
+          {{end}}
+        </div>
+      </section>
+    </aside>
   </div>
 </div>
+
+<script>
+(function () {
+  // Chip «+ Lunedì»: mostra il gruppo del giorno e porta il cursore sul campo.
+  document.addEventListener('click', function (e) {
+    var chip = e.target.closest('[data-day-open]');
+    if (!chip) return;
+    var day = chip.dataset.dayOpen;
+    var group = document.getElementById('day-group-' + day);
+    if (!group) return;
+    group.classList.remove('hidden');
+    chip.remove();
+    var input = group.querySelector('[data-day-input]');
+    if (input) { group.scrollIntoView({ behavior: 'smooth', block: 'center' }); input.focus({ preventScroll: true }); }
+  });
+  // Dopo un errore il gruppo del giorno appena usato resta visibile.
+  document.querySelectorAll('[data-day-input]').forEach(function (input) {
+    if (input.value) {
+      var g = input.closest('[data-day-group]');
+      if (g) g.classList.remove('hidden');
+      var chip = document.querySelector('[data-day-open="' + input.dataset.dayInput + '"]');
+      if (chip) chip.remove();
+    }
+  });
+})();
+</script>
 {{end}}

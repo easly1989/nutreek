@@ -1,278 +1,133 @@
-{{define "title"}}Piano Nutrizionale — Nutreek{{end}}
+{{define "title"}}Piano nutrizionale — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-3xl">
-  <h1 class="text-3xl font-semibold mb-1">Piano Nutrizionale</h1>
-  <p class="text-sm text-muted mb-6">Gestisci il tuo piano nutrizionale e i template settimanali.</p>
-
-  {{/* Tab bar */}}
-  <div class="flex items-center gap-1 border-b border-border mb-6">
-    <a href="/piano-nutrizionale"
-       class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition
-              {{if eq .ActiveTab "piano"}}border-accent text-accent{{else}}border-transparent text-muted hover:text-text{{end}}">
-      Piano Pasti
-    </a>
-    <a href="/piano-nutrizionale?tab=template"
-       class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition
-              {{if eq .ActiveTab "template"}}border-accent text-accent{{else}}border-transparent text-muted hover:text-text{{end}}">
-      Template Settimanali
-    </a>
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  <div>
+    <h1 class="h1">Piano nutrizionale</h1>
+    <p class="text-muted">Le varianti di ogni pasto: le propone il picker e le usa la generazione della settimana.</p>
   </div>
 
-  {{/* ===== TAB: Piano Pasti ===== */}}
+  <div class="flex flex-wrap items-center gap-3">
+    <nav class="segmented" aria-label="Sezioni del piano">
+      <a href="/piano-nutrizionale"{{if eq .ActiveTab "piano"}} aria-current="page"{{end}}>Pasti e varianti</a>
+      <a href="/piano-nutrizionale?tab=template"{{if eq .ActiveTab "template"}} aria-current="page"{{end}}>Template settimanali</a>
+    </nav>
+    {{if and (eq .ActiveTab "piano") .ActiveTemplate}}<span class="text-[12.5px] text-muted">Pasti presi dal template <a href="/templates/{{(index .Templates 0).ID}}" class="font-bold text-text hover:underline">{{.ActiveTemplate}}</a></span>{{end}}
+  </div>
+
   {{if eq .ActiveTab "piano"}}
-
-  {{if .ReadOnly}}
-  {{/* Piano assegnato dal coach: sola lettura */}}
-  <div class="mb-4 rounded border border-accent/30 bg-accent/10 text-accent px-4 py-3 text-sm">
-    Piano <strong>{{.Plan.Name}}</strong> assegnato dal tuo coach <strong>{{.CoachName}}</strong>.
-    Non è modificabile: per cambiarlo, contatta il tuo coach.
-  </div>
-  {{if .Plan.MealTypes}}
-  <div class="space-y-6">
-    {{range .Plan.MealTypes}}
-    <section class="bg-surface border border-border rounded overflow-hidden">
-      <div class="flex items-center px-4 py-3 border-b border-border bg-surface-2">
-        <h2 class="font-semibold text-text">{{.Name}}</h2>
-      </div>
-      {{range .Variations}}
-      <div class="px-4 py-3 border-b border-border last:border-b-0">
-        <p class="text-sm font-medium text-muted mb-2">
-          {{if .Name}}{{.Name}}{{else}}<em>Variante principale</em>{{end}}
-        </p>
-        {{if .Items}}
-        <ul class="space-y-1">
-          {{range .Items}}
-          <li class="text-sm">
-            {{if .Recipe}}
-              {{.Recipe.Name}} <span class="text-muted text-xs">— {{printf "%.1f" .Quantity}} porz.</span>
-            {{else if .Ingredient}}
-              {{.Ingredient.Name}} <span class="text-muted text-xs">— {{printf "%.0f" .Quantity}} {{.QuantityUnit}}</span>
-            {{end}}
-          </li>
-          {{end}}
-        </ul>
-        {{else}}
-        <p class="text-sm text-muted italic">Variante vuota.</p>
-        {{end}}
-      </div>
-      {{end}}
-    </section>
-    {{end}}
-  </div>
-  {{else}}
-  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
-    <p class="text-sm">Il piano assegnato dal coach non ha ancora contenuti.</p>
-  </div>
-  {{end}}
-
-  {{else}}
-  <p class="text-sm text-muted mb-4">
-    Gli elementi salvati qui compariranno come "Suggeriti" nel picker del piano settimanale.
-    I tipi di pasto rispecchiano gli slot del template attivo.
-  </p>
-
-  {{if not .HasActiveTemplate}}
-  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
-    <p class="text-sm mb-2">Nessun template attivo. Attiva un template per configurare il piano pasti.</p>
-    <a href="/piano-nutrizionale?tab=template" class="text-accent hover:underline text-sm">
-      Vai ai Template Settimanali →
-    </a>
-  </div>
-
-  {{else if not .SlotMealTypes}}
-  <div class="bg-surface border border-border rounded p-6 text-center text-muted">
-    <p class="text-sm mb-2">Il template attivo non ha slot definiti.</p>
-    <a href="/piano-nutrizionale?tab=template" class="text-accent hover:underline text-sm">
-      Modifica il template →
-    </a>
-  </div>
-
-  {{else}}
-  <div class="space-y-6">
-    {{range .SlotMealTypes}}
-    {{if .MealType}}
-    {{$mt := .MealType}}
-    <section class="bg-surface border border-border rounded overflow-hidden">
-      <div class="flex items-center px-4 py-3 border-b border-border bg-surface-2">
-        <h2 class="font-semibold text-text">{{.SlotName}}</h2>
-      </div>
-
-      {{/* Form aggiunta variante */}}
-      <div class="px-4 py-3 border-b border-border">
-        <form method="post" action="/nutrizionista/variations" class="flex items-end gap-2">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <input type="hidden" name="meal_type_id" value="{{$mt.ID}}">
-          <div class="flex-1">
-            <label class="block text-xs text-muted mb-1">Nuova variante <span class="font-normal">(lascia vuoto per variante principale)</span></label>
-            <input name="name" type="text" placeholder="es. Variante A, con frutta, ecc."
-                   class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-          </div>
-          <button type="submit"
-                  class="rounded border border-accent text-accent px-3 py-2 text-sm hover:bg-accent/10 transition shrink-0">
-            + Variante
-          </button>
-        </form>
-      </div>
-
-      {{/* Varianti */}}
-      {{range $mt.Variations}}
-      <div class="px-4 py-3 border-b border-border last:border-b-0">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-muted">
-            {{if .Name}}{{.Name}}{{else}}<em>Variante principale</em>{{end}}
-          </span>
-          <form method="post" action="/nutrizionista/variations/{{.ID}}/delete"
-                data-confirm="Eliminare questa variante?">
-            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <button type="submit" class="text-xs text-danger hover:underline">Elimina variante</button>
-          </form>
-        </div>
-
-        {{if .Items}}
-        <ul class="mb-3 space-y-1">
-          {{range .Items}}
-          <li class="flex items-center justify-between text-sm">
-            <span>
-              {{if .Recipe}}
-                {{.Recipe.Name}} <span class="text-muted text-xs">— {{printf "%.1f" .Quantity}} porz.</span>
-              {{else if .Ingredient}}
-                {{.Ingredient.Name}} <span class="text-muted text-xs">— {{printf "%.0f" .Quantity}} {{.QuantityUnit}}</span>
-              {{end}}
-            </span>
-            <form method="post" action="/nutrizionista/items/{{.ID}}/delete">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button type="submit" class="text-xs text-danger hover:underline ml-2">×</button>
-            </form>
-          </li>
-          {{end}}
-        </ul>
-        {{end}}
-
-        <details class="text-sm" data-nutr-picker id="nutr-picker-det-{{.ID}}"
-                 hx-get="/nutrizionista/picker?variation_id={{.ID}}&kind=ingredient&q="
-                 hx-target="#nutr-results-{{.ID}}"
-                 hx-swap="innerHTML"
-                 hx-trigger="toggle once">
-          <summary class="cursor-pointer text-accent hover:underline text-xs">+ Aggiungi ingrediente/ricetta</summary>
-          <div class="mt-3 p-3 bg-surface-2 rounded border border-border">
-            <div class="flex items-center gap-1 mb-2" role="tablist">
-              <button type="button"
-                      data-nutr-tab="ingredient" data-nutr-var="{{.ID}}"
-                      hx-get="/nutrizionista/picker?variation_id={{.ID}}&kind=ingredient&q="
-                      hx-target="#nutr-results-{{.ID}}"
-                      hx-swap="innerHTML"
-                      class="px-3 py-1 text-xs rounded border-b-2 border-accent text-text font-medium">Ingrediente</button>
-              <button type="button"
-                      data-nutr-tab="recipe" data-nutr-var="{{.ID}}"
-                      hx-get="/nutrizionista/picker?variation_id={{.ID}}&kind=recipe&q="
-                      hx-target="#nutr-results-{{.ID}}"
-                      hx-swap="innerHTML"
-                      class="px-3 py-1 text-xs rounded border-b-2 border-transparent text-muted hover:text-text">Ricetta</button>
-              <span class="grow"></span>
-              <button type="button"
-                      data-nutr-quick="ingredient" data-nutr-var="{{.ID}}"
-                      hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML"
-                      class="text-xs text-accent hover:underline">+ Nuovo ingrediente</button>
-              <button type="button"
-                      data-nutr-quick="recipe" data-nutr-var="{{.ID}}"
-                      hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML"
-                      class="text-xs text-accent hover:underline hidden">+ Nuova ricetta</button>
+    {{if .ReadOnly}}
+      <p class="rounded-xl bg-accent-soft text-accent px-4 py-3">Piano <strong>{{.Plan.Name}}</strong> assegnato dal tuo coach <strong>{{.CoachName}}</strong>: per cambiarlo, contatta il coach.</p>
+      {{if .Plan.MealTypes}}
+        {{range .Plan.MealTypes}}
+          <section class="flex flex-col gap-3">
+            <h2 class="text-[17px] font-bold">{{.Name}}</h2>
+            <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
+              {{range .Variations}}{{template "variation_card" (pickerRow . $)}}{{end}}
             </div>
-            <input type="search" placeholder="Cerca per nome..." autocomplete="off"
-                   data-ingredient-search
-                   data-search-url="/nutrizionista/picker"
-                   data-search-extra="variation_id={{.ID}}&kind=ingredient"
-                   data-search-target="#nutr-results-{{.ID}}"
-                   data-nutr-var="{{.ID}}"
-                   class="w-full rounded border border-border bg-surface px-3 py-2 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-accent">
-            <div id="nutr-results-{{.ID}}" aria-live="polite" aria-atomic="false">
-              <div class="animate-pulse space-y-2 py-2 px-1">
-                <div class="h-3.5 bg-surface-2 rounded w-3/4"></div>
-                <div class="h-3.5 bg-surface-2 rounded w-1/2"></div>
-                <div class="h-3.5 bg-surface-2 rounded w-2/3"></div>
-              </div>
-            </div>
+          </section>
+        {{end}}
+      {{else}}
+        <p class="card px-6 py-10 text-center text-muted">Il piano assegnato dal coach non ha ancora contenuti.</p>
+      {{end}}
+
+    {{else if not .HasActiveTemplate}}
+      <div class="card border-dashed px-6 py-10 text-center flex flex-col items-center gap-3">
+        <p class="text-muted">I pasti del piano vengono dal template settimanale attivo, e non ce n’è ancora uno.</p>
+        <a href="/piano-nutrizionale?tab=template" class="btn-primary">Scegli un template</a>
+      </div>
+
+    {{else if not .SlotMealTypes}}
+      <div class="card border-dashed px-6 py-10 text-center flex flex-col items-center gap-3">
+        <p class="text-muted">Il template attivo non ha ancora pasti.</p>
+        <a href="/templates/{{(index .Templates 0).ID}}" class="btn-primary">Aggiungi i pasti al template</a>
+      </div>
+
+    {{else}}
+      {{range .SlotMealTypes}}{{if .MealType}}{{$mt := .MealType}}
+        <section class="flex flex-col gap-3">
+          <div class="flex items-baseline gap-2.5">
+            <h2 class="text-[17px] font-bold">{{.SlotName}}</h2>
+            <span class="text-[12.5px] text-muted">{{len $mt.Variations}} {{if eq (len $mt.Variations) 1}}variante{{else}}varianti{{end}}</span>
+            <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2.5" data-new-variation="{{$mt.ID}}">{{template "icon_sm" "i-plus"}}Nuova variante</button>
           </div>
-        </details>
-      </div>
-      {{end}}
-
-      {{if not $mt.Variations}}
-      <div class="px-4 py-3 text-sm text-muted italic">
-        Nessuna variante. Aggiungine una sopra.
-      </div>
-      {{end}}
-
-    </section>
-    {{end}}
-    {{end}}
-  </div>
-  {{end}}
-  {{end}}{{/* fine ReadOnly else */}}
-
-  {{/* ===== TAB: Template Settimanali ===== */}}
-  {{else}}
-
-  <div class="flex items-center justify-between mb-4">
-    <p class="text-sm text-muted">
-      I template definiscono lo schema di pasti settimanale (Colazione, Pranzo, Cena…).
-      Quello "attivo" è usato come base per il tab Piano Pasti.
-    </p>
-    <a href="/templates/new"
-       class="shrink-0 ml-4 inline-block bg-accent text-accent-fg rounded px-4 py-2 text-sm hover:bg-accent/90 transition">
-      Nuovo
-    </a>
-  </div>
-
-  {{if .Templates}}
-    <ul class="divide-y divide-border rounded border border-border bg-surface">
-      {{range .Templates}}
-        <li class="px-4 py-3 flex items-baseline justify-between gap-4">
-          <a href="/templates/{{.ID}}" class="font-medium text-text hover:underline">{{.Name}}</a>
-          <div class="flex items-center gap-3 text-xs text-muted">
-            {{if .IsActive}}
-              <span class="text-accent">attivo</span>
-            {{else}}
-              <form method="post" action="/templates/{{.ID}}/activate" class="inline">
+          <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
+            {{range $mt.Variations}}{{template "variation_card" (pickerRow . $)}}{{end}}
+            {{/* Card tratteggiata: si apre sul nome (facoltativo) della variante. */}}
+            <details id="new-var-{{$mt.ID}}" class="group rounded-xl border-[1.5px] border-dashed border-border"{{if not $mt.Variations}} open{{end}}>
+              <summary class="flex items-center justify-center gap-1.5 min-h-[116px] text-accent font-semibold cursor-pointer list-none group-open:hidden [&::-webkit-details-marker]:hidden">{{template "icon" "i-plus"}}Nuova variante</summary>
+              <form method="post" action="/nutrizionista/variations" class="flex flex-col justify-center gap-2 p-4 h-full">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <button class="text-text hover:underline">Attiva</button>
+                <input type="hidden" name="meal_type_id" value="{{$mt.ID}}">
+                <label class="lab">Nuova variante di {{.SlotName}}
+                  <input name="name" placeholder="Nome (facoltativo)" class="field">
+                </label>
+                <button class="btn-primary self-start">Crea variante</button>
               </form>
-            {{end}}
-            <a href="/templates/{{.ID}}" class="hover:underline">Modifica</a>
-            <form method="post" action="/templates/{{.ID}}/delete" class="inline"
-                  data-confirm="Eliminare il template?">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button class="text-danger hover:underline">Elimina</button>
-            </form>
+            </details>
           </div>
-        </li>
-      {{end}}
-    </ul>
-  {{else}}
-    <p class="text-sm text-muted px-4 py-6 text-center border border-dashed border-border rounded">
-      Nessun template ancora. Crea il primo per iniziare.
-    </p>
-  {{end}}
+        </section>
+      {{end}}{{end}}
+    {{end}}
 
+  {{else}}
+    {{/* ===== Template settimanali ===== */}}
+    <section class="card max-w-[640px]">
+      <div class="flex items-center gap-2.5 px-4 py-3">
+        <h2 class="h2">I tuoi template</h2>
+        <a href="/templates/new" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2">{{template "icon_sm" "i-plus"}}Nuovo</a>
+      </div>
+      {{if .Templates}}
+        <div class="divide-y divide-border border-t border-border">
+          {{range .Templates}}
+            <div class="flex items-center gap-2.5 min-h-[52px] pl-4 pr-2">
+              <a href="/templates/{{.ID}}" class="grow min-w-0 truncate hover:underline{{if .IsActive}} font-bold{{end}}">{{.Name}}</a>
+              {{if .IsActive}}
+                <span class="chip chip-soft">Attivo</span>
+              {{else}}
+                <form method="post" action="/templates/{{.ID}}/activate">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                  <button class="btn-secondary h-[30px] px-2.5 text-[12.5px]">Attiva</button>
+                </form>
+              {{end}}
+              <a href="/templates/{{.ID}}" class="icon-action" aria-label="Modifica {{.Name}}" title="Modifica">{{template "icon_sm" "i-edit"}}</a>
+              <form method="post" action="/templates/{{.ID}}/delete" data-confirm="Eliminare il template «{{.Name}}»?">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <button class="icon-action" aria-label="Elimina {{.Name}}" title="Elimina">{{template "icon_sm" "i-trash"}}</button>
+              </form>
+            </div>
+          {{end}}
+        </div>
+      {{else}}
+        <p class="px-4 py-8 border-t border-border text-center text-muted">Nessun template ancora: crea il primo per definire i pasti della settimana.</p>
+      {{end}}
+    </section>
+    <p class="text-muted max-w-[640px]">Un template è lo schema dei pasti della settimana (colazione, pranzo, cena…). Quello attivo dà i pasti al piano nutrizionale.</p>
   {{end}}
 </div>
 
 <script>
 (function () {
-  // Aggiorna stile tab e data-search-extra quando si cambia tab.
-  // Il fetch HTMX è gestito nativamente da hx-get sui bottoni.
+  // Picker di una variante: Ingrediente / Ricetta cambia endpoint e
+  // parametri della ricerca live (il fetch lo fa hx-get sui bottoni).
   document.addEventListener('click', function (e) {
+    // «Nuova variante» in testata apre la card tratteggiata sul nome.
+    var nv = e.target.closest('[data-new-variation]');
+    if (nv) {
+      var det = document.getElementById('new-var-' + nv.dataset.newVariation);
+      if (det) {
+        det.open = true;
+        det.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var name = det.querySelector('input[name="name"]');
+        if (name) name.focus({ preventScroll: true });
+      }
+      return;
+    }
     var btn = e.target.closest('[data-nutr-tab]');
     if (!btn) return;
     var kind = btn.dataset.nutrTab;
     var varID = btn.dataset.nutrVar;
     document.querySelectorAll('[data-nutr-tab][data-nutr-var="' + varID + '"]').forEach(function (b) {
-      var on = b.dataset.nutrTab === kind;
-      b.classList.toggle('border-accent', on);
-      b.classList.toggle('text-text', on);
-      b.classList.toggle('font-medium', on);
-      b.classList.toggle('border-transparent', !on);
-      b.classList.toggle('text-muted', !on);
+      b.setAttribute('aria-checked', String(b.dataset.nutrTab === kind));
     });
     document.querySelectorAll('[data-nutr-quick][data-nutr-var="' + varID + '"]').forEach(function (b) {
       b.classList.toggle('hidden', b.dataset.nutrQuick !== kind);
@@ -282,25 +137,94 @@
       input.value = '';
       input.dataset.searchExtra = 'variation_id=' + varID + '&kind=' + kind;
       input.dataset.searchNoOff = kind === 'recipe' ? '1' : '0';
+      input.placeholder = kind === 'recipe' ? 'Cerca una ricetta' : 'Cerca tra i tuoi ingredienti e su OpenFoodFacts';
     }
   });
 
-  // Dopo quick-create modale, aggiorna tutti i picker aperti.
+  // Dopo «Nuovo ingrediente/ricetta» aggiorna i picker aperti.
   ['ingredient-created', 'recipe-created'].forEach(function (ev) {
     window.addEventListener(ev, function () {
       document.querySelectorAll('details[data-nutr-picker][open]').forEach(function (det) {
-        var varID = det.id.replace('nutr-picker-det-', '');
+        var varID = det.dataset.nutrPicker;
         var input = document.querySelector('input[data-nutr-var="' + varID + '"][data-ingredient-search]');
-        var extra = (input && input.dataset.searchExtra) || ('variation_id=' + varID + '&kind=ingredient');
-        var params = new URLSearchParams(extra);
-        var q = input ? (input.value || '') : '';
-        params.set('q', q);
-        htmx.ajax('GET', '/nutrizionista/picker?' + params.toString(), {
-          target: '#nutr-results-' + varID, swap: 'innerHTML'
-        });
+        var params = new URLSearchParams((input && input.dataset.searchExtra) || ('variation_id=' + varID + '&kind=ingredient'));
+        params.set('q', input ? (input.value || '') : '');
+        htmx.ajax('GET', '/nutrizionista/picker?' + params.toString(), { target: '#nutr-results-' + varID, swap: 'innerHTML' });
       });
     });
   });
 })();
 </script>
+{{end}}
+
+{{define "variation_card"}}
+{{- /* Una variante del piano. View-model: web.PickerRowCtx {Row: variante, List: pagina}. */ -}}
+{{- $v := .Row -}}{{- $d := .List -}}
+<article class="card flex flex-col">
+  <header class="flex items-center gap-2.5 pl-4 pr-2 pt-2.5 pb-1.5">
+    <h3 class="text-[14px] font-bold">{{if $v.Name}}{{$v.Name}}{{else}}Variante principale{{end}}</h3>
+    <span class="ml-auto font-bold tabular-nums whitespace-nowrap">{{num (index $d.VariationKcal $v.ID)}} kcal</span>
+    {{if not $d.ReadOnly}}
+    <div class="relative">
+      <button type="button" class="icon-action" data-popover="var-menu-{{$v.ID}}" aria-expanded="false" aria-controls="var-menu-{{$v.ID}}" aria-label="Azioni sulla variante">{{template "icon" "i-dots"}}</button>
+      <div id="var-menu-{{$v.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5">
+        <form method="post" action="/nutrizionista/variations/{{$v.ID}}/delete" data-confirm="Eliminare la variante «{{if $v.Name}}{{$v.Name}}{{else}}Variante principale{{end}}» e i suoi alimenti?">
+          <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
+          <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina variante</button>
+        </form>
+      </div>
+    </div>
+    {{end}}
+  </header>
+  {{if $v.Items}}
+    <div class="divide-y divide-border pb-1.5">
+      {{range $v.Items}}
+        <div class="group/item grid grid-cols-[minmax(0,1fr)_64px_44px_28px] gap-2 items-center min-h-[34px] pl-4 pr-2">
+          <span class="truncate">{{if .Recipe}}{{.Recipe.Name}}{{else if .Ingredient}}{{.Ingredient.Name}}{{end}}</span>
+          <span class="text-right tabular-nums text-muted whitespace-nowrap">{{if .Recipe}}{{dec .Quantity 1}} porz.{{else}}{{dec .Quantity 1}} {{.QuantityUnit}}{{end}}</span>
+          <span class="text-right tabular-nums">{{num (index $d.ItemKcal .ID)}}</span>
+          {{if not $d.ReadOnly}}
+            <form method="post" action="/nutrizionista/items/{{.ID}}/delete">
+              <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
+              <button class="w-7 h-7 grid place-items-center rounded-md text-muted hover:text-danger hover:bg-surface-2 lg:opacity-0 group-hover/item:opacity-100 focus:opacity-100" aria-label="Rimuovi {{if .Recipe}}{{.Recipe.Name}}{{else if .Ingredient}}{{.Ingredient.Name}}{{end}}">{{template "icon_sm" "i-trash"}}</button>
+            </form>
+          {{else}}<span></span>{{end}}
+        </div>
+      {{end}}
+    </div>
+  {{else}}
+    <p class="px-4 pb-3 text-muted">Ancora nessun alimento.</p>
+  {{end}}
+  {{if not $d.ReadOnly}}
+  <details class="group mt-auto border-t border-border" data-nutr-picker="{{$v.ID}}"
+           hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=ingredient&q="
+           hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML" hx-trigger="toggle once">
+    <summary class="flex items-center gap-1.5 min-h-[40px] px-4 text-accent font-semibold text-[13px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+      <span class="group-open:rotate-45 transition-transform">{{template "icon_sm" "i-plus"}}</span><span class="group-open:hidden">Aggiungi alimento</span><span class="hidden group-open:inline">Chiudi</span>
+    </summary>
+    <div class="flex flex-col gap-2 px-4 pb-3">
+      <div class="flex items-center gap-2">
+        <span class="segmented" role="radiogroup" aria-label="Tipo">
+          <button type="button" role="radio" aria-checked="true" class="px-3" data-nutr-tab="ingredient" data-nutr-var="{{$v.ID}}"
+                  hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=ingredient&q=" hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML">Ingrediente</button>
+          <button type="button" role="radio" aria-checked="false" class="px-3" data-nutr-tab="recipe" data-nutr-var="{{$v.ID}}"
+                  hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=recipe&q=" hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML">Ricetta</button>
+        </span>
+        <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2" data-nutr-quick="ingredient" data-nutr-var="{{$v.ID}}" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Nuovo</button>
+        <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2 hidden" data-nutr-quick="recipe" data-nutr-var="{{$v.ID}}" hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Nuova</button>
+      </div>
+      <label class="field-ico">
+        {{template "icon" "i-search"}}
+        <input type="search" placeholder="Cerca tra i tuoi ingredienti e su OpenFoodFacts" aria-label="Cerca" autocomplete="off" class="field"
+               data-ingredient-search data-search-url="/nutrizionista/picker"
+               data-search-extra="variation_id={{$v.ID}}&kind=ingredient"
+               data-search-target="#nutr-results-{{$v.ID}}" data-nutr-var="{{$v.ID}}">
+      </label>
+    </div>
+    <div id="nutr-results-{{$v.ID}}" data-picker-list aria-live="polite" class="border-t border-border max-h-[360px] overflow-y-auto">
+      <p class="px-4 py-4 text-muted animate-pulse">Carico…</p>
+    </div>
+  </details>
+  {{end}}
+</article>
 {{end}}
