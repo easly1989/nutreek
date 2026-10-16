@@ -585,6 +585,7 @@ func (a *App) handleRecipePicker(w http.ResponseWriter, r *http.Request) {
 		OFFWarning:   warn,
 		PickerKind:   "recipe_item",
 		RecipeID:     id,
+		SearchedOFF:  includeOFFParam(r),
 	}
 	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 		a.serverError(w, r, err)

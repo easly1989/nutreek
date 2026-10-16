@@ -303,6 +303,7 @@ func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
 			OFFWarning:   warn,
 			PickerKind:   "nutritionist_item",
 			VariationID:  variationID,
+			SearchedOFF:  includeOFFParam(r),
 		}
 		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 			a.serverError(w, r, err)

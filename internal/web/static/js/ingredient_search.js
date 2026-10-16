@@ -124,6 +124,7 @@
     // Tasto Enter: forza subito la ricerca OFF senza aspettare debounce.
     input.addEventListener('search', function () {
       var q = (input.value || '').trim();
+      clearTimeout(dbTimer);
       clearTimeout(offTimer);
       if (q === '') { hideSpinner(); return; }
       if (noOFF()) { dispatch(q, false); return; }

@@ -132,6 +132,10 @@
     document.querySelectorAll('[data-nutr-quick][data-nutr-var="' + varID + '"]').forEach(function (b) {
       b.classList.toggle('hidden', b.dataset.nutrQuick !== kind);
     });
+    // Le ricette non hanno codice a barre: lo scanner solo per gli ingredienti.
+    document.querySelectorAll('[data-scan-for="#nutr-search-' + varID + '"]').forEach(function (b) {
+      b.classList.toggle('hidden', kind !== 'ingredient');
+    });
     var input = document.querySelector('input[data-nutr-var="' + varID + '"][data-ingredient-search]');
     if (input) {
       input.value = '';
@@ -213,13 +217,16 @@
         <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2" data-nutr-quick="ingredient" data-nutr-var="{{$v.ID}}" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Nuovo</button>
         <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2 hidden" data-nutr-quick="recipe" data-nutr-var="{{$v.ID}}" hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Nuova</button>
       </div>
-      <label class="field-ico">
-        {{template "icon" "i-search"}}
-        <input type="search" placeholder="Cerca tra i tuoi ingredienti e su OpenFoodFacts" aria-label="Cerca" autocomplete="off" class="field"
-               data-ingredient-search data-search-url="/nutrizionista/picker"
-               data-search-extra="variation_id={{$v.ID}}&kind=ingredient"
-               data-search-target="#nutr-results-{{$v.ID}}" data-nutr-var="{{$v.ID}}">
-      </label>
+      <div class="flex gap-2">
+        <label class="field-ico grow">
+          {{template "icon" "i-search"}}
+          <input id="nutr-search-{{$v.ID}}" type="search" placeholder="Cerca tra i tuoi ingredienti e su OpenFoodFacts" aria-label="Cerca" autocomplete="off" class="field"
+                 data-ingredient-search data-search-url="/nutrizionista/picker"
+                 data-search-extra="variation_id={{$v.ID}}&kind=ingredient"
+                 data-search-target="#nutr-results-{{$v.ID}}" data-nutr-var="{{$v.ID}}">
+        </label>
+        {{template "scan_button" (printf "#nutr-search-%d" $v.ID)}}
+      </div>
     </div>
     <div id="nutr-results-{{$v.ID}}" data-picker-list aria-live="polite" class="border-t border-border max-h-[360px] overflow-y-auto">
       <p class="px-4 py-4 text-muted animate-pulse">Carico…</p>

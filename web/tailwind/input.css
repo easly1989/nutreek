@@ -266,6 +266,30 @@
     }
   }
 
+  /* Scanner del codice a barre (#59). I bottoni esistono solo dove c'e' una
+     fotocamera utilizzabile: scanner.js mette .can-scan su <html>. */
+  .scan-btn { @apply btn-secondary btn-icon shrink-0 text-accent; }
+  .scan-only { display: none; }
+  html.can-scan .scan-only:not(.hidden) { display: inline-flex; }
+  .scan-cam { @apply relative h-[300px] rounded-[14px] overflow-hidden; background: #2a2622; }
+  .scan-cam video { @apply absolute inset-0 w-full h-full object-cover; }
+  .scan-frame {
+    @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(260px,80%)] h-[130px] rounded-[10px];
+    box-shadow: 0 0 0 999px rgba(0, 0, 0, .5);
+  }
+  .scan-frame span { @apply absolute w-7 h-7 border-[3px] border-white; }
+  .scan-frame span:nth-child(1) { @apply left-0 top-0 border-r-0 border-b-0 rounded-tl-[10px]; }
+  .scan-frame span:nth-child(2) { @apply right-0 top-0 border-l-0 border-b-0 rounded-tr-[10px]; }
+  .scan-frame span:nth-child(3) { @apply left-0 bottom-0 border-r-0 border-t-0 rounded-bl-[10px]; }
+  .scan-frame span:nth-child(4) { @apply right-0 bottom-0 border-l-0 border-t-0 rounded-br-[10px]; }
+  /* La linea e' sempre la variante chiara dell'accento: sta sul buio della fotocamera. */
+  .scan-line {
+    @apply absolute left-1/2 top-1/2 -translate-x-1/2 w-[min(232px,72%)] h-0.5;
+    background: var(--acc-d); box-shadow: 0 0 10px var(--acc-d);
+  }
+  .scan-hint { @apply absolute inset-x-0 bottom-3.5 text-center text-white font-semibold; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  @media (max-width: 1023px) { .scan-cam { height: min(340px, 45vh); } }
+
   /* Lista della spesa (#123): riga da 48 px toccabile per intero. */
   .shop-item {
     @apply w-full flex items-center gap-3 min-h-12 px-4 py-1 text-left hover:bg-surface-2 transition-colors;
