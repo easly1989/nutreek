@@ -1,179 +1,152 @@
 {{define "title"}}Impostazioni — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-2xl">
-  <h1 class="text-3xl font-semibold mb-1">Impostazioni</h1>
-  <p class="text-sm text-muted mb-6">Gestione account e dati personali.</p>
+<div class="flex flex-col gap-4 lg:gap-[18px]">
+  <header>
+    <h1 class="h1">Impostazioni</h1>
+    <p class="text-muted mt-0.5">Aspetto, account e i tuoi dati.</p>
+  </header>
 
-  {{/* ===== Cambia password ===== */}}
-  <section class="bg-surface border border-border rounded mb-6">
-    <div class="px-6 py-4 border-b border-border">
-      <h2 class="text-base font-semibold">Cambia password</h2>
-    </div>
-    <div class="px-6 py-4">
-      {{if .PasswordOK}}
-        <div class="mb-4 rounded border border-accent/30 bg-accent/10 text-accent px-4 py-2 text-sm">
-          Password aggiornata con successo.
-        </div>
-      {{end}}
-      {{if .PasswordError}}
-        <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.PasswordError}}</div>
-      {{end}}
-      <form method="post" action="/settings/password" class="space-y-4">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <div>
-          <label class="block text-sm font-medium mb-1" for="current_password">Password attuale</label>
-          <input id="current_password" name="current_password" type="password" required autocomplete="current-password"
-                 class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1" for="new_password">Nuova password</label>
-          <input id="new_password" name="new_password" type="password" required autocomplete="new-password" minlength="8"
-                 class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-          <p class="text-xs text-muted mt-1">Minimo 8 caratteri.</p>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1" for="confirm_password">Conferma nuova password</label>
-          <input id="confirm_password" name="confirm_password" type="password" required autocomplete="new-password"
-                 class="w-full rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
-        </div>
-        <button type="submit"
-                class="bg-accent text-accent-fg rounded px-4 py-2 text-sm hover:bg-accent/90 transition">
-          Aggiorna password
-        </button>
-      </form>
-    </div>
-  </section>
+  <div class="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] items-start">
+    <nav class="hidden lg:flex sticky top-6 flex-col gap-0.5" aria-label="Sezioni delle impostazioni">
+      <a href="#aspetto" class="settings-toc" aria-current="true">Aspetto</a>
+      <a href="#account" class="settings-toc">Account</a>
+      <a href="#dati" class="settings-toc">I tuoi dati</a>
+      <a href="#token" class="settings-toc">Token API</a>
+      <a href="#elimina" class="settings-toc">Elimina account</a>
+    </nav>
 
-  {{/* ===== I tuoi dati ===== */}}
-  <section class="bg-surface border border-border rounded mb-6">
-    <div class="px-6 py-4 border-b border-border">
-      <h2 class="text-base font-semibold">I tuoi dati</h2>
-    </div>
-    <div class="px-6 py-4">
-      <p class="text-sm text-muted mb-4">
-        Scarica tutti i tuoi dati in formato JSON (peso, allenamenti, ricette, ecc.).
-        Conforme al diritto di portabilità GDPR Art. 20.
-      </p>
-      <a href="/settings/export"
-         class="inline-block bg-surface-2 border border-border rounded px-4 py-2 text-sm hover:bg-surface transition">
-        Esporta dati JSON
-      </a>
-    </div>
-  </section>
+    <div class="flex flex-col gap-4 min-w-0">
+      <section id="aspetto" class="card scroll-mt-6">
+        <div class="settings-sec">
+          <div><h2 class="h2">Modalità</h2><p class="settings-d">Su questo dispositivo, salvata in un cookie.</p></div>
+          <div class="grid grid-cols-3 gap-2.5" role="radiogroup" aria-label="Modalità">
+            <button type="button" role="radio" class="mode-card" data-appearance-mode="chiaro" aria-checked="{{eq .Appearance.Mode "chiaro"}}">
+              <span class="mode-pv" style="background:#F7F8FA"><span style="background:#fff;border-right:1px solid #E3E6EA"></span></span>
+              <span class="flex items-center gap-2">{{template "icon_sm" "i-sun"}}Chiaro</span>
+            </button>
+            <button type="button" role="radio" class="mode-card" data-appearance-mode="scuro" aria-checked="{{eq .Appearance.Mode "scuro"}}">
+              <span class="mode-pv" style="background:#16181C;border-color:#30343B"><span style="background:#1E2126;border-right:1px solid #30343B"></span></span>
+              <span class="flex items-center gap-2">{{template "icon_sm" "i-moon"}}Scuro</span>
+            </button>
+            <button type="button" role="radio" class="mode-card" data-appearance-mode="sistema" aria-checked="{{eq .Appearance.Mode "sistema"}}">
+              <span class="mode-pv" style="background:linear-gradient(110deg,#F7F8FA 50%,#16181C 50%)"></span>
+              <span class="flex items-center gap-2">{{template "icon_sm" "i-monitor"}}<span class="sm:hidden">Sistema</span><span class="hidden sm:inline">Come il sistema</span></span>
+            </button>
+          </div>
+        </div>
+        <div class="settings-sec">
+          <div><h2 class="h2">Colore</h2><p class="settings-d">Il colore di pulsanti, link e grafici.</p></div>
+          <div class="grid grid-cols-4 gap-2 max-w-[340px]" role="radiogroup" aria-label="Colore">
+            <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Appearance.Accent "bosco"}}"><span class="swatch-dot" style="background:#2F7A55"></span>Bosco</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Appearance.Accent "mare"}}"><span class="swatch-dot" style="background:#1D6FA5"></span>Mare</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Appearance.Accent "tramonto"}}"><span class="swatch-dot" style="background:#B4511A"></span>Tramonto</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Appearance.Accent "grafite"}}"><span class="swatch-dot" style="background:#3A4150"></span>Grafite</button>
+          </div>
+        </div>
+      </section>
 
-  {{/* ===== Token API ===== */}}
-  <section class="bg-surface border border-border rounded mb-6">
-    <div class="px-6 py-4 border-b border-border">
-      <h2 class="text-base font-semibold flex items-center gap-2">
-        Token API
-        {{if not (index .Features "api_access")}}
-          <span class="inline-flex items-center text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded px-1.5 py-0.5 font-medium">Premium</span>
+      <section class="card">
+        <div id="account" class="settings-sec scroll-mt-6">
+          <div><h2 class="h2">Account</h2><p class="settings-d break-all">{{.User.Email}}</p></div>
+          <form method="post" action="/settings/password" class="flex flex-col gap-3 max-w-[420px]">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            {{if .PasswordOK}}<p role="status" class="rounded-xl bg-accent-soft text-accent px-3 py-2 font-semibold">Password cambiata.</p>{{end}}
+            {{if .PasswordError}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-3 py-2">{{.PasswordError}}</p>{{end}}
+            <label class="lab">Password attuale<input name="current_password" type="password" required autocomplete="current-password" class="field"></label>
+            <label class="lab">Nuova password<input name="new_password" type="password" required minlength="8" autocomplete="new-password" class="field"><span class="font-medium">Almeno 8 caratteri.</span></label>
+            <label class="lab">Ripeti la nuova password<input name="confirm_password" type="password" required autocomplete="new-password" class="field"></label>
+            <button class="btn-secondary self-start">{{template "icon_sm" "i-lock"}}Cambia password</button>
+          </form>
+        </div>
+        <div id="dati" class="settings-sec scroll-mt-6">
+          <div><h2 class="h2">I tuoi dati</h2><p class="settings-d">Diritto alla portabilità (GDPR art. 20).</p></div>
+          <div class="flex flex-wrap items-center gap-3">
+            <a href="/settings/export" class="btn-secondary">{{template "icon_sm" "i-download"}}Esporta in JSON</a>
+            <span class="text-[12.5px] text-muted">Peso, allenamenti, ricette, piani: tutto in un file.</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="token" class="card overflow-hidden scroll-mt-6">
+        <div class="flex flex-wrap items-center gap-2 px-4 pt-4 pb-3">
+          <h2 class="h2">Token API</h2>
+          {{if not (index .Features "api_access")}}<span class="chip chip-warn">Premium</span>{{end}}
+          <span class="ml-auto text-[12.5px] text-muted">per app esterne, es. Home Assistant</span>
+        </div>
+
+        {{if .NewTokenPlain}}
+        <div role="status" class="mx-4 mb-3 rounded-xl bg-accent-soft p-3 flex flex-col gap-1.5">
+          <p class="font-semibold text-accent">Token creato: copialo adesso, non si vedrà più.</p>
+          <code class="block font-mono text-[12.5px] break-all bg-surface border border-border rounded-lg px-3 py-2 select-all">{{.NewTokenPlain}}</code>
+        </div>
         {{end}}
-      </h2>
-    </div>
-    <div class="px-6 py-4">
-      <p class="text-sm text-muted mb-4">
-        I token API ti permettono di accedere a Nutreek da applicazioni esterne.
-        Il valore del token è mostrato <strong>una sola volta</strong> alla creazione: conservalo in un luogo sicuro.
-      </p>
 
-      {{if not (index .Features "api_access")}}
-        <div class="rounded border border-amber-200 bg-amber-50 dark:border-amber-800/30 dark:bg-amber-900/10 px-4 py-3 text-sm mb-4">
-          <p class="font-medium text-amber-800 dark:text-amber-400">Funzionalità Premium</p>
-          <p class="text-amber-700 dark:text-amber-500 mt-0.5">La creazione di token API richiede una sottoscrizione premium. Contatta l'amministratore per attivarla.</p>
-          <a href="/upgrade" class="inline-block mt-2 text-xs text-accent hover:underline">Scopri le funzionalità premium →</a>
+        {{if .APITokens}}
+        <ul class="border-t border-border divide-y divide-border">
+          <li class="hidden sm:grid grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>Nome</span><span>Creato</span><span>Ultimo uso</span><span></span></li>
+          {{range .APITokens}}
+          <li class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 items-center px-4 py-2 min-h-12">
+            <span class="flex items-center gap-2.5 min-w-0"><span class="thumb w-[30px] h-[30px]">{{template "icon_sm" "i-key"}}</span><b class="truncate">{{.Name}}</b></span>
+            <span class="hidden sm:block text-muted tabular-nums">{{.CreatedAt.Day}} {{monthName .CreatedAt}}</span>
+            <span class="hidden sm:block text-muted tabular-nums">{{with .LastUsedAt}}{{.Day}} {{monthName .}}{{else}}mai{{end}}</span>
+            <form method="post" action="/settings/api-tokens/{{.ID}}/revoke" data-confirm="Revocare il token «{{.Name}}»? Le app che lo usano smetteranno di funzionare." class="justify-self-end">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <button class="btn-danger h-8">Revoca</button>
+            </form>
+          </li>
+          {{end}}
+        </ul>
+        {{else}}
+        <p class="border-t border-border px-4 py-4 text-muted">Nessun token per ora.</p>
+        {{end}}
+
+        {{if index .Features "api_access"}}
+        <form method="post" action="/settings/api-tokens" class="flex gap-2 px-4 py-3 border-t border-border">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input name="name" required maxlength="100" placeholder="Nome del nuovo token" aria-label="Nome del nuovo token" class="field max-w-[320px]">
+          <button class="btn-secondary shrink-0">{{template "icon_sm" "i-plus"}}Crea token</button>
+        </form>
+        <p class="px-4 py-3 border-t border-border text-[12.5px] text-muted">Il valore si vede una volta sola, appena creato.</p>
+        {{else}}
+        <p class="px-4 py-3 border-t border-border text-muted">Creare token fa parte di Premium. <a href="/upgrade" class="text-accent font-semibold hover:underline">Scopri cosa include</a></p>
+        {{end}}
+      </section>
+
+      <section id="elimina" class="card scroll-mt-6" style="border-color:color-mix(in srgb, var(--danger) 35%, var(--border))">
+        <div class="settings-sec">
+          <div><h2 class="h2 text-danger">Elimina account</h2><p class="settings-d">Cancella per sempre piani, ricette, pesate e tutto il resto (GDPR art. 17).</p></div>
+          <form method="post" action="/settings/delete-account" class="flex flex-wrap items-end gap-2" data-confirm="Eliminare l'account e tutti i dati? Non si può annullare.">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            {{if .DeleteError}}<p role="alert" class="basis-full rounded-xl bg-danger-soft text-danger px-3 py-2">{{.DeleteError}}</p>{{end}}
+            <label class="lab flex-1 min-w-[200px] max-w-[280px]">Conferma con la password<input name="password" type="password" required autocomplete="current-password" class="field"></label>
+            <button class="btn bg-danger text-surface hover:opacity-90">Elimina account</button>
+          </form>
         </div>
-      {{end}}
-
-      {{if .NewTokenPlain}}
-        <div class="mb-4 rounded border border-accent/30 bg-accent/10 px-4 py-3 text-sm">
-          <p class="font-semibold text-accent mb-1">Nuovo token creato — copialo adesso!</p>
-          <code class="block font-mono text-xs break-all bg-surface border border-border rounded px-3 py-2 mt-1 select-all">{{.NewTokenPlain}}</code>
-          <p class="text-muted mt-1 text-xs">Non verrà più mostrato.</p>
-        </div>
-      {{end}}
-
-      {{if .APITokens}}
-        <table class="w-full text-sm mb-4">
-          <thead>
-            <tr class="text-left text-muted border-b border-border">
-              <th class="pb-2 font-medium">Nome</th>
-              <th class="pb-2 font-medium">Creato il</th>
-              <th class="pb-2 font-medium">Usato il</th>
-              <th class="pb-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{range .APITokens}}
-            <tr class="border-b border-border/50">
-              <td class="py-2 font-mono text-xs">{{.Name}}</td>
-              <td class="py-2 text-muted">{{.CreatedAt.Format "02/01/2006"}}</td>
-              <td class="py-2 text-muted">
-                {{if .LastUsedAt}}{{.LastUsedAt.Format "02/01/2006"}}{{else}}—{{end}}
-              </td>
-              <td class="py-2 text-right">
-                <form method="post" action="/settings/api-tokens/{{.ID}}/revoke"
-                      onsubmit="return confirm('Revocare il token «{{.Name}}»?')">
-                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                  <button type="submit"
-                          class="text-danger text-xs hover:underline">Revoca</button>
-                </form>
-              </td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-      {{else}}
-        <p class="text-sm text-muted mb-4">Nessun token ancora.</p>
-      {{end}}
-
-      {{if index .Features "api_access"}}
-      <form method="post" action="/settings/api-tokens" class="flex items-end gap-2">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <div class="flex-1">
-          <label class="block text-xs font-medium text-muted mb-1" for="token_name">Nome token</label>
-          <input id="token_name" name="name" type="text" required maxlength="100"
-                 placeholder="es. Home Assistant, app mobile…"
-                 class="w-full rounded border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-        </div>
-        <button type="submit"
-                class="bg-accent text-accent-fg rounded px-4 py-2 text-sm hover:bg-accent/90 transition whitespace-nowrap">
-          Crea token
-        </button>
-      </form>
-      {{end}}
+      </section>
     </div>
-  </section>
-
-  {{/* ===== Zona pericolosa ===== */}}
-  <section class="bg-surface border border-danger/30 rounded mb-6">
-    <div class="px-6 py-4 border-b border-danger/30">
-      <h2 class="text-base font-semibold text-danger">Zona pericolosa</h2>
-    </div>
-    <div class="px-6 py-4">
-      <p class="text-sm text-muted mb-4">
-        La cancellazione dell'account è permanente e irreversibile.
-        Tutti i tuoi dati (piano, ricette, peso, ecc.) saranno eliminati.
-        Conforme al diritto all'oblio GDPR Art. 17.
-      </p>
-      {{if .DeleteError}}
-        <div class="mb-4 rounded border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{{.DeleteError}}</div>
-      {{end}}
-      <form method="post" action="/settings/delete-account" class="space-y-4">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <div>
-          <label class="block text-sm font-medium mb-1" for="delete_password">
-            Conferma con la tua password
-          </label>
-          <input id="delete_password" name="password" type="password" required autocomplete="current-password"
-                 class="w-full max-w-xs rounded border border-border bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-danger">
-        </div>
-        <button type="submit"
-                class="bg-danger text-white rounded px-4 py-2 text-sm hover:bg-danger/90 transition">
-          Elimina account definitivamente
-        </button>
-      </form>
-    </div>
-  </section>
+  </div>
 </div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// Indice delle sezioni: segna quella in vista.
+(function () {
+  var links = document.querySelectorAll(".settings-toc");
+  if (!links.length || !("IntersectionObserver" in window)) return;
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      links.forEach(function (a) {
+        if (a.getAttribute("href") === "#" + e.target.id) a.setAttribute("aria-current", "true");
+        else a.removeAttribute("aria-current");
+      });
+    });
+  }, { rootMargin: "0px 0px -70% 0px" });
+  links.forEach(function (a) {
+    var t = document.querySelector(a.getAttribute("href"));
+    if (t) io.observe(t);
+  });
+})();
+</script>
 {{end}}

@@ -15,47 +15,69 @@ import (
 
 type weightPageData struct {
 	authPageData
-	Logs          []domain.WeightLog
-	TodayStr      string // YYYY-MM-DD per il default del campo data
-	HasTrend      bool
-	TrendKg       float64 // differenza vs entry di confronto
-	TrendPositive bool
-	TrendDays     int
+	Logs     []domain.WeightLog // dalla piu' recente
+	TodayStr string             // YYYY-MM-DD per il default del campo data
+	Range    int                // giorni mostrati nel grafico: 30, 90 o 365
+	Trend    string             // «−0,8 kg in 30 giorni»; vuoto con meno di due pesate
+	Charts   statsCharts        // solo WeightLabels e Weight
+	HasChart bool
+}
+
+// weightRanges sono gli intervalli del grafico; il primo e' il predefinito.
+var weightRanges = []int{90, 30, 365}
+
+// parseWeightRange legge ?giorni=; un valore fuori elenco torna al predefinito.
+func parseWeightRange(r *http.Request) int {
+	if n, err := strconv.Atoi(r.URL.Query().Get("giorni")); err == nil {
+		for _, v := range weightRanges {
+			if n == v {
+				return n
+			}
+		}
+	}
+	return weightRanges[0]
 }
 
 func (a *App) handleWeightPage(w http.ResponseWriter, r *http.Request) {
-	user := userFromContext(r.Context())
-	logs, err := a.WeightLogs.ListWeightLogs(r.Context(), user.ID, 90)
+	data, err := a.weightPage(r)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-
-	data := weightPageData{
-		authPageData: a.baseData(r),
-		Logs:         logs,
-		TodayStr:     time.Now().Format("2006-01-02"),
-	}
-
-	// Calcola trend: confronto con l'entry più vicina a ≥6 giorni fa.
-	if len(logs) >= 2 {
-		latest := logs[0]
-		for _, l := range logs[1:] {
-			days := int(latest.MeasuredAt.Sub(l.MeasuredAt).Hours() / 24)
-			if days >= 6 {
-				diff := latest.WeightKg - l.WeightKg
-				data.HasTrend = true
-				data.TrendKg = diff
-				data.TrendPositive = diff > 0
-				data.TrendDays = days
-				break
-			}
-		}
-	}
-
 	if err := a.Render.Render(w, http.StatusOK, "weight", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+// weightPage prepara la pagina: elenco delle pesate e grafico
+// dell'intervallo scelto, con la variazione dalla prima all'ultima.
+func (a *App) weightPage(r *http.Request) (weightPageData, error) {
+	user := userFromContext(r.Context())
+	data := weightPageData{
+		authPageData: a.baseData(r),
+		TodayStr:     time.Now().Format("2006-01-02"),
+		Range:        parseWeightRange(r),
+	}
+	logs, err := a.WeightLogs.ListWeightLogs(r.Context(), user.ID, 365)
+	if err != nil {
+		return data, err
+	}
+	data.Logs = logs
+	today := todayDate()
+	inRange, err := a.WeightLogs.ForRange(r.Context(), user.ID, today.AddDate(0, 0, -data.Range), today)
+	if err != nil {
+		return data, err
+	}
+	for _, l := range inRange {
+		data.Charts.WeightLabels = append(data.Charts.WeightLabels, shortDateIT(l.MeasuredAt))
+		data.Charts.Weight = append(data.Charts.Weight, l.WeightKg)
+	}
+	data.HasChart = len(inRange) >= 2
+	if data.HasChart {
+		first, last := inRange[0], inRange[len(inRange)-1]
+		data.Trend = weightTrend(last.WeightKg-first.WeightKg, last.MeasuredAt.Sub(first.MeasuredAt))
+	}
+	return data, nil
 }
 
 func (a *App) handleWeightLog(w http.ResponseWriter, r *http.Request) {
@@ -66,10 +88,10 @@ func (a *App) handleWeightLog(w http.ResponseWriter, r *http.Request) {
 	noteStr := strings.TrimSpace(r.PostFormValue("note"))
 
 	renderErr := func(msg string) {
-		logs, _ := a.WeightLogs.ListWeightLogs(r.Context(), user.ID, 90)
-		data := weightPageData{
-			authPageData: a.baseData(r),
-			Logs:         logs,
+		data, err := a.weightPage(r)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
 		}
 		data.Error = msg
 		if err := a.Render.Render(w, http.StatusUnprocessableEntity, "weight", data); err != nil {
@@ -100,7 +122,7 @@ func (a *App) handleWeightLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Sessions.Put(r.Context(), "flash", "Misurazione salvata.")
+	a.Sessions.Put(r.Context(), "flash", "Pesata salvata.")
 	http.Redirect(w, r, "/profile/peso", http.StatusSeeOther)
 }
 
@@ -122,6 +144,6 @@ func (a *App) handleWeightLogDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Sessions.Put(r.Context(), "flash", "Misurazione eliminata.")
+	a.Sessions.Put(r.Context(), "flash", "Pesata eliminata.")
 	http.Redirect(w, r, "/profile/peso", http.StatusSeeOther)
 }
