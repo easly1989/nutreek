@@ -172,6 +172,12 @@ func funcMap() template.FuncMap {
 		},
 		// accentColor: il colore del tema per theme-color (#59).
 		"accentColor": AccentColor,
+		// asset: URL di un file in /static con la versione degli statici. Il
+		// service worker li serve dalla cache: un URL nuovo a ogni rilascio
+		// evita CSS e JS vecchi sotto l'HTML nuovo.
+		"asset": func(path string) string {
+			return "/static/" + path + "?v=" + StaticVersion()
+		},
 		// pickerRow passa a picker_row la riga insieme ai dati della lista
 		// (tipo di picker, id di destinazione, CSRF).
 		"pickerRow": func(row, list any) PickerRowCtx {

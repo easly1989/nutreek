@@ -26,7 +26,9 @@
 {{if $d.Rows}}
   {{range $d.Rows}}{{template "picker_row" (pickerRow . $d)}}{{end}}
 {{else if not $d.SearchedOFF}}
-  <p class="px-5 py-6 text-center text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco il codice su OpenFoodFacts…</p>
+  {{/* Risposta della sola ricerca locale: ingredient_search.js vede
+       data-barcode-pending e lancia quella con OpenFoodFacts. */}}
+  <p class="px-5 py-6 text-center text-muted" data-barcode-pending><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco il codice su OpenFoodFacts…</p>
 {{else}}
   <div class="mx-4 lg:mx-5 mt-2 rounded-xl bg-surface-2 p-3.5 flex gap-3 items-start">
     <span class="thumb bg-surface">{{template "icon_sm" "i-barcode"}}</span>

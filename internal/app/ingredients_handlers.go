@@ -513,9 +513,11 @@ func (a *App) searchBarcode(ctx context.Context, code string, live bool) ([]ingr
 	switch {
 	case errors.Is(err, off.ErrNotFound):
 		return nil, "", nil
-	case err != nil:
+	case errors.Is(err, off.ErrUnavailable):
 		a.Logger.Warn("OFF barcode lookup failed", "err", err, "barcode", code)
 		return nil, "OpenFoodFacts non risponde: riprova tra poco, oppure crea l'ingrediente.", nil
+	case err != nil:
+		return nil, "", err
 	}
 	return []ingredientRow{{OFF: p}}, "", nil
 }
@@ -773,8 +775,14 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 	if !errors.Is(err, db.ErrIngredientNotFound) {
 		return 0, err
 	}
-	// Non tra gli ingredienti: copia locale di OFF, poi la rete.
-	product, err := a.OFF.FindByBarcode(ctx, barcode, true)
+	// Non tra gli ingredienti: l'API di OFF, che porta anche i micronutrienti.
+	// Se OFF non risponde basta la copia locale, se ha i macro.
+	product, err := a.OFF.GetByBarcode(ctx, barcode)
+	if err != nil && !errors.Is(err, off.ErrNotFound) {
+		if local, lerr := a.OFF.FindByBarcode(ctx, barcode, false); lerr == nil && local.HasFullNutrients {
+			product, err = local, nil
+		}
+	}
 	if err != nil {
 		return 0, err
 	}
