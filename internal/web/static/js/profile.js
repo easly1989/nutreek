@@ -48,6 +48,11 @@
     if (bmi < 30.0) return 'Sovrappeso';
     return 'Obesità';
   }
+  // Numeri all'italiana: 1.690, 23,6 (useGrouping "always": senza, 1690
+  // resterebbe senza punto).
+  function fmt(v, d) {
+    return Number(v).toLocaleString('it-IT', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0, useGrouping: 'always' });
+  }
   function getActivityFactor() {
     const sel = el('f-activity');
     if (!sel) return 1.4;
@@ -57,7 +62,7 @@
   function getActivityLabel() {
     const sel = el('f-activity');
     if (!sel || !sel.value) return 'default';
-    const labels = { sedentary: 'Sedentario', light: 'Leggera', moderate: 'Moderata', active: 'Intensa', athlete: 'Atleta' };
+    const labels = { sedentary: 'Sedentaria', light: 'Leggera', moderate: 'Moderata', active: 'Intensa', athlete: 'da atleta' };
     return labels[sel.value] || '';
   }
 
@@ -114,9 +119,9 @@
     calcWeight = weight; calcHeight = height; calcSex = sex; calcBMR = bmr;
 
     const bmiV = el('bmi-value'); const bmiC = el('bmi-category'); const bmrV = el('bmr-value');
-    if (bmiV) bmiV.textContent = bmi.toFixed(1);
+    if (bmiV) bmiV.textContent = fmt(bmi, 1);
     if (bmiC) bmiC.textContent = bmiCategory(bmi);
-    if (bmrV) bmrV.textContent = Math.round(bmr);
+    if (bmrV) bmrV.textContent = fmt(bmr);
 
     if (dyn) dyn.classList.remove('hidden');
     if (ph)  ph.classList.add('hidden');
@@ -131,11 +136,12 @@
     if (!calcBMR) { calcTDEE = null; return; }
     const factor = getActivityFactor();
     calcTDEE = calcBMR * factor;
-    if (tdeeV) tdeeV.textContent = Math.round(calcTDEE);
+    if (tdeeV) tdeeV.textContent = fmt(calcTDEE);
     if (tdeeL) {
       const lbl = getActivityLabel();
-      tdeeL.textContent = lbl ? 'fabbisogno (' + lbl.toLowerCase() + ')' : 'fabbisogno stimato';
+      tdeeL.textContent = lbl && lbl !== 'default' ? 'con attività ' + lbl.toLowerCase() : 'attività non indicata';
     }
+    updateMacroSummary();
   }
 
   // ---- Preset buttons ---------------------------------------------------------
@@ -177,8 +183,8 @@
 
     // Evidenzia il pulsante attivo.
     document.querySelectorAll('.preset-btn').forEach(function (btn) {
-      btn.classList.toggle('bg-accent-soft', btn.dataset.preset === mode);
-      btn.classList.toggle('border-accent',  btn.dataset.preset === mode);
+      btn.classList.toggle('is-on', btn.dataset.preset === mode);
+      btn.setAttribute('aria-pressed', String(btn.dataset.preset === mode));
     });
 
     ['f-tk', 'f-tp', 'f-tc', 'f-tf'].forEach(function (id) {
@@ -203,7 +209,8 @@
     pendingRebalance = null;
 
     document.querySelectorAll('.preset-btn').forEach(function (btn) {
-      btn.classList.remove('bg-accent-soft', 'border-accent');
+      btn.classList.remove('is-on');
+      btn.setAttribute('aria-pressed', 'false');
     });
     hideRebalancePanel();
     updateMacroSummary();
@@ -225,10 +232,10 @@
     if (!panel || !text) return;
     pendingRebalance = suggestion;
     const parts = [];
-    if (suggestion.kcal    !== undefined) parts.push('Kcal ' + suggestion.kcal);
-    if (suggestion.protein !== undefined) parts.push('P ' + suggestion.protein + 'g');
-    if (suggestion.carbs   !== undefined) parts.push('C ' + suggestion.carbs + 'g');
-    if (suggestion.fat     !== undefined) parts.push('F ' + suggestion.fat + 'g');
+    if (suggestion.kcal    !== undefined) parts.push(fmt(suggestion.kcal) + ' kcal');
+    if (suggestion.protein !== undefined) parts.push('proteine ' + suggestion.protein + ' g');
+    if (suggestion.carbs   !== undefined) parts.push('carboidrati ' + suggestion.carbs + ' g');
+    if (suggestion.fat     !== undefined) parts.push('grassi ' + suggestion.fat + ' g');
     text.textContent = parts.join(' · ');
     panel.classList.remove('hidden');
   }
@@ -320,24 +327,37 @@
     n.classList.toggle('hidden', !text);
   }
 
+  // Ripartizione delle kcal: barra, percentuale sotto ogni campo e
+  // differenza tra le kcal dei macro e l'obiettivo.
   function updateMacroSummary() {
-    const summary = el('macro-summary');
-    if (!summary) return;
+    const split = el('macro-split'), summary = el('macro-summary');
     const kcal    = parseF(el('f-tk') && el('f-tk').value);
     const protein = parseF(el('f-tp') && el('f-tp').value);
     const carbs   = parseF(el('f-tc') && el('f-tc').value);
     const fat     = parseF(el('f-tf') && el('f-tf').value);
+    function pct(id, text) { const n = el('pct-' + id); if (n) n.textContent = text || ''; }
 
-    if (!isNaN(kcal) && kcal > 0 && !isNaN(protein) && !isNaN(carbs) && !isNaN(fat)) {
-      const macroKcal = protein * 4 + carbs * 4 + fat * 9;
-      const pP = Math.round(protein * 4 / kcal * 100);
-      const pC = Math.round(carbs   * 4 / kcal * 100);
-      const pF = Math.round(fat     * 9 / kcal * 100);
-      summary.textContent = 'P: ' + pP + '% · C: ' + pC + '% · F: ' + pF + '% · totale macro: ' + Math.round(macroKcal) + ' kcal';
-      summary.classList.remove('hidden');
+    pct('f-tk', calcTDEE && kcal > 0 ? 'fabbisogno × ' + fmt(kcal / calcTDEE, 2) : '');
+    const mk = (protein || 0) * 4 + (carbs || 0) * 4 + (fat || 0) * 9;
+    const base = kcal > 0 ? kcal : mk;
+    pct('f-tp', protein > 0 && base > 0 ? Math.round(protein * 4 / base * 100) + '%' + (calcWeight ? ' · ' + fmt(protein / calcWeight, 1) + ' g/kg' : '') : '');
+    pct('f-tc', carbs > 0 && base > 0 ? Math.round(carbs * 4 / base * 100) + '%' : '');
+    pct('f-tf', fat > 0 && base > 0 ? Math.round(fat * 9 / base * 100) + '%' : '');
+
+    if (!split || !summary) return;
+    if (mk <= 0) { split.classList.add('hidden'); return; }
+    el('split-p').style.flexGrow = (protein || 0) * 4;
+    el('split-c').style.flexGrow = (carbs || 0) * 4;
+    el('split-f').style.flexGrow = (fat || 0) * 9;
+    let text = 'I macro danno ' + fmt(mk) + ' kcal';
+    if (kcal > 0) {
+      const diff = Math.round(mk - kcal);
+      text += Math.abs(diff) < 1 ? ", come l'obiettivo." : ': ' + fmt(Math.abs(diff)) + (diff > 0 ? ' in più' : ' in meno') + " dell'obiettivo.";
     } else {
-      summary.classList.add('hidden');
+      text += '.';
     }
+    summary.textContent = text;
+    split.classList.remove('hidden');
   }
 
   function onMacroInput(key, fieldId) {
@@ -396,19 +416,6 @@
     if (saveBtn) saveBtn.disabled = hasError;
   }
 
-  // ---- Card collassabili ------------------------------------------------------
-
-  function toggleCard(btn) {
-    const card = btn.closest('[data-card]');
-    const body = card && card.querySelector('[data-card-body]');
-    const chev = btn.querySelector('[data-card-chevron]');
-    if (!body) return;
-    body.classList.toggle('hidden');
-    if (chev) chev.classList.toggle('rotate-180');
-    btn.setAttribute('aria-expanded', String(!body.classList.contains('hidden')));
-    btn.blur();
-  }
-
   // ---- Init -------------------------------------------------------------------
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -439,10 +446,6 @@
     const dismissBtn = el('rebalance-dismiss');
     if (applyBtn)   applyBtn.addEventListener('click',   function () { applyRebalance(); });
     if (dismissBtn) dismissBtn.addEventListener('click', function () { hideRebalancePanel(); });
-
-    document.querySelectorAll('[data-card-toggle]').forEach(function (btn) {
-      btn.addEventListener('click', function (e) { e.preventDefault(); toggleCard(btn); });
-    });
 
     updateIndices();
     validateAll();

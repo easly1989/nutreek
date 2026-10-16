@@ -23,7 +23,6 @@ type profileData struct {
 	TDEEValue   float64
 	HasIndices  bool // true se BMI/BMR sono calcolati e mostrabili
 	HasTDEE     bool // true se anche activity_level è impostato
-	IsOwner     bool // true se l'utente e' l'owner (mostra pannello sync OFF)
 }
 
 type profileForm struct {
@@ -97,7 +96,6 @@ func (a *App) handleProfilePage(w http.ResponseWriter, r *http.Request) {
 	data := profileData{
 		authPageData: a.baseData(r),
 		Form:         profileFormFromUser(user),
-		IsOwner:      a.isOwner(user),
 	}
 	if user.BMI != nil && user.BMR != nil {
 		data.BMIValue = *user.BMI

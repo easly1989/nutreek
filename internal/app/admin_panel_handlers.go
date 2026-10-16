@@ -10,13 +10,27 @@ import (
 
 // ---- /admin/panel -----------------------------------------------------------
 
+// adminPanelPageData e' la scheda Panoramica: numeri dell'istanza,
+// funzionalita' con i due interruttori, stato di OpenFoodFacts (via JS).
 type adminPanelPageData struct {
 	authPageData
 	UserCount      int
-	FeatureCount   int
-	ActiveCount    int
+	CoachCount     int
 	PremiumCount   int
+	Features       []featureRow
+	ActiveCount    int
+	PremiumFeats   int // funzionalita' attive marcate premium
 	PremiumEnabled bool
+	HasOFF         bool // il sync OpenFoodFacts e' configurato
+}
+
+type featureRow struct {
+	Key         string
+	Name        string
+	Description string
+	IsPremium   bool
+	Enabled     bool
+	SortOrder   int
 }
 
 func (a *App) handleAdminPanel(w http.ResponseWriter, r *http.Request) {
@@ -35,67 +49,39 @@ func (a *App) handleAdminPanel(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	active := 0
-	for _, f := range features {
-		if f.Enabled {
-			active++
-		}
-	}
 	data := adminPanelPageData{
 		authPageData:   a.baseData(r),
 		UserCount:      len(users),
-		FeatureCount:   len(features),
-		ActiveCount:    active,
 		PremiumCount:   premiumCount,
 		PremiumEnabled: a.Cfg.PremiumEnabled,
+		HasOFF:         a.OFFSyncer != nil,
+	}
+	for _, u := range users {
+		if u.Role == "coach" {
+			data.CoachCount++
+		}
+	}
+	for _, f := range features {
+		data.Features = append(data.Features, featureRow{
+			Key: f.Key, Name: f.Name, Description: f.Description,
+			IsPremium: f.IsPremium, Enabled: f.Enabled, SortOrder: f.SortOrder,
+		})
+		if f.Enabled {
+			data.ActiveCount++
+			if f.IsPremium {
+				data.PremiumFeats++
+			}
+		}
 	}
 	if err := a.Render.Render(w, http.StatusOK, "admin_panel", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
 
-// ---- /admin/panel/features --------------------------------------------------
-
-type adminFeaturesPageData struct {
-	authPageData
-	Features       []featureRow
-	PremiumEnabled bool
-}
-
-type featureRow struct {
-	Key         string
-	Name        string
-	Description string
-	IsPremium   bool
-	Enabled     bool
-	SortOrder   int
-}
-
+// handleAdminFeatures GET /admin/panel/features: le funzionalita' ora stanno
+// nella Panoramica; il vecchio indirizzo ci rimanda.
 func (a *App) handleAdminFeatures(w http.ResponseWriter, r *http.Request) {
-	features, err := a.Features.List(r.Context())
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	rows := make([]featureRow, len(features))
-	for i, f := range features {
-		rows[i] = featureRow{
-			Key:         f.Key,
-			Name:        f.Name,
-			Description: f.Description,
-			IsPremium:   f.IsPremium,
-			Enabled:     f.Enabled,
-			SortOrder:   f.SortOrder,
-		}
-	}
-	data := adminFeaturesPageData{
-		authPageData:   a.baseData(r),
-		Features:       rows,
-		PremiumEnabled: a.Cfg.PremiumEnabled,
-	}
-	if err := a.Render.Render(w, http.StatusOK, "admin_features", data); err != nil {
-		a.serverError(w, r, err)
-	}
+	http.Redirect(w, r, "/admin/panel#funzionalita", http.StatusFound)
 }
 
 func (a *App) handleAdminFeatureToggle(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +103,7 @@ func (a *App) handleAdminFeatureToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	invalidateFeatureCache()
-	http.Redirect(w, r, "/admin/panel/features", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/panel#funzionalita", http.StatusSeeOther)
 }
 
 func (a *App) handleAdminFeaturePremium(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +125,7 @@ func (a *App) handleAdminFeaturePremium(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	invalidateFeatureCache()
-	http.Redirect(w, r, "/admin/panel/features", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/panel#funzionalita", http.StatusSeeOther)
 }
 
 // ---- /admin/panel/users -----------------------------------------------------
@@ -147,18 +133,23 @@ func (a *App) handleAdminFeaturePremium(w http.ResponseWriter, r *http.Request) 
 type adminUsersPageData struct {
 	authPageData
 	Users          []*adminUserRow
+	PremiumUsers   int // per i filtri
+	CoachUsers     int
 	PremiumEnabled bool
+	Now            time.Time
 }
 
 type adminUserRow struct {
 	ID          int64
 	Email       string
 	DisplayName string
-	CreatedAt   string
+	CreatedAt   time.Time
 	Role        string // user | coach
-	Premium     bool   // sottoscrizione attiva e non scaduta
-	SubSource   string // manual | license | payment
-	SubExpires  string // vuoto = senza scadenza
+	IsOwner     bool
+	Premium     bool       // sottoscrizione attiva e non scaduta
+	SubSource   string     // manual | license | payment
+	SubExpires  *time.Time // nil = senza scadenza
+	ExpiresSoon bool       // scade entro 30 giorni
 }
 
 func (a *App) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
@@ -174,27 +165,39 @@ func (a *App) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	now := time.Now()
 	rows := make([]*adminUserRow, len(users))
+	var premiumUsers, coachUsers int
 	for i, u := range users {
 		row := &adminUserRow{
 			ID:          u.ID,
 			Email:       u.Email,
 			DisplayName: u.DisplayName,
-			CreatedAt:   u.CreatedAt.Format("02/01/2006 15:04"),
+			CreatedAt:   u.CreatedAt,
 			Role:        u.Role,
+			IsOwner:     a.isOwner(u),
 		}
 		if sub, ok := subs[u.ID]; ok && sub.IsActive(now) {
 			row.Premium = true
 			row.SubSource = sub.Source
 			if sub.ExpiresAt != nil {
-				row.SubExpires = sub.ExpiresAt.Format("02/01/2006")
+				row.SubExpires = sub.ExpiresAt
+				row.ExpiresSoon = sub.ExpiresAt.Before(now.AddDate(0, 0, 30))
 			}
 		}
 		rows[i] = row
+		if row.Premium {
+			premiumUsers++
+		}
+		if row.Role == "coach" {
+			coachUsers++
+		}
 	}
 	data := adminUsersPageData{
 		authPageData:   a.baseData(r),
 		Users:          rows,
+		PremiumUsers:   premiumUsers,
+		CoachUsers:     coachUsers,
 		PremiumEnabled: a.Cfg.PremiumEnabled,
+		Now:            now,
 	}
 	if err := a.Render.Render(w, http.StatusOK, "admin_users", data); err != nil {
 		a.serverError(w, r, err)
@@ -265,6 +268,7 @@ func (a *App) handleAdminUserRole(w http.ResponseWriter, r *http.Request) {
 type upgradePageData struct {
 	authPageData
 	PremiumFeatures []featureRow
+	BlockedName     string // funzionalita' da cui si arriva (?da=chiave)
 	HasPremium      bool
 	PremiumEnabled  bool
 }
@@ -278,7 +282,12 @@ func (a *App) handleUpgradePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var premium []featureRow
+	var blocked string
+	from := r.URL.Query().Get("da")
 	for _, f := range features {
+		if f.Key == from && f.IsPremium {
+			blocked = f.Name
+		}
 		if f.IsPremium && f.Enabled {
 			premium = append(premium, featureRow{
 				Key: f.Key, Name: f.Name, Description: f.Description,
@@ -293,6 +302,7 @@ func (a *App) handleUpgradePage(w http.ResponseWriter, r *http.Request) {
 	data := upgradePageData{
 		authPageData:    a.baseData(r),
 		PremiumFeatures: premium,
+		BlockedName:     blocked,
 		HasPremium:      hasPremium,
 		PremiumEnabled:  a.Cfg.PremiumEnabled,
 	}

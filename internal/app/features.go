@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -104,12 +105,12 @@ func (a *App) requireFeature(key string) func(http.Handler) http.Handler {
 			if !a.HasFeature(r.Context(), u, key) {
 				if r.Header.Get("HX-Request") == "true" {
 					// HTMX: redirect client-side alla pagina upgrade.
-					w.Header().Set("HX-Redirect", "/upgrade")
+					w.Header().Set("HX-Redirect", "/upgrade?da="+url.QueryEscape(key))
 					w.WriteHeader(http.StatusForbidden)
 					return
 				}
 				if strings.Contains(r.Header.Get("Accept"), "text/html") {
-					http.Redirect(w, r, "/upgrade", http.StatusSeeOther)
+					http.Redirect(w, r, "/upgrade?da="+url.QueryEscape(key), http.StatusSeeOther)
 					return
 				}
 				// API/JSON: risposta strutturata.

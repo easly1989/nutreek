@@ -23,7 +23,7 @@
 <body class="bg-bg text-text min-h-screen"{{if .ShowTour}} data-show-tour="1"{{end}}>
   {{template "icon_sprite"}}
 
-  {{if .User}}
+  {{if and .User (not .Bare)}}
   {{- $p := .ActiveNav -}}
 
   {{/* Sidebar: solo da desktop (lg). Sul telefono la sostituisce la barra in basso. */}}
@@ -118,16 +118,19 @@
     </form>
   </dialog>
   {{else}}
-  <header class="h-14 flex items-center gap-3 px-4 bg-surface border-b border-border">
+  <header class="h-[60px] flex items-center gap-3 px-4 lg:px-6 bg-surface border-b border-border">
     {{template "brand"}}
     <div class="ml-auto flex items-center gap-2">
-      <a href="/login" class="btn-ghost">Accedi</a>
-      <a href="/register" class="btn-primary">Registrati</a>
+      {{block "topbar_actions" .}}
+      {{if eq .ActiveNav "/login"}}<a href="/register" class="btn-ghost">Registrati</a>
+      {{else if eq .ActiveNav "/register"}}<a href="/login" class="btn-ghost">Accedi</a>
+      {{else if not .User}}<a href="/login" class="btn-ghost">Accedi</a><a href="/register" class="btn-primary">Registrati</a>{{end}}
+      {{end}}
     </div>
   </header>
   {{end}}
 
-  <main id="main-content" class="min-h-screen{{if .User}} lg:pl-[220px] pb-24 lg:pb-0{{end}}">
+  <main id="main-content" class="{{if and .User (not .Bare)}}min-h-screen lg:pl-[220px] pb-24 lg:pb-0{{else}}min-h-[calc(100vh-60px)]{{end}}">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 lg:py-6">
       {{if .Flash}}
         <div id="flash-msg" role="status" class="mb-4 rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-center justify-between gap-3">
@@ -252,4 +255,15 @@
   <symbol id="i-barcode" viewBox="0 0 24 24"><path d="M4 6v12M7 6v12M10 6v12M14 6v12M17 6v12M20 6v12"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></symbol>
   <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><path d="M3 4h18v12H3zM8 20h8M12 16v4"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9.5 17h-19zM12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v13c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-13M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.6 4.5L20 16M20 20v-4h-4"/></symbol>
+  <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H4v-7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v7h-3M7 14h10v7H7z"/></symbol>
 </svg>{{end}}

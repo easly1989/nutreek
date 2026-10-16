@@ -1,9 +1,4 @@
 {{define "title"}}Pagina non trovata — Nutreek{{end}}
 {{define "content"}}
-<div class="max-w-xl mx-auto text-center py-16">
-  <p class="text-sm uppercase tracking-wide text-muted mb-2">Errore 404</p>
-  <h1 class="text-3xl font-semibold mb-3">Pagina non trovata</h1>
-  <p class="text-muted mb-6">L'URL richiesto non esiste o non e' piu' disponibile.</p>
-  <a href="/" class="inline-block bg-accent text-accent-fg rounded px-4 py-2 hover:bg-accent/90">Torna alla home</a>
-</div>
+{{template "error_page" (list "404" "Questa pagina non c'è" "Il link è sbagliato o la pagina è stata spostata. Una ricetta o un piano eliminati non si possono più aprire." "i-search")}}
 {{end}}
