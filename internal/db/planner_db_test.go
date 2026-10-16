@@ -93,7 +93,7 @@ func TestNutritionistHasVariations(t *testing.T) {
 
 	plan, _ := np.GetOrCreateActivePlan(ctx, alice)
 	mtID, _ := np.CreateMealType(ctx, plan.ID, "Colazione")
-	varID, _ := np.CreateVariation(ctx, mtID, nil)
+	varID, _ := np.CreateVariation(ctx, plan.ID, mtID, nil)
 
 	// Variante senza item: ancora false.
 	has, _ = np.HasVariations(ctx, alice)
@@ -102,7 +102,7 @@ func TestNutritionistHasVariations(t *testing.T) {
 	}
 
 	pane, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil, nil, nil, nil, nil)
-	if _, err := np.AddItem(ctx, varID, nil, &pane, 80, "g"); err != nil {
+	if _, err := np.AddItem(ctx, plan.ID, varID, nil, &pane, 80, "g"); err != nil {
 		t.Fatalf("AddItem: %v", err)
 	}
 

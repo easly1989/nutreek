@@ -450,7 +450,20 @@ func (n *NutritionistPlans) DeleteMealType(ctx context.Context, id, planID int64
 	return nil
 }
 
-func (n *NutritionistPlans) CreateVariation(ctx context.Context, mealTypeID int64, name *string) (int64, error) {
+// CreateVariation aggiunge una variante al tipo pasto mealTypeID, che deve
+// stare nel piano planID: altrimenti ErrNutritionistItemNotFound.
+func (n *NutritionistPlans) CreateVariation(ctx context.Context, planID, mealTypeID int64, name *string) (int64, error) {
+	var ok int
+	err := n.db.QueryRowContext(ctx,
+		`SELECT 1 FROM nutritionist_meal_types WHERE id = ? AND plan_id = ?`, mealTypeID, planID,
+	).Scan(&ok)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNutritionistItemNotFound
+	}
+	if err != nil {
+		return 0, fmt.Errorf("meal type owner: %w", err)
+	}
+
 	var maxOrder int
 	_ = n.db.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(sort_order), -1) FROM nutritionist_meal_variations WHERE meal_type_id = ?`, mealTypeID,
@@ -483,7 +496,30 @@ func (n *NutritionistPlans) DeleteVariation(ctx context.Context, id int64, planI
 	return nil
 }
 
-func (n *NutritionistPlans) AddItem(ctx context.Context, variationID int64, recipeID, ingredientID *int64, quantity float64, unit string) (int64, error) {
+// AddItem aggiunge una voce alla variante variationID, che deve stare nel
+// piano planID (altrimenti ErrNutritionistItemNotFound). Una ricetta deve
+// essere visibile al proprietario del piano (altrimenti ErrRecipeNotFound).
+func (n *NutritionistPlans) AddItem(ctx context.Context, planID, variationID int64, recipeID, ingredientID *int64, quantity float64, unit string) (int64, error) {
+	var owner int64
+	err := n.db.QueryRowContext(ctx, `
+		SELECT p.user_id
+		FROM nutritionist_meal_variations nv
+		JOIN nutritionist_meal_types nmt ON nmt.id = nv.meal_type_id
+		JOIN nutritionist_plans p ON p.id = nmt.plan_id
+		WHERE nv.id = ? AND p.id = ?`, variationID, planID,
+	).Scan(&owner)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNutritionistItemNotFound
+	}
+	if err != nil {
+		return 0, fmt.Errorf("variation owner: %w", err)
+	}
+	if recipeID != nil {
+		if err := recipeVisibleTo(ctx, n.db, *recipeID, owner); err != nil {
+			return 0, err
+		}
+	}
+
 	var maxOrder int
 	_ = n.db.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(sort_order), -1) FROM nutritionist_meal_items WHERE variation_id = ?`, variationID,
