@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/amon2126/nutreek/internal/domain"
@@ -40,11 +42,11 @@ func TestCategoriesForIngredients(t *testing.T) {
 	}
 	yogurt, _ := ings.CreateLocal(ctx, "Yogurt", nil, "g", 57, 10, 4, 0.2, &alice, nil, nil, nil, nil, nil, nil)
 	mela, _ := ings.CreateLocal(ctx, "Mela", nil, "g", 52, 0.3, 13.8, 0.2, &alice, nil, nil, nil, nil, nil, nil)
-	if err := cats.SetIngredientCategory(ctx, yogurt, &latticini); err != nil {
+	if err := cats.SetIngredientCategory(ctx, alice, yogurt, &latticini); err != nil {
 		t.Fatal(err)
 	}
 
-	got, err := cats.CategoriesForIngredients(ctx, []int64{yogurt, mela})
+	got, err := cats.CategoriesForIngredients(ctx, alice, []int64{yogurt, mela})
 	if err != nil {
 		t.Fatalf("CategoriesForIngredients: %v", err)
 	}
@@ -54,8 +56,95 @@ func TestCategoriesForIngredients(t *testing.T) {
 	if _, ok := got[mela]; ok {
 		t.Error("la mela non ha categoria: non deve comparire")
 	}
-	if empty, err := cats.CategoriesForIngredients(ctx, nil); err != nil || len(empty) != 0 {
+	if empty, err := cats.CategoriesForIngredients(ctx, alice, nil); err != nil || len(empty) != 0 {
 		t.Errorf("lista vuota = %v, %v", empty, err)
+	}
+
+	// nil toglie la categoria.
+	if err := cats.SetIngredientCategory(ctx, alice, yogurt, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := cats.CategoriesForIngredients(ctx, alice, []int64{yogurt}); len(got) != 0 {
+		t.Errorf("dopo nil la categoria resta: %v", got)
+	}
+}
+
+// La categoria e' di ogni utente (#143): la scelta di Bob non tocca quella
+// di Alice sullo stesso ingrediente, e una categoria altrui viene rifiutata.
+func TestCategoriesPerUser(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	ings := NewIngredients(store.DB)
+	cats := NewCategories(store.DB)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
+	frutta, _ := cats.CreateCategory(ctx, alice, "Frutta")
+	snack, _ := cats.CreateCategory(ctx, bob, "Snack")
+	mandorle, _ := ings.CreateLocal(ctx, "Mandorle", nil, "g", 579, 21, 22, 50, &alice, nil, nil, nil, nil, nil, nil)
+
+	if err := cats.SetIngredientCategory(ctx, alice, mandorle, &frutta); err != nil {
+		t.Fatal(err)
+	}
+	if err := cats.SetIngredientCategory(ctx, bob, mandorle, &snack); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := cats.CategoriesForIngredients(ctx, alice, []int64{mandorle}); got[mandorle].ID != frutta {
+		t.Errorf("Alice vede %+v, attesa la sua Frutta", got[mandorle])
+	}
+	if got, _ := cats.CategoriesForIngredients(ctx, bob, []int64{mandorle}); got[mandorle].ID != snack {
+		t.Errorf("Bob vede %+v, atteso il suo Snack", got[mandorle])
+	}
+
+	// Bob non puo' usare la categoria di Alice.
+	if err := cats.SetIngredientCategory(ctx, bob, mandorle, &frutta); !errors.Is(err, ErrCategoryNotFound) {
+		t.Errorf("categoria altrui: err = %v, atteso ErrCategoryNotFound", err)
+	}
+	if got, _ := cats.CategoriesForIngredients(ctx, bob, []int64{mandorle}); got[mandorle].ID != snack {
+		t.Errorf("dopo il rifiuto Bob vede %+v, atteso ancora Snack", got[mandorle])
+	}
+
+	// Cancellare una categoria toglie le sue assegnazioni.
+	if err := cats.DeleteCategory(ctx, snack, bob); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := cats.CategoriesForIngredients(ctx, bob, []int64{mandorle}); len(got) != 0 {
+		t.Errorf("categoria cancellata ancora assegnata: %v", got)
+	}
+}
+
+// La migrazione 0028 copia la vecchia colonna ingredients.category_id nella
+// tabella per utente, a nome di chi possiede la categoria.
+func TestCategoriesMigrationBackfill(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	ings := NewIngredients(store.DB)
+	cats := NewCategories(store.DB)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	frutta, _ := cats.CreateCategory(ctx, alice, "Frutta")
+	mela, _ := ings.CreateLocal(ctx, "Mela", nil, "g", 52, 0.3, 13.8, 0.2, &alice, nil, nil, nil, nil, nil, nil)
+	if _, err := store.DB.ExecContext(ctx, `UPDATE ingredients SET category_id = ? WHERE id = ?`, frutta, mela); err != nil {
+		t.Fatal(err)
+	}
+	// Rilancia l'INSERT della migrazione, preso dal file vero: al momento
+	// della migrazione il DB di test era vuoto.
+	up, err := migrationsFS.ReadFile("migrations/0028_ingredient_user_categories.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := strings.Index(string(up), "INSERT OR IGNORE INTO ingredient_user_categories")
+	end := strings.Index(string(up)[start:], ";")
+	if start < 0 || end < 0 {
+		t.Fatal("INSERT di backfill non trovato nella migrazione 0028")
+	}
+	if _, err := store.DB.ExecContext(ctx, string(up)[start:start+end]); err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	if got, _ := cats.CategoriesForIngredients(ctx, alice, []int64{mela}); got[mela].ID != frutta {
+		t.Errorf("dopo il backfill Alice vede %+v, attesa Frutta", got[mela])
 	}
 }
 

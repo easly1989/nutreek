@@ -5,13 +5,19 @@
   <div>
     <a href="/ingredients" class="crumb">{{template "icon_sm" "i-chevron-left"}}Ingredienti</a>
     <h1 class="h1">{{.Form.Name}}</h1>
+    {{if and .ReadOnly .Author}}<p class="text-muted mt-1">di {{.Author}}</p>{{end}}
   </div>
-  {{if .IsOFF}}<p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">Importato da OpenFoodFacts: le modifiche restano solo qui e non vengono sincronizzate.</p>{{end}}
+  {{if .ReadOnly}}
+  <p class="rounded-xl bg-accent-soft px-4 py-2.5">
+    {{- if .Author}}Nome, macro e allergeni li modifica solo {{.Author}}, che l’ha creato.{{else}}Nome, macro e allergeni li modifica solo l’amministratore.{{end}}
+    {{if .Categories}}Qui scegli in quale delle <b>tue</b> categorie tenerlo.{{else}}Per tenerlo in una tua categoria, prima creane una dalla pagina <a href="/ingredients" class="text-accent font-semibold underline">Ingredienti</a>.{{end}}</p>
+  {{else if .IsOFF}}<p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">Importato da OpenFoodFacts: le modifiche restano solo qui e non vengono sincronizzate.</p>{{end}}
   {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-4 py-2.5" role="alert">{{.Error}}</p>{{end}}
   {{template "ingredient_fields" .}}
   <div class="flex justify-end gap-2">
     <a href="/ingredients" class="btn-secondary">Annulla</a>
-    <button class="btn-primary">Salva modifiche</button>
+    {{if not .ReadOnly}}<button class="btn-primary">Salva modifiche</button>
+    {{else if .Categories}}<button class="btn-primary">Salva categoria</button>{{end}}
   </div>
 </form>
 {{end}}

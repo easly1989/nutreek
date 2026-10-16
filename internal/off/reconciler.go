@@ -188,7 +188,7 @@ func (r *Reconciler) upsertOFF(ctx context.Context, p Product, unit domain.Ingre
 	if b := strings.TrimSpace(p.Brand); b != "" {
 		brandPtr = &b
 	}
-	id, err := r.Ingredients.CreateOFF(ctx, p.Code, p.Name, brandPtr, unit, p.Kcal, p.Protein, p.Carbs, p.Fat, p.UnitWeightG, p.ServingG,
+	id, err := r.Ingredients.CreateOFF(ctx, p.Code, p.Name, brandPtr, unit, p.Kcal, p.Protein, p.Carbs, p.Fat, nil, p.UnitWeightG, p.ServingG,
 		p.Fiber, p.Sugars, p.SaturatedFat, p.Sodium)
 	if err == nil {
 		return id, nil
