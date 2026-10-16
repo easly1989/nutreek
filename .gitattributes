@@ -1,4 +1,4 @@
-# Fine riga LF ovunque: gofmt/golangci-lint e la CI Linux vedono gli stessi file del checkout Windows.
+# LF line endings everywhere: gofmt/golangci-lint and the Linux CI see the same files as the Windows checkout.
 * text=auto eol=lf
 *.exe binary
 *.png binary

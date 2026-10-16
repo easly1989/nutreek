@@ -1,12 +1,12 @@
-// Package macros calcola i macronutrienti (kcal/proteine/carboidrati/grassi)
-// a partire da ingredienti, ricette, pasti e giornate. Modulo puro: zero
-// dipendenze fuori dalla stdlib + internal/domain, completamente testabile.
+// Package macros computes the macronutrients (kcal/protein/carbs/fat) from
+// ingredients, recipes, meals and days. A pure module: no dependencies
+// outside the stdlib + internal/domain, fully testable.
 package macros
 
 import "github.com/amon2126/nutreek/internal/domain"
 
-// Macros aggrega i 4 valori standard. Tutti per la stessa porzione (es.
-// "totale del pasto", non "per 100g").
+// Macros holds the 4 standard values. All for the same portion (e.g. "the
+// meal's total", not "per 100g").
 type Macros struct {
 	Kcal    float64
 	Protein float64
@@ -14,7 +14,7 @@ type Macros struct {
 	Fat     float64
 }
 
-// Add ritorna m + o senza mutare i ricevitori.
+// Add returns m + o without mutating the receivers.
 func (m Macros) Add(o Macros) Macros {
 	return Macros{
 		Kcal:    m.Kcal + o.Kcal,
@@ -24,7 +24,7 @@ func (m Macros) Add(o Macros) Macros {
 	}
 }
 
-// Scale moltiplica tutti i campi per f. Usato per servings o per quantita'.
+// Scale multiplies every field by f. Used for servings or quantities.
 func (m Macros) Scale(f float64) Macros {
 	return Macros{
 		Kcal:    m.Kcal * f,
@@ -34,19 +34,19 @@ func (m Macros) Scale(f float64) Macros {
 	}
 }
 
-// IsZero indica se tutti e 4 i campi sono 0. Utile per skip rendering.
+// IsZero says whether all 4 fields are 0. Useful to skip rendering.
 func (m Macros) IsZero() bool {
 	return m.Kcal == 0 && m.Protein == 0 && m.Carbs == 0 && m.Fat == 0
 }
 
-// Shares e' la ripartizione percentuale dell'energia fra i tre macro.
+// Shares is the percentage split of the energy among the three macros.
 type Shares struct {
 	Protein, Carbs, Fat float64
 }
 
-// EnergyShares ripartisce l'energia dei macro (4 kcal/g proteine e
-// carboidrati, 9 kcal/g grassi) in percentuali che sommano a 100. Senza
-// macro ritorna Shares{}.
+// EnergyShares splits the macros' energy (4 kcal/g for protein and carbs,
+// 9 kcal/g for fat) into percentages that add up to 100. Without macros it
+// returns Shares{}.
 func (m Macros) EnergyShares() Shares {
 	p, c, f := m.Protein*4, m.Carbs*4, m.Fat*9
 	tot := p + c + f
@@ -56,9 +56,9 @@ func (m Macros) EnergyShares() Shares {
 	return Shares{Protein: p / tot * 100, Carbs: c / tot * 100, Fat: f / tot * 100}
 }
 
-// FromIngredient calcola i macro per `quantity` (in g o ml a seconda dell'unita'
-// dell'ingrediente). I valori `_per_100` vengono divisi per 100 e moltiplicati
-// per la quantita'. Quantity negative o zero ritornano Macros{}.
+// FromIngredient computes the macros for `quantity` (in g or ml depending on
+// the ingredient's unit). The `_per_100` values are divided by 100 and
+// multiplied by the quantity. Negative or zero quantities return Macros{}.
 func FromIngredient(ing domain.Ingredient, quantity float64) Macros {
 	if quantity <= 0 {
 		return Macros{}
@@ -72,15 +72,15 @@ func FromIngredient(ing domain.Ingredient, quantity float64) Macros {
 	}
 }
 
-// IngredientItem e' una vista minimale per ForRecipe: l'ingrediente
-// + la quantita' usata. Le ricette aggregano N di questi.
+// IngredientItem is a minimal view for ForRecipe: the ingredient + the
+// quantity used. Recipes aggregate N of these.
 type IngredientItem struct {
 	Ingredient domain.Ingredient
 	Quantity   float64 // in g o ml
 }
 
-// ForRecipe somma i macro di tutti gli items. Restituisce il totale della
-// ricetta (non per-serving, vedi PerServing).
+// ForRecipe sums the macros of every item. It returns the recipe's total
+// (not per serving, see PerServing).
 func ForRecipe(items []IngredientItem) Macros {
 	var total Macros
 	for _, it := range items {
@@ -89,8 +89,8 @@ func ForRecipe(items []IngredientItem) Macros {
 	return total
 }
 
-// PerServing divide i macro totali per il numero di porzioni. servings <= 0
-// ritorna Macros{} per evitare division-by-zero.
+// PerServing divides the total macros by the number of servings. servings <= 0
+// returns Macros{} to avoid a division by zero.
 func PerServing(total Macros, servings int) Macros {
 	if servings <= 0 {
 		return Macros{}
@@ -98,13 +98,13 @@ func PerServing(total Macros, servings int) Macros {
 	return total.Scale(1.0 / float64(servings))
 }
 
-// ForMealItem calcola i macro di una singola voce di pasto. La quantita'
-// in MealItem e' interpretata diversamente a seconda del tipo:
-//   - se e' un ingrediente: g/ml -> FromIngredient.
-//   - se e' una ricetta senza variazioni: porzioni × PerServing(totale).
-//   - se e' una ricetta con variazioni (Customizations non vuote): somma diretta
-//     delle quantita' assolute nelle variazioni (gia' rappresentano il consumo
-//     reale, senza ulteriore scaling per porzioni).
+// ForMealItem computes the macros of a single meal item. The quantity in
+// MealItem is read differently depending on the type:
+//   - an ingredient: g/ml -> FromIngredient.
+//   - a recipe without variations: servings × PerServing(total).
+//   - a recipe with variations (non-empty Customizations): a direct sum of
+//     the absolute quantities in the variations (they already represent what
+//     was actually eaten, with no further scaling by servings).
 func ForMealItem(item domain.MealItemFull) Macros {
 	if item.Ingredient != nil {
 		return FromIngredient(*item.Ingredient, Grams(item.Quantity, item.QuantityUnit, item.Ingredient))
@@ -133,9 +133,9 @@ func ForMealItem(item domain.MealItemFull) Macros {
 	return Macros{}
 }
 
-// Grams converte la quantita' di una voce in grammi/ml: le voci in pezzi
-// («pz») valgono quantita' × peso unitario dell'ingrediente. Senza peso
-// unitario noto la quantita' resta quella inserita.
+// Grams converts an item's quantity into grams/ml: items in pieces («pz»)
+// count quantity × the ingredient's unit weight. Without a known unit weight
+// the quantity stays as entered.
 func Grams(quantity float64, unit string, ing *domain.Ingredient) float64 {
 	if unit == "pz" && ing != nil && ing.UnitWeightG != nil && *ing.UnitWeightG > 0 {
 		return quantity * *ing.UnitWeightG
@@ -143,12 +143,12 @@ func Grams(quantity float64, unit string, ing *domain.Ingredient) float64 {
 	return quantity
 }
 
-// ForNutritionistVariation calcola i macro totali degli item di una variante
-// del piano nutrizionista. Poiche' LoadPlanFull non carica gli ingredienti
-// delle ricette referenziate, i macro per-porzione delle ricette vanno
-// precalcolati dal chiamante e passati in recipePerServing (chiave = recipe
-// ID). Gli item ingrediente sono calcolati direttamente, con le voci «pz»
-// convertite in grammi tramite il peso unitario (vedi Grams).
+// ForNutritionistVariation computes the total macros of the items of a
+// nutrition plan variation. Since LoadPlanFull does not load the ingredients
+// of the referenced recipes, the recipes' per-serving macros must be
+// precomputed by the caller and passed in recipePerServing (key = recipe
+// ID). Ingredient items are computed directly, with «pz» items converted
+// to grams through the unit weight (see Grams).
 func ForNutritionistVariation(items []domain.NutritionistItem, recipePerServing map[int64]Macros) Macros {
 	var out Macros
 	for _, it := range items {
@@ -164,7 +164,7 @@ func ForNutritionistVariation(items []domain.NutritionistItem, recipePerServing 
 	return out
 }
 
-// ForMeal somma i macro di tutti gli items di un pasto.
+// ForMeal sums the macros of every item of a meal.
 func ForMeal(items []domain.MealItemFull) Macros {
 	var out Macros
 	for _, it := range items {
@@ -173,9 +173,9 @@ func ForMeal(items []domain.MealItemFull) Macros {
 	return out
 }
 
-// ForMealEffective ritorna i macro "effettivi" del pasto: se ci sono sgarri
-// registrati, sostituiscono completamente gli items ufficiali (l'utente ha
-// mangiato lo sgarro al loro posto). Senza sgarri, equivale a ForMeal(Items).
+// ForMealEffective returns the meal's "actual" macros: when cheats are
+// logged, they fully replace the official items (the user ate the cheat
+// instead). Without cheats, it equals ForMeal(Items).
 func ForMealEffective(meal domain.MealWithItems) Macros {
 	if meal.HasCheats() {
 		return ForMeal(meal.Cheats)
@@ -183,8 +183,8 @@ func ForMealEffective(meal domain.MealWithItems) Macros {
 	return ForMeal(meal.Items)
 }
 
-// ForDay somma i macro effettivi di tutti i pasti di un giorno (sgarri
-// inclusi al posto degli items quando presenti).
+// ForDay sums the actual macros of every meal of a day (cheats included in
+// place of the items when present).
 func ForDay(meals []domain.MealWithItems) Macros {
 	var out Macros
 	for _, m := range meals {
@@ -193,7 +193,7 @@ func ForDay(meals []domain.MealWithItems) Macros {
 	return out
 }
 
-// ForWeek somma i macro effettivi di tutti i giorni della settimana.
+// ForWeek sums the actual macros of every day of the week.
 func ForWeek(days [7][]domain.MealWithItems) Macros {
 	var out Macros
 	for _, day := range days {

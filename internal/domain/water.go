@@ -2,9 +2,9 @@ package domain
 
 import "time"
 
-// WaterLog e' una singola registrazione di assunzione d'acqua. A differenza
-// del peso, ci possono essere piu' log per giorno (ogni "+250ml" e' un log):
-// il totale giornaliero e' la somma di amount_ml per data.
+// WaterLog is a single water intake entry. Unlike weight, there can be
+// several logs per day (every "+250ml" is a log): the daily total is the
+// sum of amount_ml per date.
 type WaterLog struct {
 	ID        int64
 	UserID    int64

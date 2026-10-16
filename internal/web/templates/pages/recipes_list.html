@@ -12,8 +12,8 @@
     </div>
   </div>
 
-  {{/* Ricerca live: HTMX sostituisce solo #recipe-results. Senza JS il form
-       si invia con Invio. */}}
+  {{/* Live search: HTMX replaces only #recipe-results. Without JS the form
+       submits with Enter. */}}
   <form method="get" action="/recipes" class="flex flex-col gap-3" role="search">
     <input type="hidden" name="f" value="{{.Filter}}">
     <label class="field-ico">
@@ -143,8 +143,8 @@
         {{end}}
       </div>
     </form>
-    {{/* Form della delete singola, fuori dal form bulk: il menu di riga li
-         invia con l'attributo form="". */}}
+    {{/* The single-delete forms, outside the bulk form: the row menu submits
+         them with the form="" attribute. */}}
     {{range .Rows}}{{if .Mine}}
       <form id="recipe-delete-{{.Recipe.ID}}" method="post" action="/recipes/{{.Recipe.ID}}/delete" class="hidden"
             data-confirm="Eliminare la ricetta «{{.Recipe.Name}}»?{{if gt .Usages 0}} È usata in {{.Usages}} {{if eq .Usages 1}}voce{{else}}voci{{end}} dei piani settimanali, che verranno rimosse.{{end}} L’operazione non è reversibile.">

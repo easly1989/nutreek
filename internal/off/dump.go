@@ -16,40 +16,40 @@ import (
 	"time"
 )
 
-// DefaultDumpURL e' l'URL del dump JSONL.gz completo OpenFoodFacts. ~0.9GB
-// compressi, ~9-15GB decompressi, ~3.5M prodotti totali. Lo streamiamo
-// riga per riga e filtriamo ai ~250k italiani.
+// DefaultDumpURL is the URL of the full OpenFoodFacts JSONL.gz dump. ~0.9GB
+// compressed, ~9-15GB decompressed, ~3.5M products in total. We stream it
+// line by line and filter down to the ~250k Italian ones.
 const DefaultDumpURL = "https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz"
 
-// italyTag e' il tag canonico OFF per i prodotti venduti in Italia.
-// countries_tags e' un array di stringhe normalizzate (en:<paese>).
+// italyTag is OFF's canonical tag for the products sold in Italy.
+// countries_tags is an array of normalized strings (en:<country>).
 const italyTag = "en:italy"
 
-// dumpBatchSize e' il numero di prodotti accumulati per ogni transaction
-// di INSERT. 1000 e' un buon compromesso: lock breve, throughput alto.
+// dumpBatchSize is the number of products accumulated for every INSERT
+// transaction. 1000 is a good compromise: a short lock, high throughput.
 const dumpBatchSize = 1000
 
-// scannerBufferMax e' la dimensione massima della riga JSONL accettata dal
-// Scanner. Alcuni prodotti hanno descrizioni / ingredienti molto lunghi,
-// fino a centinaia di KB. 4MB e' largo abbastanza per non scartare nulla.
+// scannerBufferMax is the largest JSONL line the Scanner accepts. Some
+// products have very long descriptions / ingredients, up to hundreds of KB.
+// 4MB is wide enough not to discard anything.
 const scannerBufferMax = 4 * 1024 * 1024
 
-// ErrSyncInProgress e' restituito da SyncDump se un altro sync sta gia'
-// girando (il mutex impedisce concorrenza, anche dall'admin endpoint).
+// ErrSyncInProgress is returned by SyncDump when another sync is already
+// running (the mutex prevents concurrency, from the admin endpoint too).
 var ErrSyncInProgress = errors.New("sync OFF gia' in corso")
 
-// SyncStats riassume l'esito di una SyncDump.
+// SyncStats summarizes the outcome of a SyncDump.
 type SyncStats struct {
-	ScannedTotal int  // righe processate (qualunque paese)
+	ScannedTotal int  // lines processed (any country)
 	Imported     int  // prodotti italiani inseriti
-	Skipped      bool // true se ETag invariato → niente download
+	Skipped      bool // true when the ETag is unchanged → no download
 	ETag         string
 	DurationMs   int64
 }
 
-// Syncer scarica il dump pubblico OFF e popola off_products. Pensato per
-// girare in background (cron settimanale + trigger admin manuale). Usa un
-// mutex per garantire UN solo sync in volo alla volta.
+// Syncer downloads the public OFF dump and fills off_products. Meant to run
+// in the background (a weekly cron + a manual admin trigger). It uses a
+// mutex to guarantee only ONE sync in flight at a time.
 type Syncer struct {
 	DB     *sql.DB
 	URL    string
@@ -60,8 +60,8 @@ type Syncer struct {
 	syncing bool
 }
 
-// NewSyncer costruisce un Syncer con i default sani. Timeout HTTP lungo
-// perché il download del dump completo può durare 5-15 minuti.
+// NewSyncer builds a Syncer with sane defaults. A long HTTP timeout because
+// downloading the full dump can take 5-15 minutes.
 func NewSyncer(db *sql.DB, url string, logger *slog.Logger) *Syncer {
 	if url == "" {
 		url = DefaultDumpURL
@@ -77,21 +77,21 @@ func NewSyncer(db *sql.DB, url string, logger *slog.Logger) *Syncer {
 	}
 }
 
-// IsSyncing ritorna true se un sync sta correntemente girando. Usato
-// dall'admin endpoint per restituire 409 senza accodare richieste.
+// IsSyncing returns true when a sync is currently running. Used by the admin
+// endpoint to return 409 without queueing requests.
 func (s *Syncer) IsSyncing() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.syncing
 }
 
-// SyncDump scarica il dump JSONL.gz, ne stream-parsa i prodotti, filtra
-// quelli italiani e re-popola off_products. Idempotente: a fine import
-// la tabella riflette esattamente il dump rilasciato da OFF.
+// SyncDump downloads the JSONL.gz dump, stream-parses its products, filters
+// the Italian ones and refills off_products. Idempotent: at the end of the
+// import the table reflects exactly the dump OFF released.
 //
-// Usa If-None-Match con l'ETag salvato per saltare il download se il
-// server non ha aggiornato. In caso di errore aggiorna last_error in
-// off_sync_state ma NON cancella i dati esistenti.
+// It uses If-None-Match with the saved ETag to skip the download when the
+// server has not updated. On error it updates last_error in off_sync_state
+// but does NOT delete the existing data.
 func (s *Syncer) SyncDump(ctx context.Context) (SyncStats, error) {
 	s.mu.Lock()
 	if s.syncing {
@@ -139,7 +139,7 @@ func (s *Syncer) doSync(ctx context.Context) (SyncStats, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusNotModified {
-		s.Logger.Info("off sync: dump non modificato (304), skip")
+		s.Logger.Info("off sync: dump not modified (304), skip")
 		return SyncStats{Skipped: true, ETag: previousETag}, nil
 	}
 	if res.StatusCode/100 != 2 {
@@ -151,9 +151,9 @@ func (s *Syncer) doSync(ctx context.Context) (SyncStats, error) {
 	s.Logger.Info("off sync: response received, starting decompress+ingest",
 		"content_length_bytes", contentLen, "etag", res.Header.Get("ETag"))
 
-	// Wrappa il body in un progressReader cosi' loggiamo i MB scaricati ogni
-	// 50MB. Senza questo l'utente non vede attivita' durante il download dei
-	// ~900MB compressi (5-30 min a seconda della banda).
+	// Wrap the body in a progressReader so we log the MB downloaded every
+	// 50MB. Without it the user sees no activity while the ~900MB compressed
+	// download runs (5-30 min depending on bandwidth).
 	body := &progressReader{
 		R:         res.Body,
 		Total:     contentLen,
@@ -177,10 +177,10 @@ func (s *Syncer) doSync(ctx context.Context) (SyncStats, error) {
 	return stats, nil
 }
 
-// ingest legge il flusso JSONL decompresso, filtra per paese e batcha
-// gli INSERT in transazioni da dumpBatchSize. Cancella off_products in
-// transazione separata PRIMA di iniziare cosi' i nuovi dati rimpiazzano
-// completamente i vecchi (no orfani da dump precedente).
+// ingest reads the decompressed JSONL stream, filters by country and batches
+// the INSERTs in transactions of dumpBatchSize. It deletes off_products in a
+// separate transaction BEFORE starting, so the new data fully replaces the
+// old (no orphans from a previous dump).
 func (s *Syncer) ingest(ctx context.Context, r io.Reader, newETag string) (SyncStats, error) {
 	if _, err := s.DB.ExecContext(ctx, `DELETE FROM off_products`); err != nil {
 		return SyncStats{}, fmt.Errorf("truncate off_products: %w", err)
@@ -200,9 +200,9 @@ func (s *Syncer) ingest(ctx context.Context, r io.Reader, newETag string) (SyncS
 		}
 		stats.ScannedTotal++
 
-		// Log progresso ogni 100k righe scannate (anche se non sono italiane):
-		// l'utente vede che il parser sta lavorando anche prima di importare
-		// abbastanza prodotti IT per triggerare il log su Imported.
+		// Log progress every 100k scanned lines (even when they are not
+		// Italian): the user sees the parser working even before enough IT
+		// products are imported to trigger the log on Imported.
 		if stats.ScannedTotal-lastLogScanned >= 100000 {
 			s.Logger.Info("off sync: parsing",
 				"scanned", stats.ScannedTotal, "imported_it", stats.Imported)
@@ -215,8 +215,8 @@ func (s *Syncer) ingest(ctx context.Context, r io.Reader, newETag string) (SyncS
 		}
 		var d dumpProduct
 		if err := json.Unmarshal(line, &d); err != nil {
-			// Riga malformata: skippa silenziosamente, il dump completo
-			// e' best-effort. Loggare ogni errore intaserebbe i log.
+			// Malformed line: skip it silently, the full dump is best effort.
+			// Logging every error would clog the logs.
 			continue
 		}
 		if !containsTag(d.CountriesTags, italyTag) {
@@ -245,13 +245,13 @@ func (s *Syncer) ingest(ctx context.Context, r io.Reader, newETag string) (SyncS
 		}
 		stats.Imported += len(batch)
 	}
-	s.Logger.Info("off sync: ingest completato",
+	s.Logger.Info("off sync: ingest done",
 		"imported", stats.Imported, "scanned", stats.ScannedTotal, "new_etag", newETag)
 	return stats, nil
 }
 
-// flushBatch esegue un INSERT batch in singola transaction. Usa prepared
-// statement per evitare overhead di parsing su ogni riga.
+// flushBatch runs a batch INSERT in a single transaction. It uses a prepared
+// statement to avoid the parsing overhead on every row.
 func (s *Syncer) flushBatch(ctx context.Context, batch []Product, ts int64) error {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -298,8 +298,8 @@ func (s *Syncer) flushBatch(ctx context.Context, batch []Product, ts int64) erro
 	return tx.Commit()
 }
 
-// dumpProduct e' il subset di campi del dump OFF che ci interessa. Stesso
-// schema di rawProduct piu' countries_tags per il filtro paese.
+// dumpProduct is the subset of fields of the OFF dump we care about. Same
+// schema as rawProduct plus countries_tags for the country filter.
 type dumpProduct struct {
 	Code                string                     `json:"code"`
 	ProductName         string                     `json:"product_name"`
@@ -314,9 +314,9 @@ type dumpProduct struct {
 	ServingSize         string                     `json:"serving_size"`
 }
 
-// toProduct riusa la logica di rawProduct.toProduct() costruendo un
-// rawProduct equivalente. Evitare duplicazione: il parsing dei nutrienti
-// e' identico sia per il dump sia per la response API live.
+// toProduct reuses the logic of rawProduct.toProduct() by building an
+// equivalent rawProduct. It avoids duplication: the nutrient parsing is
+// identical for the dump and for the live API response.
 func (d dumpProduct) toProduct() Product {
 	raw := rawProduct{
 		Code:                d.Code,
@@ -342,10 +342,10 @@ func containsTag(tags []string, target string) bool {
 	return false
 }
 
-// progressReader logga ogni LogEvery byte letti dallo stream sottostante.
-// Usato per dare feedback durante il download del dump compresso (5-30 min
-// di solo Read senza eventi visibili). Total = ContentLength se noto, 0
-// se sconosciuto (chunked transfer).
+// progressReader logs every LogEvery bytes read from the underlying stream.
+// Used to give feedback while the compressed dump downloads (5-30 min of
+// plain Reads with no visible events). Total = ContentLength when known, 0
+// when unknown (chunked transfer).
 type progressReader struct {
 	R         io.Reader
 	Total     int64
@@ -399,7 +399,7 @@ func (s *Syncer) markAttempt(ctx context.Context) {
 func (s *Syncer) markSuccess(ctx context.Context, stats SyncStats) {
 	count := stats.Imported
 	if stats.Skipped {
-		// Non aggiorniamo il count: rifletteremmo lo stato attuale.
+		// We do not update the count: we would reflect the current state.
 		row := s.DB.QueryRowContext(ctx, `SELECT products_count FROM off_sync_state WHERE id = 1`)
 		_ = row.Scan(&count)
 	}
@@ -421,7 +421,7 @@ func (s *Syncer) markError(ctx context.Context, syncErr error) {
 	}
 }
 
-// State e' la rappresentazione di off_sync_state usata dall'admin endpoint.
+// State is the representation of off_sync_state used by the admin endpoint.
 type State struct {
 	LastSyncedAt  *time.Time
 	LastAttemptAt *time.Time
@@ -431,8 +431,8 @@ type State struct {
 	Syncing       bool
 }
 
-// LoadState legge lo stato corrente dal DB. Errore solo su problemi reali
-// (la riga singleton e' creata dalla migration).
+// LoadState reads the current state from the DB. An error only on real
+// problems (the singleton row is created by the migration).
 func (s *Syncer) LoadState(ctx context.Context) (*State, error) {
 	row := s.DB.QueryRowContext(ctx, `
 		SELECT last_synced_at, last_attempt_at, last_error, products_count, dump_etag

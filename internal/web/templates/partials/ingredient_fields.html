@@ -1,8 +1,8 @@
 {{define "ingredient_fields"}}
-{{- /* Campi del form ingrediente, a sezioni, condivisi da nuovo e modifica.
-       View-model: ingredientsNewData o ingredientEditData (Form, Categories,
-       Allergens, SelectedAllergens, ReadOnly). Con ReadOnly (#143) tutto e'
-       disabilitato tranne la categoria, che e' di chi guarda. */ -}}
+{{- /* The ingredient form's fields, in sections, shared by new and edit.
+       View model: ingredientsNewData or ingredientEditData (Form, Categories,
+       Allergens, SelectedAllergens, ReadOnly). With ReadOnly (#143)
+       everything is disabled except the category, which is the viewer's. */ -}}
 {{- $u := or .Form.Unit "g" -}}{{- $ro := .ReadOnly -}}
 <section class="card p-4 flex flex-col gap-3">
   <h2 class="h2">Prodotto</h2>

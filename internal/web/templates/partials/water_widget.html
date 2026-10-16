@@ -1,7 +1,7 @@
 {{define "water_widget"}}
-{{/* Widget idratazione del giorno. id water-widget-{date} = target HTMX dei
-     quick-log: ogni POST a /water risponde con questo stesso partial swappato
-     outerHTML, quindi la barra e il totale si aggiornano senza reload. */}}
+{{/* The day's hydration widget. id water-widget-{date} = the HTMX target of
+     the quick logs: every POST to /water answers with this same partial
+     swapped outerHTML, so the bar and the total update without a reload. */}}
 <div id="water-widget-{{.DateStr}}" class="card px-4 py-3 flex flex-col gap-2.5">
   <div class="flex items-baseline justify-between gap-2">
     <h3 class="font-semibold">Acqua</h3>

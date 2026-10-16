@@ -2,9 +2,9 @@ package domain
 
 import "time"
 
-// CoachClient rappresenta la relazione coach -> cliente.
-// AssignedPlanID e' il piano della libreria del coach assegnato al cliente
-// (nil = nessun piano assegnato, il cliente usa il proprio piano attivo).
+// CoachClient is the coach -> client relationship.
+// AssignedPlanID is the plan from the coach's library assigned to the client
+// (nil = no plan assigned, the client uses their own active plan).
 type CoachClient struct {
 	ID             int64
 	CoachID        int64
@@ -13,16 +13,16 @@ type CoachClient struct {
 	AssignedAt     time.Time
 }
 
-// CoachClientInfo aggrega la relazione con i dati del cliente e del piano
-// assegnato, per la dashboard coach.
+// CoachClientInfo joins the relationship with the client's data and the
+// assigned plan, for the coach dashboard.
 type CoachClientInfo struct {
 	CoachClient
 	Client           *User
-	AssignedPlanName string // vuoto se nessun piano assegnato
+	AssignedPlanName string // empty when no plan is assigned
 }
 
-// CoachAssignment e' la vista lato cliente: chi e' il mio coach e quale
-// piano mi ha assegnato.
+// CoachAssignment is the client-side view: who my coach is and which plan
+// they assigned me.
 type CoachAssignment struct {
 	CoachID        int64
 	CoachName      string

@@ -15,8 +15,8 @@ var paneAdh = domain.Ingredient{
 	Unit:          domain.UnitGram,
 }
 
-// mealWith costruisce un pasto con un item ingrediente da `itemQty` grammi e,
-// opzionalmente, uno sgarro da `cheatQty` grammi (cheatQty <= 0 = nessuno).
+// mealWith builds a meal with an ingredient item of `itemQty` grams and,
+// optionally, a cheat of `cheatQty` grams (cheatQty <= 0 = none).
 func mealWith(name string, itemQty, cheatQty float64) domain.MealWithItems {
 	m := domain.MealWithItems{
 		Meal: domain.Meal{Name: name},
@@ -39,7 +39,7 @@ func TestScoreDayNoCheats(t *testing.T) {
 	}
 	got := ScoreDay(day)
 	if got.HasCheats {
-		t.Error("HasCheats deve essere false senza sgarri")
+		t.Error("HasCheats must be false without cheats")
 	}
 	if got.Score != 100 {
 		t.Errorf("Score: got %v want 100", got.Score)
@@ -54,22 +54,22 @@ func TestScoreDayNoCheats(t *testing.T) {
 }
 
 func TestScoreDayEmpty(t *testing.T) {
-	// Giorno senza pasti: nessuno scostamento, Score 100, planned zero.
+	// A day with no meals: no deviation, Score 100, planned zero.
 	got := ScoreDay(nil)
 	if got.HasCheats {
-		t.Error("HasCheats deve essere false")
+		t.Error("HasCheats must be false")
 	}
 	if got.Score != 100 {
 		t.Errorf("Score: got %v want 100", got.Score)
 	}
 	if !got.PlannedMacros.IsZero() {
-		t.Errorf("PlannedMacros non zero: %+v", got.PlannedMacros)
+		t.Errorf("PlannedMacros not zero: %+v", got.PlannedMacros)
 	}
 }
 
 func TestScoreDayWithCheat(t *testing.T) {
-	// Pranzo pianificato 200g (480 kcal), sgarro 220g (528 kcal): +10% kcal.
-	// Colazione 100g (240 kcal) senza sgarro.
+	// Lunch planned 200g (480 kcal), cheat 220g (528 kcal): +10% kcal.
+	// Breakfast 100g (240 kcal) with no cheat.
 	// Planned = 720, Actual = 240 + 528 = 768 → +6.66% → Score ~93.3.
 	day := []domain.MealWithItems{
 		mealWith("Colazione", 100, 0),
@@ -77,7 +77,7 @@ func TestScoreDayWithCheat(t *testing.T) {
 	}
 	got := ScoreDay(day)
 	if !got.HasCheats {
-		t.Fatal("HasCheats deve essere true")
+		t.Fatal("HasCheats must be true")
 	}
 	if !almostEqual(got.PlannedMacros.Kcal, 720) {
 		t.Errorf("PlannedMacros.Kcal: got %v want 720", got.PlannedMacros.Kcal)
@@ -110,16 +110,16 @@ func TestScoreWeek(t *testing.T) {
 	days := []AdherenceScore{
 		{PlannedMacros: Macros{Kcal: 700}, Score: 100},
 		{PlannedMacros: Macros{Kcal: 700}, Score: 80},
-		{PlannedMacros: Macros{}, Score: 100}, // giorno vuoto: escluso
+		{PlannedMacros: Macros{}, Score: 100}, // empty day: excluded
 	}
 	got := ScoreWeek(days)
 	if !almostEqual(got, 90) {
-		t.Errorf("ScoreWeek: got %v want 90 (media di 100 e 80)", got)
+		t.Errorf("ScoreWeek: got %v want 90 (the average of 100 and 80)", got)
 	}
 
-	// Nessun giorno con pasti.
+	// No day with meals.
 	if v := ScoreWeek([]AdherenceScore{{PlannedMacros: Macros{}}}); v != 0 {
-		t.Errorf("ScoreWeek vuota: got %v want 0", v)
+		t.Errorf("empty ScoreWeek: got %v want 0", v)
 	}
 }
 
@@ -130,10 +130,10 @@ func TestStreak(t *testing.T) {
 		threshold float64
 		want      int
 	}{
-		{"tutti sopra", []float64{100, 90, 85, 100}, 80, 4},
+		{"all above", []float64{100, 90, 85, 100}, 80, 4},
 		{"interrotto a meta'", []float64{100, 50, 90, 100}, 80, 2},
 		{"ultimo sotto soglia", []float64{100, 100, 70}, 80, 0},
-		{"vuoto", nil, 80, 0},
+		{"empty", nil, 80, 0},
 		{"esattamente soglia conta", []float64{80, 80}, 80, 2},
 	}
 	for _, c := range cases {

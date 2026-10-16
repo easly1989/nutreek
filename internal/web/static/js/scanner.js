@@ -1,15 +1,15 @@
-// scanner.js — scanner del codice a barre nei picker «Aggiungi alimento» (#59).
+// scanner.js — the barcode scanner in the «Aggiungi alimento» pickers (#59).
 //
-// Un bottone [data-scan-for="#input"] apre la finestra #scanner con la
-// fotocamera posteriore. Letto un codice valido, la finestra si chiude, il
-// codice finisce nel campo di ricerca indicato e parte subito la ricerca
-// (evento "search", vedi ingredient_search.js): il server riconosce il codice
-// e risponde con il prodotto gia' aperto, oppure con «non trovato».
+// A [data-scan-for="#input"] button opens the #scanner dialog with the rear
+// camera. Once a valid code is read, the dialog closes, the code goes into
+// the given search field and the search starts right away (the "search"
+// event, see ingredient_search.js): the server recognizes the code and
+// answers with the product already open, or with «non trovato».
 //
-// La lettura usa BarcodeDetector nativo (Chrome Android); dove manca carica
-// il polyfill ZXing da /static/vendor/barcode-detector (iPhone, Firefox).
-// Fotocamera e service worker esistono solo in contesto sicuro (https o
-// localhost): altrove i bottoni [.scan-only] restano nascosti.
+// Reading uses the native BarcodeDetector (Chrome Android); where it is
+// missing it loads the ZXing polyfill from /static/vendor/barcode-detector
+// (iPhone, Firefox). Camera and service worker exist only in a secure context
+// (https or localhost): elsewhere the [.scan-only] buttons stay hidden.
 (function () {
   "use strict";
 
@@ -20,12 +20,12 @@
   if (canScan) document.documentElement.classList.add("can-scan");
 
   var dlg, video, stream, detector, timer, target;
-  // Ogni apertura e' una sessione: fotocamera o letture che arrivano dopo la
-  // chiusura (o da un'apertura precedente) si scartano.
+  // Every opening is a session: a camera or readings that arrive after the
+  // close (or from an earlier opening) are discarded.
   var session = 0;
 
-  // Stessa regola di off.NormalizeBarcode: EAN-13, EAN-8, UPC-A (a 13 cifre)
-  // con la cifra di controllo giusta. "" se non e' un codice.
+  // The same rule as off.NormalizeBarcode: EAN-13, EAN-8, UPC-A (as 13 digits)
+  // with the right check digit. "" when it is not a code.
   function normalize(s) {
     var code = String(s || "").replace(/\s+/g, "");
     if (code.length === 12) code = "0" + code;
@@ -66,7 +66,7 @@
       var formats = FORMATS.filter(function (f) { return supported.indexOf(f) >= 0; });
       if (formats.indexOf("ean_13") >= 0) return new window.BarcodeDetector({ formats: formats });
       return loadPonyfill().then(function (api) {
-        // Il .wasm da qui, non dal CDN predefinito del pacchetto.
+        // The .wasm from here, not from the package's default CDN.
         api.prepareZXingModule({
           overrides: {
             locateFile: function (path, prefix) {
@@ -146,8 +146,8 @@
     start();
   }
 
-  // Il campo di ricerca di un picker: quello che scrive nella lista che
-  // contiene il bottone (per «Scansiona un altro» e «Riprova»).
+  // A picker's search field: the one that writes into the list holding the
+  // button (for «Scansiona un altro» and «Riprova»).
   function inputFor(btn) {
     for (var el = btn; el && el !== document.body; el = el.parentElement) {
       if (!el.id) continue;
@@ -172,12 +172,12 @@
     done(code);
   });
 
-  // Chiusa la finestra (X, Esc, sfondo) la fotocamera si spegne.
+  // Once the dialog is closed (X, Esc, backdrop) the camera turns off.
   document.addEventListener("close", function (e) {
     if (e.target.id === "scanner") stop();
   }, true);
-  // X e sfondo: il contenuto riempie la finestra, quindi un click che ha
-  // come bersaglio il <dialog> stesso arriva dallo sfondo.
+  // X and backdrop: the content fills the dialog, so a click whose target is
+  // the <dialog> itself comes from the backdrop.
   document.addEventListener("click", function (e) {
     if (e.target.id === "scanner" || (e.target.closest && e.target.closest("[data-scan-close]"))) {
       document.getElementById("scanner").close();

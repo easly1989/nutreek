@@ -6,7 +6,7 @@ func TestThumbURL(t *testing.T) {
 	const img = "https://images.openfoodfacts.org/images/products/801/234/567/8907/front_it.3.200.jpg"
 	cases := map[string]string{
 		img: img,
-		// vecchio host dei dump: stesse immagini, host unico consentito dalla CSP
+		// the dumps' old host: same images, the only host the CSP allows
 		"https://static.openfoodfacts.org/images/products/801/234/567/8907/front_it.3.200.jpg": img,
 		"http://images.openfoodfacts.org/images/products/1/front_fr.200.jpg":                   "",
 		"https://images.openfoodfacts.org.example.com/x.jpg":                                   "",
@@ -18,15 +18,15 @@ func TestThumbURL(t *testing.T) {
 	}
 	for in, want := range cases {
 		if got := ThumbURL(in); got != want {
-			t.Errorf("ThumbURL(%q) = %q, voglio %q", in, got, want)
+			t.Errorf("ThumbURL(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
 
-// Il fallback costruito dal codice passa la stessa normalizzazione.
+// The fallback built from the code goes through the same normalization.
 func TestOFFCDNImageURLIsThumb(t *testing.T) {
 	u := OFFCDNImageURL("8012345678907")
 	if ThumbURL(u) != u {
-		t.Errorf("OFFCDNImageURL produce %q, che ThumbURL scarta", u)
+		t.Errorf("OFFCDNImageURL produces %q, which ThumbURL discards", u)
 	}
 }

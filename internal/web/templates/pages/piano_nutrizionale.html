@@ -52,7 +52,7 @@
           </div>
           <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
             {{range $mt.Variations}}{{template "variation_card" (pickerRow . $)}}{{end}}
-            {{/* Card tratteggiata: si apre sul nome (facoltativo) della variante. */}}
+            {{/* Dashed card: it opens on the variation's (optional) name. */}}
             <details id="new-var-{{$mt.ID}}" class="group rounded-xl border-[1.5px] border-dashed border-border"{{if not $mt.Variations}} open{{end}}>
               <summary class="flex items-center justify-center gap-1.5 min-h-[116px] text-accent font-semibold cursor-pointer list-none group-open:hidden [&::-webkit-details-marker]:hidden">{{template "icon" "i-plus"}}Nuova variante</summary>
               <form method="post" action="/nutrizionista/variations" class="flex flex-col justify-center gap-2 p-4 h-full">
@@ -162,7 +162,7 @@
 {{end}}
 
 {{define "variation_card"}}
-{{- /* Una variante del piano. View-model: web.PickerRowCtx {Row: variante, List: pagina}. */ -}}
+{{- /* A variation of the plan. View model: web.PickerRowCtx {Row: variation, List: page}. */ -}}
 {{- $v := .Row -}}{{- $d := .List -}}
 <article class="card flex flex-col">
   <header class="flex items-center gap-2.5 pl-4 pr-2 pt-2.5 pb-1.5">

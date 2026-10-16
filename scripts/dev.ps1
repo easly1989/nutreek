@@ -1,15 +1,15 @@
-# Dev loop su Windows: build CSS una volta (se necessario) e avvia il
-# server con NUTREEK_ENV=dev. Per hot-reload CSS aprire un secondo
-# terminale con:  pwsh scripts/tailwind.ps1 -Watch
+# Dev loop on Windows: build the CSS once (if needed) and start the server
+# with NUTREEK_ENV=dev. For CSS hot reload open a second terminal with:
+#   pwsh scripts/tailwind.ps1 -Watch
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $css = Join-Path $root "internal\web\static\css\tailwind.css"
 
 if (-not (Test-Path $css)) {
-    Write-Host "tailwind.css mancante, lo genero..."
+    Write-Host "tailwind.css missing, generating it..."
     & (Join-Path $PSScriptRoot "tailwind.ps1")
 }
 
 $env:NUTREEK_ENV = "dev"
-Write-Host "Avvio nutreek su http://localhost:8080 (ctrl+C per stop)..."
+Write-Host "Starting nutreek on http://localhost:8080 (ctrl+C to stop)..."
 & go run "$root\cmd\nutreek"

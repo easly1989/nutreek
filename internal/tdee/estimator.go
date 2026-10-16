@@ -8,26 +8,26 @@ import (
 
 const kcalPerKg = 7700.0 // kcal ≈ 1 kg grasso corporeo
 
-// WeekData raccoglie i dati di una singola settimana necessari per la stima TDEE.
+// WeekData collects the data of a single week needed for the TDEE estimate.
 type WeekData struct {
 	WeekStart   time.Time
-	AvgKcal     float64 // media kcal/giorno dalla pianificazione pasti
-	StartWeight float64 // peso interpolato a inizio settimana (0 = non disponibile)
-	EndWeight   float64 // peso interpolato a fine settimana (0 = non disponibile)
+	AvgKcal     float64 // average kcal/day from the meal planning
+	StartWeight float64 // weight interpolated at the start of the week (0 = not available)
+	EndWeight   float64 // weight interpolated at the end of the week (0 = not available)
 }
 
-// WeightDelta restituisce la variazione di peso in kg per la settimana.
+// WeightDelta returns the weight change in kg for the week.
 func (w WeekData) WeightDelta() float64 { return w.EndWeight - w.StartWeight }
 
-// EstimatedKcal è il TDEE stimato per questa settimana (0 se dati insufficienti).
-// Esposto come metodo per poter essere chiamato direttamente dai template Go.
+// EstimatedKcal is the TDEE estimated for this week (0 when the data is not enough).
+// Exposed as a method so Go templates can call it directly.
 func (w WeekData) EstimatedKcal() float64 { return Estimate(w) }
 
-// WeekLabel formatta la label della settimana (dd/mm) per i grafici.
+// WeekLabel formats the week's label (dd/mm) for the charts.
 func (w WeekData) WeekLabel() string { return w.WeekStart.Format("02/01") }
 
-// Estimate stima il TDEE giornaliero da una singola settimana.
-// Restituisce 0 se i dati sono insufficienti.
+// Estimate estimates the daily TDEE from a single week.
+// It returns 0 when the data is not enough.
 func Estimate(d WeekData) float64 {
 	if d.AvgKcal == 0 || d.StartWeight == 0 || d.EndWeight == 0 {
 		return 0
@@ -40,12 +40,12 @@ func Estimate(d WeekData) float64 {
 	return tdee
 }
 
-// EstimateFromHistory calcola il TDEE medio pesato sulle settimane con dati
-// completi. Le settimane più recenti hanno peso maggiore (media esponenziale).
-// Restituisce (0, 0) se non ci sono settimane valide.
+// EstimateFromHistory computes the weighted average TDEE over the weeks with
+// complete data. The most recent weeks weigh more (an exponential average).
+// It returns (0, 0) when there are no valid weeks.
 func EstimateFromHistory(weeks []WeekData) (tdee float64, confidence int) {
 	var valid []float64
-	// weeks in input sono in ordine dalla più vecchia alla più recente
+	// the input weeks are ordered from the oldest to the most recent
 	for _, w := range weeks {
 		t := Estimate(w)
 		if t > 500 && t < 8000 { // sanity check: TDEE umano plausibile
@@ -57,7 +57,7 @@ func EstimateFromHistory(weeks []WeekData) (tdee float64, confidence int) {
 	}
 	var sum, totalWeight float64
 	for i, v := range valid {
-		w := float64(i + 1) // peso crescente: le ultime settimane contano di più
+		w := float64(i + 1) // growing weight: the latest weeks count more
 		sum += v * w
 		totalWeight += w
 	}
@@ -70,21 +70,21 @@ func EstimateFromHistory(weeks []WeekData) (tdee float64, confidence int) {
 	return sum / totalWeight, confidence
 }
 
-// InterpolateWeight stima il peso alla data `at` interpolando linearmente tra
-// le misurazioni disponibili. I log devono essere ordinati per data (qualsiasi
-// ordine funziona, la funzione li gestisce internamente).
-// Restituisce 0 se non ci sono misurazioni sufficienti per interpolare.
+// InterpolateWeight estimates the weight at date `at` by interpolating
+// linearly between the available measurements. The logs need not be sorted
+// by date (the function sorts them internally).
+// It returns 0 when there are not enough measurements to interpolate.
 func InterpolateWeight(logs []domain.WeightLog, at time.Time) float64 {
 	if len(logs) == 0 {
 		return 0
 	}
-	// Cerca la misurazione esatta
+	// Look for the exact measurement
 	for _, l := range logs {
 		if sameDay(l.MeasuredAt, at) {
 			return l.WeightKg
 		}
 	}
-	// Trova il vicino precedente e successivo
+	// Find the previous and the next neighbor
 	var before, after *domain.WeightLog
 	for i := range logs {
 		l := &logs[i]
@@ -102,10 +102,10 @@ func InterpolateWeight(logs []domain.WeightLog, at time.Time) float64 {
 		return 0
 	}
 	if before == nil {
-		return after.WeightKg // estrapolazione: usa il primo disponibile
+		return after.WeightKg // extrapolation: use the first available
 	}
 	if after == nil {
-		return before.WeightKg // estrapolazione: usa l'ultimo disponibile
+		return before.WeightKg // extrapolation: use the last available
 	}
 	// Interpolazione lineare
 	span := after.MeasuredAt.Sub(before.MeasuredAt).Hours()

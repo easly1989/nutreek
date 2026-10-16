@@ -15,6 +15,6 @@ coverage.out
 coverage.html
 .env
 .env.local
-# CSS generato in locale: il tailwind-builder lo rigenera nel container.
-# Non ingombrare il context (e non rischiare di committare CSS stale).
+# CSS generated locally: the tailwind-builder regenerates it in the container.
+# Do not clutter the context (and do not risk committing stale CSS).
 internal/web/static/css/tailwind.css

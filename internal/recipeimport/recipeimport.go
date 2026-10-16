@@ -1,12 +1,11 @@
-// Package recipeimport estrae una ricetta dal markup strutturato di una
-// pagina web. Supporta schema.org/Recipe in formato JSON-LD, il formato
-// pubblicato dalla stragrande maggioranza dei siti di ricette (Giallozafferano,
-// AllRecipes, NYT Cooking, ecc.).
+// Package recipeimport extracts a recipe from a web page's structured markup.
+// It supports schema.org/Recipe in JSON-LD, the format published by the vast
+// majority of recipe sites (Giallozafferano, AllRecipes, NYT Cooking, etc.).
 //
-// Il parsing e' volutamente senza dipendenze esterne: estrae i blocchi
-// <script type="application/ld+json"> con una regex e li interpreta con
-// encoding/json. La funzione Parse e' pura (opera su []byte) cosi' da essere
-// testabile senza rete; il fetch HTTP vive in fetch.go.
+// The parsing deliberately has no external dependencies: it extracts the
+// <script type="application/ld+json"> blocks with a regex and decodes them
+// with encoding/json. Parse is pure (it works on []byte) so it can be tested
+// without the network; the HTTP fetch lives in fetch.go.
 package recipeimport
 
 import (
@@ -18,13 +17,13 @@ import (
 	"strings"
 )
 
-// ErrNoRecipe viene restituito quando la pagina non contiene un blocco
-// schema.org/Recipe interpretabile.
+// ErrNoRecipe is returned when the page holds no schema.org/Recipe block that
+// can be parsed.
 var ErrNoRecipe = errors.New("nessuna ricetta strutturata trovata nella pagina")
 
-// ParsedRecipe e' il risultato dell'estrazione. Gli ingredienti sono righe di
-// testo libero (es. "200 g di farina 00") perche' schema.org non li struttura:
-// l'utente li mappa manualmente sugli ingredienti del DB.
+// ParsedRecipe is the result of the extraction. The ingredients are free-text
+// lines (e.g. "200 g di farina 00") because schema.org does not structure
+// them: the user maps them by hand onto the DB's ingredients.
 type ParsedRecipe struct {
 	Name        string
 	Description string
@@ -32,11 +31,11 @@ type ParsedRecipe struct {
 	Ingredients []string
 }
 
-// ldJSONBlock cattura il contenuto degli script JSON-LD, tollerante a ordine
-// degli attributi, virgolette singole/doppie e maiuscole.
+// ldJSONBlock captures the content of the JSON-LD scripts, tolerant of
+// attribute order, single/double quotes and case.
 var ldJSONBlock = regexp.MustCompile(`(?is)<script[^>]*type\s*=\s*["']application/ld\+json["'][^>]*>(.*?)</script>`)
 
-// Parse estrae la prima ricetta schema.org/Recipe dal markup HTML.
+// Parse extracts the first schema.org/Recipe recipe from the HTML markup.
 func Parse(htmlBytes []byte) (*ParsedRecipe, error) {
 	matches := ldJSONBlock.FindAllSubmatch(htmlBytes, -1)
 	if len(matches) == 0 {
@@ -56,9 +55,9 @@ func Parse(htmlBytes []byte) (*ParsedRecipe, error) {
 	return nil, ErrNoRecipe
 }
 
-// decodeLD interpreta un blocco JSON-LD che puo' essere un oggetto o un array.
-// Se il parse diretto fallisce (alcuni siti HTML-escapano il contenuto), ritenta
-// dopo aver de-escapato le entita' HTML.
+// decodeLD decodes a JSON-LD block that can be an object or an array.
+// When the direct parse fails (some sites HTML-escape the content), it
+// retries after unescaping the HTML entities.
 func decodeLD(raw string) interface{} {
 	var node interface{}
 	if err := json.Unmarshal([]byte(raw), &node); err == nil {
@@ -70,8 +69,8 @@ func decodeLD(raw string) interface{} {
 	return nil
 }
 
-// findRecipeNode percorre ricorsivamente il JSON-LD (oggetto singolo, array, o
-// contenitore @graph) e ritorna il primo nodo il cui @type include "Recipe".
+// findRecipeNode walks the JSON-LD recursively (single object, array, or
+// @graph container) and returns the first node whose @type includes "Recipe".
 func findRecipeNode(node interface{}) map[string]interface{} {
 	switch v := node.(type) {
 	case map[string]interface{}:
@@ -93,8 +92,8 @@ func findRecipeNode(node interface{}) map[string]interface{} {
 	return nil
 }
 
-// typeIncludes verifica se il campo @type (stringa o array di stringhe)
-// contiene il tipo cercato, case-insensitive.
+// typeIncludes checks whether the @type field (a string or an array of
+// strings) holds the wanted type, case-insensitive.
 func typeIncludes(field interface{}, want string) bool {
 	switch v := field.(type) {
 	case string:
@@ -115,7 +114,7 @@ func fromRecipeNode(rec map[string]interface{}) *ParsedRecipe {
 		Description: strings.TrimSpace(firstString(rec["description"])),
 		Servings:    parseYield(rec["recipeYield"]),
 	}
-	// recipeIngredient e' lo standard; alcuni siti legacy usano "ingredients".
+	// recipeIngredient is the standard; some legacy sites use "ingredients".
 	ings := stringSlice(rec["recipeIngredient"])
 	if len(ings) == 0 {
 		ings = stringSlice(rec["ingredients"])
@@ -124,7 +123,7 @@ func fromRecipeNode(rec map[string]interface{}) *ParsedRecipe {
 	return out
 }
 
-// firstString estrae una stringa da un campo che puo' essere string o array.
+// firstString extracts a string from a field that can be a string or an array.
 func firstString(field interface{}) string {
 	switch v := field.(type) {
 	case string:
@@ -139,7 +138,7 @@ func firstString(field interface{}) string {
 	return ""
 }
 
-// stringSlice normalizza un campo in una slice di stringhe non vuote.
+// stringSlice normalizes a field into a slice of non-empty strings.
 func stringSlice(field interface{}) []string {
 	var out []string
 	switch v := field.(type) {
@@ -159,12 +158,12 @@ func stringSlice(field interface{}) []string {
 	return out
 }
 
-// yieldDigits estrae il primo gruppo di cifre da una stringa di porzioni
-// (es. "4 servings" -> 4, "Per 6 persone" -> 6).
+// yieldDigits extracts the first group of digits from a servings string
+// (e.g. "4 servings" -> 4, "Per 6 persone" -> 6).
 var yieldDigits = regexp.MustCompile(`\d+`)
 
-// parseYield interpreta recipeYield, che puo' essere numero, stringa
-// ("4", "4 servings") o array. Ritorna 0 se non determinabile.
+// parseYield decodes recipeYield, which can be a number, a string
+// ("4", "4 servings") or an array. Returns 0 when it cannot be determined.
 func parseYield(field interface{}) int {
 	switch v := field.(type) {
 	case float64:

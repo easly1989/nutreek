@@ -1,9 +1,9 @@
-# Makefile per Nutreek
+# Makefile for Nutreek
 #
-# Variabili piattaforma (Windows / Unix)
-# NOTE: pinned a Tailwind v3.4.17 perche' v4 ha cambiato CLI/config
-# (niente tailwind.config.js in JS, @import al posto di @tailwind, ecc.).
-# Upgrade a v4 si fa in una tappa dedicata.
+# Platform variables (Windows / Unix)
+# NOTE: pinned to Tailwind v3.4.17 because v4 changed the CLI/config
+# (no tailwind.config.js in JS, @import instead of @tailwind, etc.).
+# The upgrade to v4 gets its own task.
 TAILWIND_VERSION := v3.4.17
 
 ifeq ($(OS),Windows_NT)
@@ -44,25 +44,25 @@ TAILWIND_OUTPUT := internal/web/static/css/tailwind.css
 
 .PHONY: help
 help:
-	@echo "Nutreek - target disponibili:"
-	@echo "  setup          scarica tool locali (Tailwind CLI)"
-	@echo "  generate       genera il CSS (alias di tailwind)"
-	@echo "  tailwind       build CSS Tailwind una volta"
-	@echo "  tailwind-watch build CSS in watch mode"
-	@echo "  dev            avvia l'app in dev (go run)"
-	@echo "  build          build del binario in bin/nutreek$(EXE)"
-	@echo "  test           esegue go test ./..."
-	@echo "  docker         build immagine Docker"
+	@echo "Nutreek - available targets:"
+	@echo "  setup          download local tools (Tailwind CLI)"
+	@echo "  generate       generate the CSS (alias of tailwind)"
+	@echo "  tailwind       build the Tailwind CSS once"
+	@echo "  tailwind-watch build the CSS in watch mode"
+	@echo "  dev            run the app in dev (go run)"
+	@echo "  build          build the binary into bin/nutreek$(EXE)"
+	@echo "  test           run go test ./..."
+	@echo "  docker         build the Docker image"
 	@echo "  docker-up      docker compose up --build"
-	@echo "  clean          rimuove bin/ e CSS generato"
+	@echo "  clean          remove bin/ and the generated CSS"
 
 .PHONY: setup
 setup: $(TAILWIND_BIN)
-	@echo "Setup completato."
+	@echo "Setup done."
 
 $(TAILWIND_BIN):
 	@$(MKDIR) $(BIN_DIR)
-	@echo "Scaricamento tailwindcss CLI da $(TAILWIND_URL)..."
+	@echo "Downloading the tailwindcss CLI from $(TAILWIND_URL)..."
 	@$(call DOWNLOAD,$(TAILWIND_URL),$(TAILWIND_BIN))
 ifeq ($(OS),Windows_NT)
 else

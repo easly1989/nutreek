@@ -1,18 +1,18 @@
 {{define "day_card"}}
 {{- /*
-  day_card.html — view-model: dayCardData
-  Il giorno aperto in #day-panel: riepilogo (anello kcal + macro), pasti,
-  acqua e allenamenti. La <section> e' la radice che le mutazioni HTMX
-  sostituiscono (hx-target="closest section[data-day]"), quindi tutto cio'
-  che dipende dai macro del giorno sta qui dentro.
+  day_card.html — view model: dayCardData
+  The day open in #day-panel: summary (kcal ring + macros), meals, water and
+  workouts. The <section> is the root the HTMX mutations replace
+  (hx-target="closest section[data-day]"), so everything that depends on
+  the day's macros lives in here.
 
-  Disposizione: su desktop due colonne (pasti | riepilogo + extra), sul
-  telefono una colonna nell'ordine del DOM: riepilogo, pasti, extra.
+  Layout: on desktop two columns (meals | summary + extras), on the phone
+  one column in DOM order: summary, meals, extras.
 */ -}}
 <section data-day="{{.DateStr}}" data-state="{{.State}}" aria-label="{{dayTitle .Day.Date}}"
          class="grid gap-3 lg:gap-[18px] items-start lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_1fr]">
 
-  {{/* ---- Riepilogo del giorno ---- */}}
+  {{/* ---- The day's summary ---- */}}
   <div class="card p-4 flex flex-col gap-3.5 lg:col-start-2 lg:row-start-1">
     <div class="flex items-baseline justify-between gap-2">
       <h2 class="text-[15px] font-bold">{{dayTitle .Day.Date}}{{if eq .State "today"}}<span class="ml-1.5 text-[12.5px] font-semibold text-accent">oggi</span>{{end}}</h2>
@@ -133,7 +133,7 @@
 {{end}}
 
 {{define "macro_bar"}}
-{{- /* Una riga macro del riepilogo. View-model: profile.MacroBar. */ -}}
+{{- /* A macro row of the summary. View model: profile.MacroBar. */ -}}
 {{if gt .Target 0.0}}
 <div class="flex flex-col gap-1">
   <div class="flex justify-between gap-2">
@@ -148,7 +148,7 @@
 {{end}}
 
 {{define "meal_card"}}
-{{- /* Un pasto del giorno. View-model: web.MealCtx (mealView + contesto). */ -}}
+{{- /* A meal of the day. View model: web.MealCtx (mealView + context). */ -}}
 {{$m := .Meal}}{{$ws := .WeekStart}}{{$csrf := .CSRFToken}}
 <article class="card" data-id="{{$m.Meal.ID}}">
   <header class="flex items-start gap-2 pl-1.5 pr-2 pt-2 pb-1.5">
@@ -202,7 +202,7 @@
   </div>
   {{end}}
 
-  {{/* Il picker si apre in una finestra sopra la settimana; senza JS e' una pagina. */}}
+  {{/* The picker opens in a dialog over the week; without JS it is a page. */}}
   <a href="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}"
      hx-get="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}" hx-target="#modal-host" hx-swap="innerHTML"
      class="flex items-center gap-1.5 min-h-[38px] px-4 mt-1 border-t border-border text-accent font-semibold text-[13px] rounded-b-xl hover:bg-accent-soft">
@@ -212,7 +212,7 @@
 {{end}}
 
 {{define "meal_item_row"}}
-{{- /* Una voce (o uno sgarro) di un pasto. View-model: web.ItemCtx. */ -}}
+{{- /* An item (or a cheat) of a meal. View model: web.ItemCtx. */ -}}
 {{$v := .View}}{{$it := $v.Item}}
 <li class="group grid grid-cols-[minmax(0,1fr)_auto_3.5rem_auto] gap-x-2.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0" data-id="{{$it.ID}}">
   <div class="min-w-0 flex items-start gap-1">
@@ -254,8 +254,8 @@
 {{end}}
 
 {{define "week_totals"}}
-{{- /* Sottotitolo della settimana, aggiornato OOB dopo ogni mutazione.
-       View-model: weekSummary. */ -}}
+{{- /* The week's subtitle, updated OOB after every mutation.
+       View model: weekSummary. */ -}}
 <p id="week-totals" class="mt-0.5 text-muted"{{if .OOB}} hx-swap-oob="true"{{end}}
    title="Totale settimana: {{num .Total.Kcal}} kcal, proteine {{num .Total.Protein}} g, carboidrati {{num .Total.Carbs}} g, grassi {{num .Total.Fat}} g">
   {{- if .PlannedDays}}Media {{num .AvgKcal}} kcal al giorno, {{.PlannedDays}} {{if eq .PlannedDays 1}}giorno pianificato{{else}}giorni pianificati{{end}}
@@ -264,9 +264,9 @@
 {{end}}
 
 {{define "day_card_with_pill_oob"}}
-{{- /* Risposta a mutazioni e cambio di scheda: il giorno (target principale)
-       + la sua scheda + il sottotitolo della settimana, entrambi OOB.
-       View-model: dayMutationResponse. */ -}}
+{{- /* Response to mutations and tab changes: the day (main target) + its
+       tab + the week's subtitle, both OOB.
+       View model: dayMutationResponse. */ -}}
 {{template "day_card" .Card}}
 {{template "day_pill" .Card}}
 {{template "week_totals" .Week}}

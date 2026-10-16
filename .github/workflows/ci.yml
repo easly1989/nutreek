@@ -34,7 +34,7 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # Versione fissata: `latest` rompe la CI quando esce un linter nuovo.
+      # Pinned version: `latest` breaks CI when a new linter comes out.
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -67,9 +67,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # govulncheck valuta le vulnerabilità della stdlib rispetto al
-      # toolchain attivo: usiamo sempre l'ultima release stabile patchata,
-      # indipendentemente dalla versione minima dichiarata in go.mod.
+      # govulncheck checks the stdlib's vulnerabilities against the active
+      # toolchain: we always use the latest patched stable release,
+      # whatever the minimum version declared in go.mod.
       - name: Setup Go
         uses: actions/setup-go@v7
         with:

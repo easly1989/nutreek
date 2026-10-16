@@ -11,17 +11,17 @@ var templatesFS embed.FS
 //go:embed all:static
 var staticFS embed.FS
 
-// Templates ritorna il filesystem virtuale con tutti i template.
+// Templates returns the virtual filesystem with every template.
 func Templates() fs.FS {
 	return templatesFS
 }
 
-// Static ritorna il filesystem virtuale degli asset statici servibili da
-// /static/ (CSS, JS, immagini).
+// Static returns the virtual filesystem of the static assets served from
+// /static/ (CSS, JS, images).
 func Static() fs.FS {
 	sub, err := fs.Sub(staticFS, "static")
 	if err != nil {
-		// L'embed e' statico: se fallisce e' un bug build-time.
+		// The embed is static: when it fails it is a build-time bug.
 		panic(err)
 	}
 	return sub

@@ -34,7 +34,7 @@
     cancel.focus();
   }
 
-  // Intercetta submit di form con data-confirm
+  // Intercept the submit of forms with data-confirm
   document.addEventListener('submit', function (e) {
     var msg = e.target.dataset.confirm;
     if (!msg) return;
@@ -46,13 +46,13 @@
     });
   }, true);
 
-  // Intercetta hx-confirm di HTMX
+  // Intercept HTMX's hx-confirm
   document.addEventListener('htmx:confirm', function (e) {
     if (!e.detail.question) return;
     e.preventDefault();
     showDialog(e.detail.question, function () { e.detail.issueRequest(true); });
   });
 
-  // Espone showDialog globalmente per i casi JS inline (recipes_list)
+  // Expose showDialog globally for inline JS cases (recipes_list)
   window._showConfirm = showDialog;
 })();

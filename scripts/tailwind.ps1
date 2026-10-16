@@ -1,5 +1,5 @@
-# Genera internal/web/static/css/tailwind.css. Usa la CLI scaricata da
-# setup.ps1. Passa -Watch per modalita' watch (dev).
+# Generates internal/web/static/css/tailwind.css. Uses the CLI downloaded by
+# setup.ps1. Pass -Watch for watch mode (dev).
 param(
     [switch]$Watch
 )
@@ -11,7 +11,7 @@ $input = Join-Path $root "web\tailwind\input.css"
 $output = Join-Path $root "internal\web\static\css\tailwind.css"
 
 if (-not (Test-Path $twExe)) {
-    Write-Error "tailwindcss.exe non trovato. Esegui prima: pwsh scripts/setup.ps1"
+    Write-Error "tailwindcss.exe not found. Run first: pwsh scripts/setup.ps1"
     exit 1
 }
 

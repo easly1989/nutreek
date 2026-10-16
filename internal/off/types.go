@@ -8,41 +8,41 @@ import (
 	"strings"
 )
 
-// Product e' la rappresentazione "pulita" che esponiamo all'app: solo i
-// campi che usiamo davvero, con tipi prevedibili.
+// Product is the "clean" representation we expose to the app: only the
+// fields we really use, with predictable types.
 type Product struct {
 	Code     string  // barcode
 	Name     string  // product_name
-	Brand    string  // primo elemento di brands (CSV su OFF)
-	Quantity string  // testuale ("100 g", "1 L"), opzionale
+	Brand    string  // first element of brands (CSV on OFF)
+	Quantity string  // text ("100 g", "1 L"), optional
 	Kcal     float64 // per 100g/ml
 	Protein  float64
 	Carbs    float64
 	Fat      float64
-	// HasFullNutrients e' true sse tutti e 4 i macro sono presenti su OFF.
-	// Lo usiamo per decidere se permettere l'import o suggerire un local.
+	// HasFullNutrients is true iff all 4 macros are present on OFF.
+	// We use it to decide whether to allow the import or suggest a local one.
 	HasFullNutrients bool
-	// ImageURL e' la URL del thumbnail fronte prodotto (image_front_small_url
-	// di OFF). Puo' essere vuota per prodotti senza foto.
+	// ImageURL is the URL of the product's front thumbnail (OFF's
+	// image_front_small_url). It can be empty for products without a photo.
 	ImageURL string
-	// UnitWeightG e' il peso in grammi per singola unita', estratto da
-	// product_quantity (es. "150 g" → 150). nil se non parsabile.
+	// UnitWeightG is the weight in grams per single unit, extracted from
+	// product_quantity (e.g. "150 g" → 150). nil when it cannot be parsed.
 	UnitWeightG *float64
-	// ServingG e' la porzione in grammi o ml (serving_quantity di OFF, o
-	// serving_size tipo "30 g"). nil se OFF non la conosce.
+	// ServingG is the serving in grams or ml (OFF's serving_quantity, or a
+	// serving_size like "30 g"). nil when OFF does not know it.
 	ServingG *float64
-	// Micronutrienti — nil se non presenti nel dataset OFF.
+	// Micronutrients — nil when missing from the OFF dataset.
 	Fiber        *float64
 	Sugars       *float64
 	SaturatedFat *float64
 	Sodium       *float64
 }
 
-// rawProduct riflette la forma JSON degli endpoint OFF "product"
-// (api/v2/product/{code}.json) e di una riga del dump JSONL pubblico
-// (riusato da dumpProduct.toProduct). I nutriments arrivano in una mappa
-// free-form con chiavi tipo "energy-kcal_100g" che possono essere
-// number o stringa a seconda del prodotto. Lo parsiamo a mano in toProduct.
+// rawProduct mirrors the JSON shape of the OFF "product" endpoints
+// (api/v2/product/{code}.json) and of a line of the public JSONL dump
+// (reused by dumpProduct.toProduct). The nutriments arrive in a free-form
+// map with keys like "energy-kcal_100g" that can be a number or a string
+// depending on the product. We parse it by hand in toProduct.
 type rawProduct struct {
 	Code               string                     `json:"code"`
 	ProductName        string                     `json:"product_name"`
@@ -51,7 +51,7 @@ type rawProduct struct {
 	Nutriments         map[string]json.RawMessage `json:"nutriments"`
 	ImageFrontSmallURL string                     `json:"image_front_small_url"`
 	ImageURL           string                     `json:"image_url"`
-	// serving_quantity arriva come numero o come stringa, a seconda del prodotto.
+	// serving_quantity arrives as a number or as a string, depending on the product.
 	ServingQuantity     json.RawMessage `json:"serving_quantity"`
 	ServingQuantityUnit string          `json:"serving_quantity_unit"`
 	ServingSize         string          `json:"serving_size"`
@@ -77,8 +77,8 @@ func (r rawProduct) toProduct() Product {
 		UnitWeightG: ParseUnitWeightG(r.Quantity),
 		ServingG:    ParseServingG(r.ServingQuantity, r.ServingQuantityUnit, r.ServingSize),
 	}
-	// Il dump JSONL usa chiavi bare ("proteins") mentre l'API usa "_100g"
-	// ("proteins_100g"). Proviamo entrambe per supportare le due sorgenti.
+	// The JSONL dump uses bare keys ("proteins") while the API uses "_100g"
+	// ("proteins_100g"). Try both to support the two sources.
 	kcal, kOK := lookupNutrientAny(r.Nutriments, "energy-kcal_100g", "energy-kcal")
 	if !kOK {
 		if kj, ok := lookupNutrientAny(r.Nutriments, "energy_100g", "energy"); ok {
@@ -107,8 +107,8 @@ func (r rawProduct) toProduct() Product {
 	return p
 }
 
-// lookupNutrientAny prova le chiavi in ordine e ritorna il primo match.
-// Usato per gestire sia il formato API (_100g) sia il dump JSONL (bare).
+// lookupNutrientAny tries the keys in order and returns the first match.
+// Used to handle both the API format (_100g) and the JSONL dump (bare).
 func lookupNutrientAny(m map[string]json.RawMessage, keys ...string) (float64, bool) {
 	for _, k := range keys {
 		if v, ok := lookupNutrient(m, k); ok {
@@ -118,18 +118,18 @@ func lookupNutrientAny(m map[string]json.RawMessage, keys ...string) (float64, b
 	return 0, false
 }
 
-// lookupNutrient legge un campo che OFF puo' restituire come numero o stringa.
+// lookupNutrient reads a field OFF can return as a number or a string.
 func lookupNutrient(m map[string]json.RawMessage, key string) (float64, bool) {
 	raw, ok := m[key]
 	if !ok || len(raw) == 0 {
 		return 0, false
 	}
-	// Tenta number (la maggior parte dei casi).
+	// Try a number (most cases).
 	var n float64
 	if err := json.Unmarshal(raw, &n); err == nil {
 		return n, true
 	}
-	// Fallback: stringa (qualche produttore inserisce "12.3" tra apici).
+	// Fallback: a string (some producers enter "12.3" in quotes).
 	var s string
 	if err := json.Unmarshal(raw, &s); err == nil {
 		v, err := strconv.ParseFloat(s, 64)
@@ -140,14 +140,14 @@ func lookupNutrient(m map[string]json.RawMessage, key string) (float64, bool) {
 	return 0, false
 }
 
-// reSingleGrams matcha stringhe tipo "150 g" o "200g" (singola quantità in grammi).
+// reSingleGrams matches strings like "150 g" or "200g" (a single quantity in grams).
 var reSingleGrams = regexp.MustCompile(`(?i)^\s*(\d+(?:[.,]\d+)?)\s*g\s*$`)
 
-// reMultiGrams matcha "6 × 25 g" o "6x 30g" (N pezzi da M grammi ciascuno).
+// reMultiGrams matches "6 × 25 g" or "6x 30g" (N pieces of M grams each).
 var reMultiGrams = regexp.MustCompile(`(?i)^\s*\d+\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*g\s*$`)
 
-// ParseUnitWeightG prova a estrarre il peso per pezzo in grammi da product_quantity
-// di OFF (es. "150 g" → 150.0, "6 × 25 g" → 25.0). Ritorna nil se non parsabile.
+// ParseUnitWeightG tries to extract the weight per piece in grams from OFF's
+// product_quantity (e.g. "150 g" → 150.0, "6 × 25 g" → 25.0). Returns nil when it cannot be parsed.
 func ParseUnitWeightG(productQuantity string) *float64 {
 	q := strings.TrimSpace(productQuantity)
 	if q == "" {
@@ -165,18 +165,18 @@ func ParseUnitWeightG(productQuantity string) *float64 {
 	return nil
 }
 
-// maxServingG scarta le porzioni assurde (errori di inserimento su OFF): una
-// porzione proposta oltre il chilo farebbe piu' danni di un campo vuoto.
+// maxServingG discards absurd servings (data entry errors on OFF): a serving
+// proposed above one kilo would do more harm than an empty field.
 const maxServingG = 1000
 
-// reServingSize matcha la parte in g/ml di serving_size: "30 g", "1 biscotto
+// reServingSize matches the g/ml part of serving_size: "30 g", "1 biscotto
 // (12,5 g)", "250ml".
 var reServingSize = regexp.MustCompile(`(?i)(\d+(?:[.,]\d+)?)\s*(g|ml)\b`)
 
-// ParseServingG ricava la porzione in grammi (o ml) dai campi OFF:
-// serving_quantity (numero o stringa) se la sua unita' e' g/ml o assente,
-// altrimenti la quantita' in g/ml scritta in serving_size. nil se nessuno dei
-// due da' un valore in (0, 1000].
+// ParseServingG derives the serving in grams (or ml) from the OFF fields:
+// serving_quantity (number or string) when its unit is g/ml or missing,
+// otherwise the g/ml quantity written in serving_size. nil when neither
+// gives a value in (0, 1000].
 func ParseServingG(quantity json.RawMessage, unit, size string) *float64 {
 	valid := func(v float64) *float64 {
 		if v > 0 && v <= maxServingG {
@@ -200,13 +200,13 @@ func ParseServingG(quantity json.RawMessage, unit, size string) *float64 {
 	return nil
 }
 
-// OFFCDNImageURL costruisce la URL best-effort del thumbnail fronte di un
-// prodotto OFF dal barcode. Usata come fallback quando image_url e' vuota nel
-// dump locale (prodotti importati prima della migrazione 0012). Non garantisce
-// che l'immagine esista: gestire con onerror nel template HTML.
+// OFFCDNImageURL builds the best-effort URL of an OFF product's front
+// thumbnail from its barcode. Used as a fallback when image_url is empty in
+// the local dump (products imported before migration 0012). It does not
+// guarantee the image exists: handle it with onerror in the HTML template.
 //
-// Pattern CDN OFF (EAN-13):  NNN/NNN/NNN/NNNN/front_fr.200.jpg
-// Pattern CDN OFF (altri):   {barcode}/front_fr.200.jpg
+// OFF CDN pattern (EAN-13):  NNN/NNN/NNN/NNNN/front_fr.200.jpg
+// OFF CDN pattern (others):  {barcode}/front_fr.200.jpg
 func OFFCDNImageURL(barcode string) string {
 	barcode = strings.TrimSpace(barcode)
 	if barcode == "" {
@@ -219,14 +219,14 @@ func OFFCDNImageURL(barcode string) string {
 	return base + barcode + "/front_fr.200.jpg"
 }
 
-// ThumbHost e' l'unico host da cui la pagina carica le miniature OFF: lo
-// stesso nome sta nella CSP (img-src, internal/app/router.go).
+// ThumbHost is the only host the page loads OFF thumbnails from: the same
+// name is in the CSP (img-src, internal/app/router.go).
 const ThumbHost = "images.openfoodfacts.org"
 
-// ThumbURL rende mostrabile l'URL di una miniatura OFF: i dump vecchi usano
-// ancora static.openfoodfacts.org/images/, che diventa ThumbHost (stessi
-// percorsi). Qualunque altro URL (altro host, non https) torna "": il
-// template mostra allora l'icona del codice a barre.
+// ThumbURL makes an OFF thumbnail URL displayable: old dumps still use
+// static.openfoodfacts.org/images/, which becomes ThumbHost (same paths).
+// Any other URL (another host, not https) returns "": the template then
+// shows the barcode icon.
 func ThumbURL(raw string) string {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" {

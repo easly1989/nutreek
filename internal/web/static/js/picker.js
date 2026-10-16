@@ -1,10 +1,10 @@
-// picker.js — righe del picker ingredienti (partial picker_results).
+// picker.js — rows of the ingredient picker (the picker_results partial).
 //
-// Ogni riga e' un <details data-picker-row>: aprendola si chiudono le altre
-// e il cursore va sulla quantita'. Il form porta data-kcal100 (kcal per
-// 100 g/ml) e data-unit-weight (grammi di un pezzo, 0 se ignoto), oppure
-// per le ricette data-kcal-each (kcal per porzione): da questi calcoliamo
-// l'anteprima kcal mentre si digita.
+// Every row is a <details data-picker-row>: opening it closes the others and
+// moves the cursor to the quantity. The form carries data-kcal100 (kcal per
+// 100 g/ml) and data-unit-weight (grams of one piece, 0 when unknown), or for
+// recipes data-kcal-each (kcal per serving): from these we compute the kcal
+// preview while typing.
 (function () {
   "use strict";
 
@@ -44,8 +44,8 @@
     if (qty) { qty.focus({ preventScroll: true }); qty.select(); }
   }, true);
 
-  // Picker di un pasto ([data-meal-picker], pagina o finestra): Ingrediente /
-  // Ricetta cambia la ricerca live e ricarica i risultati.
+  // A meal's picker ([data-meal-picker], page or dialog): Ingrediente /
+  // Ricetta switches the live search and reloads the results.
   function mealPickerURL(picker, kind, q) {
     return picker.dataset.pickerUrl + "?kind=" + kind + "&" + picker.dataset.pickerExtra + "&q=" + encodeURIComponent(q || "");
   }
@@ -68,13 +68,13 @@
     picker.querySelectorAll("[data-quick-target]").forEach(function (b) {
       b.classList.toggle("hidden", b.dataset.quickTarget !== kind);
     });
-    // Le ricette non hanno codice a barre: lo scanner solo per gli ingredienti.
+    // Recipes have no barcode: the scanner is for ingredients only.
     picker.querySelectorAll("[data-scan-for]").forEach(function (b) {
       b.classList.toggle("hidden", kind !== "ingredient");
     });
     var search = picker.querySelector("input[data-ingredient-search]");
     if (search) {
-      // Letti da ingredient_search.js; per le ricette niente OpenFoodFacts.
+      // Read by ingredient_search.js; no OpenFoodFacts for recipes.
       search.dataset.searchExtra = "kind=" + kind + "&" + picker.dataset.pickerExtra;
       search.dataset.searchNoOff = kind === "recipe" ? "1" : "0";
       search.placeholder = kind === "recipe" ? "Cerca una ricetta" : "Cerca tra i tuoi ingredienti e su OpenFoodFacts";
@@ -83,7 +83,7 @@
     refreshMealPicker(picker);
   });
 
-  // Dopo «Nuovo ingrediente/ricetta» il picker ricarica i risultati.
+  // After «Nuovo ingrediente/ricetta» the picker reloads the results.
   ["ingredient-created", "recipe-created"].forEach(function (ev) {
     window.addEventListener(ev, function () {
       document.querySelectorAll("[data-meal-picker]").forEach(refreshMealPicker);

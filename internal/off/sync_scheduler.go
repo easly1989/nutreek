@@ -7,24 +7,24 @@ import (
 	"time"
 )
 
-// SyncScheduler periodicamente verifica se il dump OFF e' "vecchio" e in
-// caso lancia un SyncDump. Loop a frequenza alta (1h) ma sync attivato
-// solo se last_synced_at e' piu' vecchio di Interval — settimanale per
-// default (configurabile via NUTREEK_OFF_SYNC_INTERVAL).
+// SyncScheduler periodically checks whether the OFF dump is "old" and, if
+// so, starts a SyncDump. The loop runs often (1h) but a sync starts only
+// when last_synced_at is older than Interval — weekly by default
+// (configurable via NUTREEK_OFF_SYNC_INTERVAL).
 //
-// Pensato per girare in goroutine dal main; reagisce a ctx.Done.
+// Meant to run in a goroutine from main; it reacts to ctx.Done.
 type SyncScheduler struct {
 	Syncer   *Syncer
-	Interval time.Duration // default 7 giorni
+	Interval time.Duration // default 7 days
 	Logger   *slog.Logger
 }
 
-// Run avvia il loop. La prima esecuzione e' immediata (utile al primo
-// avvio: DB vuoto → sync subito). Poi check ogni ora; se l'ultimo sync
-// di successo e' >= Interval fa, lancia un nuovo sync.
+// Run starts the loop. The first run is immediate (useful on first start:
+// empty DB → sync right away). Then it checks every hour; when the last
+// successful sync is >= Interval ago, it starts a new sync.
 //
-// Il check via ticker e' cheap (una SELECT); il sync vero parte solo
-// quando dovuto, quindi la goroutine consuma quasi zero risorse.
+// The ticker check is cheap (one SELECT); the real sync starts only when due,
+// so the goroutine uses almost no resources.
 func (s *SyncScheduler) Run(ctx context.Context) {
 	interval := s.Interval
 	if interval <= 0 {
@@ -51,9 +51,9 @@ func (s *SyncScheduler) Run(ctx context.Context) {
 	}
 }
 
-// checkAndRun lancia un sync se l'ultimo successo e' piu' vecchio di
-// interval (o se non c'e' mai stato uno). Non blocca: se un sync e'
-// gia' in corso ritorna ErrSyncInProgress senza errore visibile.
+// checkAndRun starts a sync when the last success is older than interval (or
+// when there has never been one). It does not block: when a sync is already
+// running it returns ErrSyncInProgress with no visible error.
 func (s *SyncScheduler) checkAndRun(ctx context.Context, interval time.Duration, logger *slog.Logger) {
 	state, err := s.Syncer.LoadState(ctx)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *SyncScheduler) checkAndRun(ctx context.Context, interval time.Duration,
 	stats, err := s.Syncer.SyncDump(ctx)
 	if err != nil {
 		if errors.Is(err, ErrSyncInProgress) {
-			return // un trigger admin l'ha gia' avviato
+			return // an admin trigger already started it
 		}
 		logger.Warn("off sync scheduler: sync failed", "err", err)
 		return
