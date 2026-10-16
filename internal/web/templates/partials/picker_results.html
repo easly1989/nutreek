@@ -124,15 +124,18 @@
       <input type="hidden" name="ingredient_id" value="{{$r.LocalID}}">
     {{end}}
     <input name="quantity" required inputmode="decimal" aria-label="Quantità" class="field w-[76px] text-right tabular-nums"
-           {{if gt $r.DefaultQuantity 0.0}}value="{{dec $r.DefaultQuantity 2}}"{{else if gt $r.UnitWeightG 0.0}}value="1"{{else}}placeholder="{{$r.Unit}}"{{end}}>
+           {{with $r.PickQuantity}}value="{{dec . 2}}"{{else}}placeholder="{{$r.Unit}}"{{end}}>
     {{if gt $r.UnitWeightG 0.0}}
-      {{/* La quantita' proposta non dice l'unita': oltre 10 la leggiamo in
-           g/ml, fino a 10 (o assente) in pezzi. */}}
+      {{/* Quantita' e unita' proposte: ingredientRow.PickQuantity/PickUnit.
+           Per i prodotti OFF «pz» e' la confezione: mai preselezionato. */}}
       <span class="segmented" role="radiogroup" aria-label="Unità">
-        <label><input type="radio" name="qty_unit" value="{{$r.Unit}}"{{if gt $r.DefaultQuantity 10.0}} checked{{end}}>{{$r.Unit}}</label>
-        <label><input type="radio" name="qty_unit" value="pz"{{if not (gt $r.DefaultQuantity 10.0)}} checked{{end}}>pz</label>
+        <label><input type="radio" name="qty_unit" value="{{$r.Unit}}"{{if ne $r.PickUnit "pz"}} checked{{end}}>{{$r.Unit}}</label>
+        <label><input type="radio" name="qty_unit" value="pz"{{if eq $r.PickUnit "pz"}} checked{{end}}>pz</label>
       </span>
-      <span class="hidden sm:inline text-[12.5px] text-muted">1 pz = {{num $r.UnitWeightG}} {{$r.Unit}}</span>
+      <span class="hidden sm:inline text-[12.5px] text-muted">{{with $r.ServingG}}porzione {{num .}} {{$r.Unit}} · {{end}}1 pz = {{num $r.UnitWeightG}} {{$r.Unit}}</span>
+    {{else if gt $r.ServingG 0.0}}
+      <input type="hidden" name="qty_unit" value="{{$r.Unit}}"><span class="text-muted">{{$r.Unit}}</span>
+      <span class="hidden sm:inline text-[12.5px] text-muted">porzione {{num $r.ServingG}} {{$r.Unit}}</span>
     {{else}}
       <input type="hidden" name="qty_unit" value="{{$r.Unit}}"><span class="text-muted">{{$r.Unit}}</span>
     {{end}}

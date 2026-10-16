@@ -118,7 +118,8 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	ctx := context.Background()
 
 	brand := "Consorzio"
-	id, err := ings.CreateOFF(ctx, "8000000000017", "Grana Padano", &brand, domain.UnitGram, 384, 33, 0, 28, nil, nil, nil, nil, nil)
+	pack, serving := 500.0, 30.0
+	id, err := ings.CreateOFF(ctx, "8000000000017", "Grana Padano", &brand, domain.UnitGram, 384, 33, 0, 28, &pack, &serving, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("CreateOFF: %v", err)
 	}
@@ -129,6 +130,13 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	if got.ID != id {
 		t.Errorf("id mismatch: %d vs %d", got.ID, id)
 	}
+	// La porzione OFF diventa la quantita' proposta nel picker (#136).
+	if got.DefaultQuantity == nil || *got.DefaultQuantity != 30 {
+		t.Errorf("default_quantity: got %v want 30", got.DefaultQuantity)
+	}
+	if got.UnitWeightG == nil || *got.UnitWeightG != 500 {
+		t.Errorf("unit_weight_g: got %v want 500", got.UnitWeightG)
+	}
 	if got.Source != domain.IngredientSourceOFF {
 		t.Errorf("source: got %q want openfoodfacts", got.Source)
 	}
@@ -137,7 +145,7 @@ func TestIngredientsCreateOFFAndDup(t *testing.T) {
 	}
 
 	// Duplicate barcode -> ErrBarcodeAlreadyUsed
-	_, err = ings.CreateOFF(ctx, "8000000000017", "Altro", nil, domain.UnitGram, 1, 1, 1, 1, nil, nil, nil, nil, nil)
+	_, err = ings.CreateOFF(ctx, "8000000000017", "Altro", nil, domain.UnitGram, 1, 1, 1, 1, nil, nil, nil, nil, nil, nil)
 	if !errors.Is(err, ErrBarcodeAlreadyUsed) {
 		t.Fatalf("atteso ErrBarcodeAlreadyUsed, got %v", err)
 	}
@@ -200,7 +208,7 @@ func TestIngredientsReconcileHelpers(t *testing.T) {
 	idB, _ := ings.CreateLocal(ctx, "B", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil, nil)
 	idC, _ := ings.CreateLocal(ctx, "C", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil, nil)
 	// Un OFF (non deve apparire fra i candidati).
-	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil)
+	idOFF, err := ings.CreateOFF(ctx, "BARCODE1", "OFF", nil, "g", 100, 5, 10, 1, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
