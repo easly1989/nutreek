@@ -9,8 +9,8 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// allergenIDByName cerca l'ID di un allergene seed per nome (i 14 tag sono
-// inseriti dalla migrazione 0016).
+// allergenIDByName looks up a seeded allergen's ID by name (the 14 tags are
+// inserted by migration 0016).
 func allergenIDByName(t *testing.T, cats *Categories, name string) int64 {
 	t.Helper()
 	tags, err := cats.ListAllergens(context.Background())
@@ -22,12 +22,12 @@ func allergenIDByName(t *testing.T, cats *Categories, name string) int64 {
 			return tag.ID
 		}
 	}
-	t.Fatalf("allergene %q non trovato nei seed", name)
+	t.Fatalf("allergen %q not found in the seed", name)
 	return 0
 }
 
-// La lista ingredienti mostra la categoria di ogni riga e il form di modifica
-// la deve pre-selezionare (#122): CategoriesForIngredients le carica in batch.
+// The ingredient list shows each row's category and the edit form must
+// preselect it (#122): CategoriesForIngredients loads them in one batch.
 func TestCategoriesForIngredients(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)
@@ -51,26 +51,26 @@ func TestCategoriesForIngredients(t *testing.T) {
 		t.Fatalf("CategoriesForIngredients: %v", err)
 	}
 	if c, ok := got[yogurt]; !ok || c.ID != latticini || c.Name != "Latticini" {
-		t.Errorf("categoria dello yogurt = %+v, attesa Latticini", got[yogurt])
+		t.Errorf("yogurt category = %+v, want Latticini", got[yogurt])
 	}
 	if _, ok := got[mela]; ok {
-		t.Error("la mela non ha categoria: non deve comparire")
+		t.Error("the apple has no category: it must not appear")
 	}
 	if empty, err := cats.CategoriesForIngredients(ctx, alice, nil); err != nil || len(empty) != 0 {
-		t.Errorf("lista vuota = %v, %v", empty, err)
+		t.Errorf("empty list = %v, %v", empty, err)
 	}
 
-	// nil toglie la categoria.
+	// nil removes the category.
 	if err := cats.SetIngredientCategory(ctx, alice, yogurt, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := cats.CategoriesForIngredients(ctx, alice, []int64{yogurt}); len(got) != 0 {
-		t.Errorf("dopo nil la categoria resta: %v", got)
+		t.Errorf("after nil the category remains: %v", got)
 	}
 }
 
-// La categoria e' di ogni utente (#143): la scelta di Bob non tocca quella
-// di Alice sullo stesso ingrediente, e una categoria altrui viene rifiutata.
+// Categories are per user (#143): Bob's choice does not touch Alice's on the
+// same ingredient, and another user's category is rejected.
 func TestCategoriesPerUser(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)
@@ -91,31 +91,31 @@ func TestCategoriesPerUser(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got, _ := cats.CategoriesForIngredients(ctx, alice, []int64{mandorle}); got[mandorle].ID != frutta {
-		t.Errorf("Alice vede %+v, attesa la sua Frutta", got[mandorle])
+		t.Errorf("Alice sees %+v, want her Frutta", got[mandorle])
 	}
 	if got, _ := cats.CategoriesForIngredients(ctx, bob, []int64{mandorle}); got[mandorle].ID != snack {
-		t.Errorf("Bob vede %+v, atteso il suo Snack", got[mandorle])
+		t.Errorf("Bob sees %+v, want his Snack", got[mandorle])
 	}
 
-	// Bob non puo' usare la categoria di Alice.
+	// Bob cannot use Alice's category.
 	if err := cats.SetIngredientCategory(ctx, bob, mandorle, &frutta); !errors.Is(err, ErrCategoryNotFound) {
-		t.Errorf("categoria altrui: err = %v, atteso ErrCategoryNotFound", err)
+		t.Errorf("another user's category: err = %v, want ErrCategoryNotFound", err)
 	}
 	if got, _ := cats.CategoriesForIngredients(ctx, bob, []int64{mandorle}); got[mandorle].ID != snack {
-		t.Errorf("dopo il rifiuto Bob vede %+v, atteso ancora Snack", got[mandorle])
+		t.Errorf("after the rejection Bob sees %+v, want Snack still", got[mandorle])
 	}
 
-	// Cancellare una categoria toglie le sue assegnazioni.
+	// Deleting a category removes its assignments.
 	if err := cats.DeleteCategory(ctx, snack, bob); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := cats.CategoriesForIngredients(ctx, bob, []int64{mandorle}); len(got) != 0 {
-		t.Errorf("categoria cancellata ancora assegnata: %v", got)
+		t.Errorf("deleted category still assigned: %v", got)
 	}
 }
 
-// La migrazione 0028 copia la vecchia colonna ingredients.category_id nella
-// tabella per utente, a nome di chi possiede la categoria.
+// Migration 0028 copies the old ingredients.category_id column into the
+// per-user table, on behalf of whoever owns the category.
 func TestCategoriesMigrationBackfill(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)
@@ -129,8 +129,8 @@ func TestCategoriesMigrationBackfill(t *testing.T) {
 	if _, err := store.DB.ExecContext(ctx, `UPDATE ingredients SET category_id = ? WHERE id = ?`, frutta, mela); err != nil {
 		t.Fatal(err)
 	}
-	// Rilancia l'INSERT della migrazione, preso dal file vero: al momento
-	// della migrazione il DB di test era vuoto.
+	// Rerun the migration's INSERT, taken from the real file: when the
+	// migration ran, the test DB was empty.
 	up, err := migrationsFS.ReadFile("migrations/0028_ingredient_user_categories.sql")
 	if err != nil {
 		t.Fatal(err)
@@ -138,13 +138,13 @@ func TestCategoriesMigrationBackfill(t *testing.T) {
 	start := strings.Index(string(up), "INSERT OR IGNORE INTO ingredient_user_categories")
 	end := strings.Index(string(up)[start:], ";")
 	if start < 0 || end < 0 {
-		t.Fatal("INSERT di backfill non trovato nella migrazione 0028")
+		t.Fatal("backfill INSERT not found in migration 0028")
 	}
 	if _, err := store.DB.ExecContext(ctx, string(up)[start:start+end]); err != nil {
 		t.Fatalf("backfill: %v", err)
 	}
 	if got, _ := cats.CategoriesForIngredients(ctx, alice, []int64{mela}); got[mela].ID != frutta {
-		t.Errorf("dopo il backfill Alice vede %+v, attesa Frutta", got[mela])
+		t.Errorf("after the backfill Alice sees %+v, want Frutta", got[mela])
 	}
 }
 
@@ -154,13 +154,13 @@ func TestAllergensSeedAndSet(t *testing.T) {
 	cats := NewCategories(store.DB)
 	ctx := context.Background()
 
-	// I 14 allergeni standard devono essere già presenti.
+	// The 14 standard allergens must already be there.
 	tags, err := cats.ListAllergens(ctx)
 	if err != nil {
 		t.Fatalf("ListAllergens: %v", err)
 	}
 	if len(tags) != 14 {
-		t.Fatalf("attesi 14 allergeni seed, trovati %d", len(tags))
+		t.Fatalf("want 14 seeded allergens, found %d", len(tags))
 	}
 
 	id, err := ings.CreateLocal(ctx, "Pane", nil, domain.UnitGram, 270, 9, 50, 3, nil, nil, nil, nil, nil, nil, nil)
@@ -180,25 +180,25 @@ func TestAllergensSeedAndSet(t *testing.T) {
 		t.Fatalf("GetIngredientAllergenIDs: %v", err)
 	}
 	if !got[glutine] || !got[soia] || len(got) != 2 {
-		t.Fatalf("allergeni attesi {glutine, soia}, got %v", got)
+		t.Fatalf("want allergens {glutine, soia}, got %v", got)
 	}
 
-	// Replace: settare solo glutine deve rimuovere soia.
+	// Replace: setting only glutine must remove soia.
 	if err := cats.SetIngredientAllergens(ctx, id, []int64{glutine}); err != nil {
 		t.Fatalf("SetIngredientAllergens replace: %v", err)
 	}
 	got, _ = cats.GetIngredientAllergenIDs(ctx, id)
 	if len(got) != 1 || !got[glutine] {
-		t.Fatalf("dopo replace atteso solo {glutine}, got %v", got)
+		t.Fatalf("after replace want only {glutine}, got %v", got)
 	}
 
-	// Lista vuota azzera i tag.
+	// An empty list clears the tags.
 	if err := cats.SetIngredientAllergens(ctx, id, nil); err != nil {
 		t.Fatalf("SetIngredientAllergens clear: %v", err)
 	}
 	got, _ = cats.GetIngredientAllergenIDs(ctx, id)
 	if len(got) != 0 {
-		t.Fatalf("dopo clear attesi 0 tag, got %v", got)
+		t.Fatalf("after clear want 0 tags, got %v", got)
 	}
 }
 
@@ -215,26 +215,26 @@ func TestAllergensForIngredientsBatch(t *testing.T) {
 	if err := cats.SetIngredientAllergens(ctx, a, []int64{lattosio}); err != nil {
 		t.Fatalf("set: %v", err)
 	}
-	// b resta senza allergeni.
+	// b stays without allergens.
 
 	byIng, err := cats.AllergensForIngredients(ctx, []int64{a, b})
 	if err != nil {
 		t.Fatalf("AllergensForIngredients: %v", err)
 	}
 	if len(byIng[a]) != 1 || byIng[a][0].Name != "lattosio" {
-		t.Fatalf("ingrediente a: atteso [lattosio], got %v", byIng[a])
+		t.Fatalf("ingredient a: want [lattosio], got %v", byIng[a])
 	}
 	if _, ok := byIng[b]; ok {
-		t.Fatalf("ingrediente b senza allergeni non deve comparire nella mappa")
+		t.Fatalf("ingredient b has no allergens and must not appear in the map")
 	}
 
-	// Slice vuota: nessuna query, mappa vuota.
+	// Empty slice: no query, empty map.
 	empty, err := cats.AllergensForIngredients(ctx, nil)
 	if err != nil {
 		t.Fatalf("AllergensForIngredients(nil): %v", err)
 	}
 	if len(empty) != 0 {
-		t.Fatalf("attesa mappa vuota, got %v", empty)
+		t.Fatalf("want an empty map, got %v", empty)
 	}
 }
 
@@ -251,13 +251,13 @@ func TestIngredientIDsByAllergen(t *testing.T) {
 	crostacei := allergenIDByName(t, cats, "crostacei")
 	_ = cats.SetIngredientAllergens(ctx, a, []int64{crostacei})
 	_ = cats.SetIngredientAllergens(ctx, b, []int64{crostacei})
-	// c senza allergeni.
+	// c has no allergens.
 
 	ids, err := cats.IngredientIDsByAllergen(ctx, crostacei)
 	if err != nil {
 		t.Fatalf("IngredientIDsByAllergen: %v", err)
 	}
 	if !ids[a] || !ids[b] || ids[c] || len(ids) != 2 {
-		t.Fatalf("attesi {a,b}, got %v", ids)
+		t.Fatalf("want {a,b}, got %v", ids)
 	}
 }

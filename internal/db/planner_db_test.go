@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// TestWeeklyPlansCreateMeals verifica che CreateMeals inserisca pasti e voci
-// nel piano corretto, in transazione, con ownership verificata.
+// TestWeeklyPlansCreateMeals checks that CreateMeals inserts meals and items
+// into the right plan, in a transaction, with ownership checked.
 func TestWeeklyPlansCreateMeals(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)
@@ -40,9 +40,9 @@ func TestWeeklyPlansCreateMeals(t *testing.T) {
 		}},
 	}
 
-	// Ownership: bob non puo' scrivere sul piano di alice.
+	// Ownership: bob cannot write to alice's plan.
 	if err := plans.CreateMeals(ctx, plan.ID, bob, meals); err == nil {
-		t.Fatal("CreateMeals doveva fallire per ownership errata")
+		t.Fatal("CreateMeals should have failed on the wrong owner")
 	}
 
 	if err := plans.CreateMeals(ctx, plan.ID, alice, meals); err != nil {
@@ -54,12 +54,12 @@ func TestWeeklyPlansCreateMeals(t *testing.T) {
 		t.Fatalf("LoadFull: %v", err)
 	}
 	if got := len(full.Days[0]); got != 2 {
-		t.Errorf("giorno 0: %d pasti, attesi 2", got)
+		t.Errorf("day 0: %d meals, want 2", got)
 	}
 	if got := len(full.Days[3]); got != 1 {
-		t.Errorf("giorno 3: %d pasti, attesi 1", got)
+		t.Errorf("day 3: %d meals, want 1", got)
 	}
-	// Pranzo (giorno 0) ha 2 voci.
+	// Pranzo (day 0) has 2 items.
 	var pranzoItems int
 	for _, m := range full.Days[0] {
 		if m.Name == "Pranzo" {
@@ -67,12 +67,12 @@ func TestWeeklyPlansCreateMeals(t *testing.T) {
 		}
 	}
 	if pranzoItems != 2 {
-		t.Errorf("Pranzo: %d voci, attese 2", pranzoItems)
+		t.Errorf("Pranzo: %d items, want 2", pranzoItems)
 	}
 }
 
-// TestNutritionistHasVariations verifica il flag minimo richiesto per la
-// generazione automatica: almeno una variante con almeno un item.
+// TestNutritionistHasVariations checks the minimum flag automatic generation
+// needs: at least one variant with at least one item.
 func TestNutritionistHasVariations(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)
@@ -82,23 +82,23 @@ func TestNutritionistHasVariations(t *testing.T) {
 
 	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
 
-	// Nessun item ancora: false.
+	// No items yet: false.
 	has, err := np.HasVariations(ctx, alice)
 	if err != nil {
 		t.Fatalf("HasVariations: %v", err)
 	}
 	if has {
-		t.Error("atteso false senza varianti/item")
+		t.Error("want false without variants/items")
 	}
 
 	plan, _ := np.GetOrCreateActivePlan(ctx, alice)
 	mtID, _ := np.CreateMealType(ctx, plan.ID, "Colazione")
 	varID, _ := np.CreateVariation(ctx, plan.ID, mtID, nil)
 
-	// Variante senza item: ancora false.
+	// A variant without items: still false.
 	has, _ = np.HasVariations(ctx, alice)
 	if has {
-		t.Error("atteso false con variante vuota")
+		t.Error("want false with an empty variant")
 	}
 
 	pane, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil, nil, nil, nil, nil)
@@ -106,9 +106,9 @@ func TestNutritionistHasVariations(t *testing.T) {
 		t.Fatalf("AddItem: %v", err)
 	}
 
-	// Ora c'e' un item: true.
+	// Now there is an item: true.
 	has, _ = np.HasVariations(ctx, alice)
 	if !has {
-		t.Error("atteso true con almeno un item")
+		t.Error("want true with at least one item")
 	}
 }

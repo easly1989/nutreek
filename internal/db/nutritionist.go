@@ -11,8 +11,8 @@ import (
 
 var ErrNutritionistItemNotFound = errors.New("elemento piano nutrizionista non trovato")
 
-// ErrNutritionistPlanNotFound e' restituito quando il piano richiesto non
-// esiste o non appartiene all'utente indicato.
+// ErrNutritionistPlanNotFound is returned when the requested plan does not
+// exist or does not belong to the given user.
 var ErrNutritionistPlanNotFound = errors.New("piano nutrizionista non trovato")
 
 type NutritionistPlans struct {
@@ -23,8 +23,8 @@ func NewNutritionistPlans(db *sql.DB) *NutritionistPlans {
 	return &NutritionistPlans{db: db}
 }
 
-// GetOrCreateActivePlan restituisce il piano attivo dell'utente, creandolo se
-// non esiste. Ogni utente ha sempre esattamente un piano attivo.
+// GetOrCreateActivePlan returns the user's active plan, creating it when it
+// does not exist. Every user always has exactly one active plan.
 func (n *NutritionistPlans) GetOrCreateActivePlan(ctx context.Context, userID int64) (*domain.NutritionistPlan, error) {
 	var plan domain.NutritionistPlan
 	var notes sql.NullString
@@ -45,7 +45,7 @@ func (n *NutritionistPlans) GetOrCreateActivePlan(ctx context.Context, userID in
 		return nil, fmt.Errorf("get nutritionist plan: %w", err)
 	}
 
-	// Crea il piano attivo.
+	// Create the active plan.
 	res, err := n.db.ExecContext(ctx,
 		`INSERT INTO nutritionist_plans (user_id, is_active) VALUES (?, 1)`, userID,
 	)
@@ -77,7 +77,7 @@ func (n *NutritionistPlans) getPlanByID(ctx context.Context, id int64) (*domain.
 	return &plan, nil
 }
 
-// CreatePlan crea un nuovo piano non attivo nella libreria dell'utente.
+// CreatePlan creates a new inactive plan in the user's library.
 func (n *NutritionistPlans) CreatePlan(ctx context.Context, userID int64, name string) (int64, error) {
 	res, err := n.db.ExecContext(ctx,
 		`INSERT INTO nutritionist_plans (user_id, name, is_active) VALUES (?, ?, 0)`,
@@ -90,7 +90,7 @@ func (n *NutritionistPlans) CreatePlan(ctx context.Context, userID int64, name s
 	return id, nil
 }
 
-// ListPlans restituisce tutti i piani dell'utente (attivo per primo).
+// ListPlans returns every plan of the user (the active one first).
 func (n *NutritionistPlans) ListPlans(ctx context.Context, userID int64) ([]domain.NutritionistPlan, error) {
 	rows, err := n.db.QueryContext(ctx,
 		`SELECT id, user_id, name, notes, is_active, created_at, updated_at
@@ -119,8 +119,8 @@ func (n *NutritionistPlans) ListPlans(ctx context.Context, userID int64) ([]doma
 	return out, rows.Err()
 }
 
-// GetPlanOwned restituisce il piano solo se appartiene all'utente,
-// altrimenti ErrNutritionistPlanNotFound.
+// GetPlanOwned returns the plan only when it belongs to the user,
+// otherwise ErrNutritionistPlanNotFound.
 func (n *NutritionistPlans) GetPlanOwned(ctx context.Context, planID, userID int64) (*domain.NutritionistPlan, error) {
 	plan, err := n.getPlanByID(ctx, planID)
 	if err != nil {
@@ -132,9 +132,9 @@ func (n *NutritionistPlans) GetPlanOwned(ctx context.Context, planID, userID int
 	return plan, nil
 }
 
-// SetActivePlan rende attivo il piano indicato (deve appartenere all'utente)
-// disattivando tutti gli altri. Transazionale: l'invariante "un solo piano
-// attivo" non viene mai violato.
+// SetActivePlan makes the given plan active (it must belong to the user) and
+// deactivates every other one. Transactional: the "one active plan"
+// invariant is never broken.
 func (n *NutritionistPlans) SetActivePlan(ctx context.Context, userID, planID int64) error {
 	tx, err := n.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -163,7 +163,7 @@ func (n *NutritionistPlans) SetActivePlan(ctx context.Context, userID, planID in
 	return tx.Commit()
 }
 
-// RenamePlan rinomina un piano dell'utente.
+// RenamePlan renames one of the user's plans.
 func (n *NutritionistPlans) RenamePlan(ctx context.Context, planID, userID int64, name string) error {
 	res, err := n.db.ExecContext(ctx,
 		`UPDATE nutritionist_plans SET name = ?, updated_at = CURRENT_TIMESTAMP
@@ -178,8 +178,8 @@ func (n *NutritionistPlans) RenamePlan(ctx context.Context, planID, userID int64
 	return nil
 }
 
-// DeletePlan cancella un piano non attivo dell'utente (il piano attivo non
-// si puo' cancellare: l'invariante richiede sempre un piano attivo).
+// DeletePlan deletes one of the user's inactive plans (the active plan cannot
+// be deleted: the invariant always needs an active plan).
 func (n *NutritionistPlans) DeletePlan(ctx context.Context, planID, userID int64) error {
 	res, err := n.db.ExecContext(ctx,
 		`DELETE FROM nutritionist_plans WHERE id = ? AND user_id = ? AND is_active = 0`,
@@ -194,8 +194,8 @@ func (n *NutritionistPlans) DeletePlan(ctx context.Context, planID, userID int64
 	return nil
 }
 
-// LoadPlanFull carica il piano attivo dell'utente completo di tipi pasto,
-// varianti e item, creandolo se non esiste.
+// LoadPlanFull loads the user's active plan with its meal types, variants and
+// items, creating it when it does not exist.
 func (n *NutritionistPlans) LoadPlanFull(ctx context.Context, userID int64) (*domain.NutritionistPlanFull, error) {
 	plan, err := n.GetOrCreateActivePlan(ctx, userID)
 	if err != nil {
@@ -204,9 +204,9 @@ func (n *NutritionistPlans) LoadPlanFull(ctx context.Context, userID int64) (*do
 	return n.loadFull(ctx, plan)
 }
 
-// LoadPlanFullByID carica un piano specifico per id, completo di contenuti.
-// Non verifica l'ownership: il chiamante deve autorizzare l'accesso (es.
-// coach proprietario o cliente con piano assegnato).
+// LoadPlanFullByID loads a specific plan by id, with its contents.
+// It does not check ownership: the caller must authorize the access (e.g.
+// the owning coach, or a client with the plan assigned).
 func (n *NutritionistPlans) LoadPlanFullByID(ctx context.Context, planID int64) (*domain.NutritionistPlanFull, error) {
 	plan, err := n.getPlanByID(ctx, planID)
 	if err != nil {
@@ -218,7 +218,7 @@ func (n *NutritionistPlans) LoadPlanFullByID(ctx context.Context, planID int64) 
 func (n *NutritionistPlans) loadFull(ctx context.Context, plan *domain.NutritionistPlan) (*domain.NutritionistPlanFull, error) {
 	full := &domain.NutritionistPlanFull{NutritionistPlan: *plan}
 
-	// Carica tipi pasto.
+	// Load the meal types.
 	typeRows, err := n.db.QueryContext(ctx,
 		`SELECT id, plan_id, name, sort_order FROM nutritionist_meal_types WHERE plan_id = ? ORDER BY sort_order, id`,
 		plan.ID,
@@ -247,7 +247,7 @@ func (n *NutritionistPlans) loadFull(ctx context.Context, plan *domain.Nutrition
 		return full, nil
 	}
 
-	// Carica variazioni.
+	// Load the variants.
 	varMap := make(map[int64][]domain.NutritionistVariationFull)
 	for _, tid := range typeIDs {
 		varRows, err := n.db.QueryContext(ctx,
@@ -272,7 +272,7 @@ func (n *NutritionistPlans) loadFull(ctx context.Context, plan *domain.Nutrition
 		varRows.Close()
 	}
 
-	// Carica items per ogni variazione e risolve recipe/ingredient.
+	// Load the items of each variant and resolve recipe/ingredient.
 	for i, mt := range mealTypes {
 		vars := varMap[mt.ID]
 		for j, v := range vars {
@@ -361,9 +361,9 @@ func scanNutritionistItem(rows *sql.Rows) (domain.NutritionistItem, error) {
 	return item, nil
 }
 
-// HasVariations indica se l'utente ha almeno una variante con almeno un item
-// nel proprio piano nutrizionista: requisito minimo per la generazione
-// automatica del piano settimanale.
+// HasVariations reports whether the user has at least one variant with at
+// least one item in their nutrition plan: the minimum requirement for
+// automatic weekly plan generation.
 func (n *NutritionistPlans) HasVariations(ctx context.Context, userID int64) (bool, error) {
 	var x int
 	err := n.db.QueryRowContext(ctx, `
@@ -383,8 +383,8 @@ func (n *NutritionistPlans) HasVariations(ctx context.Context, userID int64) (bo
 	return true, nil
 }
 
-// SearchSuggestedIngredients restituisce gli ingredienti del piano nutrizionista
-// che appartengono a un tipo pasto il cui nome corrisponde (case-insensitive) a mealTypeName.
+// SearchSuggestedIngredients returns the nutrition plan's ingredients that belong
+// to a meal type whose name matches mealTypeName (case-insensitive).
 func (n *NutritionistPlans) SearchSuggestedIngredients(ctx context.Context, userID int64, mealTypeName string) ([]*domain.Ingredient, error) {
 	rows, err := n.db.QueryContext(ctx,
 		`SELECT DISTINCT ing.id, ing.name, ing.brand, ing.unit,
@@ -450,8 +450,8 @@ func (n *NutritionistPlans) DeleteMealType(ctx context.Context, id, planID int64
 	return nil
 }
 
-// CreateVariation aggiunge una variante al tipo pasto mealTypeID, che deve
-// stare nel piano planID: altrimenti ErrNutritionistItemNotFound.
+// CreateVariation adds a variant to the meal type mealTypeID, which must be
+// in plan planID: otherwise ErrNutritionistItemNotFound.
 func (n *NutritionistPlans) CreateVariation(ctx context.Context, planID, mealTypeID int64, name *string) (int64, error) {
 	var ok int
 	err := n.db.QueryRowContext(ctx,
@@ -496,9 +496,9 @@ func (n *NutritionistPlans) DeleteVariation(ctx context.Context, id int64, planI
 	return nil
 }
 
-// AddItem aggiunge una voce alla variante variationID, che deve stare nel
-// piano planID (altrimenti ErrNutritionistItemNotFound). Una ricetta deve
-// essere visibile al proprietario del piano (altrimenti ErrRecipeNotFound).
+// AddItem adds an item to the variant variationID, which must be in plan
+// planID (otherwise ErrNutritionistItemNotFound). A recipe must be visible
+// to the plan's owner (otherwise ErrRecipeNotFound).
 func (n *NutritionistPlans) AddItem(ctx context.Context, planID, variationID int64, recipeID, ingredientID *int64, quantity float64, unit string) (int64, error) {
 	var owner int64
 	err := n.db.QueryRowContext(ctx, `
@@ -558,8 +558,8 @@ func (n *NutritionistPlans) DeleteItem(ctx context.Context, id, planID int64) er
 	return nil
 }
 
-// EnsureMealType crea un nutritionist_meal_type con il nome dato se non esiste già
-// (confronto case-insensitive). Idempotente.
+// EnsureMealType creates a nutritionist_meal_type with the given name when it
+// does not exist yet (case-insensitive comparison). Idempotent.
 func (n *NutritionistPlans) EnsureMealType(ctx context.Context, planID int64, name string) error {
 	_, err := n.db.ExecContext(ctx, `
 		INSERT INTO nutritionist_meal_types (plan_id, name, sort_order)

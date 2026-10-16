@@ -9,14 +9,14 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// Errori di dominio della relazione coach <-> cliente.
+// Domain errors of the coach <-> client relationship.
 var (
 	ErrCoachClientNotFound = errors.New("cliente non trovato")
 	ErrClientHasCoach      = errors.New("il cliente ha gia' un coach")
 )
 
-// CoachRepository gestisce la relazione coach -> clienti e l'assegnazione
-// dei piani della libreria del coach.
+// CoachRepository manages the coach -> clients relationship and the
+// assignment of plans from the coach's library.
 type CoachRepository struct {
 	db *sql.DB
 }
@@ -25,8 +25,8 @@ func NewCoachRepository(db *sql.DB) *CoachRepository {
 	return &CoachRepository{db: db}
 }
 
-// AddClient collega un cliente al coach. Il vincolo UNIQUE(client_id)
-// garantisce al massimo un coach per cliente.
+// AddClient links a client to the coach. The UNIQUE(client_id) constraint
+// guarantees at most one coach per client.
 func (c *CoachRepository) AddClient(ctx context.Context, coachID, clientID int64) error {
 	_, err := c.db.ExecContext(ctx,
 		`INSERT INTO coach_clients (coach_id, client_id) VALUES (?, ?)`,
@@ -40,7 +40,7 @@ func (c *CoachRepository) AddClient(ctx context.Context, coachID, clientID int64
 	return nil
 }
 
-// RemoveClient scollega il cliente dal coach.
+// RemoveClient unlinks the client from the coach.
 func (c *CoachRepository) RemoveClient(ctx context.Context, coachID, clientID int64) error {
 	res, err := c.db.ExecContext(ctx,
 		`DELETE FROM coach_clients WHERE coach_id = ? AND client_id = ?`,
@@ -55,7 +55,7 @@ func (c *CoachRepository) RemoveClient(ctx context.Context, coachID, clientID in
 	return nil
 }
 
-// ListClients restituisce i clienti del coach con il piano assegnato.
+// ListClients returns the coach's clients with their assigned plan.
 func (c *CoachRepository) ListClients(ctx context.Context, coachID int64) ([]domain.CoachClientInfo, error) {
 	rows, err := c.db.QueryContext(ctx,
 		`SELECT cc.id, cc.coach_id, cc.client_id, cc.assigned_plan_id, cc.assigned_at,
@@ -85,9 +85,9 @@ func (c *CoachRepository) ListClients(ctx context.Context, coachID int64) ([]dom
 	return out, rows.Err()
 }
 
-// AssignPlan assegna al cliente un piano della libreria del coach.
-// Verifica in un'unica UPDATE che il piano appartenga al coach e che il
-// cliente sia effettivamente suo.
+// AssignPlan assigns the client a plan from the coach's library.
+// A single UPDATE checks that the plan belongs to the coach and that the
+// client really is theirs.
 func (c *CoachRepository) AssignPlan(ctx context.Context, coachID, clientID, planID int64) error {
 	res, err := c.db.ExecContext(ctx,
 		`UPDATE coach_clients
@@ -105,7 +105,7 @@ func (c *CoachRepository) AssignPlan(ctx context.Context, coachID, clientID, pla
 	return nil
 }
 
-// UnassignPlan rimuove l'assegnazione: il cliente torna al proprio piano attivo.
+// UnassignPlan removes the assignment: the client goes back to their own active plan.
 func (c *CoachRepository) UnassignPlan(ctx context.Context, coachID, clientID int64) error {
 	res, err := c.db.ExecContext(ctx,
 		`UPDATE coach_clients SET assigned_plan_id = NULL
@@ -120,8 +120,8 @@ func (c *CoachRepository) UnassignPlan(ctx context.Context, coachID, clientID in
 	return nil
 }
 
-// GetAssignment restituisce la vista lato cliente (coach + piano assegnato),
-// o nil se il cliente non ha un coach.
+// GetAssignment returns the client-side view (coach + assigned plan),
+// or nil when the client has no coach.
 func (c *CoachRepository) GetAssignment(ctx context.Context, clientID int64) (*domain.CoachAssignment, error) {
 	var a domain.CoachAssignment
 	err := c.db.QueryRowContext(ctx,

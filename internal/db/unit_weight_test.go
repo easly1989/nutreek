@@ -8,8 +8,8 @@ import (
 	"github.com/amon2126/nutreek/internal/macros"
 )
 
-// Le voci in pezzi («pz») valgono quantita' × peso unitario: i loader
-// devono quindi portarsi dietro unit_weight_g dell'ingrediente (#126).
+// Items in pieces ("pz") count as quantity × unit weight, so the loaders must
+// carry the ingredient's unit_weight_g (#126).
 
 func TestLoadFullPezziPortaPesoUnitario(t *testing.T) {
 	store := newTestStore(t)
@@ -37,10 +37,10 @@ func TestLoadFullPezziPortaPesoUnitario(t *testing.T) {
 	}
 	it := full.Days[0][0].Items[0]
 	if it.Ingredient == nil || it.Ingredient.UnitWeightG == nil || *it.Ingredient.UnitWeightG != 150 {
-		t.Fatalf("UnitWeightG non caricato: %+v", it.Ingredient)
+		t.Fatalf("UnitWeightG not loaded: %+v", it.Ingredient)
 	}
 	if kcal := macros.ForMealItem(it).Kcal; !approxEqual(kcal, 78) {
-		t.Errorf("kcal di 1 pz di mela = %.2f, atteso 78 (150 g)", kcal)
+		t.Errorf("kcal of 1 pz of apple = %.2f, want 78 (150 g)", kcal)
 	}
 }
 
@@ -57,7 +57,7 @@ func TestShoppingPezziInGrammi(t *testing.T) {
 	plan, _ := plans.GetOrCreateForWeek(ctx, alice, monday)
 	peso := 150.0
 	mela, _ := ings.CreateLocal(ctx, "Mela", nil, "g", 52, 0.3, 13.8, 0.2, &alice, &peso, nil, nil, nil, nil, nil)
-	// Senza peso unitario noto la quantita' resta quella inserita.
+	// Without a known unit weight the quantity stays as entered.
 	kiwi, _ := ings.CreateLocal(ctx, "Kiwi", nil, "g", 61, 1.1, 14.7, 0.5, &alice, nil, nil, nil, nil, nil, nil)
 
 	m1, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "Spuntino")
@@ -86,16 +86,16 @@ func TestShoppingPezziInGrammi(t *testing.T) {
 	got := map[string]float64{}
 	for _, it := range full.Items {
 		got[it.Ingredient.Name] = it.TotalQuantity
-		// La lista mostra anche i pezzi, quindi le serve il peso per pezzo.
+		// The list also shows the pieces, so it needs the weight per piece.
 		if it.Ingredient.Name == "Mela" && (it.Ingredient.UnitWeightG == nil || *it.Ingredient.UnitWeightG != 150) {
-			t.Errorf("Mela: peso per pezzo = %v, atteso 150", it.Ingredient.UnitWeightG)
+			t.Errorf("Mela: weight per piece = %v, want 150", it.Ingredient.UnitWeightG)
 		}
 	}
 	if !approxEqual(got["Mela"], 400) { // 2 pz × 150 g + 100 g
-		t.Errorf("Mela = %.2f, atteso 400", got["Mela"])
+		t.Errorf("Mela = %.2f, want 400", got["Mela"])
 	}
 	if !approxEqual(got["Kiwi"], 1) {
-		t.Errorf("Kiwi = %.2f, atteso 1 (nessun peso unitario)", got["Kiwi"])
+		t.Errorf("Kiwi = %.2f, want 1 (no unit weight)", got["Kiwi"])
 	}
 }
 
@@ -123,9 +123,9 @@ func TestNutritionistPezziPortaPesoUnitario(t *testing.T) {
 	items := full.MealTypes[0].Variations[0].Items
 	ing := items[0].Ingredient
 	if ing == nil || ing.UnitWeightG == nil || *ing.UnitWeightG != 150 {
-		t.Fatalf("UnitWeightG non caricato: %+v", ing)
+		t.Fatalf("UnitWeightG not loaded: %+v", ing)
 	}
 	if kcal := macros.ForNutritionistVariation(items, nil).Kcal; !approxEqual(kcal, 78) {
-		t.Errorf("kcal variante con 1 pz di mela = %.2f, atteso 78", kcal)
+		t.Errorf("kcal of a variant with 1 pz of apple = %.2f, want 78", kcal)
 	}
 }

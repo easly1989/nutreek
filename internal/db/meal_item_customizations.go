@@ -8,8 +8,8 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// MealItemCustomizations gestisce le variazioni personalizzate degli ingredienti
-// per una singola occorrenza di ricetta in un pasto.
+// MealItemCustomizations manages the custom ingredient variations of a single
+// recipe occurrence in a meal.
 type MealItemCustomizations struct {
 	db *sql.DB
 }
@@ -18,21 +18,21 @@ func NewMealItemCustomizations(db *sql.DB) *MealItemCustomizations {
 	return &MealItemCustomizations{db: db}
 }
 
-// CustomizationInput e' la coppia ingrediente+quantita' da salvare.
+// CustomizationInput is the ingredient+quantity pair to store.
 type CustomizationInput struct {
 	IngredientID int64
 	Quantity     float64
 }
 
-// Replace sostituisce atomicamente tutte le personalizzazioni di un meal_item.
-// Se rows e' vuoto, rimuove tutte le personalizzazioni esistenti (reset).
-// Verifica ownership: l'item deve appartenere a un pasto del piano dell'utente.
+// Replace atomically replaces every customization of a meal_item.
+// When rows is empty it removes every existing customization (reset).
+// Checks ownership: the item must belong to a meal in the user's plan.
 func (r *MealItemCustomizations) Replace(
 	ctx context.Context,
 	mealItemID, userID int64,
 	rows []CustomizationInput,
 ) error {
-	// Verifica che meal_item appartenga all'utente tramite la catena
+	// Check the meal_item belongs to the user through the chain
 	// meal_items → meals → weekly_plans WHERE user_id = ?.
 	var ownerID int64
 	err := r.db.QueryRowContext(ctx, `
@@ -83,9 +83,9 @@ func (r *MealItemCustomizations) Replace(
 	return tx.Commit()
 }
 
-// ListForItems carica le personalizzazioni per una lista di meal_item_id,
-// inclusi i dati dell'ingrediente. Usato da LoadFull per la dashboard.
-// Ritorna una mappa meal_item_id → []MealItemCustomization.
+// ListForItems loads the customizations of a list of meal_item_id, with the
+// ingredient data. Used by LoadFull for the dashboard.
+// Returns a map meal_item_id → []MealItemCustomization.
 func (r *MealItemCustomizations) ListForItems(
 	ctx context.Context,
 	mealItemIDs []int64,
@@ -134,7 +134,7 @@ func (r *MealItemCustomizations) ListForItems(
 	return out, rows.Err()
 }
 
-// buildPlaceholders genera N placeholder "?" separati da virgola.
+// buildPlaceholders builds N comma-separated "?" placeholders.
 func buildPlaceholders(n int) string {
 	if n == 0 {
 		return ""

@@ -1,12 +1,12 @@
 -- +goose Up
 
--- Sottoscrizioni premium per utente. Predisposizione completa:
---   source      = come e' stata creata ('manual' dall'admin panel oggi;
---                 'license' o 'payment' in futuro senza cambi di schema)
---   license_key = chiave di licenza associata (futuro flusso Ed25519:
---                 l'attivazione di una licenza creera' semplicemente una
---                 riga qui, HasFeature non cambia)
---   expires_at  = NULL -> senza scadenza
+-- Premium subscriptions per user. Fully prepared:
+--   source      = how it was created ('manual' from the admin panel today;
+--                 'license' or 'payment' later, with no schema change)
+--   license_key = the license key attached (a future Ed25519 flow:
+--                 activating a license will simply create a row here,
+--                 HasFeature does not change)
+--   expires_at  = NULL -> no expiry
 CREATE TABLE subscriptions (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id     INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,

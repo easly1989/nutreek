@@ -1,8 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
 
--- Lista della spesa: una per (utente, settimana). week_count permette
--- di coprire piu' settimane consecutive in una sola spesa.
+-- Shopping list: one per (user, week). week_count lets one shopping trip
+-- cover several consecutive weeks.
 CREATE TABLE shopping_lists (
     id          INTEGER PRIMARY KEY,
     user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -12,9 +12,9 @@ CREATE TABLE shopping_lists (
     UNIQUE(user_id, week_start)
 );
 
--- Item generati automaticamente dall'aggregazione del piano. UNIQUE
--- (shopping_list_id, ingredient_id) abilita preservare lo stato checked
--- su rigenerazione (DELETE-then-INSERT con merge).
+-- Items generated automatically by aggregating the plan. UNIQUE
+-- (shopping_list_id, ingredient_id) makes it possible to keep the checked
+-- state on regeneration (DELETE-then-INSERT with a merge).
 CREATE TABLE shopping_list_items (
     id                INTEGER PRIMARY KEY,
     shopping_list_id  INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
@@ -25,9 +25,9 @@ CREATE TABLE shopping_list_items (
     UNIQUE(shopping_list_id, ingredient_id)
 );
 
--- Item aggiunti a mano dall'utente: testo libero (description + quantity).
--- Persistono fra rigenerazioni della lista (l'algoritmo Generate non
--- tocca questa tabella).
+-- Items the user adds by hand: free text (description + quantity).
+-- They persist across list regenerations (the Generate algorithm does not
+-- touch this table).
 CREATE TABLE shopping_user_items (
     id                INTEGER PRIMARY KEY,
     shopping_list_id  INTEGER NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,

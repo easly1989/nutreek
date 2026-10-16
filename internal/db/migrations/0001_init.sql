@@ -10,10 +10,10 @@ CREATE TABLE users (
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Ingredienti (condivisi fra tutti gli utenti).
--- `source='openfoodfacts'` => provenienza da OFF (macro sola lettura).
--- `source='local'` => inserito a mano da un utente, candidato alla
--- riconciliazione automatica contro OFF (vedi `last_verified_at`).
+-- Ingredients (shared by every user).
+-- `source='openfoodfacts'` => comes from OFF (macros read-only).
+-- `source='local'` => entered by hand by a user, a candidate for automatic
+-- reconciliation against OFF (see `last_verified_at`).
 CREATE TABLE ingredients (
     id               INTEGER PRIMARY KEY,
     source           TEXT    NOT NULL CHECK(source IN ('openfoodfacts','local')),
@@ -56,7 +56,7 @@ CREATE TABLE recipe_ingredients (
 );
 CREATE INDEX idx_recipe_ingredients_recipe ON recipe_ingredients(recipe_id);
 
--- Template pasti riutilizzabili
+-- Reusable meal templates
 CREATE TABLE meal_templates (
     id         INTEGER PRIMARY KEY,
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -73,7 +73,7 @@ CREATE TABLE meal_template_slots (
     sort_order   INTEGER NOT NULL DEFAULT 0
 );
 
--- Piano settimanale concreto (una riga per utente+settimana)
+-- Concrete weekly plan (one row per user+week)
 CREATE TABLE weekly_plans (
     id          INTEGER PRIMARY KEY,
     user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -91,8 +91,8 @@ CREATE TABLE meals (
 );
 CREATE INDEX idx_meals_plan_day ON meals(weekly_plan_id, day_of_week);
 
--- Righe di un pasto: o un ingrediente ad hoc (quantita in grammi/ml)
--- o una ricetta (quantita in "porzioni"). Esattamente uno dei due.
+-- Rows of a meal: either an ad hoc ingredient (quantity in grams/ml)
+-- or a recipe (quantity in "servings"). Exactly one of the two.
 CREATE TABLE meal_items (
     id            INTEGER PRIMARY KEY,
     meal_id       INTEGER NOT NULL REFERENCES meals(id) ON DELETE CASCADE,

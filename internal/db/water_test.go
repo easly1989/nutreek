@@ -18,12 +18,12 @@ func TestWaterLogTotalAndDelete(t *testing.T) {
 	}
 	day := time.Date(2026, 6, 4, 0, 0, 0, 0, time.UTC)
 
-	// Nessun log: totale 0.
+	// No logs: total 0.
 	if total, _ := water.TotalForDate(ctx, uid, day); total != 0 {
-		t.Fatalf("totale iniziale atteso 0, got %d", total)
+		t.Fatalf("initial total want 0, got %d", total)
 	}
 
-	// Tre quick-log si sommano.
+	// Three quick logs add up.
 	for _, ml := range []int{200, 250, 500} {
 		if err := water.Log(ctx, uid, day, ml); err != nil {
 			t.Fatalf("Log %d: %v", ml, err)
@@ -34,20 +34,20 @@ func TestWaterLogTotalAndDelete(t *testing.T) {
 		t.Fatalf("TotalForDate: %v", err)
 	}
 	if total != 950 {
-		t.Fatalf("totale atteso 950, got %d", total)
+		t.Fatalf("total want 950, got %d", total)
 	}
 
-	// DeleteLast rimuove solo l'ultimo (500).
+	// DeleteLast removes only the last one (500).
 	if err := water.DeleteLast(ctx, uid, day); err != nil {
 		t.Fatalf("DeleteLast: %v", err)
 	}
 	if total, _ := water.TotalForDate(ctx, uid, day); total != 450 {
-		t.Fatalf("dopo delete atteso 450, got %d", total)
+		t.Fatalf("after delete want 450, got %d", total)
 	}
 
-	// amount non positivo è rifiutato.
+	// A non-positive amount is rejected.
 	if err := water.Log(ctx, uid, day, 0); err == nil {
-		t.Fatalf("Log(0) doveva fallire")
+		t.Fatalf("Log(0) should have failed")
 	}
 }
 
@@ -58,7 +58,7 @@ func TestWaterForDateRange(t *testing.T) {
 	ctx := context.Background()
 
 	uid, _ := users.Create(ctx, "range@example.com", "h", "Tester")
-	base := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC) // lunedì
+	base := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC) // Monday
 
 	_ = water.Log(ctx, uid, base, 300)
 	_ = water.Log(ctx, uid, base, 200)                   // lun: 500
@@ -69,13 +69,13 @@ func TestWaterForDateRange(t *testing.T) {
 		t.Fatalf("ForDateRange: %v", err)
 	}
 	if m["2026-06-01"] != 500 {
-		t.Errorf("lun atteso 500, got %d", m["2026-06-01"])
+		t.Errorf("Mon want 500, got %d", m["2026-06-01"])
 	}
 	if m["2026-06-03"] != 1000 {
-		t.Errorf("mer atteso 1000, got %d", m["2026-06-03"])
+		t.Errorf("Wed want 1000, got %d", m["2026-06-03"])
 	}
 	if _, ok := m["2026-06-02"]; ok {
-		t.Errorf("mar senza log non deve comparire")
+		t.Errorf("Tue has no logs and must not appear")
 	}
 }
 
@@ -90,24 +90,24 @@ func TestWaterTargetDefaultAndUpdate(t *testing.T) {
 		t.Fatalf("GetByID: %v", err)
 	}
 	if u.WaterTargetML != 2000 {
-		t.Fatalf("default target atteso 2000, got %d", u.WaterTargetML)
+		t.Fatalf("default target want 2000, got %d", u.WaterTargetML)
 	}
 
-	// UpdateProfile con WaterTargetML=0 NON deve azzerare il default.
+	// UpdateProfile with WaterTargetML=0 must NOT clear the default.
 	if err := users.UpdateProfile(ctx, uid, UserProfileInput{WaterTargetML: 0}); err != nil {
 		t.Fatalf("UpdateProfile(0): %v", err)
 	}
 	u, _ = users.GetByID(ctx, uid)
 	if u.WaterTargetML != 2000 {
-		t.Fatalf("dopo update con sentinella 0, atteso 2000, got %d", u.WaterTargetML)
+		t.Fatalf("after an update with the 0 sentinel, want 2000, got %d", u.WaterTargetML)
 	}
 
-	// Valore esplicito viene salvato.
+	// An explicit value is saved.
 	if err := users.UpdateProfile(ctx, uid, UserProfileInput{WaterTargetML: 2500}); err != nil {
 		t.Fatalf("UpdateProfile(2500): %v", err)
 	}
 	u, _ = users.GetByID(ctx, uid)
 	if u.WaterTargetML != 2500 {
-		t.Fatalf("atteso 2500, got %d", u.WaterTargetML)
+		t.Fatalf("want 2500, got %d", u.WaterTargetML)
 	}
 }

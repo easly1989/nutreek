@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
--- Schema richiesto da alexedwards/scs/sqlite3store.
+-- Schema required by alexedwards/scs/sqlite3store.
 CREATE TABLE sessions (
     token  TEXT    PRIMARY KEY,
     data   BLOB    NOT NULL,

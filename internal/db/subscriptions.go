@@ -10,10 +10,10 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// ErrSubscriptionNotFound e' restituito quando l'utente non ha sottoscrizioni.
+// ErrSubscriptionNotFound is returned when the user has no subscription.
 var ErrSubscriptionNotFound = errors.New("sottoscrizione non trovata")
 
-// Subscriptions e' il repository delle sottoscrizioni premium.
+// Subscriptions is the premium subscriptions repository.
 type Subscriptions struct {
 	db *sql.DB
 }
@@ -22,7 +22,7 @@ func NewSubscriptions(db *sql.DB) *Subscriptions {
 	return &Subscriptions{db: db}
 }
 
-// GetByUser ritorna la sottoscrizione dell'utente o ErrSubscriptionNotFound.
+// GetByUser returns the user's subscription or ErrSubscriptionNotFound.
 func (s *Subscriptions) GetByUser(ctx context.Context, userID int64) (*domain.Subscription, error) {
 	row := s.db.QueryRowContext(ctx,
 		`SELECT id, user_id, plan, status, source, license_key, started_at, expires_at, COALESCE(notes,'')
@@ -30,9 +30,9 @@ func (s *Subscriptions) GetByUser(ctx context.Context, userID int64) (*domain.Su
 	return scanSubscription(row)
 }
 
-// IsActive ritorna true se l'utente ha una sottoscrizione attiva e non scaduta.
-// Il confronto scadenza avviene in Go per evitare ambiguita' di formato
-// timestamp in SQLite.
+// IsActive reports whether the user has an active, unexpired subscription.
+// The expiry comparison happens in Go to avoid ambiguity over the timestamp
+// format in SQLite.
 func (s *Subscriptions) IsActive(ctx context.Context, userID int64) (bool, error) {
 	sub, err := s.GetByUser(ctx, userID)
 	if errors.Is(err, ErrSubscriptionNotFound) {
@@ -44,8 +44,8 @@ func (s *Subscriptions) IsActive(ctx context.Context, userID int64) (bool, error
 	return sub.IsActive(time.Now()), nil
 }
 
-// Grant crea o riattiva la sottoscrizione premium dell'utente (upsert).
-// expiresAt nil = senza scadenza. licenseKey vuota = nessuna licenza associata.
+// Grant creates or reactivates the user's premium subscription (upsert).
+// expiresAt nil = no expiry. An empty licenseKey = no license attached.
 func (s *Subscriptions) Grant(ctx context.Context, userID int64, source string, expiresAt *time.Time, licenseKey, notes string) error {
 	var key *string
 	if licenseKey != "" {
@@ -68,7 +68,7 @@ func (s *Subscriptions) Grant(ctx context.Context, userID int64, source string, 
 	return nil
 }
 
-// Revoke disattiva la sottoscrizione dell'utente (la riga resta per audit).
+// Revoke deactivates the user's subscription (the row stays for auditing).
 func (s *Subscriptions) Revoke(ctx context.Context, userID int64) error {
 	_, err := s.db.ExecContext(ctx,
 		`UPDATE subscriptions SET status = 'revoked' WHERE user_id = ?`, userID)
@@ -78,8 +78,8 @@ func (s *Subscriptions) Revoke(ctx context.Context, userID int64) error {
 	return nil
 }
 
-// MapByUser ritorna tutte le sottoscrizioni indicizzate per user_id,
-// per la pagina admin utenti.
+// MapByUser returns every subscription indexed by user_id,
+// for the admin users page.
 func (s *Subscriptions) MapByUser(ctx context.Context) (map[int64]*domain.Subscription, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, user_id, plan, status, source, license_key, started_at, expires_at, COALESCE(notes,'')
@@ -100,8 +100,8 @@ func (s *Subscriptions) MapByUser(ctx context.Context) (map[int64]*domain.Subscr
 	return out, rows.Err()
 }
 
-// CountActive conta le sottoscrizioni con status='active' (la scadenza non
-// viene valutata qui: e' un contatore indicativo per la dashboard admin).
+// CountActive counts the subscriptions with status='active' (expiry is not
+// evaluated here: it is an indicative counter for the admin dashboard).
 func (s *Subscriptions) CountActive(ctx context.Context) (int, error) {
 	var n int
 	err := s.db.QueryRowContext(ctx,
