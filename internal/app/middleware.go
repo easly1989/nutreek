@@ -128,20 +128,20 @@ func (a *App) requireAPIToken(next http.Handler) http.Handler {
 		if !ok || plain == "" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "token mancante"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
 			return
 		}
 		user, err := a.APITokens.Authenticate(r.Context(), plain)
 		if errors.Is(err, db.ErrAPITokenNotFound) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "token non valido"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
 			return
 		}
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "errore interno"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "internal error"})
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(contextWithUser(r.Context(), user)))

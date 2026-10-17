@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -242,9 +243,7 @@ func TestEnglishShoppingStatsWeightProfile(t *testing.T) {
 		if p.form != nil {
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}
-		if lang != "" {
-			req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-		}
+		req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 		for _, c := range cookies {
 			req.AddCookie(c)
 		}

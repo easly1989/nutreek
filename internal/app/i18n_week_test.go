@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"fmt"
 	"mime/multipart"
@@ -289,9 +290,7 @@ func TestEnglishWeekAndPicker(t *testing.T) {
 		default:
 			req = httptest.NewRequest(method, c.target, nil)
 		}
-		if lang != "" {
-			req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-		}
+		req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 		for _, ck := range cookies {
 			req.AddCookie(ck)
 		}
@@ -403,9 +402,7 @@ func TestEnglishWeekAndPicker(t *testing.T) {
 		}
 		get := func(lang, query string) string {
 			req := httptest.NewRequest(http.MethodGet, picker(m, query), nil)
-			if lang != "" {
-				req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-			}
+			req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("mealID", strconv.FormatInt(m, 10))
 			req = requestWithUser(req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx)), cat)

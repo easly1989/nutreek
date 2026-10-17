@@ -46,4 +46,7 @@ type User struct {
 
 	// Daily hydration target in ml (default 2000, never NULL).
 	WaterTargetML int
+
+	// Locale is the interface language the user picked; "" follows the browser.
+	Locale string
 }

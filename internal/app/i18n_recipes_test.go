@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -48,9 +49,7 @@ func (e *rpEnv) do(lang string, q rpReq) *httptest.ResponseRecorder {
 	if q.form != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	if lang != "" {
-		req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-	}
+	req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 	for _, c := range q.cookies {
 		req.AddCookie(c)
 	}
@@ -466,9 +465,7 @@ func TestEnglishRecipesPlanAndTemplates(t *testing.T) {
 // requestWithLang is a request that carries a language, to call a.t.
 func requestWithLang(lang string) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	if lang != "" {
-		req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-	}
+	req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 	var out *http.Request
 	languageMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { out = r })).
 		ServeHTTP(httptest.NewRecorder(), req)

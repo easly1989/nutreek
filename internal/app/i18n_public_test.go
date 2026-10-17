@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"io/fs"
@@ -120,9 +121,7 @@ func TestEnglishPublicPagesAndOnboarding(t *testing.T) {
 		if p.form != nil {
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}
-		if lang != "" {
-			req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-		}
+		req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 		if !p.anon {
 			viewer := user
 			if strings.Contains(p.name, "with templates") {
@@ -241,9 +240,7 @@ func TestRateLimitMessageLanguage(t *testing.T) {
 		var body string
 		for range 2 {
 			req := httptest.NewRequest(http.MethodPost, "/register", nil)
-			if lang != "" {
-				req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-			}
+			req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)
 			body = rec.Body.String()
@@ -259,9 +256,7 @@ func TestManifestLanguage(t *testing.T) {
 	a := newTestApp(t)
 	for lang, want := range map[string][2]string{"en": {"en", "Weekly meal plans, macros and a shopping list."}, "": {"it", "Piani alimentari settimanali, macro e lista della spesa."}} {
 		req := httptest.NewRequest(http.MethodGet, "/manifest.webmanifest", nil)
-		if lang != "" {
-			req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-		}
+		req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 		rec := httptest.NewRecorder()
 		a.Router().ServeHTTP(rec, req)
 		var m struct{ Lang, Description string }

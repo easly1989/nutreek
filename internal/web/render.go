@@ -117,7 +117,9 @@ func funcMap(lang string) template.FuncMap {
 		// arguments are placeholder name/value pairs: {{t "x.count" "Count" 3}}.
 		"t":    func(key string, args ...any) string { return i18n.T(lang, key, args...) },
 		"lang": func() string { return lang },
-		"add":  func(a, b int) int { return a + b },
+		// languages lists the languages the interface speaks, for the pickers.
+		"languages": func() []i18n.Language { return i18n.Languages },
+		"add":       func(a, b int) int { return a + b },
 		// ref shows reference data from the database (allergens, activities)
 		// by its stable code: {{ref "allergen" .Code .Name}}. Without a code
 		// or a translation it shows the stored name.
