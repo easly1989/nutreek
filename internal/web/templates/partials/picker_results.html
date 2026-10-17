@@ -92,7 +92,7 @@
     {{end}}
     <span class="grow min-w-0">
       <span class="block truncate"><b class="font-semibold">{{$r.Name}}</b>{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
-      {{if $r.Allergens}}<span class="flex flex-wrap gap-1 mt-0.5">{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px]">{{.Name}}</span>{{end}}</span>{{end}}
+      {{if $r.Allergens}}<span class="flex flex-wrap gap-1 mt-0.5">{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px]">{{ref "allergen" .Code .Name}}</span>{{end}}</span>{{end}}
     </span>
     <span class="text-right leading-tight tabular-nums whitespace-nowrap">
       {{if $r.HasFullNutrients}}<b>{{num $r.Kcal}}</b> <span class="text-[12.5px] text-muted">{{t "picker.kcal_per_100" "Unit" $r.Unit}}</span>{{else}}<span class="text-[12.5px] text-muted">{{t "picker.macros_from_off"}}</span>{{end}}

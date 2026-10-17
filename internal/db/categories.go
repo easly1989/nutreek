@@ -76,7 +76,7 @@ func (c *Categories) DeleteCategory(ctx context.Context, id, userID int64) error
 
 func (c *Categories) ListAllergens(ctx context.Context) ([]domain.AllergenTag, error) {
 	rows, err := c.db.QueryContext(ctx,
-		`SELECT id, name FROM allergen_tags ORDER BY name`,
+		`SELECT id, COALESCE(code, ''), name FROM allergen_tags ORDER BY name`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list allergens: %w", err)
@@ -86,7 +86,7 @@ func (c *Categories) ListAllergens(ctx context.Context) ([]domain.AllergenTag, e
 	var tags []domain.AllergenTag
 	for rows.Next() {
 		var t domain.AllergenTag
-		if err := rows.Scan(&t.ID, &t.Name); err != nil {
+		if err := rows.Scan(&t.ID, &t.Code, &t.Name); err != nil {
 			return nil, fmt.Errorf("scan allergen: %w", err)
 		}
 		tags = append(tags, t)
@@ -159,7 +159,7 @@ func (c *Categories) AllergensForIngredients(ctx context.Context, ingredientIDs 
 	}
 
 	rows, err := c.db.QueryContext(ctx,
-		`SELECT ia.ingredient_id, at.id, at.name
+		`SELECT ia.ingredient_id, at.id, COALESCE(at.code, ''), at.name
 		   FROM ingredient_allergens ia
 		   JOIN allergen_tags at ON at.id = ia.allergen_id
 		  WHERE ia.ingredient_id IN (`+strings.Join(placeholders, ",")+`)
@@ -174,7 +174,7 @@ func (c *Categories) AllergensForIngredients(ctx context.Context, ingredientIDs 
 	for rows.Next() {
 		var ingID int64
 		var tag domain.AllergenTag
-		if err := rows.Scan(&ingID, &tag.ID, &tag.Name); err != nil {
+		if err := rows.Scan(&ingID, &tag.ID, &tag.Code, &tag.Name); err != nil {
 			return nil, fmt.Errorf("scan allergen row: %w", err)
 		}
 		out[ingID] = append(out[ingID], tag)

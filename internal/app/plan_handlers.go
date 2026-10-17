@@ -40,7 +40,6 @@ type dashboardData struct {
 
 type dayView struct {
 	Index    int       // 0..6
-	Label    string    // "Lunedi'" etc.
 	Date     time.Time // data effettiva
 	Meals    []mealView
 	DayTotal macros.Macros
@@ -141,10 +140,6 @@ type newMealForm struct {
 	Name      string
 }
 
-var dayLabelsFull = [7]string{
-	"Lunedi'", "Martedi'", "Mercoledi'", "Giovedi'", "Venerdi'", "Sabato", "Domenica",
-}
-
 // ---- helpers ---------------------------------------------------------------
 
 func formatDate(t time.Time) string { return t.Format("2006-01-02") }
@@ -177,7 +172,6 @@ func buildDayViews(full *domain.WeeklyPlanFull, weekStart time.Time) []dayView {
 	for d := 0; d < 7; d++ {
 		dv := dayView{
 			Index: d,
-			Label: dayLabelsFull[d],
 			Date:  weekStart.AddDate(0, 0, d),
 		}
 		for _, m := range full.Days[d] {

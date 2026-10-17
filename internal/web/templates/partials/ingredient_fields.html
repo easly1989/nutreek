@@ -63,7 +63,7 @@
     {{range .Allergens}}
       <label class="filter cursor-pointer has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent">
         <input type="checkbox" name="allergen_ids" value="{{.ID}}" class="peer sr-only"{{if index $.SelectedAllergens .ID}} checked{{end}}{{if $ro}} disabled{{end}}>
-        <span class="hidden peer-checked:inline">{{template "icon_sm" "i-check"}}</span>{{.Name}}
+        <span class="hidden peer-checked:inline">{{template "icon_sm" "i-check"}}</span>{{ref "allergen" .Code .Name}}
       </label>
     {{end}}
   </div>

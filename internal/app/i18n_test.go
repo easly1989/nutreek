@@ -20,12 +20,12 @@ import (
 )
 
 // italianWords are words that give away Italian text in an English page
-// ("per" is left out: English has it too).
+// ("per" and "tue" are left out: English has them too).
 var italianWords = map[string]bool{}
 
 func init() {
 	for _, w := range strings.Fields(`di da dal dalla il la le lo gli del della dei delle con non una uno che
-		sono alla nel nella tuoi tue tuo tua ancora cerca cerco nuovo nuova salva modifica annulla chiudi
+		sono alla nel nella tuoi tuo tua ancora cerca cerco nuovo nuova salva modifica annulla chiudi
 		esci settimana ricette ingredienti ingrediente spesa impostazioni errore pagina aspetto colore
 		peso profilo altro categoria allergene allergeni tutti tutte nessun nessuna prodotto nome marca
 		porzione valori grassi proteine carboidrati zuccheri sodio fibre importa codice indietro torna

@@ -26,6 +26,7 @@ type statsWeek struct {
 
 // statsInput is everything needed to build the page.
 type statsInput struct {
+	Lang          string             // number and date formats
 	Weeks         []statsWeek        // from the oldest to the most recent
 	Weights       []domain.WeightLog // in date order
 	TDEE          *service.TDEEReport
@@ -76,13 +77,6 @@ type statsView struct {
 	HasWorkout, HasCheats, HasWater                 bool
 }
 
-var monthsShortIT = [12]string{"gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"}
-
-// shortDateIT writes a date as on the chart axes: «12 ott».
-func shortDateIT(t time.Time) string {
-	return fmt.Sprintf("%d %s", t.Day(), monthsShortIT[t.Month()-1])
-}
-
 func buildStatsView(in statsInput) statsView {
 	var v statsView
 	n := len(in.Weeks)
@@ -108,7 +102,7 @@ func buildStatsView(in statsInput) statsView {
 	var days, weeksWithMeals, workouts, cheats, waterWeeks, tdeePoints int
 	var workoutKcal, waterL float64
 	for i, w := range in.Weeks {
-		c.Labels[i] = shortDateIT(w.Start)
+		c.Labels[i] = web.ShortDate(in.Lang, w.Start)
 		row := statsWeekRow{Start: w.Start, DaysLogged: w.DaysLogged, Adherence: w.Adherence, HasAdherence: w.Planned}
 		if w.DaysLogged > 0 {
 			d := float64(w.DaysLogged)
@@ -151,7 +145,7 @@ func buildStatsView(in statsInput) statsView {
 			continue
 		}
 		weights = append(weights, wl)
-		c.WeightLabels = append(c.WeightLabels, shortDateIT(wl.MeasuredAt))
+		c.WeightLabels = append(c.WeightLabels, web.ShortDate(in.Lang, wl.MeasuredAt))
 		c.Weight = append(c.Weight, wl.WeightKg)
 	}
 	v.HasWeight = len(weights) >= 2
@@ -162,19 +156,19 @@ func buildStatsView(in statsInput) statsView {
 	if days > 0 {
 		v.AvgDayKcal = kcal / float64(days)
 		v.HasMacro = true
-		day.Value = web.FormatNum(v.AvgDayKcal)
+		day.Value = web.FormatNum(in.Lang, v.AvgDayKcal)
 	}
 	if in.TargetKcal > 0 {
-		day.Sub = "obiettivo " + web.FormatNum(in.TargetKcal)
+		day.Sub = "obiettivo " + web.FormatNum(in.Lang, in.TargetKcal)
 	}
 
 	weight := statsTile{Label: "Peso", Value: dash, Unit: "kg", Sub: "nessuna pesata"}
 	if len(weights) > 0 {
 		last := weights[len(weights)-1]
-		weight.Value = web.FormatDec(last.WeightKg, 1)
+		weight.Value = web.FormatDec(in.Lang, last.WeightKg, 1)
 		weight.Sub = "una sola pesata"
 		if len(weights) >= 2 {
-			weight.Sub = weightTrend(last.WeightKg-weights[0].WeightKg, last.MeasuredAt.Sub(weights[0].MeasuredAt))
+			weight.Sub = weightTrend(in.Lang, last.WeightKg-weights[0].WeightKg, last.MeasuredAt.Sub(weights[0].MeasuredAt))
 		}
 	}
 
@@ -182,11 +176,11 @@ func buildStatsView(in statsInput) statsView {
 	cheat := statsTile{Label: "Sgarri", Value: dash, Unit: "a settimana"}
 	if weeksWithMeals > 0 {
 		wm := float64(weeksWithMeals)
-		work.Value = web.FormatDec(float64(workouts)/wm, 1)
+		work.Value = web.FormatDec(in.Lang, float64(workouts)/wm, 1)
 		if workoutKcal > 0 {
-			work.Sub = web.FormatNum(workoutKcal/wm) + " kcal in media"
+			work.Sub = web.FormatNum(in.Lang, workoutKcal/wm) + " kcal in media"
 		}
-		cheat.Value = web.FormatDec(float64(cheats)/wm, 1)
+		cheat.Value = web.FormatDec(in.Lang, float64(cheats)/wm, 1)
 	}
 	switch {
 	case in.StreakDays == 1:
@@ -197,10 +191,10 @@ func buildStatsView(in statsInput) statsView {
 
 	water := statsTile{Label: "Acqua", Value: dash, Unit: "l al giorno"}
 	if waterWeeks > 0 {
-		water.Value = web.FormatDec(waterL/float64(waterWeeks), 1)
+		water.Value = web.FormatDec(in.Lang, waterL/float64(waterWeeks), 1)
 	}
 	if in.WaterTargetML > 0 {
-		water.Sub = "obiettivo " + web.FormatDec(c.WaterTarget, 1) + " l"
+		water.Sub = "obiettivo " + web.FormatDec(in.Lang, c.WaterTarget, 1) + " l"
 	}
 
 	v.Tiles = []statsTile{day, weight, work, cheat, water}
@@ -208,11 +202,11 @@ func buildStatsView(in statsInput) statsView {
 }
 
 // weightTrend describes the weight change: «−1,6 kg in 2 settimane».
-func weightTrend(delta float64, span time.Duration) string {
+func weightTrend(lang string, delta float64, span time.Duration) string {
 	if math.Abs(delta) < 0.05 {
 		return "stabile"
 	}
-	s := web.FormatDec(math.Abs(delta), 1) + " kg"
+	s := web.FormatDec(lang, math.Abs(delta), 1) + " kg"
 	if delta < 0 {
 		s = "−" + s
 	} else {
