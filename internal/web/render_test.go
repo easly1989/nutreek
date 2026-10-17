@@ -48,7 +48,7 @@ func TestFormatDec(t *testing.T) {
 }
 
 func TestMonthName(t *testing.T) {
-	monthName := funcMap()["monthName"].(func(time.Time) string)
+	monthName := funcMap("it")["monthName"].(func(time.Time) string)
 	if got := monthName(time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC)); got != "ottobre" {
 		t.Errorf("monthName(15/10) = %q", got)
 	}

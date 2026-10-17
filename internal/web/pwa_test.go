@@ -18,7 +18,7 @@ func TestStaticVersion(t *testing.T) {
 // The CSS and JS links carry the version: after a release the URL changes and
 // the service worker no longer answers with the old files.
 func TestAssetURLVersioned(t *testing.T) {
-	asset := funcMap()["asset"].(func(string) string)
+	asset := funcMap("it")["asset"].(func(string) string)
 	if got, want := asset("css/tailwind.css"), "/static/css/tailwind.css?v="+StaticVersion(); got != want {
 		t.Errorf("asset = %q, want %q", got, want)
 	}

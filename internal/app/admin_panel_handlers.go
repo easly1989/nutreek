@@ -73,7 +73,7 @@ func (a *App) handleAdminPanel(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if err := a.Render.Render(w, http.StatusOK, "admin_panel", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "admin_panel", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -199,7 +199,7 @@ func (a *App) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 		PremiumEnabled: a.Cfg.PremiumEnabled,
 		Now:            now,
 	}
-	if err := a.Render.Render(w, http.StatusOK, "admin_users", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "admin_users", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -306,7 +306,7 @@ func (a *App) handleUpgradePage(w http.ResponseWriter, r *http.Request) {
 		HasPremium:      hasPremium,
 		PremiumEnabled:  a.Cfg.PremiumEnabled,
 	}
-	if err := a.Render.Render(w, http.StatusOK, "upgrade", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "upgrade", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }

@@ -12,12 +12,15 @@
       '<div class="menu-panel max-w-sm w-full p-5">' +
         '<p class="text-text mb-5 leading-relaxed" id="_confirm-msg"></p>' +
         '<div class="flex justify-end gap-2">' +
-          '<button id="_confirm-cancel" class="btn-secondary">Annulla</button>' +
-          '<button id="_confirm-ok" class="btn bg-danger text-surface hover:opacity-90">Conferma</button>' +
+          '<button id="_confirm-cancel" class="btn-secondary"></button>' +
+          '<button id="_confirm-ok" class="btn bg-danger text-surface hover:opacity-90"></button>' +
         '</div>' +
       '</div>';
 
     overlay.querySelector('#_confirm-msg').textContent = message;
+    // The labels come translated from <body data-confirm-ok/-cancel>.
+    overlay.querySelector('#_confirm-cancel').textContent = document.body.dataset.confirmCancel;
+    overlay.querySelector('#_confirm-ok').textContent = document.body.dataset.confirmOk;
     document.body.appendChild(overlay);
 
     var cancel = overlay.querySelector('#_confirm-cancel');

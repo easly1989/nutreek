@@ -89,7 +89,7 @@ func (a *App) handleTemplatesList(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleTemplateNewForm(w http.ResponseWriter, r *http.Request) {
 	data := templateNewData{authPageData: a.baseData(r)}
-	if err := a.Render.Render(w, http.StatusOK, "template_new", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "template_new", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -103,7 +103,7 @@ func (a *App) handleTemplateCreate(w http.ResponseWriter, r *http.Request) {
 			msg = "Nome troppo lungo (max 200 caratteri)."
 		}
 		data := templateNewData{authPageData: a.baseData(r), Name: name, Error: msg}
-		if err := a.Render.Render(w, http.StatusUnprocessableEntity, "template_new", data); err != nil {
+		if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "template_new", data); err != nil {
 			a.serverError(w, r, err)
 		}
 		return
@@ -161,7 +161,7 @@ func (a *App) renderTemplateEdit(
 	if nameErr != "" || slotErr != "" {
 		status = http.StatusUnprocessableEntity
 	}
-	if err := a.Render.Render(w, status, "template_edit", data); err != nil {
+	if err := a.Render.Render(w, r, status, "template_edit", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }

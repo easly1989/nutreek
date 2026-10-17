@@ -46,6 +46,7 @@ func (a *App) Router() http.Handler {
 	r.Use(middleware.StripSlashes)
 	r.Use(securityHeaders)
 	r.Use(requestIDMiddleware)
+	r.Use(languageMiddleware)
 	r.Use(a.requestLogger)
 	r.Use(a.Sessions.LoadAndSave)
 	r.Use(a.csrfMiddleware)

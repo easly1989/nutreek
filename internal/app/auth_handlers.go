@@ -50,7 +50,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 	return authPageData{
 		User:       user,
 		CSRFToken:  nosurf.Token(r),
-		Flash:      a.Sessions.PopString(r.Context(), "flash"),
+		Flash:      a.t(r, a.Sessions.PopString(r.Context(), "flash")),
 		Appearance: readAppearance(r),
 		ActiveNav:  r.URL.Path,
 		ShowTour:   showTour,
@@ -62,7 +62,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 // ---- home ------------------------------------------------------------------
 
 func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
-	if err := a.Render.Render(w, http.StatusOK, "home", a.baseData(r)); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "home", a.baseData(r)); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -74,7 +74,7 @@ func (a *App) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	if err := a.Render.Render(w, http.StatusOK, "login", a.baseData(r)); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "login", a.baseData(r)); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -87,7 +87,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		a.Logger.Warn("login rate limit hit", "ip", ip)
 		data := a.baseData(r)
 		data.Error = "Troppi tentativi. Riprova fra un minuto."
-		if err := a.Render.Render(w, http.StatusTooManyRequests, "login", data); err != nil {
+		if err := a.Render.Render(w, r, http.StatusTooManyRequests, "login", data); err != nil {
 			a.serverError(w, r, err)
 		}
 		return
@@ -134,7 +134,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) renderLoginError(w http.ResponseWriter, r *http.Request, data authPageData, msg string) {
 	data.Error = msg
-	if err := a.Render.Render(w, http.StatusUnauthorized, "login", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusUnauthorized, "login", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -146,7 +146,7 @@ func (a *App) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	if err := a.Render.Render(w, http.StatusOK, "register", a.baseData(r)); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "register", a.baseData(r)); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -200,7 +200,7 @@ func (a *App) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) renderRegisterError(w http.ResponseWriter, r *http.Request, data authPageData, msg string) {
 	data.Error = msg
-	if err := a.Render.Render(w, http.StatusUnprocessableEntity, "register", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "register", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -222,15 +222,15 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 // better than a half-written connection.
 func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	a.Logger.Error("server error", "err", err, "path", r.URL.Path)
-	if rerr := a.Render.Render(w, http.StatusInternalServerError, "error_500", a.baseData(r)); rerr != nil {
-		http.Error(w, "Errore interno", http.StatusInternalServerError)
+	if rerr := a.Render.Render(w, r, http.StatusInternalServerError, "error_500", a.baseData(r)); rerr != nil {
+		http.Error(w, a.t(r, "layout.error.plain"), http.StatusInternalServerError)
 	}
 }
 
 // notFound renders the 404 page with the layout. The plain-text fallback
 // works as above.
 func (a *App) notFound(w http.ResponseWriter, r *http.Request) {
-	if rerr := a.Render.Render(w, http.StatusNotFound, "error_404", a.baseData(r)); rerr != nil {
+	if rerr := a.Render.Render(w, r, http.StatusNotFound, "error_404", a.baseData(r)); rerr != nil {
 		http.NotFound(w, r)
 	}
 }

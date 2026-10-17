@@ -9,7 +9,7 @@
 <dialog data-modal class="dialog-panel" aria-label="{{.Title}}">
   <div class="flex items-center gap-3 pl-5 pr-4 pt-4 pb-3">
     <h2 class="grow text-[17px] font-bold">{{.Title}}</h2>
-    <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="Chiudi">{{template "icon" "i-close"}}</button>
+    <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
   </div>
   <div class="px-5 pb-5">
     {{if eq .Inner "quick_ingredient_form"}}{{template "quick_ingredient_form" .InnerData}}{{end}}

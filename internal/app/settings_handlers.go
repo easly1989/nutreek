@@ -57,7 +57,7 @@ func (a *App) handleSettingsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data.APITokens = tokens
-	if err := a.Render.Render(w, http.StatusOK, "settings", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "settings", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -83,7 +83,7 @@ func (a *App) handleSettingsAPITokenCreate(w http.ResponseWriter, r *http.Reques
 	data.ActiveNav = "/settings"
 	data.APITokens = tokens
 	data.NewTokenPlain = plain
-	if err := a.Render.Render(w, http.StatusOK, "settings", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "settings", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -154,7 +154,7 @@ func (a *App) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
 		data.DeleteError = "Password non corretta."
-		if rerr := a.Render.Render(w, http.StatusUnprocessableEntity, "settings", data); rerr != nil {
+		if rerr := a.Render.Render(w, r, http.StatusUnprocessableEntity, "settings", data); rerr != nil {
 			a.serverError(w, r, rerr)
 		}
 		return
@@ -181,7 +181,7 @@ func (a *App) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
 		data.PasswordError = msg
-		if err := a.Render.Render(w, http.StatusUnprocessableEntity, "settings", data); err != nil {
+		if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "settings", data); err != nil {
 			a.serverError(w, r, err)
 		}
 	}
