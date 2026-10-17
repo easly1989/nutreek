@@ -58,7 +58,8 @@ func LoadConfig() (Config, error) {
 
 // Prepare refuses a database holding users the demo did not create (the demo
 // deletes users, so it must never run on real data), then creates the demo's
-// tables and marks the database as a demo one. A real database is refused
+// tables, marks the database as a demo one and adds the demo's OpenFoodFacts
+// products, which every group shares. A real database is refused
 // before anything is written to it.
 func Prepare(ctx context.Context, db *sql.DB) error {
 	var foreign int
@@ -72,8 +73,18 @@ func Prepare(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("demo schema: %w", err)
 	}
-	_, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO demo_meta (key, value) VALUES ('demo', '1')`)
-	return err
+	if _, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO demo_meta (key, value) VALUES ('demo', '1')`); err != nil {
+		return err
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := products(ctx, tx, time.Now()); err != nil {
+		return fmt.Errorf("demo products: %w", err)
+	}
+	return tx.Commit()
 }
 
 // Service creates the demo's accounts and deletes them (purge.go).
@@ -123,6 +134,9 @@ func (s *Service) Start(ctx context.Context, lang string) (int64, error) {
 	if _, err := tx.ExecContext(ctx, `INSERT INTO demo_members (user_id, group_id) VALUES (?, ?)`, userID, groupID); err != nil {
 		return 0, fmt.Errorf("demo member: %w", err)
 	}
+	if err := seed(ctx, tx, userID, w, time.Now()); err != nil {
+		return 0, fmt.Errorf("demo seed: %w", err)
+	}
 	return userID, tx.Commit()
 }
 
@@ -164,14 +178,16 @@ func createUser(ctx context.Context, tx *sql.Tx, name string, b body) (int64, er
 
 // vocabulary holds every name the demo shows, in one language.
 type vocabulary struct {
-	names []string // first names for the generated people
+	names []string          // first names for the generated people
+	text  map[string]string // the seed's names, by key (seed.go)
+	ean   string            // barcode prefix of the language's demo products
 }
 
 // words has one vocabulary per language code; English is the fallback for a
 // language without its own.
 var words = map[string]vocabulary{
-	"en": {names: []string{"Alex", "Sam", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Jamie"}},
-	"it": {names: []string{"Giulia", "Marco", "Chiara", "Luca", "Sara", "Matteo", "Elena", "Andrea"}},
+	"en": {names: []string{"Alex", "Sam", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Jamie"}, text: textEN, ean: "2000000001"},
+	"it": {names: []string{"Giulia", "Marco", "Chiara", "Luca", "Sara", "Matteo", "Elena", "Andrea"}, text: textIT, ean: "2000000002"},
 }
 
 // pickCode returns lang when the demo speaks it, else English.

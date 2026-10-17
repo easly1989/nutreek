@@ -16,3 +16,8 @@ import (
 func applyDemo(context.Context, *db.Store, *scs.SessionManager, *app.App, *slog.Logger) error {
 	return nil
 }
+
+// demoCommand has nothing to run in the normal build.
+func demoCommand(context.Context, *db.Store, *slog.Logger) (bool, error) {
+	return false, nil
+}
