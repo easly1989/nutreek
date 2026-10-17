@@ -159,6 +159,21 @@ func TestEnglishPublicPagesAndOnboarding(t *testing.T) {
 		})
 	}
 
+	// The home's product screenshot follows the page's language (#161).
+	t.Run("home screenshot", func(t *testing.T) {
+		for lang, want := range map[string][]string{
+			"en": {"/static/img/home-settimana-en.webp", "/static/img/home-settimana-telefono-en.webp"},
+			"it": {`"/static/img/home-settimana.webp"`, `"/static/img/home-settimana-telefono.webp"`},
+		} {
+			body := render(pages[0], lang)
+			for _, w := range want {
+				if !strings.Contains(body, w) {
+					t.Errorf("lang %q: %s missing from the home", lang, w)
+				}
+			}
+		}
+	})
+
 	// The tour's texts travel in a JSON block that tour.js reads.
 	t.Run("tour data", func(t *testing.T) {
 		re := regexp.MustCompile(`(?s)<script type="application/json" id="tour-steps">(.*?)</script>`)
