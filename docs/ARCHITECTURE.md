@@ -103,9 +103,13 @@ changes the text.
   and `{{ref "activity" .Code .Name}}` in templates; features by their key, in Go.
   A row without a code or a translation shows its stored name. User-entered
   names and OpenFoodFacts product names are never translated.
-- A missing key falls back to English, then to the key itself. `TestCatalogs`
-  fails when Italian or English lack a key, a value is empty, or the placeholders
-  differ from English.
+- A missing key falls back to English, then to the key itself. `i18n.Check`
+  (run by `TestCatalogs` and by `go run ./cmd/i18ncheck`, which CI runs too)
+  fails when Italian or English lack a key, and for every language when a value
+  is empty, a key is not in English or the placeholders differ from English.
+  Community languages (any other, marked `Beta` in `Languages`) only warn about
+  missing keys, with the list to translate. How to add one:
+  [translating.md](translating.md), terms in [glossary.md](glossary.md).
 - The request's language is the first of (#159): the signed-in user's choice
   (`users.locale`, set in Settings), the `lang` cookie (set by the selector on
   the signed-out pages, and by Settings), the best match of the browser's
