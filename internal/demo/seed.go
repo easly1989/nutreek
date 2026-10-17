@@ -15,8 +15,12 @@ import (
 // defined once below; every name they show comes from the vocabulary's text,
 // so the languages hold the same data.
 
-// historyWeeks is how many weeks before the current one are filled in.
-const historyWeeks = 12
+// historyWeeks is how many weeks before the current one are filled in for
+// the person the visitor plays; otherWeeks for the rest of their group.
+const (
+	historyWeeks = 12
+	otherWeeks   = 4
+)
 
 // demoBrand is the brand of the demo's OpenFoodFacts products, which are not
 // real ones: their barcodes are in the GS1 range for in-store use (prefix 200).
@@ -126,6 +130,19 @@ var mealTypes = []mealType{
 	}},
 }
 
+// planDef is a nutrition plan named by the text key, its foods weighing scale
+// times the amounts below.
+type planDef struct {
+	key   string
+	scale float64
+}
+
+// ownPlan is a person's own plan; library is a coach's, which they assign.
+var (
+	ownPlan = []planDef{{"plan", 1}}
+	library = []planDef{{"plan.balanced", 1}, {"plan.light", 0.8}, {"plan.training", 1.25}}
+)
+
 // cheat replaces a meal so many days ago; its foods are in grams.
 type cheat struct {
 	daysAgo int
@@ -143,6 +160,22 @@ var cheats = []cheat{
 	{61, "snack", []portion{grams("chocolate", 50)}},
 	{75, "dinner", []portion{grams("pizza", 300)}},
 }
+
+// fewCheats and manyCheats set the adherence of the visitor's group.
+var (
+	fewCheats  = []cheat{{3, "snack", []portion{grams("chocolate", 30)}}, {17, "dinner", []portion{grams("pizza", 300)}}}
+	manyCheats = []cheat{
+		{1, "dinner", []portion{grams("pizza", 350)}},
+		{4, "snack", []portion{grams("chocolate", 50)}},
+		{6, "lunch", []portion{grams("pizza", 300)}},
+		{9, "dinner", []portion{grams("pizza", 350)}},
+		{13, "snack", []portion{grams("chocolate", 40)}},
+		{16, "dinner", []portion{grams("pizza", 350)}},
+		{20, "lunch", []portion{grams("pizza", 300)}},
+		{23, "dinner", []portion{grams("pizza", 350)}},
+		{27, "snack", []portion{grams("chocolate", 50)}},
+	}
+)
 
 // workouts by day of the week (0 = Monday), as workout_activities codes.
 var workouts = map[int]struct {
@@ -180,10 +213,15 @@ func barcode(w vocabulary, f food) string {
 	return code + strconv.Itoa((10-sum%10)%10)
 }
 
-// seed fills userID's account in language w, with dates relative to now: the
-// current week planned in full, the weeks before it eaten, with cheats,
-// water, workouts and weigh-ins up to today.
-func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, now time.Time) error {
+// seed fills userID's account as p in language w, with dates relative to
+// now: the current week planned in full, the weeks before it eaten, with
+// cheats, water, workouts and weigh-ins up to today. It returns the ids of
+// p's plans.
+//
+// The foods are a group's: an empty ings gets them made by userID, by key;
+// the next people of the group use them, so the group's lists show each food
+// once.
+func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, p person, ings map[string]int64, now time.Time) ([]int64, error) {
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	monday := db.MondayOf(today)
 	exec := func(q string, args ...any) (int64, error) {
@@ -198,38 +236,50 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, now time.
 	for i, c := range categories {
 		id, err := exec(`INSERT INTO ingredient_categories (user_id, name, sort_order) VALUES (?, ?, ?)`, userID, w.text["category."+c], i)
 		if err != nil {
-			return fmt.Errorf("category: %w", err)
+			return nil, fmt.Errorf("category: %w", err)
 		}
 		cats[c] = id
 	}
+	categorize := func(f food, id int64) error {
+		if f.category == "" {
+			return nil
+		}
+		if _, err := exec(`INSERT INTO ingredient_user_categories (user_id, ingredient_id, category_id) VALUES (?, ?, ?)`,
+			userID, id, cats[f.category]); err != nil {
+			return fmt.Errorf("food %s category: %w", f.key, err)
+		}
+		return nil
+	}
 
-	ings := map[string]int64{}
 	for _, f := range foods {
+		id, ok := ings[f.key]
+		if ok {
+			if err := categorize(f, id); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		var pieceG any
 		if f.pieceG > 0 {
 			pieceG = f.pieceG
 		}
 		name := w.text["food."+f.key]
-		var id int64
 		if f.ean == "" {
 			var err error
 			id, err = exec(`INSERT INTO ingredients (source, name, unit, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, created_by, unit_weight_g)
 				VALUES ('local', ?, ?, ?, ?, ?, ?, ?, ?)`, name, f.unit, f.kcal, f.protein, f.carbs, f.fat, userID, pieceG)
 			if err != nil {
-				return fmt.Errorf("food %s: %w", f.key, err)
+				return nil, fmt.Errorf("food %s: %w", f.key, err)
 			}
 		} else {
 			var err error
 			if id, err = product(ctx, tx, w, f, now); err != nil {
-				return err
+				return nil, err
 			}
 		}
 		ings[f.key] = id
-		if f.category != "" {
-			if _, err := exec(`INSERT INTO ingredient_user_categories (user_id, ingredient_id, category_id) VALUES (?, ?, ?)`,
-				userID, id, cats[f.category]); err != nil {
-				return fmt.Errorf("food %s category: %w", f.key, err)
-			}
+		if err := categorize(f, id); err != nil {
+			return nil, err
 		}
 	}
 
@@ -237,78 +287,87 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, now time.
 	for _, r := range recipes {
 		id, err := exec(`INSERT INTO recipes (user_id, name, servings) VALUES (?, ?, ?)`, userID, w.text["recipe."+r.key], r.servings)
 		if err != nil {
-			return fmt.Errorf("recipe %s: %w", r.key, err)
+			return nil, fmt.Errorf("recipe %s: %w", r.key, err)
 		}
 		recs[r.key] = id
-		for i, p := range r.items {
+		for i, it := range r.items {
 			if _, err := exec(`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, sort_order) VALUES (?, ?, ?, ?)`,
-				id, ings[p.food], p.qty, i); err != nil {
-				return fmt.Errorf("recipe %s: %w", r.key, err)
+				id, ings[it.food], it.qty, i); err != nil {
+				return nil, fmt.Errorf("recipe %s: %w", r.key, err)
 			}
 		}
 	}
 	// ids returns a portion's recipe and ingredient, one of them nil.
-	ids := func(p portion) (recipeID, ingredientID any) {
-		if p.recipe != "" {
-			return recs[p.recipe], nil
+	ids := func(it portion) (recipeID, ingredientID any) {
+		if it.recipe != "" {
+			return recs[it.recipe], nil
 		}
-		return nil, ings[p.food]
+		return nil, ings[it.food]
 	}
 
-	planID, err := exec(`INSERT INTO nutritionist_plans (user_id, name, is_active) VALUES (?, ?, 1)`, userID, w.text["plan"])
-	if err != nil {
-		return fmt.Errorf("plan: %w", err)
-	}
-	for i, mt := range mealTypes {
-		typeID, err := exec(`INSERT INTO nutritionist_meal_types (plan_id, name, sort_order) VALUES (?, ?, ?)`, planID, w.text["meal."+mt.key], i)
+	var plans []int64
+	for n, def := range p.plans {
+		planID, err := exec(`INSERT INTO nutritionist_plans (user_id, name, is_active) VALUES (?, ?, ?)`, userID, w.text[def.key], n == 0)
 		if err != nil {
-			return fmt.Errorf("plan meal: %w", err)
+			return nil, fmt.Errorf("plan: %w", err)
 		}
-		for j, v := range mt.variants {
-			varID, err := exec(`INSERT INTO nutritionist_meal_variations (meal_type_id, name, sort_order) VALUES (?, ?, ?)`, typeID, w.text["variant."+v.key], j)
+		plans = append(plans, planID)
+		for i, mt := range mealTypes {
+			typeID, err := exec(`INSERT INTO nutritionist_meal_types (plan_id, name, sort_order) VALUES (?, ?, ?)`, planID, w.text["meal."+mt.key], i)
 			if err != nil {
-				return fmt.Errorf("plan variant: %w", err)
+				return nil, fmt.Errorf("plan meal: %w", err)
 			}
-			for k, p := range v.items {
-				rid, iid := ids(p)
-				if _, err := exec(`INSERT INTO nutritionist_meal_items (variation_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order)
-					VALUES (?, ?, ?, ?, ?, ?)`, varID, rid, iid, p.qty, p.unit, k); err != nil {
-					return fmt.Errorf("plan item: %w", err)
+			for j, v := range mt.variants {
+				varID, err := exec(`INSERT INTO nutritionist_meal_variations (meal_type_id, name, sort_order) VALUES (?, ?, ?)`, typeID, w.text["variant."+v.key], j)
+				if err != nil {
+					return nil, fmt.Errorf("plan variant: %w", err)
+				}
+				for k, it := range v.items {
+					rid, iid := ids(it)
+					qty := it.qty
+					if it.food != "" && it.unit == "g" && def.scale != 1 {
+						qty = max(5, math.Round(qty*def.scale/5)*5)
+					}
+					if _, err := exec(`INSERT INTO nutritionist_meal_items (variation_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order)
+						VALUES (?, ?, ?, ?, ?, ?)`, varID, rid, iid, qty, it.unit, k); err != nil {
+						return nil, fmt.Errorf("plan item: %w", err)
+					}
 				}
 			}
 		}
 	}
+	planID := plans[0]
 
 	// The weeks, oldest first: the plan's variants in turn, then what was
 	// logged on the days up to today.
 	cheatOn := map[int]cheat{}
-	for _, c := range cheats {
+	for _, c := range p.cheats {
 		cheatOn[c.daysAgo] = c
 	}
 	insMeal, err := tx.PrepareContext(ctx, `INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer insMeal.Close()
 	insItem, err := tx.PrepareContext(ctx, `INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer insItem.Close()
 	insWater, err := tx.PrepareContext(ctx, `INSERT INTO water_logs (user_id, logged_at, amount_ml) VALUES (?, ?, ?)`)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer insWater.Close()
 
-	for wk := historyWeeks; wk >= 0; wk-- {
+	for wk := p.weeks; wk >= 0; wk-- {
 		start := monday.AddDate(0, 0, -7*wk)
 		// The app creates empty weeks just by showing them (SeedAccount).
 		var weekID int64
 		if err := tx.QueryRowContext(ctx, `INSERT INTO weekly_plans (user_id, week_start, source_plan_id) VALUES (?, ?, ?)
 			ON CONFLICT (user_id, week_start) DO UPDATE SET source_plan_id = excluded.source_plan_id RETURNING id`,
 			userID, start.Format("2006-01-02"), planID).Scan(&weekID); err != nil {
-			return fmt.Errorf("week: %w", err)
+			return nil, fmt.Errorf("week: %w", err)
 		}
 		for d := range 7 {
 			date := start.AddDate(0, 0, d)
@@ -316,25 +375,25 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, now time.
 			for i, mt := range mealTypes {
 				res, err := insMeal.ExecContext(ctx, weekID, d, w.text["meal."+mt.key], i)
 				if err != nil {
-					return fmt.Errorf("meal: %w", err)
+					return nil, fmt.Errorf("meal: %w", err)
 				}
 				mealID, err := res.LastInsertId()
 				if err != nil {
-					return err
+					return nil, err
 				}
 				v := mt.variants[(d+wk+i)%len(mt.variants)]
-				for k, p := range v.items {
-					rid, iid := ids(p)
-					if _, err := insItem.ExecContext(ctx, mealID, rid, iid, p.qty, p.unit, k); err != nil {
-						return fmt.Errorf("meal item: %w", err)
+				for k, it := range v.items {
+					rid, iid := ids(it)
+					if _, err := insItem.ExecContext(ctx, mealID, rid, iid, it.qty, it.unit, k); err != nil {
+						return nil, fmt.Errorf("meal item: %w", err)
 					}
 				}
 				if c, ok := cheatOn[daysAgo]; ok && daysAgo >= 0 && c.meal == mt.key {
-					for k, p := range c.items {
-						rid, iid := ids(p)
+					for k, it := range c.items {
+						rid, iid := ids(it)
 						if _, err := exec(`INSERT INTO meal_cheat_items (meal_id, recipe_id, ingredient_id, quantity, sort_order) VALUES (?, ?, ?, ?, ?)`,
-							mealID, rid, iid, p.qty, k); err != nil {
-							return fmt.Errorf("cheat: %w", err)
+							mealID, rid, iid, it.qty, k); err != nil {
+							return nil, fmt.Errorf("cheat: %w", err)
 						}
 					}
 				}
@@ -342,8 +401,8 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, now time.
 			if daysAgo < 0 {
 				continue // the rest of this week is still to come
 			}
-			if err := logDay(ctx, tx, insWater, userID, date, d, daysAgo); err != nil {
-				return err
+			if err := logDay(ctx, tx, insWater, userID, p.body.weightKg, date, d, daysAgo); err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -352,15 +411,15 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, now time.
 	if err := tx.QueryRowContext(ctx, `INSERT INTO shopping_lists (user_id, week_start, week_count) VALUES (?, ?, 1)
 		ON CONFLICT (user_id, week_start) DO UPDATE SET week_count = week_count RETURNING id`,
 		userID, monday.Format("2006-01-02")).Scan(&listID); err != nil {
-		return fmt.Errorf("shopping list: %w", err)
+		return nil, fmt.Errorf("shopping list: %w", err)
 	}
 	for i, s := range shopping {
 		if _, err := exec(`INSERT INTO shopping_user_items (shopping_list_id, description, quantity_text, checked, sort_order) VALUES (?, ?, ?, ?, ?)`,
 			listID, w.text["shop."+s.key], s.qty, s.checked, i); err != nil {
-			return fmt.Errorf("shopping item: %w", err)
+			return nil, fmt.Errorf("shopping item: %w", err)
 		}
 	}
-	return nil
+	return plans, nil
 }
 
 // product returns the demo OpenFoodFacts product f in language w, creating
@@ -409,8 +468,8 @@ func products(ctx context.Context, tx *sql.Tx, now time.Time) error {
 
 // logDay writes what was logged on a past day (or today): water, the day's
 // workout and, every third day, a weigh-in on a slow downward trend that
-// ends at the persona's weight today.
-func logDay(ctx context.Context, tx *sql.Tx, insWater *sql.Stmt, userID int64, date time.Time, weekday, daysAgo int) error {
+// ends at kg today.
+func logDay(ctx context.Context, tx *sql.Tx, insWater *sql.Stmt, userID int64, kg float64, date time.Time, weekday, daysAgo int) error {
 	day := date.Format("2006-01-02")
 	water := []int{500, 750, 250 * (1 + daysAgo%3)}
 	if daysAgo == 0 {
@@ -430,9 +489,9 @@ func logDay(ctx context.Context, tx *sql.Tx, insWater *sql.Stmt, userID int64, d
 	}
 	if daysAgo%3 == 0 {
 		wobble := []float64{0, 0.3, -0.2, 0.2}[(daysAgo/3)%4]
-		kg := math.Round((persona.weightKg+0.05*float64(daysAgo)+wobble)*10) / 10
+		w := math.Round((kg+0.05*float64(daysAgo)+wobble)*10) / 10
 		if _, err := tx.ExecContext(ctx, `INSERT INTO weight_logs (user_id, measured_at, weight_kg) VALUES (?, ?, ?)
-			ON CONFLICT (user_id, measured_at) DO UPDATE SET weight_kg = excluded.weight_kg`, userID, day, kg); err != nil {
+			ON CONFLICT (user_id, measured_at) DO UPDATE SET weight_kg = excluded.weight_kg`, userID, day, w); err != nil {
 			return fmt.Errorf("weigh-in: %w", err)
 		}
 	}
@@ -461,7 +520,7 @@ func SeedAccount(ctx context.Context, d *sql.DB, email, lang string) error {
 	if _, err := tx.ExecContext(ctx, `UPDATE nutritionist_plans SET is_active = 0 WHERE user_id = ?`, userID); err != nil {
 		return fmt.Errorf("demo seed: %w", err)
 	}
-	if err := seed(ctx, tx, userID, words[pickCode(lang)], time.Now()); err != nil {
+	if _, err := seed(ctx, tx, userID, words[pickCode(lang)], visitor, map[string]int64{}, time.Now()); err != nil {
 		return fmt.Errorf("demo seed: %w", err)
 	}
 	return tx.Commit()
