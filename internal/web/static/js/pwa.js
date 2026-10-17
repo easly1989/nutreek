@@ -1,10 +1,10 @@
 // pwa.js — installable app (#59).
 //
 // Registers the service worker (/sw.js: caches only the files in /static)
-// and, in Settings, shows the «App sul telefono» block right for the browser:
+// and, in Settings, shows the "App on your phone" block that fits the browser:
 //   installata  opened from the icon on the Home screen
 //   http        insecure context: no install and no camera
-//   prompt      Chrome/Edge/Android: an «Installa l'app» button (beforeinstallprompt)
+//   prompt      Chrome/Edge/Android: an "Install the app" button (beforeinstallprompt)
 //   ios         iPhone/iPad: the steps in Safari, there is no prompt
 //   altro       everything else (and without JS): install from the browser menu
 (function () {
@@ -12,7 +12,7 @@
 
   if (window.isSecureContext && "serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("/sw.js").catch(function () { /* senza cache, l'app funziona lo stesso */ });
+      navigator.serviceWorker.register("/sw.js").catch(function () { /* without the cache the app still works */ });
     });
   }
 
@@ -44,7 +44,7 @@
   }
 
   window.addEventListener("beforeinstallprompt", function (e) {
-    e.preventDefault(); // niente mini-barra automatica: si installa dal bottone
+    e.preventDefault(); // no automatic mini-bar: it installs from the button
     deferred = e;
     render();
   });
