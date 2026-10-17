@@ -57,7 +57,7 @@ func (u *Users) GetByEmail(ctx context.Context, email string) (*domain.User, err
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
 		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
-		        water_target_ml, role
+		        water_target_ml, role, locale
 		 FROM users WHERE email = ?`, email,
 	)
 	return scanUser(row)
@@ -70,7 +70,7 @@ func (u *Users) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
 		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
-		        water_target_ml, role
+		        water_target_ml, role, locale
 		 FROM users WHERE id = ?`, id,
 	)
 	return scanUser(row)
@@ -130,7 +130,7 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 		&user.WeightKg, &user.HeightCm, &user.BirthYear, &user.Sex,
 		&user.TargetKcal, &user.TargetProtein, &user.TargetCarbs, &user.TargetFat,
 		&user.BMI, &user.BMR, &user.ActivityLevel, &user.OnboardingCompletedAt, &user.TourDismissedAt,
-		&user.WaterTargetML, &user.Role,
+		&user.WaterTargetML, &user.Role, &user.Locale,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
@@ -178,6 +178,12 @@ func (u *Users) ResetTour(ctx context.Context, id int64) error {
 	return err
 }
 
+// SetLocale saves the user's interface language ("" follows the browser).
+func (u *Users) SetLocale(ctx context.Context, id int64, locale string) error {
+	_, err := u.db.ExecContext(ctx, `UPDATE users SET locale = ? WHERE id = ?`, locale, id)
+	return err
+}
+
 // Delete deletes the user and, through FK cascades, all their data.
 func (u *Users) Delete(ctx context.Context, id int64) error {
 	_, err := u.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
@@ -197,7 +203,7 @@ func (u *Users) ListAll(ctx context.Context) ([]*domain.User, error) {
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
 		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
-		        water_target_ml, role
+		        water_target_ml, role, locale
 		 FROM users ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list all users: %w", err)
@@ -211,7 +217,7 @@ func (u *Users) ListAll(ctx context.Context) ([]*domain.User, error) {
 			&user.WeightKg, &user.HeightCm, &user.BirthYear, &user.Sex,
 			&user.TargetKcal, &user.TargetProtein, &user.TargetCarbs, &user.TargetFat,
 			&user.BMI, &user.BMR, &user.ActivityLevel, &user.OnboardingCompletedAt, &user.TourDismissedAt,
-			&user.WaterTargetML, &user.Role,
+			&user.WaterTargetML, &user.Role, &user.Locale,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan user: %w", err)
