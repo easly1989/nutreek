@@ -1,0 +1,19 @@
+{{define "title"}}{{t "demo.title"}} — Nutreek{{end}}
+{{define "content"}}
+{{/* The public demo's entry (#137): one button, and the rules said first. */}}
+<div class="auth-box">
+  <div class="text-center">
+    <h1 class="h1">{{t "demo.title"}}</h1>
+    <p class="text-muted mt-1">{{t "demo.entry.lead"}}</p>
+  </div>
+  <form method="post" action="/demo/session" class="card">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <ul class="flex flex-col gap-2.5">
+      <li class="flex gap-2.5 items-start"><span class="mt-0.5">{{template "icon_sm" "i-info"}}</span><span>{{t "demo.entry.data"}}</span></li>
+      <li class="flex gap-2.5 items-start"><span class="mt-0.5">{{template "icon_sm" "i-info"}}</span><span>{{t "demo.entry.lifetime" "Count" .DemoIdleHours}}</span></li>
+    </ul>
+    <button class="btn-primary btn-block">{{t "demo.entry.start"}}</button>
+  </form>
+  <p class="text-center text-muted">{{t "demo.entry.own"}} <a href="https://github.com/easly1989/nutreek" class="text-accent font-semibold hover:underline">{{t "demo.entry.code"}}</a></p>
+</div>
+{{end}}

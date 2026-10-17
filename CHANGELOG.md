@@ -25,6 +25,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 - The README and the public home in both languages (#161, part of #141): the English README says how to pick a language and shows English screenshots (`docs/screenshots/en/`), the Italian one keeps the Italian ones; the home's product image follows the page's language
 
+- The demo build (#182, part of #137): `go build -tags demo` makes a public demo where the home is an entry page with one button. It creates a throwaway account with a complete profile, in the visitor's language, with a band on every page and a notice at first. Sign-in, sign-up, password change and account deletion are not mounted; sessions end after 2 hours without use (`NUTREEK_DEMO_IDLE`). The demo refuses to start on a database with real users. The normal binary does not contain any of it
+
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)

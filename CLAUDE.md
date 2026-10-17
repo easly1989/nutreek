@@ -43,6 +43,7 @@ internal/
   config/             → environment variables (NUTREEK_*)
   db/
     migrations/       → goose SQL (0001…0028+, embedded)
+  demo/               → public demo (#137): throwaway accounts, only in the `-tags demo` build
   domain/             → plain domain structs (no business logic)
   macros/             → pure macro calculations (no side effects, tested)
   off/                → OpenFoodFacts client + local dump sync + periodic reconciler
@@ -98,6 +99,7 @@ make docker-up        # docker compose up --build
 | `NUTREEK_BACKUP_DIR` | `./data/backups` | where backups are written |
 | `NUTREEK_BACKUP_INTERVAL` | `24h` | automatic backup interval |
 | `NUTREEK_BACKUP_KEEP` | `7` | backups to keep (the oldest are deleted) |
+| `NUTREEK_DEMO_IDLE` | `2h` | demo build only: a demo session ends after this long without use |
 
 ## OpenFoodFacts (OFF) strategy
 

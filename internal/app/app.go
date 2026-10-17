@@ -45,6 +45,9 @@ type App struct {
 	Render                 *web.Renderer
 	Logger                 *slog.Logger
 
+	// Demo is set only in the demo build (#137, cmd/nutreek/demo_on.go).
+	Demo Demo
+
 	// loginLimiter limits POST /login attempts per IP (5/minute).
 	// Created once by loginRateLimiter(): App is built as a struct literal,
 	// so there is no constructor to initialize it in.
@@ -59,6 +62,20 @@ func (a *App) loginRateLimiter() *ipRateLimiter {
 		a.loginLimiter = newIPRateLimiter(5, time.Minute)
 	})
 	return a.loginLimiter
+}
+
+// Demo is the public demo: it creates a throwaway account in a language.
+type Demo interface {
+	Start(ctx context.Context, lang string) (userID int64, err error)
+	IdleHours() int // how long a demo lasts without use, for the notices
+}
+
+// signInPath is where a signed-out visitor goes: the demo has no sign-in.
+func (a *App) signInPath() string {
+	if a.Demo != nil {
+		return "/"
+	}
+	return "/login"
 }
 
 type ctxKey int
