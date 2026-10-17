@@ -54,7 +54,7 @@
       <div class="segmented grid-cols-3">
         <label><input type="radio" name="sex" value="M"{{if eq .Form.Sex "M"}} checked{{end}}>{{t "onboarding.physical.male"}}</label>
         <label><input type="radio" name="sex" value="F"{{if eq .Form.Sex "F"}} checked{{end}}>{{t "onboarding.physical.female"}}</label>
-        <label><input type="radio" name="sex" value=""{{if eq .Form.Sex ""}} checked{{end}}>{{t "onboarding.physical.sex_skip"}}</label>
+        <label><input type="radio" name="sex" value=""{{if eq .Form.Sex ""}} checked{{end}}><span class="sm:hidden">{{t "onboarding.physical.sex_skip_short"}}</span><span class="hidden sm:inline">{{t "onboarding.physical.sex_skip"}}</span></label>
       </div>
     </fieldset>
     <label class="lab">{{t "onboarding.physical.activity"}}

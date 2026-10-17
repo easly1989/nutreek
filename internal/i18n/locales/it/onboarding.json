@@ -18,6 +18,7 @@
   "onboarding.physical.male": "Uomo",
   "onboarding.physical.female": "Donna",
   "onboarding.physical.sex_skip": "Non lo dico",
+  "onboarding.physical.sex_skip_short": "Non lo dico",
   "onboarding.physical.activity": "Attività fisica",
   "onboarding.physical.activity_none": "Non specificata",
   "onboarding.physical.activity_sedentary": "Sedentaria: solo vita quotidiana",
