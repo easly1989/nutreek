@@ -885,7 +885,7 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 		return 0, err
 	}
 	if !product.HasFullNutrients {
-		return 0, errors.New("prodotto OFF senza macro completi")
+		return 0, errOFFNoMacros
 	}
 	var brandPtr *string
 	if b := strings.TrimSpace(product.Brand); b != "" {
@@ -1296,6 +1296,9 @@ var (
 	errEmpty     = simpleErr("valore mancante")
 	errNegative  = simpleErr("valore negativo")
 	errNotNumber = simpleErr("non è un numero")
+
+	// errOFFNoMacros is shown to the user through errText (reasons).
+	errOFFNoMacros = simpleErr("prodotto OFF senza macro completi")
 )
 
 // numberError is the validation message of a number field that

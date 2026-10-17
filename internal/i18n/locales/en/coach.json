@@ -15,6 +15,7 @@
   "coach.clients.add": "Add client",
   "coach.clients.add_note": "The client must already be registered here.",
   "coach.plans.title": "Plan library",
+  "coach.plans.default_name": "Nutrition plan",
   "coach.plans.no_clients": "no clients",
   "coach.plans.client_count": {
     "one": "{{.Count}} client",

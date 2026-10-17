@@ -16,7 +16,7 @@
 
   {{if eq .ActiveTab "piano"}}
     {{if .ReadOnly}}
-      <p class="rounded-xl bg-accent-soft text-accent px-4 py-3">{{t "plan.coach.plan"}} <strong>{{.Plan.Name}}</strong> {{t "plan.coach.assigned_by"}} <strong>{{.CoachName}}</strong>: {{t "plan.coach.contact"}}</p>
+      <p class="rounded-xl bg-accent-soft text-accent px-4 py-3">{{t "plan.coach.plan"}} <strong>{{planName .Plan.Name}}</strong> {{t "plan.coach.assigned_by"}} <strong>{{.CoachName}}</strong>: {{t "plan.coach.contact"}}</p>
       {{if .Plan.MealTypes}}
         {{range .Plan.MealTypes}}
           <section class="flex flex-col gap-3">
