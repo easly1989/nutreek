@@ -1,4 +1,4 @@
-{{define "title"}}Errore — Nutreek{{end}}
+{{define "title"}}{{t "layout.error.server_tab"}} — Nutreek{{end}}
 {{define "content"}}
-{{template "error_page" (list "500" "Qualcosa non ha funzionato" "Il problema è dalla nostra parte ed è stato registrato. Riprova tra poco; se si ripete, avvisa chi gestisce questa istanza." "i-alert")}}
+{{template "error_page" (list "500" (t "layout.error.server_title") (t "layout.error.server_text") "i-alert")}}
 {{end}}

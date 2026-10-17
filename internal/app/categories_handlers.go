@@ -15,16 +15,20 @@ func (a *App) handleCategoryCreate(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	name := strings.TrimSpace(r.PostFormValue("name"))
 	if name == "" || len(name) > 100 {
-		a.Sessions.Put(r.Context(), "flash", "Nome categoria non valido (max 100 caratteri).")
+		a.Sessions.Put(r.Context(), "flash", "ingredients.flash.category_invalid")
 		http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 		return
 	}
 	if _, err := a.Categories.CreateCategory(r.Context(), user.ID, name); err != nil {
-		a.Sessions.Put(r.Context(), "flash", "Errore: "+err.Error())
+		if !errors.Is(err, db.ErrCategoryExists) {
+			a.serverError(w, r, err)
+			return
+		}
+		a.Sessions.Put(r.Context(), "flash", "ingredients.flash.category_exists")
 		http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Categoria creata.")
+	a.Sessions.Put(r.Context(), "flash", "ingredients.flash.category_created")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 
@@ -44,6 +48,6 @@ func (a *App) handleCategoryDelete(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Categoria eliminata.")
+	a.Sessions.Put(r.Context(), "flash", "ingredients.flash.category_deleted")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }

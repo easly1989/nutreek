@@ -58,7 +58,7 @@ func (a *App) handleCoachDashboard(w http.ResponseWriter, r *http.Request) {
 			data.PlanClients[*c.AssignedPlanID]++
 		}
 	}
-	if err := a.Render.Render(w, http.StatusOK, "coach_dashboard", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "coach_dashboard", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }

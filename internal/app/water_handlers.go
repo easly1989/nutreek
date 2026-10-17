@@ -72,7 +72,7 @@ func (a *App) renderWaterWidget(w http.ResponseWriter, r *http.Request, userID i
 		WaterTargetML: waterTargetFor(user),
 		CSRFToken:     nosurf.Token(r),
 	}
-	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "water_widget", data); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "dashboard", "water_widget", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }

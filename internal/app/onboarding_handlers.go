@@ -58,7 +58,7 @@ func (a *App) handleOnboardingPage(w http.ResponseWriter, r *http.Request) {
 		data.Templates = tpls
 	}
 
-	if err := a.Render.Render(w, http.StatusOK, "onboarding", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "onboarding", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }

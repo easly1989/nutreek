@@ -12,6 +12,9 @@ import (
 
 var ErrCategoryNotFound = errors.New("categoria non trovata")
 
+// ErrCategoryExists: the user already has a category with that name.
+var ErrCategoryExists = errors.New("category already exists")
+
 type Categories struct {
 	db *sql.DB
 }
@@ -49,7 +52,7 @@ func (c *Categories) CreateCategory(ctx context.Context, userID int64, name stri
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
-			return 0, fmt.Errorf("categoria già esistente")
+			return 0, ErrCategoryExists
 		}
 		return 0, fmt.Errorf("create category: %w", err)
 	}

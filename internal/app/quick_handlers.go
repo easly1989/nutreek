@@ -45,7 +45,7 @@ func (a *App) handleQuickIngredientForm(w http.ResponseWriter, r *http.Request) 
 
 func (a *App) renderQuickIngredientModal(w http.ResponseWriter, r *http.Request, form ingredientForm, errMsg string) {
 	data := modalDialogData{
-		Title: "Nuovo ingrediente",
+		Title: a.t(r, "ingredients.new"),
 		Inner: "quick_ingredient_form",
 		InnerData: quickIngredientData{
 			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
@@ -53,7 +53,7 @@ func (a *App) renderQuickIngredientModal(w http.ResponseWriter, r *http.Request,
 			Error:        errMsg,
 		},
 	}
-	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "modal_dialog", data); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "modal_dialog", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -67,7 +67,7 @@ func (a *App) renderQuickIngredientFormOnly(w http.ResponseWriter, r *http.Reque
 		Form:         form,
 		Error:        errMsg,
 	}
-	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "quick_ingredient_form", data); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "quick_ingredient_form", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -92,41 +92,41 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 	form.Barcode, _ = off.NormalizeBarcode(r.PostFormValue("barcode"))
 	if form.Barcode != "" {
 		if got, err := a.Ingredients.GetByBarcode(r.Context(), form.Barcode); err == nil {
-			a.renderQuickIngredientFormOnly(w, r, form, "Il codice "+form.Barcode+" è già collegato a «"+got.Name+"».")
+			a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.quick.barcode_taken", "Code", form.Barcode, "Name", got.Name))
 			return
 		}
 	}
 	if form.Name == "" {
-		a.renderQuickIngredientFormOnly(w, r, form, "Nome obbligatorio.")
+		a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.error.name_required"))
 		return
 	}
 	if !withinLen(form.Name, MaxNameLen) {
-		a.renderQuickIngredientFormOnly(w, r, form, "Nome troppo lungo.")
+		a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.error.name_too_long", "Max", MaxNameLen))
 		return
 	}
 	unit := domain.IngredientUnit(form.Unit)
 	if unit != domain.UnitGram && unit != domain.UnitMilliliter {
-		a.renderQuickIngredientFormOnly(w, r, form, "Unita' non valida.")
+		a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.error.unit"))
 		return
 	}
 	kcal, err := parseNonNegFloat(form.Kcal)
 	if err != nil {
-		a.renderQuickIngredientFormOnly(w, r, form, "Kcal non valida.")
+		a.renderQuickIngredientFormOnly(w, r, form, a.numberError(r, "ingredients.error.kcal", err))
 		return
 	}
 	protein, err := parseNonNegFloat(form.Protein)
 	if err != nil {
-		a.renderQuickIngredientFormOnly(w, r, form, "Proteine non valide.")
+		a.renderQuickIngredientFormOnly(w, r, form, a.numberError(r, "ingredients.error.protein", err))
 		return
 	}
 	carbs, err := parseNonNegFloat(form.Carbs)
 	if err != nil {
-		a.renderQuickIngredientFormOnly(w, r, form, "Carboidrati non validi.")
+		a.renderQuickIngredientFormOnly(w, r, form, a.numberError(r, "ingredients.error.carbs", err))
 		return
 	}
 	fat, err := parseNonNegFloat(form.Fat)
 	if err != nil {
-		a.renderQuickIngredientFormOnly(w, r, form, "Grassi non validi.")
+		a.renderQuickIngredientFormOnly(w, r, form, a.numberError(r, "ingredients.error.fat", err))
 		return
 	}
 
@@ -139,7 +139,7 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 	if form.UnitWeightG != "" {
 		v, err := parseNonNegFloat(form.UnitWeightG)
 		if err != nil || v == 0 {
-			a.renderQuickIngredientFormOnly(w, r, form, "Peso di un pezzo non valido.")
+			a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.error.piece_weight"))
 			return
 		}
 		unitWeightG = &v
@@ -184,7 +184,7 @@ func (a *App) renderQuickRecipeModal(w http.ResponseWriter, r *http.Request, for
 			Error:        errMsg,
 		},
 	}
-	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "modal_dialog", data); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "modal_dialog", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -196,7 +196,7 @@ func (a *App) renderQuickRecipeFormOnly(w http.ResponseWriter, r *http.Request, 
 		Error:        errMsg,
 	}
 	// 200 and not 422: HTMX 1.x swaps only on 2xx.
-	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "quick_recipe_form", data); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "quick_recipe_form", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }

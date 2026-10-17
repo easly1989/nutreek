@@ -212,7 +212,7 @@ func (a *App) renderCustomizeModal(w http.ResponseWriter, r *http.Request, data 
 		Inner:     "meal_item_customize_form",
 		InnerData: data,
 	}
-	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "modal_dialog", mdata); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "dashboard", "modal_dialog", mdata); err != nil {
 		a.serverError(w, r, err)
 	}
 }
