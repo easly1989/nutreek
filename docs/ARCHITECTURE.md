@@ -98,6 +98,11 @@ changes the text.
 - Handlers call `a.t(r, "key")`. Flash messages are stored as keys and translated
   when shown; validation errors are translated where they are built.
 - Text a script shows comes from the page, translated, in `data-*` attributes.
+- Reference data seeded by the migrations is translated by its stable code, not
+  by the name stored in the database (`reference.json`): `{{ref "allergen" .Code .Name}}`
+  and `{{ref "activity" .Code .Name}}` in templates; features by their key, in Go.
+  A row without a code or a translation shows its stored name. User-entered
+  names and OpenFoodFacts product names are never translated.
 - A missing key falls back to English, then to the key itself. `TestCatalogs`
   fails when Italian or English lack a key, a value is empty, or the placeholders
   differ from English.

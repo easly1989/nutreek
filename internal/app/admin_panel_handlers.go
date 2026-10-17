@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/i18n"
 )
 
 // ---- /admin/panel -----------------------------------------------------------
@@ -31,6 +34,16 @@ type featureRow struct {
 	IsPremium   bool
 	Enabled     bool
 	SortOrder   int
+}
+
+// newFeatureRow names a feature in lang by its key (#158); a feature with no
+// translation keeps the name and description stored in the database.
+func newFeatureRow(lang string, f domain.Feature) featureRow {
+	k := "reference.feature." + f.Key
+	return featureRow{
+		Key: f.Key, Name: i18n.TOr(lang, k+".name", f.Name), Description: i18n.TOr(lang, k+".description", f.Description),
+		IsPremium: f.IsPremium, Enabled: f.Enabled, SortOrder: f.SortOrder,
+	}
 }
 
 func (a *App) handleAdminPanel(w http.ResponseWriter, r *http.Request) {
@@ -62,10 +75,7 @@ func (a *App) handleAdminPanel(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	for _, f := range features {
-		data.Features = append(data.Features, featureRow{
-			Key: f.Key, Name: f.Name, Description: f.Description,
-			IsPremium: f.IsPremium, Enabled: f.Enabled, SortOrder: f.SortOrder,
-		})
+		data.Features = append(data.Features, newFeatureRow(i18n.FromContext(r.Context()), f))
 		if f.Enabled {
 			data.ActiveCount++
 			if f.IsPremium {
@@ -284,15 +294,14 @@ func (a *App) handleUpgradePage(w http.ResponseWriter, r *http.Request) {
 	var premium []featureRow
 	var blocked string
 	from := r.URL.Query().Get("da")
+	lang := i18n.FromContext(r.Context())
 	for _, f := range features {
+		row := newFeatureRow(lang, f)
 		if f.Key == from && f.IsPremium {
-			blocked = f.Name
+			blocked = row.Name
 		}
 		if f.IsPremium && f.Enabled {
-			premium = append(premium, featureRow{
-				Key: f.Key, Name: f.Name, Description: f.Description,
-				IsPremium: f.IsPremium, Enabled: f.Enabled, SortOrder: f.SortOrder,
-			})
+			premium = append(premium, row)
 		}
 	}
 	hasPremium := false
