@@ -42,11 +42,17 @@
     const r = document.querySelector('input[name="sex"]:checked');
     return r ? r.value : '';
   }
+  // The texts come translated from the page, as data-msg-* on the form
+  // (profile.html); fill() puts the values into their {name} markers.
+  const M = (el('profile-form') || {}).dataset || {};
+  function fill(text, values) {
+    return String(text || '').replace(/\{(\w+)\}/g, function (_, k) { return values[k]; });
+  }
   function bmiCategory(bmi) {
-    if (bmi < 18.5) return 'Sottopeso';
-    if (bmi < 25.0) return 'Normopeso';
-    if (bmi < 30.0) return 'Sovrappeso';
-    return 'Obesità';
+    if (bmi < 18.5) return M.msgBmiUnderweight;
+    if (bmi < 25.0) return M.msgBmiNormal;
+    if (bmi < 30.0) return M.msgBmiOverweight;
+    return M.msgBmiObese;
   }
   // Italian-style numbers: 1.690, 23,6 (useGrouping "always": without it, 1690
   // would stay without a dot).
@@ -61,8 +67,8 @@
   }
   function getActivityLabel() {
     const sel = el('f-activity');
-    if (!sel || !sel.value) return 'default';
-    const labels = { sedentary: 'Sedentaria', light: 'Leggera', moderate: 'Moderata', active: 'Intensa', athlete: 'da atleta' };
+    if (!sel || !sel.value) return '';
+    const labels = { sedentary: M.msgWithSedentary, light: M.msgWithLight, moderate: M.msgWithModerate, active: M.msgWithActive, athlete: M.msgWithAthlete };
     return labels[sel.value] || '';
   }
 
@@ -138,8 +144,7 @@
     calcTDEE = calcBMR * factor;
     if (tdeeV) tdeeV.textContent = fmt(calcTDEE);
     if (tdeeL) {
-      const lbl = getActivityLabel();
-      tdeeL.textContent = lbl && lbl !== 'default' ? 'con attività ' + lbl.toLowerCase() : 'attività non indicata';
+      tdeeL.textContent = getActivityLabel() || M.msgNoActivity;
     }
     updateMacroSummary();
   }
@@ -233,9 +238,9 @@
     pendingRebalance = suggestion;
     const parts = [];
     if (suggestion.kcal    !== undefined) parts.push(fmt(suggestion.kcal) + ' kcal');
-    if (suggestion.protein !== undefined) parts.push('proteine ' + suggestion.protein + ' g');
-    if (suggestion.carbs   !== undefined) parts.push('carboidrati ' + suggestion.carbs + ' g');
-    if (suggestion.fat     !== undefined) parts.push('grassi ' + suggestion.fat + ' g');
+    if (suggestion.protein !== undefined) parts.push(fill(M.msgRebalanceProtein, { value: suggestion.protein }));
+    if (suggestion.carbs   !== undefined) parts.push(fill(M.msgRebalanceCarbs, { value: suggestion.carbs }));
+    if (suggestion.fat     !== undefined) parts.push(fill(M.msgRebalanceFat, { value: suggestion.fat }));
     text.textContent = parts.join(' · ');
     panel.classList.remove('hidden');
   }
@@ -337,7 +342,7 @@
     const fat     = parseF(el('f-tf') && el('f-tf').value);
     function pct(id, text) { const n = el('pct-' + id); if (n) n.textContent = text || ''; }
 
-    pct('f-tk', calcTDEE && kcal > 0 ? 'fabbisogno × ' + fmt(kcal / calcTDEE, 2) : '');
+    pct('f-tk', calcTDEE && kcal > 0 ? fill(M.msgTdeeRatio, { value: fmt(kcal / calcTDEE, 2) }) : '');
     const mk = (protein || 0) * 4 + (carbs || 0) * 4 + (fat || 0) * 9;
     const base = kcal > 0 ? kcal : mk;
     pct('f-tp', protein > 0 && base > 0 ? Math.round(protein * 4 / base * 100) + '%' + (calcWeight ? ' · ' + fmt(protein / calcWeight, 1) + ' g/kg' : '') : '');
@@ -349,14 +354,14 @@
     el('split-p').style.flexGrow = (protein || 0) * 4;
     el('split-c').style.flexGrow = (carbs || 0) * 4;
     el('split-f').style.flexGrow = (fat || 0) * 9;
-    let text = 'I macro danno ' + fmt(mk) + ' kcal';
+    let text = M.msgMacroTotal;
     if (kcal > 0) {
       const diff = Math.round(mk - kcal);
-      text += Math.abs(diff) < 1 ? ", come l'obiettivo." : ': ' + fmt(Math.abs(diff)) + (diff > 0 ? ' in più' : ' in meno') + " dell'obiettivo.";
+      text = Math.abs(diff) < 1 ? M.msgMacroEqual : (diff > 0 ? M.msgMacroOver : M.msgMacroUnder);
+      summary.textContent = fill(text, { kcal: fmt(mk), diff: fmt(Math.abs(diff)) });
     } else {
-      text += '.';
+      summary.textContent = fill(text, { kcal: fmt(mk) });
     }
-    summary.textContent = text;
     split.classList.remove('hidden');
   }
 
@@ -364,7 +369,7 @@
     if (suggested[key] !== null) {
       const val = parseF(el(fieldId) && el(fieldId).value);
       if (!isNaN(val) && Math.round(val) !== suggested[key]) {
-        setHint(fieldId, 'suggerito: ' + suggested[key]);
+        setHint(fieldId, fill(M.msgSuggested, { value: suggested[key] }));
       } else {
         setHint(fieldId, null);
       }
@@ -394,21 +399,21 @@
     function err(id, msg) { setError(id, msg); hasError = true; }
 
     if (!isNaN(kcal) && kcal > 0 && kcal < 800)
-      err('f-tk', 'Valore troppo basso (min 800 kcal).');
+      err('f-tk', M.msgErrKcalLow);
     if (!isNaN(protein) && protein > 400)
-      err('f-tp', 'Valore non realistico (max 400 g).');
+      err('f-tp', M.msgErrProteinHigh);
     if (!isNaN(fat) && fat > 0 && fat < 20)
-      err('f-tf', 'Valore troppo basso (min 20 g per i grassi essenziali).');
+      err('f-tf', M.msgErrFatLow);
 
     if (!isNaN(kcal) && kcal > 0) {
       if (!isNaN(protein) && protein > 0 && protein * 4 > kcal)
-        err('f-tp', 'Le proteine da sole superano le calorie totali.');
+        err('f-tp', M.msgErrProteinOver);
       if (!isNaN(fat) && fat > 0 && fat * 9 > kcal)
-        err('f-tf', 'I grassi da soli superano le calorie totali.');
+        err('f-tf', M.msgErrFatOver);
       if (!isNaN(protein) && !isNaN(carbs) && !isNaN(fat) && protein >= 0 && carbs >= 0 && fat >= 0) {
         const macroKcal = protein * 4 + carbs * 4 + fat * 9;
         if (macroKcal > kcal * 1.10)
-          err('f-tc', 'La somma dei macro supera le calorie totali di oltre il 10%.');
+          err('f-tc', M.msgErrMacroSum);
       }
     }
 
