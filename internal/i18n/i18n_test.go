@@ -122,7 +122,7 @@ func TestCheck(t *testing.T) {
 		{"community language missing keys only warns", with(map[string]string{
 			"de/demo": `{"demo.title": "Titel"}`,
 		}), nil, []string{"demo.hello", "demo.items"}},
-		{"community language without an area file only warns", with(map[string]string{
+		{"community language with an area English lacks", with(map[string]string{
 			"de/other": `{"other.x": "x"}`,
 		}), []string{`key "other.x" is not in English`}, []string{"demo.hello", "demo.items", "demo.title"}},
 		{"community language with a key English lacks fails", with(map[string]string{
