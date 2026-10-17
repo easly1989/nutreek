@@ -1,22 +1,22 @@
-{{define "title"}}Piano nutrizionale — Nutreek{{end}}
+{{define "title"}}{{t "plan.title"}} — Nutreek{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
   <div>
-    <h1 class="h1">Piano nutrizionale</h1>
-    <p class="text-muted">Le varianti di ogni pasto: le propone il picker e le usa la generazione della settimana.</p>
+    <h1 class="h1">{{t "plan.title"}}</h1>
+    <p class="text-muted">{{t "plan.subtitle"}}</p>
   </div>
 
   <div class="flex flex-wrap items-center gap-3">
-    <nav class="segmented" aria-label="Sezioni del piano">
-      <a href="/piano-nutrizionale"{{if eq .ActiveTab "piano"}} aria-current="page"{{end}}>Pasti e varianti</a>
-      <a href="/piano-nutrizionale?tab=template"{{if eq .ActiveTab "template"}} aria-current="page"{{end}}>Template settimanali</a>
+    <nav class="segmented" aria-label="{{t "plan.sections"}}">
+      <a href="/piano-nutrizionale"{{if eq .ActiveTab "piano"}} aria-current="page"{{end}}>{{t "plan.tab.meals"}}</a>
+      <a href="/piano-nutrizionale?tab=template"{{if eq .ActiveTab "template"}} aria-current="page"{{end}}>{{t "plan.tab.templates"}}</a>
     </nav>
-    {{if and (eq .ActiveTab "piano") .ActiveTemplate}}<span class="text-[12.5px] text-muted">Pasti presi dal template <a href="/templates/{{(index .Templates 0).ID}}" class="font-bold text-text hover:underline">{{.ActiveTemplate}}</a></span>{{end}}
+    {{if and (eq .ActiveTab "piano") .ActiveTemplate}}<span class="text-[12.5px] text-muted">{{t "plan.from_template"}} <a href="/templates/{{(index .Templates 0).ID}}" class="font-bold text-text hover:underline">{{.ActiveTemplate}}</a></span>{{end}}
   </div>
 
   {{if eq .ActiveTab "piano"}}
     {{if .ReadOnly}}
-      <p class="rounded-xl bg-accent-soft text-accent px-4 py-3">Piano <strong>{{.Plan.Name}}</strong> assegnato dal tuo coach <strong>{{.CoachName}}</strong>: per cambiarlo, contatta il coach.</p>
+      <p class="rounded-xl bg-accent-soft text-accent px-4 py-3">{{t "plan.coach.plan"}} <strong>{{.Plan.Name}}</strong> {{t "plan.coach.assigned_by"}} <strong>{{.CoachName}}</strong>: {{t "plan.coach.contact"}}</p>
       {{if .Plan.MealTypes}}
         {{range .Plan.MealTypes}}
           <section class="flex flex-col gap-3">
@@ -27,19 +27,19 @@
           </section>
         {{end}}
       {{else}}
-        <p class="card px-6 py-10 text-center text-muted">Il piano assegnato dal coach non ha ancora contenuti.</p>
+        <p class="card px-6 py-10 text-center text-muted">{{t "plan.coach.empty"}}</p>
       {{end}}
 
     {{else if not .HasActiveTemplate}}
       <div class="card border-dashed px-6 py-10 text-center flex flex-col items-center gap-3">
-        <p class="text-muted">I pasti del piano vengono dal template settimanale attivo, e non ce n’è ancora uno.</p>
-        <a href="/piano-nutrizionale?tab=template" class="btn-primary">Scegli un template</a>
+        <p class="text-muted">{{t "plan.no_template"}}</p>
+        <a href="/piano-nutrizionale?tab=template" class="btn-primary">{{t "plan.choose_template"}}</a>
       </div>
 
     {{else if not .SlotMealTypes}}
       <div class="card border-dashed px-6 py-10 text-center flex flex-col items-center gap-3">
-        <p class="text-muted">Il template attivo non ha ancora pasti.</p>
-        <a href="/templates/{{(index .Templates 0).ID}}" class="btn-primary">Aggiungi i pasti al template</a>
+        <p class="text-muted">{{t "plan.template_empty"}}</p>
+        <a href="/templates/{{(index .Templates 0).ID}}" class="btn-primary">{{t "plan.add_meals"}}</a>
       </div>
 
     {{else}}
@@ -47,21 +47,21 @@
         <section class="flex flex-col gap-3">
           <div class="flex items-baseline gap-2.5">
             <h2 class="text-[17px] font-bold">{{.SlotName}}</h2>
-            <span class="text-[12.5px] text-muted">{{len $mt.Variations}} {{if eq (len $mt.Variations) 1}}variante{{else}}varianti{{end}}</span>
-            <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2.5" data-new-variation="{{$mt.ID}}">{{template "icon_sm" "i-plus"}}Nuova variante</button>
+            <span class="text-[12.5px] text-muted">{{t "plan.variants" "Count" (len $mt.Variations)}}</span>
+            <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2.5" data-new-variation="{{$mt.ID}}">{{template "icon_sm" "i-plus"}}{{t "plan.new_variant"}}</button>
           </div>
           <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
             {{range $mt.Variations}}{{template "variation_card" (pickerRow . $)}}{{end}}
             {{/* Dashed card: it opens on the variation's (optional) name. */}}
             <details id="new-var-{{$mt.ID}}" class="group rounded-xl border-[1.5px] border-dashed border-border"{{if not $mt.Variations}} open{{end}}>
-              <summary class="flex items-center justify-center gap-1.5 min-h-[116px] text-accent font-semibold cursor-pointer list-none group-open:hidden [&::-webkit-details-marker]:hidden">{{template "icon" "i-plus"}}Nuova variante</summary>
+              <summary class="flex items-center justify-center gap-1.5 min-h-[116px] text-accent font-semibold cursor-pointer list-none group-open:hidden [&::-webkit-details-marker]:hidden">{{template "icon" "i-plus"}}{{t "plan.new_variant"}}</summary>
               <form method="post" action="/nutrizionista/variations" class="flex flex-col justify-center gap-2 p-4 h-full">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                 <input type="hidden" name="meal_type_id" value="{{$mt.ID}}">
-                <label class="lab">Nuova variante di {{.SlotName}}
-                  <input name="name" placeholder="Nome (facoltativo)" class="field">
+                <label class="lab">{{t "plan.new_variant_of" "Name" .SlotName}}
+                  <input name="name" placeholder="{{t "plan.variant_name_placeholder"}}" class="field">
                 </label>
-                <button class="btn-primary self-start">Crea variante</button>
+                <button class="btn-primary self-start">{{t "plan.create_variant"}}</button>
               </form>
             </details>
           </div>
@@ -70,11 +70,11 @@
     {{end}}
 
   {{else}}
-    {{/* ===== Template settimanali ===== */}}
+    {{/* ===== Weekly templates ===== */}}
     <section class="card max-w-[640px]">
       <div class="flex items-center gap-2.5 px-4 py-3">
-        <h2 class="h2">I tuoi template</h2>
-        <a href="/templates/new" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2">{{template "icon_sm" "i-plus"}}Nuovo</a>
+        <h2 class="h2">{{t "templates.yours"}}</h2>
+        <a href="/templates/new" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2">{{template "icon_sm" "i-plus"}}{{t "templates.new_short"}}</a>
       </div>
       {{if .Templates}}
         <div class="divide-y divide-border border-t border-border">
@@ -82,35 +82,35 @@
             <div class="flex items-center gap-2.5 min-h-[52px] pl-4 pr-2">
               <a href="/templates/{{.ID}}" class="grow min-w-0 truncate hover:underline{{if .IsActive}} font-bold{{end}}">{{.Name}}</a>
               {{if .IsActive}}
-                <span class="chip chip-soft">Attivo</span>
+                <span class="chip chip-soft">{{t "templates.active"}}</span>
               {{else}}
                 <form method="post" action="/templates/{{.ID}}/activate">
                   <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                  <button class="btn-secondary h-[30px] px-2.5 text-[12.5px]">Attiva</button>
+                  <button class="btn-secondary h-[30px] px-2.5 text-[12.5px]">{{t "templates.activate"}}</button>
                 </form>
               {{end}}
-              <a href="/templates/{{.ID}}" class="icon-action" aria-label="Modifica {{.Name}}" title="Modifica">{{template "icon_sm" "i-edit"}}</a>
-              <form method="post" action="/templates/{{.ID}}/delete" data-confirm="Eliminare il template «{{.Name}}»?">
+              <a href="/templates/{{.ID}}" class="icon-action" aria-label="{{t "templates.edit_label" "Name" .Name}}" title="{{t "templates.edit"}}">{{template "icon_sm" "i-edit"}}</a>
+              <form method="post" action="/templates/{{.ID}}/delete" data-confirm="{{t "templates.delete_confirm" "Name" .Name}}">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <button class="icon-action" aria-label="Elimina {{.Name}}" title="Elimina">{{template "icon_sm" "i-trash"}}</button>
+                <button class="icon-action" aria-label="{{t "templates.delete_label" "Name" .Name}}" title="{{t "templates.delete"}}">{{template "icon_sm" "i-trash"}}</button>
               </form>
             </div>
           {{end}}
         </div>
       {{else}}
-        <p class="px-4 py-8 border-t border-border text-center text-muted">Nessun template ancora: crea il primo per definire i pasti della settimana.</p>
+        <p class="px-4 py-8 border-t border-border text-center text-muted">{{t "templates.none"}}</p>
       {{end}}
     </section>
-    <p class="text-muted max-w-[640px]">Un template è lo schema dei pasti della settimana (colazione, pranzo, cena…). Quello attivo dà i pasti al piano nutrizionale.</p>
+    <p class="text-muted max-w-[640px]">{{t "templates.explainer"}}</p>
   {{end}}
 </div>
 
 <script>
 (function () {
-  // Picker di una variante: Ingrediente / Ricetta cambia endpoint e
-  // parametri della ricerca live (il fetch lo fa hx-get sui bottoni).
+  // A variation's picker: Ingredient / Recipe switches the endpoint and the
+  // parameters of the live search (hx-get on the buttons does the fetch).
   document.addEventListener('click', function (e) {
-    // «Nuova variante» in testata apre la card tratteggiata sul nome.
+    // "New variant" in the header opens the dashed card on the name.
     var nv = e.target.closest('[data-new-variation]');
     if (nv) {
       var det = document.getElementById('new-var-' + nv.dataset.newVariation);
@@ -132,7 +132,7 @@
     document.querySelectorAll('[data-nutr-quick][data-nutr-var="' + varID + '"]').forEach(function (b) {
       b.classList.toggle('hidden', b.dataset.nutrQuick !== kind);
     });
-    // Le ricette non hanno codice a barre: lo scanner solo per gli ingredienti.
+    // Recipes have no barcode: the scanner is for ingredients only.
     document.querySelectorAll('[data-scan-for="#nutr-search-' + varID + '"]').forEach(function (b) {
       b.classList.toggle('hidden', kind !== 'ingredient');
     });
@@ -141,11 +141,11 @@
       input.value = '';
       input.dataset.searchExtra = 'variation_id=' + varID + '&kind=' + kind;
       input.dataset.searchNoOff = kind === 'recipe' ? '1' : '0';
-      input.placeholder = kind === 'recipe' ? 'Cerca una ricetta' : 'Cerca tra i tuoi ingredienti e su OpenFoodFacts';
+      input.placeholder = kind === 'recipe' ? input.dataset.msgPlaceholderRecipe : input.dataset.msgPlaceholderIngredient;
     }
   });
 
-  // Dopo «Nuovo ingrediente/ricetta» aggiorna i picker aperti.
+  // After "New ingredient/recipe" refresh the open pickers.
   ['ingredient-created', 'recipe-created'].forEach(function (ev) {
     window.addEventListener(ev, function () {
       document.querySelectorAll('details[data-nutr-picker][open]').forEach(function (det) {
@@ -166,15 +166,15 @@
 {{- $v := .Row -}}{{- $d := .List -}}
 <article class="card flex flex-col">
   <header class="flex items-center gap-2.5 pl-4 pr-2 pt-2.5 pb-1.5">
-    <h3 class="text-[14px] font-bold">{{if $v.Name}}{{$v.Name}}{{else}}Variante principale{{end}}</h3>
+    <h3 class="text-[14px] font-bold">{{if $v.Name}}{{$v.Name}}{{else}}{{t "plan.main_variant"}}{{end}}</h3>
     <span class="ml-auto font-bold tabular-nums whitespace-nowrap">{{num (index $d.VariationKcal $v.ID)}} kcal</span>
     {{if not $d.ReadOnly}}
     <div class="relative">
-      <button type="button" class="icon-action" data-popover="var-menu-{{$v.ID}}" aria-expanded="false" aria-controls="var-menu-{{$v.ID}}" aria-label="Azioni sulla variante">{{template "icon" "i-dots"}}</button>
+      <button type="button" class="icon-action" data-popover="var-menu-{{$v.ID}}" aria-expanded="false" aria-controls="var-menu-{{$v.ID}}" aria-label="{{t "plan.variant_actions"}}">{{template "icon" "i-dots"}}</button>
       <div id="var-menu-{{$v.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5">
-        <form method="post" action="/nutrizionista/variations/{{$v.ID}}/delete" data-confirm="Eliminare la variante «{{if $v.Name}}{{$v.Name}}{{else}}Variante principale{{end}}» e i suoi alimenti?">
+        <form method="post" action="/nutrizionista/variations/{{$v.ID}}/delete" data-confirm="{{t "plan.delete_variant_confirm" "Name" ($v.NameOr (t "plan.main_variant"))}}">
           <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
-          <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina variante</button>
+          <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}{{t "plan.delete_variant"}}</button>
         </form>
       </div>
     </div>
@@ -185,42 +185,43 @@
       {{range $v.Items}}
         <div class="group/item grid grid-cols-[minmax(0,1fr)_64px_44px_28px] gap-2 items-center min-h-[34px] pl-4 pr-2">
           <span class="truncate">{{if .Recipe}}{{.Recipe.Name}}{{else if .Ingredient}}{{.Ingredient.Name}}{{end}}</span>
-          <span class="text-right tabular-nums text-muted whitespace-nowrap">{{if .Recipe}}{{dec .Quantity 1}} porz.{{else}}{{dec .Quantity 1}} {{.QuantityUnit}}{{end}}</span>
+          <span class="text-right tabular-nums text-muted whitespace-nowrap">{{if .Recipe}}{{dec .Quantity 1}} {{t "plan.servings_short"}}{{else}}{{dec .Quantity 1}} {{.QuantityUnit}}{{end}}</span>
           <span class="text-right tabular-nums">{{num (index $d.ItemKcal .ID)}}</span>
           {{if not $d.ReadOnly}}
             <form method="post" action="/nutrizionista/items/{{.ID}}/delete">
               <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
-              <button class="w-7 h-7 grid place-items-center rounded-md text-muted hover:text-danger hover:bg-surface-2 lg:opacity-0 group-hover/item:opacity-100 focus:opacity-100" aria-label="Rimuovi {{if .Recipe}}{{.Recipe.Name}}{{else if .Ingredient}}{{.Ingredient.Name}}{{end}}">{{template "icon_sm" "i-trash"}}</button>
+              <button class="w-7 h-7 grid place-items-center rounded-md text-muted hover:text-danger hover:bg-surface-2 lg:opacity-0 group-hover/item:opacity-100 focus:opacity-100" aria-label="{{t "plan.remove_item" "Name" (or (and .Recipe .Recipe.Name) (and .Ingredient .Ingredient.Name))}}">{{template "icon_sm" "i-trash"}}</button>
             </form>
           {{else}}<span></span>{{end}}
         </div>
       {{end}}
     </div>
   {{else}}
-    <p class="px-4 pb-3 text-muted">Ancora nessun alimento.</p>
+    <p class="px-4 pb-3 text-muted">{{t "plan.no_items"}}</p>
   {{end}}
   {{if not $d.ReadOnly}}
   <details class="group mt-auto border-t border-border" data-nutr-picker="{{$v.ID}}"
            hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=ingredient&q="
            hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML" hx-trigger="toggle once">
     <summary class="flex items-center gap-1.5 min-h-[40px] px-4 text-accent font-semibold text-[13px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-      <span class="group-open:rotate-45 transition-transform">{{template "icon_sm" "i-plus"}}</span><span class="group-open:hidden">Aggiungi alimento</span><span class="hidden group-open:inline">Chiudi</span>
+      <span class="group-open:rotate-45 transition-transform">{{template "icon_sm" "i-plus"}}</span><span class="group-open:hidden">{{t "plan.add_food"}}</span><span class="hidden group-open:inline">{{t "common.close"}}</span>
     </summary>
     <div class="flex flex-col gap-2 px-4 pb-3">
       <div class="flex items-center gap-2">
-        <span class="segmented" role="radiogroup" aria-label="Tipo">
+        <span class="segmented" role="radiogroup" aria-label="{{t "plan.kind"}}">
           <button type="button" role="radio" aria-checked="true" class="px-3" data-nutr-tab="ingredient" data-nutr-var="{{$v.ID}}"
-                  hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=ingredient&q=" hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML">Ingrediente</button>
+                  hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=ingredient&q=" hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML">{{t "plan.kind_ingredient"}}</button>
           <button type="button" role="radio" aria-checked="false" class="px-3" data-nutr-tab="recipe" data-nutr-var="{{$v.ID}}"
-                  hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=recipe&q=" hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML">Ricetta</button>
+                  hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=recipe&q=" hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML">{{t "plan.kind_recipe"}}</button>
         </span>
-        <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2" data-nutr-quick="ingredient" data-nutr-var="{{$v.ID}}" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Nuovo</button>
-        <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2 hidden" data-nutr-quick="recipe" data-nutr-var="{{$v.ID}}" hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Nuova</button>
+        <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2" data-nutr-quick="ingredient" data-nutr-var="{{$v.ID}}" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}{{t "plan.new_ingredient_short"}}</button>
+        <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2 hidden" data-nutr-quick="recipe" data-nutr-var="{{$v.ID}}" hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}{{t "plan.new_recipe_short"}}</button>
       </div>
       <div class="flex gap-2">
         <label class="field-ico grow">
           {{template "icon" "i-search"}}
-          <input id="nutr-search-{{$v.ID}}" type="search" placeholder="Cerca tra i tuoi ingredienti e su OpenFoodFacts" aria-label="Cerca" autocomplete="off" class="field"
+          <input id="nutr-search-{{$v.ID}}" type="search" placeholder="{{t "ingredients.search.placeholder"}}" aria-label="{{t "plan.search"}}" autocomplete="off" class="field"
+                 data-msg-placeholder-ingredient="{{t "ingredients.search.placeholder"}}" data-msg-placeholder-recipe="{{t "recipes.search"}}"
                  data-ingredient-search data-search-url="/nutrizionista/picker"
                  data-search-extra="variation_id={{$v.ID}}&kind=ingredient"
                  data-search-target="#nutr-results-{{$v.ID}}" data-nutr-var="{{$v.ID}}">
@@ -229,7 +230,7 @@
       </div>
     </div>
     <div id="nutr-results-{{$v.ID}}" data-picker-list aria-live="polite" class="border-t border-border max-h-[360px] overflow-y-auto">
-      <p class="px-4 py-4 text-muted animate-pulse">Carico…</p>
+      <p class="px-4 py-4 text-muted animate-pulse">{{t "plan.loading"}}</p>
     </div>
   </details>
   {{end}}

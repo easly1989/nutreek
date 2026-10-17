@@ -36,7 +36,7 @@ type templateEditData struct {
 // Every group has its own sortable container in template_edit.html.
 type slotGroup struct {
 	Day   int
-	Label string // "Ogni giorno", "Lunedì", ...
+	Label string // "Lunedì", ...; empty for every day, which the template translates
 	Slots []domain.MealTemplateSlot
 }
 
@@ -60,7 +60,7 @@ func localPath(next, fallback string) string {
 func groupSlotsByDay(slots []domain.MealTemplateSlot) []slotGroup {
 	out := make([]slotGroup, 0, 8)
 	for _, day := range []int{domain.DayOfWeekEvery, 0, 1, 2, 3, 4, 5, 6} {
-		g := slotGroup{Day: day, Label: "Ogni giorno"}
+		g := slotGroup{Day: day}
 		if day >= 0 {
 			g.Label = dayFullNames[day]
 		}
@@ -97,11 +97,7 @@ func (a *App) handleTemplateNewForm(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleTemplateCreate(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	name := strings.TrimSpace(r.PostFormValue("name"))
-	if name == "" || !withinLen(name, MaxNameLen) {
-		msg := "Nome obbligatorio."
-		if name != "" {
-			msg = "Nome troppo lungo (max 200 caratteri)."
-		}
+	if msg := a.templateNameError(r, name); msg != "" {
 		data := templateNewData{authPageData: a.baseData(r), Name: name, Error: msg}
 		if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "template_new", data); err != nil {
 			a.serverError(w, r, err)
@@ -113,7 +109,7 @@ func (a *App) handleTemplateCreate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Template creato.")
+	a.Sessions.Put(r.Context(), "flash", "templates.flash.created")
 	http.Redirect(w, r, "/templates/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }
 
@@ -174,15 +170,11 @@ func (a *App) handleTemplateRename(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := strings.TrimSpace(r.PostFormValue("name"))
-	if name == "" || !withinLen(name, MaxNameLen) {
+	if msg := a.templateNameError(r, name); msg != "" {
 		tpl, err := a.MealTemplates.GetWithSlots(r.Context(), id, user.ID)
 		if err != nil {
 			a.handleTemplateError(w, r, err)
 			return
-		}
-		msg := "Nome obbligatorio."
-		if name != "" {
-			msg = "Nome troppo lungo (max 200 caratteri)."
 		}
 		a.renderTemplateEdit(w, r, tpl, name, msg,
 			slotForm{DayOfWeek: strconv.Itoa(domain.DayOfWeekEvery)}, "")
@@ -192,7 +184,7 @@ func (a *App) handleTemplateRename(w http.ResponseWriter, r *http.Request) {
 		a.handleTemplateError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Template rinominato.")
+	a.Sessions.Put(r.Context(), "flash", "templates.flash.renamed")
 	http.Redirect(w, r, "/templates/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }
 
@@ -208,15 +200,15 @@ func (a *App) handleTemplateAddSlot(w http.ResponseWriter, r *http.Request) {
 	day, parseErr := strconv.Atoi(dayStr)
 	form := slotForm{DayOfWeek: dayStr, Name: name}
 	if parseErr != nil || day < -1 || day > 6 {
-		a.reRenderTemplate(w, r, id, user.ID, form, "Giorno non valido.")
+		a.reRenderTemplate(w, r, id, user.ID, form, a.t(r, "templates.error.day"))
 		return
 	}
 	if name == "" {
-		a.reRenderTemplate(w, r, id, user.ID, form, "Nome del pasto obbligatorio.")
+		a.reRenderTemplate(w, r, id, user.ID, form, a.t(r, "templates.error.meal_name_required"))
 		return
 	}
 	if !withinLen(name, MaxNameLen) {
-		a.reRenderTemplate(w, r, id, user.ID, form, "Nome troppo lungo (max 200 caratteri).")
+		a.reRenderTemplate(w, r, id, user.ID, form, a.t(r, "templates.error.name_too_long", "Max", MaxNameLen))
 		return
 	}
 	if _, err := a.MealTemplates.AddSlot(r.Context(), id, user.ID, day, name); err != nil {
@@ -240,7 +232,7 @@ func (a *App) handleTemplateRemoveSlot(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.MealTemplates.RemoveSlot(r.Context(), slotID, user.ID); err != nil {
 		if errors.Is(err, db.ErrSlotNotFound) {
-			http.Error(w, "slot non trovata", http.StatusNotFound)
+			http.Error(w, a.t(r, "templates.error.slot_not_found"), http.StatusNotFound)
 			return
 		}
 		a.serverError(w, r, err)
@@ -263,17 +255,17 @@ func (a *App) handleReorderTemplateSlots(w http.ResponseWriter, r *http.Request)
 	dayStr := chi.URLParam(r, "day")
 	day, err := strconv.Atoi(dayStr)
 	if err != nil || day < domain.DayOfWeekEvery || day > 6 {
-		http.Error(w, "day_of_week invalido", http.StatusBadRequest)
+		http.Error(w, a.t(r, "templates.error.day_of_week"), http.StatusBadRequest)
 		return
 	}
 	ids, err := parseIDList(r.PostFormValue("ids"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, a.t(r, "templates.error.ids"), http.StatusBadRequest)
 		return
 	}
 	if err := a.MealTemplates.ReorderSlots(r.Context(), id, user.ID, day, ids); err != nil {
 		if errors.Is(err, db.ErrReorderMismatch) {
-			http.Error(w, "ordine non valido", http.StatusConflict)
+			http.Error(w, a.t(r, "templates.error.order"), http.StatusConflict)
 			return
 		}
 		a.handleTemplateError(w, r, err)
@@ -300,7 +292,7 @@ func (a *App) handleTemplateActivate(w http.ResponseWriter, r *http.Request) {
 		a.handleTemplateError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Template attivato.")
+	a.Sessions.Put(r.Context(), "flash", "templates.flash.activated")
 	http.Redirect(w, r, localPath(r.PostFormValue("next"), "/piano-nutrizionale?tab=template"), http.StatusSeeOther)
 }
 
@@ -315,11 +307,23 @@ func (a *App) handleTemplateDelete(w http.ResponseWriter, r *http.Request) {
 		a.handleTemplateError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Template eliminato.")
+	a.Sessions.Put(r.Context(), "flash", "templates.flash.deleted")
 	http.Redirect(w, r, "/piano-nutrizionale?tab=template", http.StatusSeeOther)
 }
 
 // ---- helpers ---------------------------------------------------------------
+
+// templateNameError returns the translated error of an invalid template
+// name, or "" when the name is valid.
+func (a *App) templateNameError(r *http.Request, name string) string {
+	switch {
+	case name == "":
+		return a.t(r, "templates.error.name_required")
+	case !withinLen(name, MaxNameLen):
+		return a.t(r, "templates.error.name_too_long", "Max", MaxNameLen)
+	}
+	return ""
+}
 
 func (a *App) reRenderTemplate(w http.ResponseWriter, r *http.Request, id, userID int64, slotF slotForm, slotErr string) {
 	tpl, err := a.MealTemplates.GetWithSlots(r.Context(), id, userID)
@@ -335,7 +339,7 @@ func (a *App) handleTemplateError(w http.ResponseWriter, r *http.Request, err er
 	case errors.Is(err, db.ErrMealTemplateNotFound):
 		a.notFound(w, r)
 	case errors.Is(err, db.ErrMealTemplateForbidden):
-		http.Error(w, "operazione non consentita", http.StatusForbidden)
+		http.Error(w, a.t(r, "templates.error.forbidden"), http.StatusForbidden)
 	default:
 		a.serverError(w, r, err)
 	}
