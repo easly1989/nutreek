@@ -63,6 +63,13 @@ func (u *Users) GetByEmail(ctx context.Context, email string) (*domain.User, err
 	return scanUser(row)
 }
 
+// Count returns how many users there are.
+func (u *Users) Count(ctx context.Context) (int, error) {
+	var n int
+	err := u.db.QueryRowContext(ctx, `SELECT count(*) FROM users`).Scan(&n)
+	return n, err
+}
+
 // GetByID returns the user with the given id or ErrUserNotFound.
 func (u *Users) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 	row := u.db.QueryRowContext(ctx,

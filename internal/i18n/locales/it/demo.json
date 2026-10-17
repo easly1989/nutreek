@@ -6,6 +6,15 @@
     "one": "Si cancella dopo {{.Count}} ora senza usarlo, ogni notte alle 3:00 (UTC) e a ogni aggiornamento della demo.",
     "other": "Si cancella dopo {{.Count}} ore senza usarlo, ogni notte alle 3:00 (UTC) e a ogni aggiornamento della demo."
   },
+  "demo.entry.full": "La demo è piena in questo momento. Riprova tra poco.",
+  "demo.limit.ingredients": {
+    "one": "Nella demo puoi creare al massimo {{.Count}} ingrediente.",
+    "other": "Nella demo puoi creare al massimo {{.Count}} ingredienti."
+  },
+  "demo.limit.recipes": {
+    "one": "Nella demo puoi avere al massimo {{.Count}} ricetta.",
+    "other": "Nella demo puoi avere al massimo {{.Count}} ricette."
+  },
   "demo.entry.start": "Prova la demo",
   "demo.entry.own": "Vuoi la tua istanza?",
   "demo.entry.code": "Il codice è su GitHub",

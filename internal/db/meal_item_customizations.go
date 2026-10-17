@@ -51,6 +51,11 @@ func (r *MealItemCustomizations) Replace(
 	if ownerID != userID {
 		return ErrMealItemNotFound
 	}
+	for _, row := range rows {
+		if err := ingredientVisibleTo(ctx, r.db, row.IngredientID, userID); err != nil {
+			return err
+		}
+	}
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {

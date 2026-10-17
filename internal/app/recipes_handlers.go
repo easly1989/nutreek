@@ -388,7 +388,7 @@ func (a *App) renderRecipeEdit(
 		}
 		data.Usages = usages
 		// Load the ingredients for the select only when the user may edit.
-		ings, err := a.Ingredients.ListActive(r.Context(), 0, 200)
+		ings, err := a.Ingredients.ListActive(r.Context(), user.ID, 0, 200)
 		if err != nil {
 			a.serverError(w, r, err)
 			return

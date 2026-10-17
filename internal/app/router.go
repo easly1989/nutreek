@@ -43,6 +43,9 @@ func (a *App) Router() http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Recoverer)
+	if a.Demo != nil && a.DemoLimits.MaxBody > 0 {
+		r.Use(limitBody(a.DemoLimits.MaxBody))
+	}
 	r.Use(middleware.StripSlashes)
 	r.Use(securityHeaders)
 	r.Use(requestIDMiddleware)
@@ -76,10 +79,12 @@ func (a *App) Router() http.Handler {
 
 	r.Post("/language", a.handleLanguage)
 	if a.Demo != nil {
-		// The demo's only way in (#137): no sign-in, no sign-up. #185 makes
-		// the limits configurable.
-		demoLimiter := newIPRateLimiter(10, time.Hour)
-		r.With(demoLimiter.Middleware).Post("/demo/session", a.handleDemoSession)
+		// The demo's only way in (#137): no sign-in, no sign-up.
+		start := http.Handler(http.HandlerFunc(a.handleDemoSession))
+		if n := a.DemoLimits.StartsPerHour; n > 0 {
+			start = newIPRateLimiter(n, time.Hour).Middleware(start)
+		}
+		r.Method(http.MethodPost, "/demo/session", start)
 	} else {
 		registerLimiter := newIPRateLimiter(5, oneMinute)
 		r.Get("/login", a.handleLoginForm)
@@ -90,6 +95,9 @@ func (a *App) Router() http.Handler {
 	r.Post("/logout", a.handleLogout)
 
 	searchLimiter := newIPRateLimiter(60, oneMinute)
+	// In the demo, hand-made ingredients and recipes per user are capped (#185).
+	ingredientCap := a.demoCap(a.DemoLimits.MaxIngredients, a.Ingredients.CountLocalBy, "demo.limit.ingredients", "/ingredients")
+	recipeCap := a.demoCap(a.DemoLimits.MaxRecipes, a.Recipes.CountBy, "demo.limit.recipes", "/recipes")
 
 	// Protected sections: ingredients / recipes / plan. All under requireAuth.
 	r.Group(func(r chi.Router) {
@@ -97,7 +105,7 @@ func (a *App) Router() http.Handler {
 		r.Get("/ingredients", a.handleIngredientsList)
 		r.With(searchLimiter.Middleware).Get("/ingredients/search", a.handleIngredientsSearchPartial)
 		r.Get("/ingredients/new", a.handleIngredientNewForm)
-		r.Post("/ingredients", a.handleIngredientCreate)
+		r.With(ingredientCap).Post("/ingredients", a.handleIngredientCreate)
 		r.Get("/ingredients/{id}/edit", a.handleIngredientEditForm)
 		r.Post("/ingredients/{id}", a.handleIngredientUpdate)
 		r.Post("/ingredients/off-import", a.handleIngredientOFFImport)
@@ -107,19 +115,21 @@ func (a *App) Router() http.Handler {
 
 		// Quick-create modals (creating on the fly from pickers / lists).
 		r.Get("/quick/ingredient", a.handleQuickIngredientForm)
-		r.Post("/quick/ingredient", a.handleQuickIngredientCreate)
+		r.With(ingredientCap).Post("/quick/ingredient", a.handleQuickIngredientCreate)
 		r.Get("/quick/recipe", a.handleQuickRecipeForm)
-		r.Post("/quick/recipe", a.handleQuickRecipeCreate)
+		r.With(recipeCap).Post("/quick/recipe", a.handleQuickRecipeCreate)
 
 		r.Get("/recipes", a.handleRecipesList)
 		r.Get("/recipes/new", a.handleRecipeNewForm)
-		r.Post("/recipes/import", a.handleRecipeImport)
-		r.Post("/recipes", a.handleRecipeCreate)
+		if a.Demo == nil { // fetches any URL: no use in the demo, and an SSRF risk
+			r.Post("/recipes/import", a.handleRecipeImport)
+		}
+		r.With(recipeCap).Post("/recipes", a.handleRecipeCreate)
 		r.Post("/recipes/bulk-delete", a.handleRecipesBulkDelete)
 		r.Get("/recipes/{id}", a.handleRecipeEdit)
 		r.Get("/recipes/{id}/picker", a.handleRecipePicker)
 		r.Get("/recipes/{id}/duplicate", a.handleRecipeDuplicateForm)
-		r.Post("/recipes/{id}/duplicate", a.handleRecipeDuplicate)
+		r.With(recipeCap).Post("/recipes/{id}/duplicate", a.handleRecipeDuplicate)
 		r.Post("/recipes/{id}", a.handleRecipeUpdate)
 		r.Post("/recipes/{id}/delete", a.handleRecipeDelete)
 		r.Post("/recipes/{id}/items", a.handleRecipeAddItem)
@@ -210,8 +220,11 @@ func (a *App) Router() http.Handler {
 
 		// Owner-only: manual OFF sync from the profile panel (see isOwner).
 		// Not under /admin/* because it goes through the session, not X-Admin-Token.
-		r.Get("/profile/off-status", a.requireOwner(a.handleOwnerOFFStatus))
-		r.Post("/profile/off-sync", a.requireOwner(a.handleOwnerOFFRefresh))
+		// The demo has no owner.
+		if a.Demo == nil {
+			r.Get("/profile/off-status", a.requireOwner(a.handleOwnerOFFStatus))
+			r.Post("/profile/off-sync", a.requireOwner(a.handleOwnerOFFRefresh))
+		}
 
 		r.Get("/shopping-list", a.handleShoppingList)
 		r.Post("/shopping-list/generate", a.handleShoppingGenerate)
@@ -229,11 +242,36 @@ func (a *App) Router() http.Handler {
 		if a.Demo == nil { // both ask for the password a demo account does not have
 			r.Post("/settings/password", a.handleChangePassword)
 			r.Post("/settings/delete-account", a.handleDeleteAccount)
+			r.With(a.requireFeature("api_access")).Post("/settings/api-tokens", a.handleSettingsAPITokenCreate)
+			r.Post("/settings/api-tokens/{id}/revoke", a.handleSettingsAPITokenRevoke)
 		}
-		r.With(a.requireFeature("api_access")).Post("/settings/api-tokens", a.handleSettingsAPITokenCreate)
-		r.Post("/settings/api-tokens/{id}/revoke", a.handleSettingsAPITokenRevoke)
 	})
 
+	if a.Demo == nil {
+		a.mountAdminAndAPI(r)
+	}
+
+	// Coach mode: requires the 'coach' role (a premium feature, prepared).
+	r.Group(func(r chi.Router) {
+		r.Use(a.requireAuth)
+		r.Use(a.requireCoach)
+		r.Use(a.requireFeature("coach_mode"))
+		r.Get("/coach", a.handleCoachDashboard)
+		r.Post("/coach/clients", a.handleCoachAddClient)
+		r.Post("/coach/clients/{id}/remove", a.handleCoachRemoveClient)
+		r.Post("/coach/clients/{id}/assign-plan", a.handleCoachAssignPlan)
+		r.Post("/coach/plans", a.handleCoachCreatePlan)
+		r.Post("/coach/plans/{id}/open", a.handleCoachOpenPlan)
+		r.Post("/coach/plans/{id}/rename", a.handleCoachRenamePlan)
+		r.Post("/coach/plans/{id}/delete", a.handleCoachDeletePlan)
+	})
+
+	return r
+}
+
+// mountAdminAndAPI mounts the REST API and the admin routes, which the demo
+// has no use for (#185).
+func (a *App) mountAdminAndAPI(r chi.Router) {
 	// REST API v1: authenticated via Bearer token, exempt from CSRF.
 	// requireFeature("api_access") blocks users without a subscription when PremiumEnabled=true.
 	r.Route("/api/v1", func(r chi.Router) {
@@ -273,23 +311,6 @@ func (a *App) Router() http.Handler {
 		r.Post("/admin/panel/users/{id}/premium/revoke", a.handleAdminUserRevokePremium)
 		r.Post("/admin/panel/users/{id}/role", a.handleAdminUserRole)
 	})
-
-	// Coach mode: requires the 'coach' role (a premium feature, prepared).
-	r.Group(func(r chi.Router) {
-		r.Use(a.requireAuth)
-		r.Use(a.requireCoach)
-		r.Use(a.requireFeature("coach_mode"))
-		r.Get("/coach", a.handleCoachDashboard)
-		r.Post("/coach/clients", a.handleCoachAddClient)
-		r.Post("/coach/clients/{id}/remove", a.handleCoachRemoveClient)
-		r.Post("/coach/clients/{id}/assign-plan", a.handleCoachAssignPlan)
-		r.Post("/coach/plans", a.handleCoachCreatePlan)
-		r.Post("/coach/plans/{id}/open", a.handleCoachOpenPlan)
-		r.Post("/coach/plans/{id}/rename", a.handleCoachRenamePlan)
-		r.Post("/coach/plans/{id}/delete", a.handleCoachDeletePlan)
-	})
-
-	return r
 }
 
 type reqIDKey struct{}

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/demo"
 )
 
@@ -53,6 +54,13 @@ var csrfField = regexp.MustCompile(`name="csrf_token" value="([^"]+)"`)
 // post sends a form with the CSRF token of the page at from.
 func (b *browser) post(from, path string, form url.Values) (int, string) {
 	b.t.Helper()
+	code, loc, _ := b.submit(from, path, form)
+	return code, loc
+}
+
+// submit is post that also returns the body.
+func (b *browser) submit(from, path string, form url.Values) (int, string, string) {
+	b.t.Helper()
 	_, _, page := b.get(from)
 	m := csrfField.FindStringSubmatch(page)
 	if m == nil {
@@ -70,7 +78,8 @@ func (b *browser) post(from, path string, form url.Values) (int, string) {
 		b.t.Fatalf("POST %s: %v", path, err)
 	}
 	defer resp.Body.Close()
-	return resp.StatusCode, resp.Header.Get("Location")
+	body, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, resp.Header.Get("Location"), string(body)
 }
 
 func (b *browser) setLang(lang string) {
@@ -94,18 +103,21 @@ func TestDemoAbsentFromNormalBuild(t *testing.T) {
 	}
 }
 
-func newDemoApp(t *testing.T) *App {
+// newDemoApp is the app as cmd/nutreek/demo_on.go wires it; zero limits are off.
+func newDemoApp(t *testing.T, limits DemoLimits) *App {
 	t.Helper()
 	a := newTestApp(t)
 	if err := demo.Prepare(context.Background(), a.Store.DB); err != nil {
 		t.Fatal(err)
 	}
+	db.ScopeCatalog(a.Store.DB, demo.Peers)
 	a.Demo = demo.New(a.Store.DB, demo.Config{})
+	a.DemoLimits = limits
 	return a
 }
 
 func TestDemoEntry(t *testing.T) {
-	a := newDemoApp(t)
+	a := newDemoApp(t, DemoLimits{})
 	b := newBrowser(t, a)
 
 	code, _, entry := b.get("/")
@@ -172,7 +184,7 @@ func TestDemoEntry(t *testing.T) {
 
 // Requests keep a demo alive; once purged, its session lets nobody in.
 func TestDemoPurgedSession(t *testing.T) {
-	a := newDemoApp(t)
+	a := newDemoApp(t, DemoLimits{})
 	svc := demo.New(a.Store.DB, demo.Config{Idle: time.Hour})
 	a.Demo = svc
 	b := newBrowser(t, a)

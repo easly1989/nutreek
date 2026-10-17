@@ -87,7 +87,7 @@ func TestIngredientsSearchAndList(t *testing.T) {
 		t.Fatalf("set superseded_by: %v", err)
 	}
 
-	results, err := ings.SearchActive(ctx, "pan", 10)
+	results, err := ings.SearchActive(ctx, 0, "pan", 10)
 	if err != nil {
 		t.Fatalf("SearchActive: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestIngredientsSearchAndList(t *testing.T) {
 		}
 	}
 
-	all, err := ings.ListActive(ctx, 0, 100)
+	all, err := ings.ListActive(ctx, 0, 0, 100)
 	if err != nil {
 		t.Fatalf("ListActive: %v", err)
 	}

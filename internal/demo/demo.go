@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -38,20 +39,54 @@ CREATE TABLE IF NOT EXISTS demo_members (
     group_id INTEGER NOT NULL REFERENCES demo_groups(id) ON DELETE CASCADE
 );`
 
+// Peers lists the users whose hand-made ingredients and public recipes a
+// visitor sees: their own demo group (#185). One ? for the visitor's id; see
+// db.ScopeCatalog.
+const Peers = `SELECT user_id FROM demo_members WHERE group_id = (SELECT group_id FROM demo_members WHERE user_id = ?)`
+
 // Config holds the demo's settings, read from NUTREEK_DEMO_* variables.
 type Config struct {
 	Idle time.Duration // a session ends after this long without a request
+
+	// Limits (#185): one visitor must not hurt the server or the others.
+	MaxUsers       int   // live demo users
+	StartsPerHour  int   // demos started per address per hour
+	MaxBody        int64 // request body in bytes
+	MaxIngredients int   // hand-made ingredients per user
+	MaxRecipes     int   // recipes per user
 }
 
 // LoadConfig reads the demo's settings from the environment.
 func LoadConfig() (Config, error) {
-	c := Config{Idle: 2 * time.Hour}
+	c := Config{Idle: 2 * time.Hour, MaxUsers: 200, StartsPerHour: 10, MaxBody: 1 << 20, MaxIngredients: 300, MaxRecipes: 100}
 	if v := os.Getenv("NUTREEK_DEMO_IDLE"); v != "" {
 		d, err := time.ParseDuration(v)
 		if err != nil || d <= 0 {
 			return c, fmt.Errorf("NUTREEK_DEMO_IDLE: %q is not a positive duration", v)
 		}
 		c.Idle = d
+	}
+	var body int
+	for _, l := range []struct {
+		name string
+		to   *int
+	}{
+		{"NUTREEK_DEMO_MAX_USERS", &c.MaxUsers},
+		{"NUTREEK_DEMO_STARTS_PER_HOUR", &c.StartsPerHour},
+		{"NUTREEK_DEMO_MAX_BODY", &body},
+		{"NUTREEK_DEMO_MAX_INGREDIENTS", &c.MaxIngredients},
+		{"NUTREEK_DEMO_MAX_RECIPES", &c.MaxRecipes},
+	} {
+		if v := os.Getenv(l.name); v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil || n <= 0 {
+				return c, fmt.Errorf("%s: %q is not a positive whole number", l.name, v)
+			}
+			*l.to = n
+		}
+	}
+	if body > 0 {
+		c.MaxBody = int64(body)
 	}
 	return c, nil
 }
