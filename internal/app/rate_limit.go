@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/amon2126/nutreek/internal/i18n"
 )
 
 // ipRateLimiter limits requests per IP with a fixed window: the first attempt
@@ -89,7 +91,7 @@ func (l *ipRateLimiter) size() int {
 func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !l.allow(remoteIP(r)) {
-			http.Error(w, "Troppe richieste. Riprova tra qualche minuto.", http.StatusTooManyRequests)
+			http.Error(w, i18n.T(i18n.FromContext(r.Context()), "auth.error.too_many_requests"), http.StatusTooManyRequests)
 			return
 		}
 		next.ServeHTTP(w, r)

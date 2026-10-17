@@ -14,6 +14,6 @@ func (a *App) handleTourDismiss(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleTourRestart(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	_ = a.Users.ResetTour(r.Context(), user.ID)
-	a.Sessions.Put(r.Context(), "flash", "Tour riavviato. Torna alla dashboard per iniziare.")
+	a.Sessions.Put(r.Context(), "flash", "tour.flash.restarted")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

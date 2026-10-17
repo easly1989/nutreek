@@ -117,7 +117,7 @@ func (a *App) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 
 	case 5:
 		_ = a.Users.CompleteOnboarding(ctx, user.ID)
-		a.Sessions.Put(ctx, "flash", "Configurazione completata. Buon inizio con Nutreek!")
+		a.Sessions.Put(ctx, "flash", "onboarding.flash.done")
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 
 	default:

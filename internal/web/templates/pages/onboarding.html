@@ -1,17 +1,17 @@
-{{define "title"}}Configurazione iniziale — Nutreek{{end}}
+{{define "title"}}{{t "onboarding.title"}} — Nutreek{{end}}
 
-{{define "topbar_actions"}}<a href="/" class="btn-ghost">Salta, lo faccio dopo</a>{{end}}
+{{define "topbar_actions"}}<a href="/" class="btn-ghost">{{t "onboarding.skip"}}</a>{{end}}
 
 {{define "content"}}
 <div class="auth-box max-w-[520px]">
   <div class="flex flex-col gap-2">
     <div class="flex items-baseline gap-2 text-[12.5px]">
-      <span class="font-semibold text-muted">Passo {{.Step}} di 5</span>
+      <span class="font-semibold text-muted">{{t "onboarding.step_of" "Step" .Step "Total" 5}}</span>
       <span class="ml-auto hidden sm:block text-muted">
-        {{- range $i, $n := list "Dati fisici" "Obiettivi" "Template" "Settimana" "Fatto"}}{{if $i}} · {{end}}{{if eq (add $i 1) $.Step}}<b class="text-text">{{$n}}</b>{{else}}{{$n}}{{end}}{{end -}}
+        {{- range $i, $n := list (t "onboarding.steps.physical") (t "onboarding.steps.goals") (t "onboarding.steps.template") (t "onboarding.steps.week") (t "onboarding.steps.done")}}{{if $i}} · {{end}}{{if eq (add $i 1) $.Step}}<b class="text-text">{{$n}}</b>{{else}}{{$n}}{{end}}{{end -}}
       </span>
     </div>
-    <div class="grid grid-cols-5 gap-1.5" role="progressbar" aria-label="Configurazione iniziale" aria-valuemin="1" aria-valuemax="5" aria-valuenow="{{.Step}}">
+    <div class="grid grid-cols-5 gap-1.5" role="progressbar" aria-label="{{t "onboarding.title"}}" aria-valuemin="1" aria-valuemax="5" aria-valuenow="{{.Step}}">
       {{range .Steps}}<span class="h-1 rounded-full {{if le . $.Step}}bg-accent{{else}}bg-track{{end}}"></span>{{end}}
     </div>
   </div>
@@ -24,11 +24,11 @@
 </div>
 {{end}}
 
-{{/* Indietro / Avanti, shared by steps 2-4. */}}
+{{/* Back / Next, shared by steps 2-4. */}}
 {{define "onboarding_nav"}}
 <div class="flex items-center">
-  <a href="/onboarding?step={{add .Step -1}}{{if .Restart}}&restart=true{{end}}" class="btn-ghost">{{template "icon_sm" "i-chevron-left"}}Indietro</a>
-  <button class="btn-primary ml-auto">Avanti</button>
+  <a href="/onboarding?step={{add .Step -1}}{{if .Restart}}&restart=true{{end}}" class="btn-ghost">{{template "icon_sm" "i-chevron-left"}}{{t "onboarding.back"}}</a>
+  <button class="btn-primary ml-auto">{{t "onboarding.next"}}</button>
 </div>
 {{end}}
 
@@ -38,74 +38,74 @@
 {{if .Restart}}<input type="hidden" name="restart" value="true">{{end}}
 {{end}}
 
-{{/* ===================== PASSO 1: dati fisici ===================== */}}
+{{/* ===================== STEP 1: physical data ===================== */}}
 {{define "onboarding_step1"}}
 <form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
   {{template "onboarding_hidden" .}}
   <div class="card">
-    <div><h1 class="h1">Parliamo di te</h1><p class="text-muted mt-1">Servono a stimare quanto ti serve in un giorno. Puoi lasciare vuoto quello che preferisci.</p></div>
+    <div><h1 class="h1">{{t "onboarding.physical.title"}}</h1><p class="text-muted mt-1">{{t "onboarding.physical.lead"}}</p></div>
     <div class="grid grid-cols-2 gap-3.5">
-      <label class="lab">Peso<span class="field-unit"><input id="ob-weight" name="weight_kg" inputmode="decimal" value="{{.Form.WeightKg}}" placeholder="72,5" class="field"><em>kg</em></span></label>
-      <label class="lab">Altezza<span class="field-unit"><input id="ob-height" name="height_cm" inputmode="decimal" value="{{.Form.HeightCm}}" placeholder="175" class="field"><em>cm</em></span></label>
-      <label class="lab">Anno di nascita<input id="ob-birth" name="birth_year" inputmode="numeric" value="{{.Form.BirthYear}}" placeholder="1990" class="field"></label>
+      <label class="lab">{{t "onboarding.physical.weight"}}<span class="field-unit"><input id="ob-weight" name="weight_kg" inputmode="decimal" value="{{.Form.WeightKg}}" placeholder="72,5" class="field"><em>kg</em></span></label>
+      <label class="lab">{{t "onboarding.physical.height"}}<span class="field-unit"><input id="ob-height" name="height_cm" inputmode="decimal" value="{{.Form.HeightCm}}" placeholder="175" class="field"><em>cm</em></span></label>
+      <label class="lab">{{t "onboarding.physical.birth_year"}}<input id="ob-birth" name="birth_year" inputmode="numeric" value="{{.Form.BirthYear}}" placeholder="1990" class="field"></label>
     </div>
     <fieldset class="lab">
-      <legend class="mb-1.5">Sesso biologico</legend>
+      <legend class="mb-1.5">{{t "onboarding.physical.sex"}}</legend>
       <div class="segmented grid-cols-3">
-        <label><input type="radio" name="sex" value="M"{{if eq .Form.Sex "M"}} checked{{end}}>Uomo</label>
-        <label><input type="radio" name="sex" value="F"{{if eq .Form.Sex "F"}} checked{{end}}>Donna</label>
-        <label><input type="radio" name="sex" value=""{{if eq .Form.Sex ""}} checked{{end}}>Non lo dico</label>
+        <label><input type="radio" name="sex" value="M"{{if eq .Form.Sex "M"}} checked{{end}}>{{t "onboarding.physical.male"}}</label>
+        <label><input type="radio" name="sex" value="F"{{if eq .Form.Sex "F"}} checked{{end}}>{{t "onboarding.physical.female"}}</label>
+        <label><input type="radio" name="sex" value=""{{if eq .Form.Sex ""}} checked{{end}}>{{t "onboarding.physical.sex_skip"}}</label>
       </div>
     </fieldset>
-    <label class="lab">Attività fisica
+    <label class="lab">{{t "onboarding.physical.activity"}}
       <select id="ob-activity" name="activity_level" class="field">
-        <option value=""{{if eq .Form.ActivityLevel ""}} selected{{end}}>Non specificata</option>
-        <option value="sedentary"{{if eq .Form.ActivityLevel "sedentary"}} selected{{end}}>Sedentaria: solo vita quotidiana</option>
-        <option value="light"{{if eq .Form.ActivityLevel "light"}} selected{{end}}>Leggera: 1–3 allenamenti a settimana</option>
-        <option value="moderate"{{if eq .Form.ActivityLevel "moderate"}} selected{{end}}>Moderata: 3–5 allenamenti a settimana</option>
-        <option value="active"{{if eq .Form.ActivityLevel "active"}} selected{{end}}>Intensa: 6–7 allenamenti a settimana</option>
-        <option value="athlete"{{if eq .Form.ActivityLevel "athlete"}} selected{{end}}>Atleta: allenamento intenso ogni giorno</option>
+        <option value=""{{if eq .Form.ActivityLevel ""}} selected{{end}}>{{t "onboarding.physical.activity_none"}}</option>
+        <option value="sedentary"{{if eq .Form.ActivityLevel "sedentary"}} selected{{end}}>{{t "onboarding.physical.activity_sedentary"}}</option>
+        <option value="light"{{if eq .Form.ActivityLevel "light"}} selected{{end}}>{{t "onboarding.physical.activity_light"}}</option>
+        <option value="moderate"{{if eq .Form.ActivityLevel "moderate"}} selected{{end}}>{{t "onboarding.physical.activity_moderate"}}</option>
+        <option value="active"{{if eq .Form.ActivityLevel "active"}} selected{{end}}>{{t "onboarding.physical.activity_active"}}</option>
+        <option value="athlete"{{if eq .Form.ActivityLevel "athlete"}} selected{{end}}>{{t "onboarding.physical.activity_athlete"}}</option>
       </select>
     </label>
   </div>
-  <div class="flex"><button class="btn-primary ml-auto">Avanti</button></div>
+  <div class="flex"><button class="btn-primary ml-auto">{{t "onboarding.next"}}</button></div>
 </form>
 {{end}}
 
-{{/* ===================== PASSO 2: obiettivi ===================== */}}
+{{/* ===================== STEP 2: goals ===================== */}}
 {{define "onboarding_step2"}}
 <form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
   {{template "onboarding_hidden" .}}
   <div class="card">
-    <div><h1 class="h1">I tuoi obiettivi</h1><p class="text-muted mt-1">Quanto vuoi mangiare in un giorno. Puoi lasciare vuoto quello che non ti interessa.</p></div>
+    <div><h1 class="h1">{{t "onboarding.goals.title"}}</h1><p class="text-muted mt-1">{{t "onboarding.goals.lead"}}</p></div>
     {{if gt .TDEE 0.0}}
     <div class="on-soft rounded-xl bg-accent-soft p-3 flex flex-col gap-2" id="ob-presets" data-tdee="{{printf "%.0f" .TDEE}}" data-weight="{{.Weight}}">
-      <p>Dai tuoi dati il fabbisogno è di circa <b>{{num .TDEE}} kcal</b>. Parti da un modello:</p>
+      <p>{{t "onboarding.goals.needs_before"}} <b>{{num .TDEE}} kcal</b>. {{t "onboarding.goals.needs_after"}}</p>
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="filter" data-preset="maintenance" aria-pressed="false">Mantenimento</button>
-        <button type="button" class="filter" data-preset="cut" aria-pressed="false">Dimagrimento</button>
-        <button type="button" class="filter" data-preset="bulk" aria-pressed="false">Massa</button>
+        <button type="button" class="filter" data-preset="maintenance" aria-pressed="false">{{t "onboarding.goals.maintenance"}}</button>
+        <button type="button" class="filter" data-preset="cut" aria-pressed="false">{{t "onboarding.goals.cut"}}</button>
+        <button type="button" class="filter" data-preset="bulk" aria-pressed="false">{{t "onboarding.goals.bulk"}}</button>
       </div>
     </div>
     {{end}}
     <div class="grid grid-cols-2 gap-3.5">
-      <label class="lab">Calorie<span class="field-unit"><input id="ob-kcal" name="target_kcal" inputmode="decimal" value="{{.Form.TargetKcal}}" placeholder="2000" class="field"><em>kcal</em></span></label>
-      <label class="lab">Proteine<span class="field-unit"><input id="ob-protein" name="target_protein" inputmode="decimal" value="{{.Form.TargetProtein}}" placeholder="120" class="field"><em>g</em></span></label>
-      <label class="lab">Carboidrati<span class="field-unit"><input id="ob-carbs" name="target_carbs" inputmode="decimal" value="{{.Form.TargetCarbs}}" placeholder="250" class="field"><em>g</em></span></label>
-      <label class="lab">Grassi<span class="field-unit"><input id="ob-fat" name="target_fat" inputmode="decimal" value="{{.Form.TargetFat}}" placeholder="70" class="field"><em>g</em></span></label>
+      <label class="lab">{{t "onboarding.goals.calories"}}<span class="field-unit"><input id="ob-kcal" name="target_kcal" inputmode="decimal" value="{{.Form.TargetKcal}}" placeholder="2000" class="field"><em>kcal</em></span></label>
+      <label class="lab">{{t "onboarding.goals.protein"}}<span class="field-unit"><input id="ob-protein" name="target_protein" inputmode="decimal" value="{{.Form.TargetProtein}}" placeholder="120" class="field"><em>g</em></span></label>
+      <label class="lab">{{t "onboarding.goals.carbs"}}<span class="field-unit"><input id="ob-carbs" name="target_carbs" inputmode="decimal" value="{{.Form.TargetCarbs}}" placeholder="250" class="field"><em>g</em></span></label>
+      <label class="lab">{{t "onboarding.goals.fat"}}<span class="field-unit"><input id="ob-fat" name="target_fat" inputmode="decimal" value="{{.Form.TargetFat}}" placeholder="70" class="field"><em>g</em></span></label>
     </div>
   </div>
   {{template "onboarding_nav" .}}
 </form>
 {{end}}
 
-{{/* ===================== PASSO 3: template ===================== */}}
+{{/* ===================== STEP 3: template ===================== */}}
 {{define "onboarding_step3"}}
 <form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
   {{template "onboarding_hidden" .}}
   <div class="card">
-    <div><h1 class="h1">Il tuo schema di pasti</h1><p class="text-muted mt-1">Un template è la struttura di una giornata tipo (colazione, pranzo, cena…). Dagli un nome: i pasti li aggiungi dopo, in Piano nutrizionale.</p></div>
-    <label class="lab">Nome del template<input id="ob-tpl-name" name="template_name" maxlength="200" placeholder="Standard" class="field"><span class="font-medium">Facoltativo.</span></label>
+    <div><h1 class="h1">{{t "onboarding.template.title"}}</h1><p class="text-muted mt-1">{{t "onboarding.template.lead"}}</p></div>
+    <label class="lab">{{t "onboarding.template.name"}}<input id="ob-tpl-name" name="template_name" maxlength="200" placeholder="Standard" class="field"><span class="font-medium">{{t "onboarding.template.optional"}}</span></label>
   </div>
   {{template "onboarding_nav" .}}
 </form>
@@ -116,16 +116,16 @@
 <form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
   {{template "onboarding_hidden" .}}
   <div class="card">
-    <div><h1 class="h1">La prima settimana</h1><p class="text-muted mt-1">Applica un template alla settimana in corso per trovarla già impostata. Puoi farlo anche dopo.</p></div>
+    <div><h1 class="h1">{{t "onboarding.week.title"}}</h1><p class="text-muted mt-1">{{t "onboarding.week.lead"}}</p></div>
     {{if .Templates}}
-    <label class="lab">Template
+    <label class="lab">{{t "onboarding.week.template"}}
       <select id="ob-tpl" name="template_id" class="field">
-        <option value="">Non applicare ora</option>
+        <option value="">{{t "onboarding.week.none"}}</option>
         {{range .Templates}}<option value="{{.ID}}"{{if .IsActive}} selected{{end}}>{{.Name}}</option>{{end}}
       </select>
     </label>
     {{else}}
-    <p class="text-muted">Non hai ancora template: puoi crearne uno in <a href="/piano-nutrizionale" class="text-accent font-semibold hover:underline">Piano nutrizionale</a>.</p>
+    <p class="text-muted">{{t "onboarding.week.no_templates"}} <a href="/piano-nutrizionale" class="text-accent font-semibold hover:underline">{{t "onboarding.week.plan_link"}}</a>.</p>
     <input type="hidden" name="template_id" value="">
     {{end}}
   </div>
@@ -133,22 +133,22 @@
 </form>
 {{end}}
 
-{{/* ===================== PASSO 5: fatto ===================== */}}
+{{/* ===================== STEP 5: done ===================== */}}
 {{define "onboarding_step5"}}
 <form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
   {{template "onboarding_hidden" .}}
   <div class="card items-center text-center">
     <span class="w-14 h-14 rounded-2xl bg-accent-soft text-accent grid place-items-center">{{template "icon_lg" "i-check"}}</span>
-    <h1 class="h1">Tutto pronto</h1>
-    <p class="text-muted max-w-sm">Puoi cambiare questi dati quando vuoi dal <a href="/profile" class="text-accent font-semibold hover:underline">Profilo</a>.</p>
+    <h1 class="h1">{{t "onboarding.done.title"}}</h1>
+    <p class="text-muted max-w-sm">{{t "onboarding.done.lead"}} <a href="/profile" class="text-accent font-semibold hover:underline">{{t "onboarding.done.profile_link"}}</a>.</p>
   </div>
-  <button class="btn-primary btn-block">Vai alla settimana</button>
+  <button class="btn-primary btn-block">{{t "onboarding.done.submit"}}</button>
 </form>
 {{end}}
 
 {{define "scripts"}}
 <script>
-// Passo 2: i modelli partono dal fabbisogno, come nel Profilo.
+// Step 2: the presets start from the energy needs, as in the Profile.
 (function () {
   var box = document.getElementById("ob-presets");
   if (!box) return;

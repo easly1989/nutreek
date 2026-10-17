@@ -86,7 +86,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !limiter.allow(ip) {
 		a.Logger.Warn("login rate limit hit", "ip", ip)
 		data := a.baseData(r)
-		data.Error = "Troppi tentativi. Riprova fra un minuto."
+		data.Error = a.t(r, "auth.error.too_many_attempts")
 		if err := a.Render.Render(w, r, http.StatusTooManyRequests, "login", data); err != nil {
 			a.serverError(w, r, err)
 		}
@@ -106,12 +106,12 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// same error message as password mismatch to avoid enumeration
-		a.renderLoginError(w, r, data, "Email o password non validi.")
+		a.renderLoginError(w, r, data, a.t(r, "auth.error.invalid_credentials"))
 		return
 	}
 	if err := auth.VerifyPassword(user.PasswordHash, password); err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
-			a.renderLoginError(w, r, data, "Email o password non validi.")
+			a.renderLoginError(w, r, data, a.t(r, "auth.error.invalid_credentials"))
 			return
 		}
 		a.serverError(w, r, err)
@@ -128,7 +128,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), sessionKeyUserID, user.ID)
-	a.Sessions.Put(r.Context(), "flash", "Accesso effettuato.")
+	a.Sessions.Put(r.Context(), "flash", "auth.flash.logged_in")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -162,28 +162,35 @@ func (a *App) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	// Validation
 	if email == "" || displayName == "" || password == "" {
-		a.renderRegisterError(w, r, data, "Compila tutti i campi.")
+		a.renderRegisterError(w, r, data, a.t(r, "auth.error.fields_required"))
 		return
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
-		a.renderRegisterError(w, r, data, "Indirizzo email non valido.")
+		a.renderRegisterError(w, r, data, a.t(r, "auth.error.email_invalid"))
 		return
 	}
 	if len(displayName) > 64 {
-		a.renderRegisterError(w, r, data, "Il nome puo' avere al massimo 64 caratteri.")
+		a.renderRegisterError(w, r, data, a.t(r, "auth.error.name_too_long"))
 		return
 	}
 
 	hash, err := auth.HashPassword(password)
-	if err != nil {
-		a.renderRegisterError(w, r, data, err.Error())
+	switch {
+	case errors.Is(err, auth.ErrPasswordTooShort):
+		a.renderRegisterError(w, r, data, a.t(r, "auth.error.password_short"))
+		return
+	case errors.Is(err, auth.ErrPasswordTooLong):
+		a.renderRegisterError(w, r, data, a.t(r, "auth.error.password_long"))
+		return
+	case err != nil:
+		a.serverError(w, r, err)
 		return
 	}
 
 	id, err := a.Users.Create(r.Context(), email, hash, displayName)
 	if err != nil {
 		if errors.Is(err, db.ErrEmailAlreadyUsed) {
-			a.renderRegisterError(w, r, data, "Questa email e' gia' registrata.")
+			a.renderRegisterError(w, r, data, a.t(r, "auth.error.email_taken"))
 			return
 		}
 		a.serverError(w, r, err)
