@@ -29,6 +29,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 - The demo cleans up after itself (#184, part of #137): a demo group nobody has used for `NUTREEK_DEMO_IDLE` (2 hours) is deleted with its users and all their data, and every group is deleted each night at 03:00 UTC. An ingredient a deleted user made that another group still uses stays, with no author. Sessions of a deleted demo stop working. The demo keeps no volume: a new deploy starts from an empty database
 
+- The demo account starts lived-in (#183, part of #137): foods, a few OpenFoodFacts demo products with a barcode, recipes, a nutrition plan with variants for each meal, the current week and the 12 before it with cheats, water, workouts and weigh-ins, and this week's shopping list, all dated from today and named in the visitor's language. The same seed dresses a local database for the README screenshots: `go run -tags demo ./cmd/nutreek -demo-seed you@example.com -demo-seed-lang en` fills an account that has no meals yet
+
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)
