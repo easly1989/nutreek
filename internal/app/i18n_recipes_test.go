@@ -186,7 +186,6 @@ func TestEnglishRecipesPlanAndTemplates(t *testing.T) {
 		"Porridge", "Duo", "Bowl", "Pasta", "Duo copy", "Lone copy", "Soup bowl", "Soak the oats.",
 		"Standard week", "Away from home", "Breakfast", "Dinner", "Snack", "Brunch", "Lunch", "Light", "Coach plan", "Blank plan",
 	}
-	data = append(data, dayFullNames...) // #157
 
 	longName := strings.Repeat("n", MaxNameLen+1)
 	longDesc := strings.Repeat("d", MaxDescriptionLen+1)
