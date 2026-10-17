@@ -109,10 +109,6 @@ func run(logger *slog.Logger) error {
 	}
 	logger.Info("db migrations applied")
 
-	if cfg.BackupEnabled {
-		go runBackupScheduler(ctx, store, cfg, logger)
-	}
-
 	sessions := scs.New()
 	sessions.Store = sqlite3store.New(store.DB)
 	sessions.Lifetime = 30 * 24 * time.Hour
@@ -184,6 +180,9 @@ func run(logger *slog.Logger) error {
 	}
 	if err := applyDemo(ctx, store, sessions, a, logger); err != nil {
 		return err
+	}
+	if cfg.BackupEnabled { // after applyDemo, which switches them off
+		go runBackupScheduler(ctx, store, cfg, logger)
 	}
 
 	srv := &http.Server{

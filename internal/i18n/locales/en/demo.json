@@ -7,6 +7,15 @@
     "other": "It is deleted after {{.Count}} hours without use, every night at 3:00 (UTC) and at every update of the demo."
   },
   "demo.entry.start": "Try the demo",
+  "demo.entry.full": "The demo is full right now. Try again soon.",
+  "demo.limit.ingredients": {
+    "one": "In the demo you can make at most {{.Count}} ingredient.",
+    "other": "In the demo you can make at most {{.Count}} ingredients."
+  },
+  "demo.limit.recipes": {
+    "one": "In the demo you can have at most {{.Count}} recipe.",
+    "other": "In the demo you can have at most {{.Count}} recipes."
+  },
   "demo.entry.own": "Want your own instance?",
   "demo.entry.code": "The code is on GitHub",
   "demo.band": {
