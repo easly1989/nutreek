@@ -4,7 +4,7 @@
      swapped outerHTML, so the bar and the total update without a reload. */}}
 <div id="water-widget-{{.DateStr}}" class="card px-4 py-3 flex flex-col gap-2.5">
   <div class="flex items-baseline justify-between gap-2">
-    <h3 class="font-semibold">Acqua</h3>
+    <h3 class="font-semibold">{{t "week.water"}}</h3>
     <span class="tabular-nums"><strong class="{{if .Reached}}text-accent{{end}}">{{liters .WaterML}}</strong><span class="text-muted"> / {{liters .WaterTargetML}}</span></span>
   </div>
   <span class="block h-1.5 rounded-full bg-track overflow-hidden" aria-hidden="true">
@@ -23,7 +23,7 @@
     <form method="post" action="/water/delete-last" hx-post="/water/delete-last" hx-target="#water-widget-{{$d}}" hx-swap="outerHTML" class="ml-auto">
       <input type="hidden" name="csrf_token" value="{{$csrf}}">
       <input type="hidden" name="date" value="{{$d}}">
-      <button class="btn-ghost btn-icon h-8 text-muted" title="Annulla l'ultima aggiunta" aria-label="Annulla l'ultima aggiunta">
+      <button class="btn-ghost btn-icon h-8 text-muted" title="{{t "week.water_undo"}}" aria-label="{{t "week.water_undo"}}">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
       </button>
     </form>

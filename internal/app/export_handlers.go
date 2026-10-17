@@ -21,7 +21,7 @@ func (a *App) handleWeekExport(w http.ResponseWriter, r *http.Request) {
 	startStr := chi.URLParam(r, "start")
 	ws, err := time.Parse("2006-01-02", startStr)
 	if err != nil {
-		http.Error(w, "data non valida", http.StatusBadRequest)
+		http.Error(w, a.t(r, "week.error.invalid_date"), http.StatusBadRequest)
 		return
 	}
 
@@ -95,19 +95,19 @@ func (a *App) handleWeekImport(w http.ResponseWriter, r *http.Request) {
 	startStr := chi.URLParam(r, "start")
 	ws, err := time.Parse("2006-01-02", startStr)
 	if err != nil {
-		http.Error(w, "data non valida", http.StatusBadRequest)
+		http.Error(w, a.t(r, "week.error.invalid_date"), http.StatusBadRequest)
 		return
 	}
 
 	if err := r.ParseMultipartForm(2 << 20); err != nil { // 2 MB
-		a.Sessions.Put(r.Context(), "flash", "File troppo grande (max 2 MB).")
+		a.Sessions.Put(r.Context(), "flash", "week.flash.file_too_large")
 		a.redirectToWeek(w, r, ws)
 		return
 	}
 
 	f, _, err := r.FormFile("csv_file")
 	if err != nil {
-		a.Sessions.Put(r.Context(), "flash", "Seleziona un file CSV.")
+		a.Sessions.Put(r.Context(), "flash", "week.flash.select_csv")
 		a.redirectToWeek(w, r, ws)
 		return
 	}
@@ -116,7 +116,7 @@ func (a *App) handleWeekImport(w http.ResponseWriter, r *http.Request) {
 	cr := csv.NewReader(f)
 	records, err := cr.ReadAll()
 	if err != nil {
-		a.Sessions.Put(r.Context(), "flash", "File CSV non valido.")
+		a.Sessions.Put(r.Context(), "flash", "week.flash.invalid_csv")
 		a.redirectToWeek(w, r, ws)
 		return
 	}
@@ -216,13 +216,14 @@ func (a *App) handleWeekImport(w http.ResponseWriter, r *http.Request) {
 		imported++
 	}
 
-	msg := fmt.Sprintf("Importati %d elementi.", imported)
+	parts := []string{a.t(r, "week.flash.imported", "Count", imported)}
 	if len(mealNotFound) > 0 {
-		msg += " Pasti non trovati (crea prima il pasto nella settimana): " + strings.Join(mealNotFound, ", ")
+		parts = append(parts, a.t(r, "week.flash.meals_not_found", "List", strings.Join(mealNotFound, ", ")))
 	}
 	if len(notFound) > 0 {
-		msg += " Ingredienti non trovati: " + strings.Join(notFound, ", ")
+		parts = append(parts, a.t(r, "week.flash.ingredients_not_found", "List", strings.Join(notFound, ", ")))
 	}
+	msg := strings.Join(parts, " ")
 	a.Sessions.Put(r.Context(), "flash", msg)
 	a.redirectToWeek(w, r, ws)
 }
