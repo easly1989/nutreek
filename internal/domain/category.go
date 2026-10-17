@@ -9,5 +9,6 @@ type IngredientCategory struct {
 
 type AllergenTag struct {
 	ID   int64
+	Code string // stable key for translation, empty for rows not seeded by the migrations
 	Name string
 }

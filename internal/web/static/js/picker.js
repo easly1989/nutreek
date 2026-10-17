@@ -8,6 +8,8 @@
 (function () {
   "use strict";
 
+  var LANG = document.documentElement.lang || "it";
+
   function parseQty(v) {
     var n = parseFloat(String(v || "").replace(",", "."));
     return isFinite(n) && n > 0 ? n : 0;
@@ -19,7 +21,7 @@
     var qty = parseQty(form.elements.quantity && form.elements.quantity.value);
     var each = parseFloat(form.dataset.kcalEach);
     if (isFinite(each)) {
-      out.textContent = qty ? Math.round(qty * each).toLocaleString("it-IT") + " kcal" : "";
+      out.textContent = qty ? Math.round(qty * each).toLocaleString(LANG) + " kcal" : "";
       return;
     }
     var kcal100 = parseFloat(form.dataset.kcal100);
@@ -27,7 +29,7 @@
     var unit = form.querySelector('input[name="qty_unit"]:checked') || form.querySelector('input[name="qty_unit"]');
     var grams = qty;
     if (unit && unit.value === "pz") grams = qty * (parseFloat(form.dataset.unitWeight) || 0);
-    out.textContent = Math.round(grams * kcal100 / 100).toLocaleString("it-IT") + " kcal";
+    out.textContent = Math.round(grams * kcal100 / 100).toLocaleString(LANG) + " kcal";
   }
 
   document.addEventListener("toggle", function (e) {

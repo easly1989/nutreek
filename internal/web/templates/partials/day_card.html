@@ -102,11 +102,11 @@
       </div>
       {{range .Workouts}}
       <div class="flex items-center justify-between gap-2 min-h-[32px] border-t border-border">
-        <span>{{.ActivityName}} <span class="text-muted">{{.DurationMinutes}} {{t "week.min"}}</span></span>
+        <span>{{ref "activity" .ActivityCode .ActivityName}} <span class="text-muted">{{.DurationMinutes}} {{t "week.min"}}</span></span>
         <form method="post" action="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}"
               hx-post="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" class="icon-action hover:text-danger" title="{{t "week.workout_delete"}}" aria-label="{{t "week.workout_delete_named" "Name" .ActivityName}}">{{template "icon" "i-trash"}}</button>
+          <button type="submit" class="icon-action hover:text-danger" title="{{t "week.workout_delete"}}" aria-label="{{t "week.workout_delete_named" "Name" (ref "activity" .ActivityCode .ActivityName)}}">{{template "icon" "i-trash"}}</button>
         </form>
       </div>
       {{end}}
@@ -119,7 +119,7 @@
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
           <input type="hidden" name="logged_at" value="{{.DateStr}}">
           <select name="activity_id" aria-label="{{t "week.activity"}}" class="field flex-1 min-w-[10rem]">
-            {{range .Activities}}<option value="{{.ID}}">{{.Name}} ({{num .KcalPerHour}} kcal/h)</option>{{end}}
+            {{range .Activities}}<option value="{{.ID}}">{{ref "activity" .Code .Name}} ({{num .KcalPerHour}} kcal/h)</option>{{end}}
           </select>
           <input name="duration_minutes" type="number" min="1" max="720" required placeholder="{{t "week.min"}}" aria-label="{{t "week.duration"}}" class="field w-20">
           <button type="submit" class="btn-secondary">{{t "week.save"}}</button>

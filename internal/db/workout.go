@@ -23,7 +23,7 @@ func NewWorkoutLogs(db *sql.DB) *WorkoutLogs {
 
 func (w *WorkoutLogs) ListActivities(ctx context.Context) ([]domain.WorkoutActivity, error) {
 	rows, err := w.db.QueryContext(ctx,
-		`SELECT id, name, kcal_per_hour, sort_order FROM workout_activities ORDER BY sort_order`,
+		`SELECT id, COALESCE(code, ''), name, kcal_per_hour, sort_order FROM workout_activities ORDER BY sort_order`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list workout activities: %w", err)
@@ -33,7 +33,7 @@ func (w *WorkoutLogs) ListActivities(ctx context.Context) ([]domain.WorkoutActiv
 	var activities []domain.WorkoutActivity
 	for rows.Next() {
 		var a domain.WorkoutActivity
-		if err := rows.Scan(&a.ID, &a.Name, &a.KcalPerHour, &a.SortOrder); err != nil {
+		if err := rows.Scan(&a.ID, &a.Code, &a.Name, &a.KcalPerHour, &a.SortOrder); err != nil {
 			return nil, fmt.Errorf("scan workout activity: %w", err)
 		}
 		activities = append(activities, a)
@@ -66,7 +66,7 @@ func (w *WorkoutLogs) CreateWorkoutLog(ctx context.Context, userID, activityID i
 
 func (w *WorkoutLogs) ListWorkoutLogs(ctx context.Context, userID int64, from, to time.Time) ([]domain.WorkoutLog, error) {
 	rows, err := w.db.QueryContext(ctx,
-		`SELECT wl.id, wl.user_id, wl.activity_id, wa.name, wl.logged_at,
+		`SELECT wl.id, wl.user_id, wl.activity_id, COALESCE(wa.code, ''), wa.name, wl.logged_at,
 		        wl.duration_minutes, wl.kcal_burned, wl.note, wl.created_at
 		 FROM workout_logs wl
 		 JOIN workout_activities wa ON wa.id = wl.activity_id
@@ -84,7 +84,7 @@ func (w *WorkoutLogs) ListWorkoutLogs(ctx context.Context, userID int64, from, t
 		var l domain.WorkoutLog
 		var dateStr string
 		var note sql.NullString
-		if err := rows.Scan(&l.ID, &l.UserID, &l.ActivityID, &l.ActivityName,
+		if err := rows.Scan(&l.ID, &l.UserID, &l.ActivityID, &l.ActivityCode, &l.ActivityName,
 			&dateStr, &l.DurationMinutes, &l.KcalBurned, &note, &l.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan workout log: %w", err)
 		}

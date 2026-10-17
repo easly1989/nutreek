@@ -75,6 +75,15 @@ func T(lang, key string, args ...any) string {
 	return translate(localizers, lang, key, args)
 }
 
+// TOr translates the key into lang, or returns fallback when no catalog has
+// the key: reference data stored in the database shows its own name then.
+func TOr(lang, key, fallback string) string {
+	if s := T(lang, key); s != key {
+		return s
+	}
+	return fallback
+}
+
 func translate(locs map[string]*goi18n.Localizer, lang, key string, args []any) string {
 	loc, ok := locs[lang]
 	if !ok {
