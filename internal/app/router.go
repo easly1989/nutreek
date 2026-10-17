@@ -74,12 +74,19 @@ func (a *App) Router() http.Handler {
 
 	r.Get("/", a.handleDashboard)
 
-	registerLimiter := newIPRateLimiter(5, oneMinute)
 	r.Post("/language", a.handleLanguage)
-	r.Get("/login", a.handleLoginForm)
-	r.Post("/login", a.handleLogin)
-	r.Get("/register", a.handleRegisterForm)
-	r.With(registerLimiter.Middleware).Post("/register", a.handleRegister)
+	if a.Demo != nil {
+		// The demo's only way in (#137): no sign-in, no sign-up. #185 makes
+		// the limits configurable.
+		demoLimiter := newIPRateLimiter(10, time.Hour)
+		r.With(demoLimiter.Middleware).Post("/demo/session", a.handleDemoSession)
+	} else {
+		registerLimiter := newIPRateLimiter(5, oneMinute)
+		r.Get("/login", a.handleLoginForm)
+		r.Post("/login", a.handleLogin)
+		r.Get("/register", a.handleRegisterForm)
+		r.With(registerLimiter.Middleware).Post("/register", a.handleRegister)
+	}
 	r.Post("/logout", a.handleLogout)
 
 	searchLimiter := newIPRateLimiter(60, oneMinute)
@@ -219,8 +226,10 @@ func (a *App) Router() http.Handler {
 		// Account settings (GDPR export, password change, deletion, API tokens).
 		r.Get("/settings", a.handleSettingsPage)
 		r.Get("/settings/export", a.handleUserDataExport)
-		r.Post("/settings/password", a.handleChangePassword)
-		r.Post("/settings/delete-account", a.handleDeleteAccount)
+		if a.Demo == nil { // both ask for the password a demo account does not have
+			r.Post("/settings/password", a.handleChangePassword)
+			r.Post("/settings/delete-account", a.handleDeleteAccount)
+		}
 		r.With(a.requireFeature("api_access")).Post("/settings/api-tokens", a.handleSettingsAPITokenCreate)
 		r.Post("/settings/api-tokens/{id}/revoke", a.handleSettingsAPITokenRevoke)
 	})

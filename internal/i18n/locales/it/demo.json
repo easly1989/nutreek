@@ -1,0 +1,25 @@
+{
+  "demo.title": "Prova Nutreek",
+  "demo.entry.lead": "Pianifica i pasti, segui calorie e macro giorno per giorno, prepara la lista della spesa. Nessuna registrazione.",
+  "demo.entry.data": "I dati sono di esempio. Puoi cambiare tutto: è il tuo account demo.",
+  "demo.entry.lifetime": {
+    "one": "Si cancella dopo {{.Count}} ora senza usarlo, ogni notte alle 3:00 (UTC) e a ogni aggiornamento della demo.",
+    "other": "Si cancella dopo {{.Count}} ore senza usarlo, ogni notte alle 3:00 (UTC) e a ogni aggiornamento della demo."
+  },
+  "demo.entry.start": "Prova la demo",
+  "demo.entry.own": "Vuoi la tua istanza?",
+  "demo.entry.code": "Il codice è su GitHub",
+  "demo.band": {
+    "one": "Demo: dati di esempio, cancellati dopo {{.Count}} ora senza uso, ogni notte e a ogni aggiornamento.",
+    "other": "Demo: dati di esempio, cancellati dopo {{.Count}} ore senza uso, ogni notte e a ogni aggiornamento."
+  },
+  "demo.band.more": "Cos'è la demo",
+  "demo.notice.title": "La tua demo è pronta",
+  "demo.notice.account": "Questo account è stato creato adesso, solo per te, con dati di esempio.",
+  "demo.notice.lifetime": {
+    "one": "Tutto quello che cambi resta finché usi la demo. Si cancella dopo {{.Count}} ora senza usarla, ogni notte alle 3:00 (UTC) e a ogni aggiornamento, che può arrivare a qualsiasi ora.",
+    "other": "Tutto quello che cambi resta finché usi la demo. Si cancella dopo {{.Count}} ore senza usarla, ogni notte alle 3:00 (UTC) e a ogni aggiornamento, che può arrivare a qualsiasi ora."
+  },
+  "demo.notice.tour": "Tour guidato",
+  "demo.notice.start": "Inizia"
+}

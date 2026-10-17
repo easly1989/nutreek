@@ -1,0 +1,25 @@
+{
+  "demo.title": "Try Nutreek",
+  "demo.entry.lead": "Plan your meals, follow calories and macros day by day, make the shopping list. No sign-up.",
+  "demo.entry.data": "The data is made up. Change anything you like: it is your own demo account.",
+  "demo.entry.lifetime": {
+    "one": "It is deleted after {{.Count}} hour without use, every night at 3:00 (UTC) and at every update of the demo.",
+    "other": "It is deleted after {{.Count}} hours without use, every night at 3:00 (UTC) and at every update of the demo."
+  },
+  "demo.entry.start": "Try the demo",
+  "demo.entry.own": "Want your own instance?",
+  "demo.entry.code": "The code is on GitHub",
+  "demo.band": {
+    "one": "Demo: made-up data, deleted after {{.Count}} hour without use, every night and at every update.",
+    "other": "Demo: made-up data, deleted after {{.Count}} hours without use, every night and at every update."
+  },
+  "demo.band.more": "About the demo",
+  "demo.notice.title": "Your demo is ready",
+  "demo.notice.account": "This account was created just now, only for you, with made-up data.",
+  "demo.notice.lifetime": {
+    "one": "Everything you change stays while you use the demo. It is deleted after {{.Count}} hour without use, every night at 3:00 (UTC) and at every update of the demo, which can come at any time.",
+    "other": "Everything you change stays while you use the demo. It is deleted after {{.Count}} hours without use, every night at 3:00 (UTC) and at every update of the demo, which can come at any time."
+  },
+  "demo.notice.tour": "Guided tour",
+  "demo.notice.start": "Start"
+}
