@@ -800,7 +800,7 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		if barcode != "" {
 			ingID, err := a.resolveOFFBarcode(r.Context(), barcode)
 			if err != nil {
-				a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.off_import_failed", "Error", err.Error()))
+				a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.off_import_failed", "Error", a.errText(r, err)))
 				return
 			}
 			iPtr = &ingID
@@ -828,7 +828,7 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, rPtr, iPtr, qty, qtyUnit); err != nil {
-		a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.item_add_failed", "Error", err.Error()))
+		a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.item_add_failed", "Error", a.errText(r, err)))
 		return
 	}
 	day, dayErr := a.dayIndexFromMealID(r, mealID)
@@ -975,7 +975,7 @@ func (a *App) handleReorderMeals(w http.ResponseWriter, r *http.Request) {
 	}
 	ids, err := parseIDList(r.PostFormValue("ids"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, a.t(r, "week.error.invalid_ids"), http.StatusBadRequest)
 		return
 	}
 	plan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), user.ID, weekStart)
@@ -1005,7 +1005,7 @@ func (a *App) handleReorderMealItems(w http.ResponseWriter, r *http.Request) {
 	}
 	ids, err := parseIDList(r.PostFormValue("ids"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, a.t(r, "week.error.invalid_ids"), http.StatusBadRequest)
 		return
 	}
 	if err := a.WeeklyPlans.ReorderMealItems(r.Context(), mealID, user.ID, ids); err != nil {

@@ -40,6 +40,7 @@
   "onboarding.template.lead": "A template is the structure of a typical day (breakfast, lunch, dinner…). Give it a name: you add the meals later, in Nutrition plan.",
   "onboarding.template.name": "Template name",
   "onboarding.template.optional": "Optional.",
+  "onboarding.template.placeholder": "Standard week",
   "onboarding.week.title": "Your first week",
   "onboarding.week.lead": "Apply a template to the current week to find it already set up. You can also do it later.",
   "onboarding.week.template": "Template",
