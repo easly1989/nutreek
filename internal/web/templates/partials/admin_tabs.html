@@ -2,15 +2,15 @@
 {{/* The shared header of the two Administration tabs; the dot is the active
      tab: "panoramica" | "utenti". */}}
 <header>
-  <h1 class="h1">Amministrazione</h1>
-  <p class="text-muted mt-0.5">Istanza, funzionalità e utenti.</p>
+  <h1 class="h1">{{t "admin.title"}}</h1>
+  <p class="text-muted mt-0.5">{{t "admin.subtitle"}}</p>
 </header>
-<nav class="segmented self-start" aria-label="Schede dell'amministrazione">
-  <a href="/admin/panel"{{if eq . "panoramica"}} aria-current="page"{{end}}>Panoramica</a>
-  <a href="/admin/panel/users"{{if eq . "utenti"}} aria-current="page"{{end}}>Utenti</a>
+<nav class="segmented self-start" aria-label="{{t "admin.tabs_label"}}">
+  <a href="/admin/panel"{{if eq . "panoramica"}} aria-current="page"{{end}}>{{t "admin.tab.overview"}}</a>
+  <a href="/admin/panel/users"{{if eq . "utenti"}} aria-current="page"{{end}}>{{t "admin.tab.users"}}</a>
 </nav>
 {{end}}
 
 {{define "premium_off_note"}}
-<p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-start gap-2">{{template "icon_sm" "i-alert"}}<span>Premium disattivato: tutte le funzionalità sono aperte a tutti. Si attiva con <code class="font-mono text-[12.5px]">NUTREEK_PREMIUM_ENABLED=true</code>.</span></p>
+<p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-start gap-2">{{template "icon_sm" "i-alert"}}<span>{{t "admin.premium_off"}} <code class="font-mono text-[12.5px]">NUTREEK_PREMIUM_ENABLED=true</code>.</span></p>
 {{end}}
