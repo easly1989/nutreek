@@ -14,6 +14,9 @@
     return;
   }
 
+  // The words on the charts come translated from the page (partials/chart_text.html).
+  var T = (document.getElementById("chart-text") || {}).dataset || {};
+
   // The page language picks the separators (1.894 / 1,894). useGrouping
   // "always": in Italian 2280 would stay without a dot.
   var LANG = document.documentElement.lang || "it";
@@ -166,7 +169,7 @@
     s += targetLine(f, o);
     o.el.innerHTML = '<svg class="chart" viewBox="0 0 ' + f.w + " " + f.h + '" role="img" aria-label="' + esc(o.name) + '">' + s + "</svg>";
     hover(o.el, f, function (i) {
-      if (!totals[i]) return "<b>" + esc(o.labels[i]) + "</b><span class=\"ch-tip-row\">nessun dato</span>";
+      if (!totals[i]) return "<b>" + esc(o.labels[i]) + "</b><span class=\"ch-tip-row\">" + esc(T.msgNoData) + "</span>";
       var html = "<b>" + esc(o.labels[i]) + "</b>";
       if (k > 1) {
         o.series.forEach(function (ser) { html += tipRow(ser.color, ser.name, fmt(ser.values[i] || 0, o.dec) + (o.tipUnit || "")); });
@@ -181,30 +184,30 @@
   var ACC = "var(--accent)";
   var DRAW = {
     tdee: function (el) {
-      lineChart({ el: el, h: 220, labels: data.labels, values: data.tdee, color: ACC, name: "Fabbisogno stimato", tipUnit: " kcal",
+      lineChart({ el: el, h: 220, labels: data.labels, values: data.tdee, color: ACC, name: T.msgTdee, tipUnit: " kcal",
         target: data.target, targetLabel: fmt(data.target) });
     },
     macro: function (el) {
-      barChart({ el: el, h: 220, labels: data.labels, name: "Calorie e macro al giorno", tipUnit: " kcal", total: "Totale",
+      barChart({ el: el, h: 220, labels: data.labels, name: T.msgMacro, tipUnit: " kcal", total: T.msgTotal,
         target: data.target, targetLabel: fmt(data.target), series: [
-          { values: data.prot, color: "var(--ch-prot)", name: "Proteine" },
-          { values: data.carb, color: "var(--ch-carb)", name: "Carboidrati" },
-          { values: data.fat, color: "var(--ch-fat)", name: "Grassi" }] });
+          { values: data.prot, color: "var(--ch-prot)", name: T.msgProtein },
+          { values: data.carb, color: "var(--ch-carb)", name: T.msgCarbs },
+          { values: data.fat, color: "var(--ch-fat)", name: T.msgFat }] });
     },
     weight: function (el) {
-      lineChart({ el: el, h: 220, labels: data.weightLabels, values: data.weight, color: ACC, name: "Peso", dec: 1, tipUnit: " kg", area: true });
+      lineChart({ el: el, h: 220, labels: data.weightLabels, values: data.weight, color: ACC, name: T.msgWeight, dec: 1, tipUnit: " kg", area: true });
     },
     adherence: function (el) {
-      lineChart({ el: el, h: 190, labels: data.labels, values: data.adherence, color: ACC, name: "Aderenza", unit: "%", tipUnit: "%", lo: 60, hi: 100 });
+      lineChart({ el: el, h: 190, labels: data.labels, values: data.adherence, color: ACC, name: T.msgAdherence, unit: "%", tipUnit: "%", lo: 60, hi: 100 });
     },
     workout: function (el) {
-      barChart({ el: el, h: 160, labels: data.labels, name: "Allenamenti", tipUnit: " kcal", series: [{ values: data.workout, color: ACC, name: "Bruciate" }] });
+      barChart({ el: el, h: 160, labels: data.labels, name: T.msgWorkout, tipUnit: " kcal", series: [{ values: data.workout, color: ACC, name: T.msgBurned }] });
     },
     cheats: function (el) {
-      barChart({ el: el, h: 160, labels: data.labels, name: "Sgarri", series: [{ values: data.cheats, color: ACC, name: "Pasti" }] });
+      barChart({ el: el, h: 160, labels: data.labels, name: T.msgCheats, series: [{ values: data.cheats, color: ACC, name: T.msgMeals }] });
     },
     water: function (el) {
-      barChart({ el: el, h: 160, labels: data.labels, name: "Acqua", dec: 1, tipUnit: " l", series: [{ values: data.water, color: ACC, name: "Al giorno" }],
+      barChart({ el: el, h: 160, labels: data.labels, name: T.msgWater, dec: 1, tipUnit: " l", series: [{ values: data.water, color: ACC, name: T.msgPerDay }],
         target: data.waterTarget, targetLabel: fmt(data.waterTarget, 1) + " l" });
     }
   };

@@ -20,7 +20,7 @@ type weightPageData struct {
 	Logs     []domain.WeightLog // from the most recent
 	TodayStr string             // YYYY-MM-DD for the date field's default
 	Range    int                // days shown in the chart: 30, 90 or 365
-	Trend    string             // «−0,8 kg in 30 giorni»; empty with fewer than two weigh-ins
+	Trend    string             // «−0,8 kg in 30 days»; empty with fewer than two weigh-ins
 	Charts   statsCharts        // only WeightLabels and Weight
 	HasChart bool
 }
@@ -104,14 +104,14 @@ func (a *App) handleWeightLog(w http.ResponseWriter, r *http.Request) {
 
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		renderErr("Data non valida.")
+		renderErr(a.t(r, "weight.error.date"))
 		return
 	}
 
 	weightStr = strings.ReplaceAll(weightStr, ",", ".")
 	weightKg, err := strconv.ParseFloat(weightStr, 64)
 	if err != nil || weightKg <= 0 || weightKg >= 500 {
-		renderErr("Peso non valido (range: 0.1–499 kg).")
+		renderErr(a.t(r, "weight.error.weight"))
 		return
 	}
 
@@ -125,7 +125,7 @@ func (a *App) handleWeightLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Sessions.Put(r.Context(), "flash", "Pesata salvata.")
+	a.Sessions.Put(r.Context(), "flash", "weight.flash.saved")
 	http.Redirect(w, r, "/profile/peso", http.StatusSeeOther)
 }
 
@@ -147,6 +147,6 @@ func (a *App) handleWeightLogDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Sessions.Put(r.Context(), "flash", "Pesata eliminata.")
+	a.Sessions.Put(r.Context(), "flash", "weight.flash.deleted")
 	http.Redirect(w, r, "/profile/peso", http.StatusSeeOther)
 }

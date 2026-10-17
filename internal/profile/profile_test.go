@@ -28,10 +28,10 @@ func TestBMICategory(t *testing.T) {
 		bmi  float64
 		want string
 	}{
-		{16, "Sottopeso"},
-		{22, "Normopeso"},
-		{27, "Sovrappeso"},
-		{35, "Obesità"},
+		{16, "underweight"},
+		{22, "normal"},
+		{27, "overweight"},
+		{35, "obese"},
 	}
 	for _, tc := range cases {
 		if got := BMICategory(tc.bmi); got != tc.want {

@@ -144,12 +144,12 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 	qty := strings.TrimSpace(r.PostFormValue("quantity_text"))
 	back := shoppingListURL(r)
 	if desc == "" {
-		a.Sessions.Put(r.Context(), "flash", "Descrizione obbligatoria.")
+		a.Sessions.Put(r.Context(), "flash", "shopping.flash.description_required")
 		http.Redirect(w, r, back, http.StatusSeeOther)
 		return
 	}
 	if !withinLen(desc, MaxNameLen) {
-		a.Sessions.Put(r.Context(), "flash", "Descrizione troppo lunga.")
+		a.Sessions.Put(r.Context(), "flash", "shopping.flash.description_too_long")
 		http.Redirect(w, r, back, http.StatusSeeOther)
 		return
 	}
@@ -174,7 +174,7 @@ func (a *App) handleToggleShoppingUserItem(w http.ResponseWriter, r *http.Reques
 	}
 	if err := a.ShoppingLists.ToggleUserItem(r.Context(), itemID, user.ID); err != nil {
 		if errors.Is(err, db.ErrShoppingItemNotFound) {
-			http.Error(w, "voce non trovata", http.StatusNotFound)
+			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
 			return
 		}
 		a.serverError(w, r, err)
@@ -193,7 +193,7 @@ func (a *App) handleRemoveShoppingUserItem(w http.ResponseWriter, r *http.Reques
 	}
 	if err := a.ShoppingLists.RemoveUserItem(r.Context(), itemID, user.ID); err != nil {
 		if errors.Is(err, db.ErrShoppingItemNotFound) {
-			http.Error(w, "voce non trovata", http.StatusNotFound)
+			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
 			return
 		}
 		a.serverError(w, r, err)
@@ -215,7 +215,7 @@ func (a *App) handleShoppingGenerate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Lista rigenerata.")
+	a.Sessions.Put(r.Context(), "flash", "shopping.flash.regenerated")
 	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 }
 
@@ -231,7 +231,7 @@ func (a *App) handleShoppingToggle(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.ShoppingLists.ToggleItem(r.Context(), itemID, user.ID); err != nil {
 		if errors.Is(err, db.ErrShoppingItemNotFound) {
-			http.Error(w, "voce non trovata", http.StatusNotFound)
+			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
 			return
 		}
 		a.serverError(w, r, err)

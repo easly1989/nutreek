@@ -30,7 +30,8 @@ type shoppingGroupKey struct {
 }
 
 type shoppingGroup struct {
-	Name  string
+	Name  string // the category's name; for Other the templates show a translated label
+	Other bool
 	Items []shoppingItemView
 }
 
@@ -85,7 +86,7 @@ func sortedShoppingGroups(m map[shoppingGroupKey][]shoppingItemView) []shoppingG
 	})
 	out := make([]shoppingGroup, 0, len(keys))
 	for _, k := range keys {
-		out = append(out, shoppingGroup{Name: k.name, Items: m[k]})
+		out = append(out, shoppingGroup{Name: k.name, Other: k.other, Items: m[k]})
 	}
 	return out
 }
