@@ -7,6 +7,10 @@
   if (!document.body.hasAttribute('data-show-tour')) return;
   if (typeof Shepherd === 'undefined') return;
 
+  // The texts come from the page, in the user's language.
+  var tx;
+  try { tx = JSON.parse(document.getElementById('tour-steps').textContent); } catch (e) { return; }
+
   var tour = new Shepherd.Tour({
     useModalOverlay: true,
     defaultStepOptions: {
@@ -25,34 +29,34 @@
 
   tour.addStep({
     id: 'benvenuto',
-    title: 'Benvenuto in Nutreek!',
-    text: 'Questo breve tour ti mostra le funzioni principali della dashboard. Puoi chiuderlo in qualsiasi momento e riavviarlo da "Tour guidato" nel menu laterale.',
+    title: tx.welcome.title,
+    text: tx.welcome.text,
     buttons: [
-      btn('Salta tour', function () { tour.cancel(); }, true),
-      btn('Inizia →', function () { tour.next(); })
+      btn(tx.buttons.skip, function () { tour.cancel(); }, true),
+      btn(tx.buttons.start, function () { tour.next(); })
     ]
   });
 
   tour.addStep({
     id: 'navigazione',
-    title: 'Navigazione settimana',
-    text: 'Usa le frecce per spostarti tra le settimane. "Oggi" torna alla settimana corrente.',
+    title: tx.week.title,
+    text: tx.week.text,
     attachTo: { element: '#week-nav', on: 'bottom' },
-    buttons: [btn('← Indietro', function () { tour.back(); }, true), btn('Avanti →', function () { tour.next(); })]
+    buttons: [btn(tx.buttons.back, function () { tour.back(); }, true), btn(tx.buttons.next, function () { tour.next(); })]
   });
 
   tour.addStep({
     id: 'timeline',
-    title: 'Giorni della settimana',
-    text: 'Scegli un giorno per vederne i pasti, il riepilogo dei macro e l’acqua, e per aggiungere alimenti.',
+    title: tx.days.title,
+    text: tx.days.text,
     attachTo: { element: '#timeline-pills', on: 'bottom' },
-    buttons: [btn('← Indietro', function () { tour.back(); }, true), btn('Avanti →', function () { tour.next(); })]
+    buttons: [btn(tx.buttons.back, function () { tour.back(); }, true), btn(tx.buttons.next, function () { tour.next(); })]
   });
 
   tour.addStep({
     id: 'template',
-    title: 'Applica template',
-    text: 'Se hai creato un template settimanale (Colazione, Pranzo, Cena…), puoi applicarlo qui per strutturare la settimana in un click.',
+    title: tx.template.title,
+    text: tx.template.text,
     attachTo: { element: 'form[action="/week/apply-template"]', on: 'bottom' },
     when: {
       show: function () {
@@ -62,17 +66,17 @@
         }
       }
     },
-    buttons: [btn('← Indietro', function () { tour.back(); }, true), btn('Avanti →', function () { tour.next(); })]
+    buttons: [btn(tx.buttons.back, function () { tour.back(); }, true), btn(tx.buttons.next, function () { tour.next(); })]
   });
 
   tour.addStep({
     id: 'sidebar',
-    title: 'Le sezioni',
-    text: 'Da qui raggiungi ricette, ingredienti, piano nutrizionale, lista della spesa e statistiche. «Aspetto», per scegliere modalità chiara o scura e colore, è in fondo al menu (sul telefono sotto «Altro»).',
+    title: tx.sections.title,
+    text: tx.sections.text,
     attachTo: { element: window.matchMedia('(min-width: 1024px)').matches ? '#sidebar' : '#bottom-nav', on: window.matchMedia('(min-width: 1024px)').matches ? 'right' : 'top' },
     buttons: [
-      btn('← Indietro', function () { tour.back(); }, true),
-      btn('Fine ✓', function () { tour.complete(); })
+      btn(tx.buttons.back, function () { tour.back(); }, true),
+      btn(tx.buttons.finish, function () { tour.complete(); })
     ]
   });
 
