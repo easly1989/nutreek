@@ -27,6 +27,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 - The demo build (#182, part of #137): `go build -tags demo` makes a public demo where the home is an entry page with one button. It creates a throwaway account with a complete profile, in the visitor's language, with a band on every page and a notice at first. Sign-in, sign-up, password change and account deletion are not mounted; sessions end after 2 hours without use (`NUTREEK_DEMO_IDLE`). The demo refuses to start on a database with real users. The normal binary does not contain any of it
 
+- The demo cleans up after itself (#184, part of #137): a demo group nobody has used for `NUTREEK_DEMO_IDLE` (2 hours) is deleted with its users and all their data, and every group is deleted each night at 03:00 UTC. An ingredient a deleted user made that another group still uses stays, with no author. Sessions of a deleted demo stop working. The demo keeps no volume: a new deploy starts from an empty database
+
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)

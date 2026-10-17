@@ -99,7 +99,7 @@ make docker-up        # docker compose up --build
 | `NUTREEK_BACKUP_DIR` | `./data/backups` | where backups are written |
 | `NUTREEK_BACKUP_INTERVAL` | `24h` | automatic backup interval |
 | `NUTREEK_BACKUP_KEEP` | `7` | backups to keep (the oldest are deleted) |
-| `NUTREEK_DEMO_IDLE` | `2h` | demo build only: a demo session ends after this long without use |
+| `NUTREEK_DEMO_IDLE` | `2h` | demo build only: a demo session ends, and its group is deleted, after this long without use; every group is deleted nightly at 03:00 UTC |
 
 ## OpenFoodFacts (OFF) strategy
 
