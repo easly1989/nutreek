@@ -92,19 +92,19 @@ func fill(t *testing.T, d *sql.DB, userID int64) int64 {
 	v := exec(`INSERT INTO nutritionist_meal_variations (meal_type_id) VALUES (?)`, mt)
 	exec(`INSERT INTO nutritionist_meal_items (variation_id, ingredient_id, quantity) VALUES (?, ?, 50)`, v, ing)
 	exec(`INSERT INTO coach_clients (coach_id, client_id, assigned_plan_id) VALUES (?, ?, ?)`, coach, userID, plan)
-	week := exec(`INSERT INTO weekly_plans (user_id, week_start, template_id, source_plan_id) VALUES (?, '2026-10-12', ?, ?)`, userID, tpl, plan)
+	week := exec(`INSERT INTO weekly_plans (user_id, week_start, template_id, source_plan_id) VALUES (?, '2020-01-06', ?, ?)`, userID, tpl, plan)
 	meal := exec(`INSERT INTO meals (weekly_plan_id, day_of_week, name) VALUES (?, 1, 'Breakfast')`, week)
 	item := exec(`INSERT INTO meal_items (meal_id, ingredient_id, quantity) VALUES (?, ?, 80)`, meal, ing)
 	exec(`INSERT INTO meal_items (meal_id, recipe_id, quantity) VALUES (?, ?, 1)`, meal, recipe)
 	exec(`INSERT INTO meal_item_customizations (meal_item_id, ingredient_id, quantity) VALUES (?, ?, 90)`, item, ing)
 	exec(`INSERT INTO meal_cheat_items (meal_id, ingredient_id, quantity) VALUES (?, ?, 30)`, meal, ing)
-	list := exec(`INSERT INTO shopping_lists (user_id, week_start) VALUES (?, '2026-10-12')`, userID)
+	list := exec(`INSERT INTO shopping_lists (user_id, week_start) VALUES (?, '2020-01-06')`, userID)
 	exec(`INSERT INTO shopping_list_items (shopping_list_id, ingredient_id, total_quantity) VALUES (?, ?, 80)`, list, ing)
 	exec(`INSERT INTO shopping_user_items (shopping_list_id, description) VALUES (?, 'Milk')`, list)
-	exec(`INSERT INTO weight_logs (user_id, measured_at, weight_kg) VALUES (?, '2026-10-12', 72)`, userID)
-	exec(`INSERT INTO water_logs (user_id, logged_at, amount_ml) VALUES (?, '2026-10-12', 250)`, userID)
+	exec(`INSERT INTO weight_logs (user_id, measured_at, weight_kg) VALUES (?, '2020-01-06', 72)`, userID)
+	exec(`INSERT INTO water_logs (user_id, logged_at, amount_ml) VALUES (?, '2020-01-06', 250)`, userID)
 	exec(`INSERT INTO workout_logs (user_id, activity_id, logged_at, duration_minutes, kcal_burned)
-		SELECT ?, id, '2026-10-12', 30, 200 FROM workout_activities LIMIT 1`, userID)
+		SELECT ?, id, '2020-01-06', 30, 200 FROM workout_activities LIMIT 1`, userID)
 	exec(`INSERT INTO api_tokens (user_id, name, token_hash) VALUES (?, 'cli', ?)`, userID, "hash-"+time.Now().String())
 	exec(`INSERT INTO subscriptions (user_id) VALUES (?)`, userID)
 	return ing
@@ -205,10 +205,10 @@ func TestPurgeKeepsSharedIngredient(t *testing.T) {
 		VALUES ('local', 'Rice', 360, 7, 80, 1, ?) RETURNING id`, idle).Scan(&planned); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.Exec(`INSERT INTO nutritionist_plans (user_id) VALUES (?)`, other); err != nil {
+	if _, err := d.Exec(`INSERT INTO nutritionist_plans (user_id, is_active) VALUES (?, 0)`, other); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.Exec(`INSERT INTO nutritionist_meal_types (plan_id, name) SELECT id, 'Lunch' FROM nutritionist_plans WHERE user_id = ?`, other); err != nil {
+	if _, err := d.Exec(`INSERT INTO nutritionist_meal_types (plan_id, name) SELECT id, 'Lunch' FROM nutritionist_plans WHERE user_id = ? AND is_active = 0`, other); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := d.Exec(`INSERT INTO nutritionist_meal_variations (meal_type_id) SELECT max(id) FROM nutritionist_meal_types`); err != nil {

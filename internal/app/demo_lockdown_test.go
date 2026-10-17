@@ -112,16 +112,25 @@ func TestDemoBodyLimit(t *testing.T) {
 }
 
 func TestDemoCaps(t *testing.T) {
-	a := newDemoApp(t, DemoLimits{MaxIngredients: 1, MaxRecipes: 1})
-	b := newBrowser(t, a)
-	uid := enter(t, a, b)
-	count := func(q string) int {
+	a := newDemoApp(t, DemoLimits{})
+	count := func(q string, uid int64) int {
 		var n int
 		if err := a.Store.DB.QueryRow(q, uid).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
 	}
+	const ingredients = `SELECT count(*) FROM ingredients WHERE created_by = ? AND source = 'local'`
+	const recipes = `SELECT count(*) FROM recipes WHERE user_id = ?`
+	// The seed already fills the account: the caps leave room for one more each.
+	probe, err := a.Demo.Start(context.Background(), "en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	maxIng, maxRec := count(ingredients, probe)+1, count(recipes, probe)+1
+	a.DemoLimits = DemoLimits{MaxIngredients: maxIng, MaxRecipes: maxRec}
+	b := newBrowser(t, a)
+	uid := enter(t, a, b)
 	ingredient := func(name string) url.Values {
 		return url.Values{"name": {name}, "unit": {"g"}, "kcal": {"100"}, "protein": {"1"}, "carbs": {"1"}, "fat": {"1"}}
 	}
@@ -133,10 +142,10 @@ func TestDemoCaps(t *testing.T) {
 		t.Errorf("second ingredient: %d to %q, want back to the list", code, loc)
 	}
 	b.post("/ingredients/new", "/quick/ingredient", ingredient("Third"))
-	if n := count(`SELECT count(*) FROM ingredients WHERE created_by = ?`); n != 1 {
-		t.Errorf("%d ingredients, want 1", n)
+	if n := count(ingredients, uid); n != maxIng {
+		t.Errorf("%d ingredients, want %d", n, maxIng)
 	}
-	if _, _, list := b.get("/ingredients"); !strings.Contains(list, "at most 1 ingredient") {
+	if _, _, list := b.get("/ingredients"); !strings.Contains(list, "at most "+strconv.Itoa(maxIng)+" ingredients") {
 		t.Error("the list does not say why")
 	}
 
@@ -146,10 +155,10 @@ func TestDemoCaps(t *testing.T) {
 	b.post("/recipes/new", "/recipes", url.Values{"name": {"Soup"}, "servings": {"1"}})
 	b.post("/recipes/new", "/quick/recipe", url.Values{"name": {"Salad"}, "servings": {"1"}})
 	var bowl int64
-	_ = a.Store.DB.QueryRow(`SELECT id FROM recipes WHERE user_id = ?`, uid).Scan(&bowl)
+	_ = a.Store.DB.QueryRow(`SELECT id FROM recipes WHERE user_id = ? AND name = 'Bowl'`, uid).Scan(&bowl)
 	b.post("/recipes", "/recipes/"+strconv.FormatInt(bowl, 10)+"/duplicate", url.Values{"name": {"Bowl 2"}})
-	if n := count(`SELECT count(*) FROM recipes WHERE user_id = ?`); n != 1 {
-		t.Errorf("%d recipes, want 1", n)
+	if n := count(recipes, uid); n != maxRec {
+		t.Errorf("%d recipes, want %d", n, maxRec)
 	}
 }
 
@@ -210,6 +219,8 @@ func TestDemoGroupScope(t *testing.T) {
 			t.Errorf("Bob opens %s: %d, want 404", page, code)
 		}
 	}
+	var bobRecipes int
+	_ = a.Store.DB.QueryRow(`SELECT count(*) FROM recipes WHERE user_id = ?`, bobID).Scan(&bobRecipes)
 	rename := url.Values{"name": {"Renamed"}, "unit": {"g"}, "kcal": {"1"}, "protein": {"1"}, "carbs": {"1"}, "fat": {"1"}, "servings": {"1"}}
 	bob.post("/recipes", "/ingredients/"+id(paste, 10), rename)
 	bob.post("/recipes", "/recipes/"+id(bowl, 10), rename)
@@ -222,9 +233,9 @@ func TestDemoGroupScope(t *testing.T) {
 		t.Errorf("Bob renamed Alice's recipe to %q", rec.Name)
 	}
 	var leaks int
-	_ = a.Store.DB.QueryRow(`SELECT (SELECT count(*) FROM recipes WHERE user_id = ?) + (SELECT count(*) FROM recipe_ingredients WHERE ingredient_id = ?)`, bobID, paste).Scan(&leaks)
-	if leaks != 1 { // Bob's own soup only
-		t.Errorf("Bob duplicated Alice's recipe or used her ingredient (%d rows)", leaks-1)
+	_ = a.Store.DB.QueryRow(`SELECT (SELECT count(*) FROM recipes WHERE user_id = ?) - ? + (SELECT count(*) FROM recipe_ingredients WHERE ingredient_id = ?)`, bobID, bobRecipes, paste).Scan(&leaks)
+	if leaks != 0 {
+		t.Errorf("Bob duplicated Alice's recipe or used her ingredient (%d rows)", leaks)
 	}
 
 	// A code linked to Alice's ingredient tells Bob neither its name nor the row.

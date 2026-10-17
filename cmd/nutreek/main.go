@@ -109,6 +109,10 @@ func run(logger *slog.Logger) error {
 	}
 	logger.Info("db migrations applied")
 
+	if done, err := demoCommand(ctx, store, logger); done {
+		return err
+	}
+
 	sessions := scs.New()
 	sessions.Store = sqlite3store.New(store.DB)
 	sessions.Lifetime = 30 * 24 * time.Hour
