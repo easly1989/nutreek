@@ -99,7 +99,7 @@ func (a *App) handleProfilePage(w http.ResponseWriter, r *http.Request) {
 	}
 	if user.BMI != nil && user.BMR != nil {
 		data.BMIValue = *user.BMI
-		data.BMICategory = profile.BMICategory(*user.BMI)
+		data.BMICategory = a.t(r, "profile.bmi."+profile.BMICategory(*user.BMI))
 		data.BMRValue = *user.BMR
 		data.HasIndices = true
 		if user.ActivityLevel != nil {
@@ -142,18 +142,18 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 	// Physical data — all optional.
 	weightKg, err := parseOptionalPositiveFloat(form.WeightKg)
 	if err != nil || (weightKg != nil && (*weightKg < 20 || *weightKg > 300)) {
-		renderErr("Peso non valido (range plausibile: 20–300 kg).")
+		renderErr(a.t(r, "profile.error.weight"))
 		return
 	}
 	heightCm, err := parseOptionalPositiveFloat(form.HeightCm)
 	if err != nil || (heightCm != nil && (*heightCm < 100 || *heightCm > 250)) {
-		renderErr("Altezza non valida (range plausibile: 100–250 cm).")
+		renderErr(a.t(r, "profile.error.height"))
 		return
 	}
 	birthYear, err := parseOptionalInt(form.BirthYear)
 	currentYear := time.Now().Year()
 	if err != nil || (birthYear != nil && (*birthYear < 1900 || *birthYear > currentYear-5)) {
-		renderErr("Anno di nascita non plausibile.")
+		renderErr(a.t(r, "profile.error.birth_year"))
 		return
 	}
 
@@ -165,14 +165,14 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 	case "":
 		// not set
 	default:
-		renderErr("Sesso non valido.")
+		renderErr(a.t(r, "profile.error.sex"))
 		return
 	}
 
 	var activityPtr *string
 	if form.ActivityLevel != "" {
 		if !validActivityLevels[form.ActivityLevel] {
-			renderErr("Livello di attività non valido.")
+			renderErr(a.t(r, "profile.error.activity"))
 			return
 		}
 		al := form.ActivityLevel
@@ -182,22 +182,22 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 	// Macro goals — all optional, non-negative.
 	targetKcal, err := parseOptionalNonNegFloat(form.TargetKcal)
 	if err != nil {
-		renderErr("Obiettivo Kcal non valido.")
+		renderErr(a.t(r, "profile.error.target_kcal"))
 		return
 	}
 	targetProtein, err := parseOptionalNonNegFloat(form.TargetProtein)
 	if err != nil {
-		renderErr("Obiettivo Proteine non valido.")
+		renderErr(a.t(r, "profile.error.target_protein"))
 		return
 	}
 	targetCarbs, err := parseOptionalNonNegFloat(form.TargetCarbs)
 	if err != nil {
-		renderErr("Obiettivo Carboidrati non valido.")
+		renderErr(a.t(r, "profile.error.target_carbs"))
 		return
 	}
 	targetFat, err := parseOptionalNonNegFloat(form.TargetFat)
 	if err != nil {
-		renderErr("Obiettivo Grassi non valido.")
+		renderErr(a.t(r, "profile.error.target_fat"))
 		return
 	}
 
@@ -207,7 +207,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 	if form.WaterTargetML != "" {
 		v, errW := strconv.Atoi(form.WaterTargetML)
 		if errW != nil || v < 250 || v > 10000 {
-			renderErr("Target idratazione non valido (250–10000 ml).")
+			renderErr(a.t(r, "profile.error.water"))
 			return
 		}
 		waterTargetML = v
@@ -216,27 +216,27 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 	// Validate the macro combination (a physically impossible check).
 	if targetKcal != nil && *targetKcal > 0 {
 		if *targetKcal < 800 {
-			renderErr("Obiettivo Kcal troppo basso (minimo consigliato: 800 kcal).")
+			renderErr(a.t(r, "profile.error.kcal_low"))
 			return
 		}
 		if targetProtein != nil && *targetProtein*4 > *targetKcal {
-			renderErr("Le proteine da sole superano le calorie totali (valore non possibile).")
+			renderErr(a.t(r, "profile.error.protein_over"))
 			return
 		}
 		if targetFat != nil && *targetFat*9 > *targetKcal {
-			renderErr("I grassi da soli superano le calorie totali (valore non possibile).")
+			renderErr(a.t(r, "profile.error.fat_over"))
 			return
 		}
 		if targetProtein != nil && targetCarbs != nil && targetFat != nil {
 			macroKcal := *targetProtein*4 + *targetCarbs*4 + *targetFat*9
 			if macroKcal > *targetKcal*1.10 {
-				renderErr("La somma dei macro supera le calorie totali di oltre il 10%.")
+				renderErr(a.t(r, "profile.error.macro_sum"))
 				return
 			}
 		}
 	}
 	if targetProtein != nil && *targetProtein > 400 {
-		renderErr("Obiettivo Proteine non realistico (massimo 400 g).")
+		renderErr(a.t(r, "profile.error.protein_high"))
 		return
 	}
 
@@ -272,7 +272,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		a.Sessions.Put(r.Context(), "user_id", updatedUser.ID)
 	}
-	a.Sessions.Put(r.Context(), "flash", "Profilo salvato.")
+	a.Sessions.Put(r.Context(), "flash", "profile.flash.saved")
 	http.Redirect(w, r, "/profile", http.StatusSeeOther)
 }
 

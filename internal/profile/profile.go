@@ -15,17 +15,18 @@ func BMI(weightKg, heightCm float64) float64 {
 	return weightKg / (hm * hm)
 }
 
-// BMICategory returns the text category for a BMI value.
+// BMICategory returns the category code of a BMI value: underweight,
+// normal, overweight or obese. The interface translates it.
 func BMICategory(bmi float64) string {
 	switch {
 	case bmi < 18.5:
-		return "Sottopeso"
+		return "underweight"
 	case bmi < 25.0:
-		return "Normopeso"
+		return "normal"
 	case bmi < 30.0:
-		return "Sovrappeso"
+		return "overweight"
 	default:
-		return "Obesità"
+		return "obese"
 	}
 }
 
