@@ -64,10 +64,12 @@ func (a *App) loginRateLimiter() *ipRateLimiter {
 	return a.loginLimiter
 }
 
-// Demo is the public demo: it creates a throwaway account in a language.
+// Demo is the public demo: it creates a throwaway account in a language, and
+// deletes it after IdleHours without a request.
 type Demo interface {
 	Start(ctx context.Context, lang string) (userID int64, err error)
-	IdleHours() int // how long a demo lasts without use, for the notices
+	IdleHours() int                               // how long a demo lasts without use, for the notices
+	Seen(ctx context.Context, userID int64) error // a signed-in user made a request
 }
 
 // signInPath is where a signed-out visitor goes: the demo has no sign-in.

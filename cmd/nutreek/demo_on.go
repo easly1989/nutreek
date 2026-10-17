@@ -30,7 +30,9 @@ func applyDemo(ctx context.Context, store *db.Store, sessions *scs.SessionManage
 	a.Cfg.OwnerEmail = ""
 	a.Cfg.AdminToken = ""
 	a.Cfg.PremiumEnabled = false
-	a.Demo = demo.New(store.DB, cfg)
+	svc := demo.New(store.DB, cfg)
+	a.Demo = svc
+	go svc.Run(ctx, logger)
 	logger.Info("demo build: accounts are throwaway", "idle", cfg.Idle.String())
 	return nil
 }
