@@ -123,6 +123,9 @@ func (s *Service) Start(ctx context.Context, lang string) (int64, error) {
 	if _, err := tx.ExecContext(ctx, `INSERT INTO demo_members (user_id, group_id) VALUES (?, ?)`, userID, groupID); err != nil {
 		return 0, fmt.Errorf("demo member: %w", err)
 	}
+	if err := seed(ctx, tx, userID, w, time.Now()); err != nil {
+		return 0, fmt.Errorf("demo seed: %w", err)
+	}
 	return userID, tx.Commit()
 }
 
@@ -164,14 +167,16 @@ func createUser(ctx context.Context, tx *sql.Tx, name string, b body) (int64, er
 
 // vocabulary holds every name the demo shows, in one language.
 type vocabulary struct {
-	names []string // first names for the generated people
+	names []string          // first names for the generated people
+	text  map[string]string // the seed's names, by key (seed.go)
+	ean   string            // barcode prefix of the language's demo products
 }
 
 // words has one vocabulary per language code; English is the fallback for a
 // language without its own.
 var words = map[string]vocabulary{
-	"en": {names: []string{"Alex", "Sam", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Jamie"}},
-	"it": {names: []string{"Giulia", "Marco", "Chiara", "Luca", "Sara", "Matteo", "Elena", "Andrea"}},
+	"en": {names: []string{"Alex", "Sam", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Jamie"}, text: textEN, ean: "2000000001"},
+	"it": {names: []string{"Giulia", "Marco", "Chiara", "Luca", "Sara", "Matteo", "Elena", "Andrea"}, text: textIT, ean: "2000000002"},
 }
 
 // pickCode returns lang when the demo speaks it, else English.

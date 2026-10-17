@@ -109,6 +109,10 @@ func run(logger *slog.Logger) error {
 	}
 	logger.Info("db migrations applied")
 
+	if done, err := demoCommand(ctx, store, logger); done {
+		return err
+	}
+
 	if cfg.BackupEnabled {
 		go runBackupScheduler(ctx, store, cfg, logger)
 	}
