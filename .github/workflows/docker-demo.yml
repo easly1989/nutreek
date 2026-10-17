@@ -1,0 +1,115 @@
+name: Docker demo
+
+# Publishes the public demo image, ghcr.io/easly1989/nutreek:demo (#137), with
+# every published release and by hand in between, then points the Northflank
+# service that hosts it at the image just built (#188). Northflank does not
+# watch ghcr.io on its own: without that call the demo keeps running the image
+# it last pulled. The service has no volume, so a redeploy starts from an empty
+# database and ends every demo in use. Setup: docs/demo.md.
+#
+# A release builds from its tag, so the demo is the version just published.
+# Prereleases are skipped: a beta does not go on the public demo. This is its
+# own workflow rather than a job in release.yml, so a failed demo build never
+# marks the release as failed.
+#
+# The image is the demo build (DEMO=1, `go build -tags demo`): throwaway
+# accounts and no sign-in, admin, API or recipe import. It never reaches
+# :latest or :vX.Y.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or SHA to build the demo from
+        required: false
+        default: main
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-demo
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/easly1989/nutreek
+
+jobs:
+  build-push:
+    if: github.event_name != 'release' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    env:
+      # Job-level so the deploy step can test for it: a step's `if` cannot see
+      # secrets, nor the step's own env.
+      NF_TOKEN: ${{ secrets.NORTHFLANK_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.ref }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The release's tag names the build; a run by hand is named by its commit.
+      - name: Label
+        id: vars
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          echo "label=${TAG:-$(git rev-parse --short=7 HEAD)}" >> "$GITHUB_OUTPUT"
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # amd64 only: the demo runs on one hosted instance.
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            VERSION=demo-${{ steps.vars.outputs.label }}
+            DEMO=1
+          tags: |
+            ${{ env.IMAGE }}:demo
+            ${{ env.IMAGE }}:demo-${{ steps.vars.outputs.label }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/easly1989/nutreek
+            org.opencontainers.image.title=nutreek-demo
+            org.opencontainers.image.version=demo-${{ steps.vars.outputs.label }}
+            org.opencontainers.image.revision=${{ steps.vars.outputs.revision }}
+          cache-from: type=gha,scope=demo
+          cache-to: type=gha,mode=max,scope=demo
+
+      # Point the demo service at the tag just pushed. A new image path is a new
+      # deployment, so Northflank rolls it out; the versioned tag also says which
+      # build is running. The image is public, so no registry credentials. Plain
+      # curl rather than a third-party action. Skipped until the token is
+      # configured, so the workflow stays green without it.
+      - name: Deploy to Northflank
+        if: env.NF_TOKEN != ''
+        env:
+          PROJECT: ${{ vars.NORTHFLANK_PROJECT_ID }}
+          SERVICE: ${{ vars.NORTHFLANK_SERVICE_ID }}
+          IMAGE_PATH: ${{ env.IMAGE }}:demo-${{ steps.vars.outputs.label }}
+        run: |
+          if [ -z "$PROJECT" ] || [ -z "$SERVICE" ]; then
+            echo "::error::NORTHFLANK_PROJECT_ID and NORTHFLANK_SERVICE_ID must be set as repository variables"
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $NF_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"external\":{\"imagePath\":\"$IMAGE_PATH\"}}" \
+            "https://api.northflank.com/v1/projects/$PROJECT/services/$SERVICE/deployment"
+          echo
+          echo "Northflank now runs $IMAGE_PATH"
