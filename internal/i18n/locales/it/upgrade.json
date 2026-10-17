@@ -1,0 +1,10 @@
+{
+  "upgrade.subtitle": "Le funzionalità in più di questa istanza.",
+  "upgrade.active": "Premium è attivo sul tuo account: tutto è già sbloccato.",
+  "upgrade.open_to_all": "Su questa istanza ora tutte le funzionalità sono aperte a tutti.",
+  "upgrade.blocked": "{{.Name}} fa parte di Premium.",
+  "upgrade.includes": "Cosa include",
+  "upgrade.none": "Nessuna funzionalità premium attiva.",
+  "upgrade.how_title": "Come attivarlo",
+  "upgrade.how_text": "Premium lo attiva l'amministratore di questa istanza sul tuo account. Scrivigli indicando l'email con cui accedi"
+}

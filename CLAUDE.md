@@ -145,7 +145,7 @@ until it completes (~10 min, ~0.9 GB of bandwidth).
 
 - Browser HTML request → `302 /upgrade`
 - HTMX request (`HX-Request: true`) → `HX-Redirect: /upgrade` + `403`
-- API/JSON request → `403 {"error": "funzionalità non disponibile nel tuo piano"}`
+- API/JSON request → `403 {"error": "feature not available on your plan"}`
 
 ### Cache
 
