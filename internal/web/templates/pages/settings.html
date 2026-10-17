@@ -10,10 +10,10 @@
     <nav class="hidden lg:flex sticky top-6 flex-col gap-0.5" aria-label="{{t "settings.toc_label"}}">
       <a href="#aspetto" class="settings-toc" aria-current="true">{{t "settings.toc.appearance"}}</a>
       <a href="#app" class="settings-toc">{{t "settings.toc.app"}}</a>
-      <a href="#account" class="settings-toc">{{t "settings.toc.account"}}</a>
+      {{if not .Demo}}<a href="#account" class="settings-toc">{{t "settings.toc.account"}}</a>{{end}}
       <a href="#dati" class="settings-toc">{{t "settings.toc.data"}}</a>
       <a href="#token" class="settings-toc">{{t "settings.toc.tokens"}}</a>
-      <a href="#elimina" class="settings-toc">{{t "settings.toc.delete"}}</a>
+      {{if not .Demo}}<a href="#elimina" class="settings-toc">{{t "settings.toc.delete"}}</a>{{end}}
     </nav>
 
     <div class="flex flex-col gap-4 min-w-0">
@@ -98,6 +98,8 @@
       </section>
 
       <section class="card">
+        {{/* A demo account has no email or password to show, change or confirm with. */}}
+        {{if not .Demo}}
         <div id="account" class="settings-sec scroll-mt-6">
           <div><h2 class="h2">{{t "settings.account.title"}}</h2><p class="settings-d break-all">{{.User.Email}}</p></div>
           <form method="post" action="/settings/password" class="flex flex-col gap-3 max-w-[420px]">
@@ -110,6 +112,7 @@
             <button class="btn-secondary self-start">{{template "icon_sm" "i-lock"}}{{t "settings.password.submit"}}</button>
           </form>
         </div>
+        {{end}}
         <div id="dati" class="settings-sec scroll-mt-6">
           <div><h2 class="h2">{{t "settings.data.title"}}</h2><p class="settings-d">{{t "settings.data.desc"}}</p></div>
           <div class="flex flex-wrap items-center gap-3">
@@ -164,6 +167,7 @@
         {{end}}
       </section>
 
+      {{if not .Demo}}
       <section id="elimina" class="card scroll-mt-6" style="border-color:color-mix(in srgb, var(--danger) 35%, var(--border))">
         <div class="settings-sec">
           <div><h2 class="h2 text-danger">{{t "settings.delete.title"}}</h2><p class="settings-d">{{t "settings.delete.desc"}}</p></div>
@@ -175,6 +179,7 @@
           </form>
         </div>
       </section>
+      {{end}}
     </div>
   </div>
 </div>

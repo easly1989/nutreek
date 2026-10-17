@@ -33,6 +33,11 @@ type authPageData struct {
 	// Features maps key→bool: whether the user has access to the feature.
 	// With PremiumEnabled=false everything is always true (no gating).
 	Features map[string]bool
+	// The public demo (#137): the band on every page, and the notice that
+	// opens by itself on the first page after entering.
+	Demo          bool
+	DemoWelcome   bool
+	DemoIdleHours int
 }
 
 var premiumFeatureKeys = []string{"auto_plan", "tdee_adaptive", "api_access", "coach_mode"}
@@ -47,7 +52,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 	for _, k := range premiumFeatureKeys {
 		features[k] = a.HasFeature(r.Context(), user, k)
 	}
-	return authPageData{
+	data := authPageData{
 		User:       user,
 		CSRFToken:  nosurf.Token(r),
 		Flash:      a.t(r, a.Sessions.PopString(r.Context(), "flash")),
@@ -57,12 +62,22 @@ func (a *App) baseData(r *http.Request) authPageData {
 		IsOwner:    a.isOwner(user),
 		Features:   features,
 	}
+	if a.Demo != nil {
+		data.Demo = true
+		data.DemoIdleHours = a.Demo.IdleHours()
+		data.DemoWelcome = user != nil && a.Sessions.PopBool(r.Context(), sessionKeyDemoWelcome)
+	}
+	return data
 }
 
 // ---- home ------------------------------------------------------------------
 
 func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
-	if err := a.Render.Render(w, r, http.StatusOK, "home", a.baseData(r)); err != nil {
+	page := "home"
+	if a.Demo != nil {
+		page = "demo_entry"
+	}
+	if err := a.Render.Render(w, r, http.StatusOK, page, a.baseData(r)); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -219,7 +234,7 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, a.signInPath(), http.StatusSeeOther)
 }
 
 // ---- helpers ---------------------------------------------------------------

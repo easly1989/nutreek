@@ -73,11 +73,11 @@ func (a *App) loadUserMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// requireAuth redirects to /login when there is no user in the context.
+// requireAuth redirects to the sign-in page when there is no user in the context.
 func (a *App) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if userFromContext(r.Context()) == nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, a.signInPath(), http.StatusSeeOther)
 			return
 		}
 		next.ServeHTTP(w, r)
