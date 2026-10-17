@@ -31,7 +31,7 @@ Ingredients from a local copy of OpenFoodFacts (search in under 50 ms, even offl
 
 It runs **natively** (one Go binary, no external dependencies) or in **a single Docker container**: SQLite is built in, so there is no separate database to run.
 
-The interface is in **Italian**.
+The interface is in **English** and **Italian**. Each user picks the language in Settings; without a choice it follows the browser, and the signed-out pages have a selector. Anyone can add another language with a pull request: see [Translating Nutreek](docs/translating.md).
 
 ---
 
@@ -53,24 +53,25 @@ The interface is in **Italian**.
 | **Admin panel** | Feature flags, user management, premium subscriptions (owner only) |
 | **Premium gating** | `requireFeature` middleware, 60 s cache, UI badges, redirect to `/upgrade` |
 | **Look** | The «Sereno» style: light / dark / follow the system × forest / sea / sunset / graphite colour; sidebar on desktop, bottom bar on the phone; guided tour |
+| **Languages** | English and Italian, per user or from the browser; community translations welcome, marked beta until complete ([guide](docs/translating.md)) |
 | **On your phone** | Installable (manifest and icons in your chosen colour, a service worker for static files); the camera and installing need https |
 
 ---
 
 ## Screenshots
 
-Demo data. The same look in light and dark, on desktop and on the phone.
+Demo data, with the interface in English (the demo foods and meals are Italian). The same look in light and dark, on desktop and on the phone. The Italian README shows the Italian interface.
 
 ### The week
 
 One day at a time: the day tabs with their calories, the meals with their macros, and beside them the calorie ring, water and workouts.
 
 <p align="center">
-  <img src="docs/screenshots/settimana.png" width="800" alt="The week: day tabs, meals with calories and macros, calorie ring, water and workout">
+  <img src="docs/screenshots/en/week.png" width="800" alt="The week: day tabs, meals with calories and macros, calorie ring, water and workout">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/settimana-scuro.png" width="800" alt="The same week in dark mode">
+  <img src="docs/screenshots/en/week-dark.png" width="800" alt="The same week in dark mode">
 </p>
 
 ### Adding food, barcode included
@@ -78,8 +79,8 @@ One day at a time: the day tabs with their calories, the meals with their macros
 The picker opens over the week. The camera reads the barcode on the pack and the product shows up ready to add: first among your own ingredients, then in the local OpenFoodFacts copy.
 
 <p align="center">
-  <img src="docs/screenshots/scanner.png" width="400" alt="The scanner open over the picker, the camera framing a barcode">
-  <img src="docs/screenshots/picker-codice.png" width="400" alt="The scanned product, open with protein, carbs and fat and the quantity to add">
+  <img src="docs/screenshots/en/scanner.png" width="400" alt="The scanner open over the picker, the camera framing a barcode">
+  <img src="docs/screenshots/en/picker-barcode.png" width="400" alt="The scanned product, open with protein, carbs and fat and the quantity to add">
 </p>
 
 ### Recipes and nutrition plan
@@ -87,8 +88,8 @@ The picker opens over the week. The camera reads the barcode on the pack and the
 Recipes with calories and macros per serving; the nutrition plan with the variants of each meal, which feed the picker and the week generator.
 
 <p align="center">
-  <img src="docs/screenshots/ricette.png" width="400" alt="Recipe list with calories and macros per serving, and filters">
-  <img src="docs/screenshots/piano-nutrizionale.png" width="400" alt="Nutrition plan with the variants of breakfast and lunch">
+  <img src="docs/screenshots/en/recipes.png" width="400" alt="Recipe list with calories and macros per serving, and filters">
+  <img src="docs/screenshots/en/nutrition-plan.png" width="400" alt="Nutrition plan with the variants of breakfast and lunch">
 </p>
 
 ### Shopping list and statistics
@@ -96,8 +97,8 @@ Recipes with calories and macros per serving; the nutrition plan with the varian
 The shopping list by aisle, with a cart and a two-column print. Statistics with your energy needs estimated from your weight and what you ate.
 
 <p align="center">
-  <img src="docs/screenshots/spesa.png" width="400" alt="Shopping list grouped by aisle, with items added by hand">
-  <img src="docs/screenshots/statistiche-scuro.png" width="400" alt="Statistics in dark mode: summary, estimated energy needs, calories and macros, weight">
+  <img src="docs/screenshots/en/shopping.png" width="400" alt="Shopping list grouped by aisle, with items added by hand">
+  <img src="docs/screenshots/en/stats-dark.png" width="400" alt="Statistics in dark mode: summary, estimated energy needs, calories and macros, weight">
 </p>
 
 ### On the phone
@@ -105,10 +106,10 @@ The shopping list by aisle, with a cart and a two-column print. Statistics with 
 A bottom bar with the everyday sections; it installs as an app from Settings.
 
 <p align="center">
-  <img src="docs/screenshots/telefono-settimana.png" width="200" alt="The week on the phone">
-  <img src="docs/screenshots/telefono-scanner.png" width="200" alt="The barcode scanner on the phone">
-  <img src="docs/screenshots/telefono-spesa.png" width="200" alt="The shopping list on the phone">
-  <img src="docs/screenshots/telefono-app.png" width="200" alt="Settings, phone app section, with the Install the app button">
+  <img src="docs/screenshots/en/phone-week.png" width="200" alt="The week on the phone">
+  <img src="docs/screenshots/en/phone-scanner.png" width="200" alt="The barcode scanner on the phone">
+  <img src="docs/screenshots/en/phone-shopping.png" width="200" alt="The shopping list on the phone">
+  <img src="docs/screenshots/en/phone-app.png" width="200" alt="Settings, phone app section, with the Install the app button">
 </p>
 
 ### Coach and administration
@@ -116,8 +117,8 @@ A bottom bar with the everyday sections; it installs as an app from Settings.
 The coach panel with clients and the plan library; administration (owner only) with users, features and the OpenFoodFacts sync.
 
 <p align="center">
-  <img src="docs/screenshots/coach.png" width="400" alt="Coach panel with a client and the plan library">
-  <img src="docs/screenshots/admin.png" width="400" alt="Administration: users, premium, features and OpenFoodFacts status">
+  <img src="docs/screenshots/en/coach.png" width="400" alt="Coach panel with a client and the plan library">
+  <img src="docs/screenshots/en/admin.png" width="400" alt="Administration: users, premium, features and OpenFoodFacts status">
 </p>
 
 ---
@@ -305,7 +306,7 @@ nutreek.example.com {
 
 The container does **not** terminate TLS: always put a reverse proxy in front of it on a public deploy.
 
-The barcode scanner and installing the app on a phone work **only over https** (or on `localhost`): browsers neither give a page on http the camera nor register its service worker, not even on a local network. On http the scanner buttons do not appear, and Settings → «App sul telefono» explains why.
+The barcode scanner and installing the app on a phone work **only over https** (or on `localhost`): browsers neither give a page on http the camera nor register its service worker, not even on a local network. On http the scanner buttons do not appear, and Settings → "App on your phone" explains why.
 
 Rate limiting (login, sign-up, search, admin) uses the client's IP. `X-Forwarded-For` is read **only** when the connection comes from loopback or a private network (a proxy on the same host or in the Docker network), so a client connecting directly cannot pick its own IP with the header. The proxy must therefore add `X-Forwarded-For`: Caddy, Traefik and nginx (`proxy_add_x_forwarded_for`) do.
 
@@ -362,7 +363,7 @@ scripts/              PowerShell helpers for Windows
 data/                 SQLite database at runtime (gitignored)
 ```
 
-Code comments, commit messages and the interface are in Italian.
+Code, comments and commit messages are in English. The interface text lives in translation catalogs, one folder per language, in `internal/i18n/locales/`.
 
 ---
 
