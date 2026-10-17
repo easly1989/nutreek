@@ -11,7 +11,7 @@ Main features: ingredients (local OpenFoodFacts search over FTS5), recipes, week
 ## Language
 
 - **Code, docs, commits, issues and pull requests are in English** (#146): comments, doc comments, test names and messages, log messages, `CHANGELOG.md`, everything under `docs/`.
-- **The text users see is still Italian**, written directly in templates and handlers. It moves into translation catalogs with #141; until then, leave it as it is.
+- **The text users see is moving into translation catalogs** (#141): `internal/i18n/locales/<lang>/<area>.json`, Italian and English written together, `{{t "key"}}` in templates and `a.t(r, "key")` in handlers (see `docs/ARCHITECTURE.md`, Translations). Done so far: the shared layout and Ingredients (#151). The other areas still have Italian written in templates and handlers until their ticket. The `lang=en` cookie shows English.
 - History stays as written: commits, issues and pull requests before #146 are in Italian, and the CHANGELOG entries up to 2.0.0 link to them.
 - `README.it.md` is the Italian README and stays Italian.
 
@@ -168,7 +168,7 @@ until it completes (~10 min, ~0.9 GB of bandwidth).
 
 ## Code conventions
 
-- **Language**: English for code, comments, commits and docs; see [Language](#language). User-facing text stays Italian until #141.
+- **Language**: English for code, comments, commits and docs; see [Language](#language). User-facing text goes into the translation catalogs as each area is translated (#141).
 - **Commit style**: Conventional Commits with a scope, in English
   Examples: `feat(shopping): add past weeks dropdown`, `fix(plan): correct cheat macro totals`
 - **Handler names**: `handle{Section}{Action}` (e.g. `handleIngredientCreate`)
@@ -226,6 +226,7 @@ One issue → one branch → one PR to `main`, with `Closes #N` in the descripti
 | Coach mode | `internal/db/coach.go`, `internal/app/coach_handlers.go` |
 | REST API | `internal/app/api_handlers.go`, `internal/db/api_tokens.go` |
 | Admin panel | `internal/app/admin_panel_handlers.go` |
+| Translations | `internal/i18n/locales/<lang>/<area>.json`, `internal/i18n/i18n.go` |
 | Plan generation | `internal/planner/`, `internal/service/planner.go` |
 | Adaptive TDEE | `internal/tdee/`, `internal/service/tdee.go` |
 | Recipe import from URL | `internal/recipeimport/` |

@@ -14,6 +14,9 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 - Security: an ingredient's data (name, brand, unit, macros, micronutrients, portion, allergens) can be edited only by whoever created it, or by the owner; everyone else sees it read-only, with "by Bob" in the list. An imported OpenFoodFacts product belongs to whoever imported it; ingredients with no author are edited by the owner, or by anyone when the instance has no owner (#143)
 - An ingredient's category is per user: putting a shared ingredient in one of your categories no longer changes it for anyone else, and another user's category is rejected. Existing assignments stay with the category's owner (migration 0028) (#143)
 
+### Added
+- Translation infrastructure (#151, part of #141): the interface text moves into per-language catalogs (`internal/i18n/locales`), Italian and English, starting with the shared layout and the Ingredients section. Italian stays the only language users see; English can be tried with the `lang=en` cookie until every section is translated
+
 ### Changed
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)
 
