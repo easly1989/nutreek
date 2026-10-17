@@ -182,6 +182,9 @@ func run(logger *slog.Logger) error {
 		Render:     renderer,
 		Logger:     logger,
 	}
+	if err := applyDemo(ctx, store, sessions, a, logger); err != nil {
+		return err
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
