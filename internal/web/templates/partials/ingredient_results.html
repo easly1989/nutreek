@@ -48,7 +48,7 @@
     <span class="flex flex-wrap gap-1">
       {{if $r.IsOFF}}<span class="chip chip-soft">OpenFoodFacts</span>{{end}}
       {{with $r.Category}}<span class="chip chip-n">{{.Name}}</span>{{end}}
-      {{range $r.Allergens}}<span class="chip chip-warn">{{.Name}}</span>{{end}}
+      {{range $r.Allergens}}<span class="chip chip-warn">{{ref "allergen" .Code .Name}}</span>{{end}}
     </span>
     {{end}}
   </div>
