@@ -219,28 +219,9 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, now time.
 				return fmt.Errorf("food %s: %w", f.key, err)
 			}
 		} else {
-			// Shared by every account in this language, as an imported product is.
-			// A visitor may have linked the code to a food of theirs first: it
-			// stays theirs, without the code.
-			code := barcode(w, f)
-			if _, err := exec(`UPDATE ingredients SET off_barcode = NULL WHERE off_barcode = ? AND source = 'local'`, code); err != nil {
-				return fmt.Errorf("product %s: %w", f.key, err)
-			}
-			if _, err := exec(`INSERT OR IGNORE INTO off_products (barcode, product_name, brands, quantity,
-				kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, has_full_nutrients, serving_g, updated_at)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-				code, name, demoBrand, f.pack, f.kcal, f.protein, f.carbs, f.fat, f.servingG, now.Unix()); err != nil {
-				return fmt.Errorf("product %s: %w", f.key, err)
-			}
-			if _, err := exec(`INSERT INTO ingredients (source, off_barcode, name, brand, unit, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-				unit_weight_g, default_quantity, last_verified_at)
-				VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-				ON CONFLICT (off_barcode) DO NOTHING`,
-				code, name, demoBrand, f.unit, f.kcal, f.protein, f.carbs, f.fat, pieceG, f.servingG); err != nil {
-				return fmt.Errorf("product %s: %w", f.key, err)
-			}
-			if err := tx.QueryRowContext(ctx, `SELECT id FROM ingredients WHERE off_barcode = ?`, code).Scan(&id); err != nil {
-				return fmt.Errorf("product %s: %w", f.key, err)
+			var err error
+			if id, err = product(ctx, tx, w, f, now); err != nil {
+				return err
 			}
 		}
 		ings[f.key] = id
@@ -377,6 +358,50 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, now time.
 		if _, err := exec(`INSERT INTO shopping_user_items (shopping_list_id, description, quantity_text, checked, sort_order) VALUES (?, ?, ?, ?, ?)`,
 			listID, w.text["shop."+s.key], s.qty, s.checked, i); err != nil {
 			return fmt.Errorf("shopping item: %w", err)
+		}
+	}
+	return nil
+}
+
+// product returns the demo OpenFoodFacts product f in language w, creating
+// it when missing. Products are shared by every account, as imported ones are;
+// Prepare creates them all before any visitor can claim their barcodes.
+func product(ctx context.Context, tx *sql.Tx, w vocabulary, f food, now time.Time) (int64, error) {
+	code, name := barcode(w, f), w.text["food."+f.key]
+	var pieceG any
+	if f.pieceG > 0 {
+		pieceG = f.pieceG
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO off_products (barcode, product_name, brands, quantity,
+		kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, has_full_nutrients, serving_g, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+		code, name, demoBrand, f.pack, f.kcal, f.protein, f.carbs, f.fat, f.servingG, now.Unix()); err != nil {
+		return 0, fmt.Errorf("product %s: %w", f.key, err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO ingredients (source, off_barcode, name, brand, unit, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
+		unit_weight_g, default_quantity, last_verified_at)
+		VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT (off_barcode) DO NOTHING`,
+		code, name, demoBrand, f.unit, f.kcal, f.protein, f.carbs, f.fat, pieceG, f.servingG); err != nil {
+		return 0, fmt.Errorf("product %s: %w", f.key, err)
+	}
+	var id int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM ingredients WHERE off_barcode = ? AND source = 'openfoodfacts'`, code).Scan(&id); err != nil {
+		return 0, fmt.Errorf("product %s (barcode %s): %w", f.key, code, err)
+	}
+	return id, nil
+}
+
+// products creates every language's demo products (Prepare).
+func products(ctx context.Context, tx *sql.Tx, now time.Time) error {
+	for _, w := range words {
+		for _, f := range foods {
+			if f.ean == "" {
+				continue
+			}
+			if _, err := product(ctx, tx, w, f, now); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

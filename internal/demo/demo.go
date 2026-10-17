@@ -58,7 +58,8 @@ func LoadConfig() (Config, error) {
 
 // Prepare refuses a database holding users the demo did not create (the demo
 // deletes users, so it must never run on real data), then creates the demo's
-// tables and marks the database as a demo one. A real database is refused
+// tables, marks the database as a demo one and adds the demo's OpenFoodFacts
+// products, which every group shares. A real database is refused
 // before anything is written to it.
 func Prepare(ctx context.Context, db *sql.DB) error {
 	var foreign int
@@ -72,8 +73,18 @@ func Prepare(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("demo schema: %w", err)
 	}
-	_, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO demo_meta (key, value) VALUES ('demo', '1')`)
-	return err
+	if _, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO demo_meta (key, value) VALUES ('demo', '1')`); err != nil {
+		return err
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := products(ctx, tx, time.Now()); err != nil {
+		return fmt.Errorf("demo products: %w", err)
+	}
+	return tx.Commit()
 }
 
 // Service creates the demo's accounts and deletes them (purge.go).

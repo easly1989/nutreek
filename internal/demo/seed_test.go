@@ -3,6 +3,7 @@ package demo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"slices"
 	"testing"
@@ -268,27 +269,16 @@ func TestSeedFillsThePages(t *testing.T) {
 	}
 
 	ings := db.NewIngredients(d)
-	// A visitor links a demo code to a food of theirs: the next account still
-	// gets the demo product, and the visitor keeps the food.
-	yogurt := barcode(words["en"], foods[slices.IndexFunc(foods, func(f food) bool { return f.ean != "" })])
-	if _, err := d.ExecContext(ctx, `UPDATE ingredients SET off_barcode = NULL WHERE off_barcode = ?`, yogurt); err != nil {
-		t.Fatal(err)
-	}
+	// Prepare took every language's demo codes: a visitor cannot link one to a food of theirs.
 	mine, err := ings.CreateLocal(ctx, "Visitor's yogurt", nil, "g", 50, 5, 5, 1, &id, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ings.SetLocalBarcode(ctx, mine, yogurt); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := New(d, Config{}).Start(ctx, "en"); err != nil {
-		t.Fatalf("start after a visitor took a demo code: %v", err)
-	}
-	if got, err := ings.GetByBarcode(ctx, yogurt); err != nil || got.Source != "openfoodfacts" {
-		t.Errorf("demo code %s now on %+v (%v)", yogurt, got, err)
-	}
-	if got, err := ings.GetByID(ctx, mine); err != nil || got.Name != "Visitor's yogurt" {
-		t.Errorf("the visitor's food: %+v (%v)", got, err)
+	for _, w := range words {
+		code := barcode(w, foods[slices.IndexFunc(foods, func(f food) bool { return f.ean != "" })])
+		if err := ings.SetLocalBarcode(ctx, mine, code); !errors.Is(err, db.ErrBarcodeAlreadyUsed) {
+			t.Errorf("linking demo code %s: %v", code, err)
+		}
 	}
 
 	for _, f := range foods {
@@ -358,7 +348,7 @@ func TestStartIsFast(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := New(d, Config{})
-	if _, err := svc.Start(ctx, "en"); err != nil { // warm up the shared products
+	if _, err := svc.Start(ctx, "en"); err != nil { // the first account warms up the statement cache
 		t.Fatal(err)
 	}
 	start := time.Now()
