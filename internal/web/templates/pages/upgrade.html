@@ -3,19 +3,19 @@
 <div class="flex flex-col gap-4 lg:gap-[18px] max-w-2xl">
   <header>
     <h1 class="h1">Nutreek Premium</h1>
-    <p class="text-muted mt-0.5">Le funzionalità in più di questa istanza.</p>
+    <p class="text-muted mt-0.5">{{t "upgrade.subtitle"}}</p>
   </header>
 
   {{if .HasPremium}}
-  <p role="status" class="rounded-xl bg-accent-soft text-accent px-4 py-2.5 font-semibold flex items-center gap-2">{{template "icon_sm" "i-check"}}Premium è attivo sul tuo account: tutto è già sbloccato.</p>
+  <p role="status" class="rounded-xl bg-accent-soft text-accent px-4 py-2.5 font-semibold flex items-center gap-2">{{template "icon_sm" "i-check"}}{{t "upgrade.active"}}</p>
   {{else if not .PremiumEnabled}}
-  <p class="rounded-xl bg-accent-soft text-accent px-4 py-2.5 font-semibold flex items-center gap-2">{{template "icon_sm" "i-check"}}Su questa istanza ora tutte le funzionalità sono aperte a tutti.</p>
+  <p class="rounded-xl bg-accent-soft text-accent px-4 py-2.5 font-semibold flex items-center gap-2">{{template "icon_sm" "i-check"}}{{t "upgrade.open_to_all"}}</p>
   {{else if .BlockedName}}
-  <p role="status" class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-center gap-2">{{template "icon_sm" "i-lock"}}{{.BlockedName}} fa parte di Premium.</p>
+  <p role="status" class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-center gap-2">{{template "icon_sm" "i-lock"}}{{t "upgrade.blocked" "Name" .BlockedName}}</p>
   {{end}}
 
   <section class="card overflow-hidden">
-    <h2 class="h2 px-4 pt-3.5 pb-3">Cosa include</h2>
+    <h2 class="h2 px-4 pt-3.5 pb-3">{{t "upgrade.includes"}}</h2>
     <ul class="border-t border-border divide-y divide-border">
       {{range .PremiumFeatures}}
       <li class="grid grid-cols-[40px_minmax(0,1fr)] gap-3 px-4 py-3.5">
@@ -23,15 +23,15 @@
         <span class="flex flex-col gap-0.5"><b>{{.Name}}</b>{{with .Description}}<span class="text-[12.5px] text-muted">{{.}}</span>{{end}}</span>
       </li>
       {{else}}
-      <li class="px-4 py-6 text-center text-muted">Nessuna funzionalità premium attiva.</li>
+      <li class="px-4 py-6 text-center text-muted">{{t "upgrade.none"}}</li>
       {{end}}
     </ul>
   </section>
 
   {{if and .PremiumEnabled (not .HasPremium)}}
   <section class="card p-4 lg:p-5 flex flex-col gap-2">
-    <h2 class="h2">Come attivarlo</h2>
-    <p class="text-muted">Premium lo attiva l'amministratore di questa istanza sul tuo account. Scrivigli indicando l'email con cui accedi{{with .User}}: <b class="text-text">{{.Email}}</b>{{end}}.</p>
+    <h2 class="h2">{{t "upgrade.how_title"}}</h2>
+    <p class="text-muted">{{t "upgrade.how_text"}}{{with .User}}: <b class="text-text">{{.Email}}</b>{{end}}.</p>
   </section>
   {{end}}
 </div>

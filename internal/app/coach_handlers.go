@@ -34,7 +34,7 @@ type coachDashboardData struct {
 	PlanClients map[int64]int // plan -> how many clients have it assigned
 }
 
-// handleCoachDashboard GET /coach — clienti, libreria piani e assegnazioni.
+// handleCoachDashboard GET /coach — clients, plan library and assignments.
 func (a *App) handleCoachDashboard(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	clients, err := a.Coach.ListClients(r.Context(), user.ID)
@@ -68,12 +68,12 @@ func (a *App) handleCoachAddClient(w http.ResponseWriter, r *http.Request) {
 	coach := userFromContext(r.Context())
 	email := strings.TrimSpace(r.PostFormValue("email"))
 	if email == "" {
-		a.coachFlash(w, r, "Inserisci l'email del cliente.")
+		a.coachFlash(w, r, "coach.flash.email_required")
 		return
 	}
 	client, err := a.Users.GetByEmail(r.Context(), email)
 	if errors.Is(err, db.ErrUserNotFound) {
-		a.coachFlash(w, r, "Nessun utente registrato con questa email.")
+		a.coachFlash(w, r, "coach.flash.no_such_user")
 		return
 	}
 	if err != nil {
@@ -81,18 +81,18 @@ func (a *App) handleCoachAddClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if client.ID == coach.ID {
-		a.coachFlash(w, r, "Non puoi aggiungere te stesso come cliente.")
+		a.coachFlash(w, r, "coach.flash.self")
 		return
 	}
 	if err := a.Coach.AddClient(r.Context(), coach.ID, client.ID); err != nil {
 		if errors.Is(err, db.ErrClientHasCoach) {
-			a.coachFlash(w, r, "Questo utente ha gia' un coach.")
+			a.coachFlash(w, r, "coach.flash.has_coach")
 			return
 		}
 		a.serverError(w, r, err)
 		return
 	}
-	a.coachFlash(w, r, "Cliente aggiunto.")
+	a.coachFlash(w, r, "coach.flash.client_added")
 }
 
 // handleCoachRemoveClient POST /coach/clients/{id}/remove
@@ -111,7 +111,7 @@ func (a *App) handleCoachRemoveClient(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.coachFlash(w, r, "Cliente rimosso.")
+	a.coachFlash(w, r, "coach.flash.client_removed")
 }
 
 // handleCoachAssignPlan POST /coach/clients/{id}/assign-plan — assigns (or
@@ -133,23 +133,23 @@ func (a *App) handleCoachAssignPlan(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, err)
 			return
 		}
-		a.coachFlash(w, r, "Assegnazione rimossa: il cliente usa il proprio piano.")
+		a.coachFlash(w, r, "coach.flash.unassigned")
 		return
 	}
 	planID, err := strconv.ParseInt(planIDStr, 10, 64)
 	if err != nil {
-		a.coachFlash(w, r, "Piano non valido.")
+		a.coachFlash(w, r, "coach.flash.bad_plan")
 		return
 	}
 	if err := a.Coach.AssignPlan(r.Context(), coach.ID, clientID, planID); err != nil {
 		if errors.Is(err, db.ErrCoachClientNotFound) {
-			a.coachFlash(w, r, "Piano o cliente non valido.")
+			a.coachFlash(w, r, "coach.flash.bad_plan_or_client")
 			return
 		}
 		a.serverError(w, r, err)
 		return
 	}
-	a.coachFlash(w, r, "Piano assegnato al cliente.")
+	a.coachFlash(w, r, "coach.flash.assigned")
 }
 
 // ---- the coach's plan library ---------------------------------------------------
@@ -159,14 +159,14 @@ func (a *App) handleCoachCreatePlan(w http.ResponseWriter, r *http.Request) {
 	coach := userFromContext(r.Context())
 	name := strings.TrimSpace(r.PostFormValue("name"))
 	if name == "" || !withinLen(name, MaxNameLen) {
-		a.coachFlash(w, r, "Il nome del piano e' obbligatorio (max 200 caratteri).")
+		a.coachFlash(w, r, "coach.flash.name_required")
 		return
 	}
 	if _, err := a.NutritionistPlans.CreatePlan(r.Context(), coach.ID, name); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	a.coachFlash(w, r, "Piano creato. Aprilo nell'editor per aggiungere i contenuti.")
+	a.coachFlash(w, r, "coach.flash.plan_created")
 }
 
 // handleCoachOpenPlan POST /coach/plans/{id}/open — makes the plan active and
@@ -199,7 +199,7 @@ func (a *App) handleCoachRenamePlan(w http.ResponseWriter, r *http.Request) {
 	}
 	name := strings.TrimSpace(r.PostFormValue("name"))
 	if name == "" || !withinLen(name, MaxNameLen) {
-		a.coachFlash(w, r, "Il nome del piano e' obbligatorio (max 200 caratteri).")
+		a.coachFlash(w, r, "coach.flash.name_required")
 		return
 	}
 	if err := a.NutritionistPlans.RenamePlan(r.Context(), planID, coach.ID, name); err != nil {
@@ -210,7 +210,7 @@ func (a *App) handleCoachRenamePlan(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.coachFlash(w, r, "Piano rinominato.")
+	a.coachFlash(w, r, "coach.flash.plan_renamed")
 }
 
 // handleCoachDeletePlan POST /coach/plans/{id}/delete — inactive plans only.
@@ -223,16 +223,16 @@ func (a *App) handleCoachDeletePlan(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.NutritionistPlans.DeletePlan(r.Context(), planID, coach.ID); err != nil {
 		if errors.Is(err, db.ErrNutritionistPlanNotFound) {
-			a.coachFlash(w, r, "Il piano attivo non si puo' cancellare: attivane prima un altro.")
+			a.coachFlash(w, r, "coach.flash.cannot_delete_active")
 			return
 		}
 		a.serverError(w, r, err)
 		return
 	}
-	a.coachFlash(w, r, "Piano cancellato.")
+	a.coachFlash(w, r, "coach.flash.plan_deleted")
 }
 
-// coachFlash sets the flash and goes back to the coach dashboard.
+// coachFlash sets the flash (a catalog key) and goes back to the coach dashboard.
 func (a *App) coachFlash(w http.ResponseWriter, r *http.Request, msg string) {
 	a.Sessions.Put(r.Context(), "flash", msg)
 	http.Redirect(w, r, "/coach", http.StatusSeeOther)
