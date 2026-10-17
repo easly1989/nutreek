@@ -38,12 +38,19 @@ COPY . .
 # authoritative source of tailwind.css for the Go embed.
 COPY --from=tailwind-builder /src/internal/web/static/css/tailwind.css ./internal/web/static/css/tailwind.css
 ARG VERSION=dev
-RUN go build -ldflags="-s -w -X main.version=${VERSION}" -o /out/nutreek ./cmd/nutreek
+# DEMO=1 builds the public demo (#137, docs/demo.md); empty = the normal app.
+ARG DEMO=
+RUN tags=""; if [ "$DEMO" = "1" ]; then tags="-tags demo"; fi; \
+    go build $tags -ldflags="-s -w -X main.version=${VERSION}" -o /out/nutreek ./cmd/nutreek
+# distroless has no shell to mkdir/chown: /data is made here and copied with the
+# runtime user's ownership, so SQLite can write there without a volume (the demo).
+RUN mkdir -p /out/data
 
 # --- Stage 3: runtime --------------------------------------------------------
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /app
 COPY --from=go-builder /out/nutreek /app/nutreek
+COPY --from=go-builder --chown=65532:65532 /out/data /data
 ENV NUTREEK_ADDR=:8080 \
     NUTREEK_DB_PATH=/data/nutreek.db \
     NUTREEK_ENV=prod
