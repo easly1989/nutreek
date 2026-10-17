@@ -7,6 +7,7 @@ import (
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/i18n"
 	"github.com/amon2126/nutreek/internal/macros"
 	"github.com/amon2126/nutreek/internal/service"
 )
@@ -145,6 +146,7 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	data := statsPageData{
 		authPageData: a.baseData(r),
 		View: buildStatsView(statsInput{
+			Lang:          i18n.FromContext(ctx),
 			Weeks:         weeks,
 			Weights:       weights,
 			TDEE:          tdeeReport,

@@ -28,7 +28,7 @@ func TestWeightTrend(t *testing.T) {
 		{-0.3, 0, "−0,3 kg"},
 	}
 	for _, c := range cases {
-		if got := weightTrend(c.delta, c.span); got != c.want {
+		if got := weightTrend("", c.delta, c.span); got != c.want {
 			t.Errorf("weightTrend(%v, %v) = %q, want %q", c.delta, c.span, got, c.want)
 		}
 	}

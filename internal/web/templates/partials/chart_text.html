@@ -1,0 +1,18 @@
+{{/* The words static/js/charts.js writes on the charts (names, series, tooltip),
+     in the page's language, as data-msg-* attributes it reads. */}}
+{{define "chart_text"}}<div id="chart-text" hidden
+  data-msg-tdee="{{t "stats.tdee.title"}}"
+  data-msg-macro="{{t "stats.chart.macro"}}"
+  data-msg-total="{{t "stats.chart.total"}}"
+  data-msg-protein="{{t "common.protein"}}"
+  data-msg-carbs="{{t "common.carbs"}}"
+  data-msg-fat="{{t "common.fat"}}"
+  data-msg-weight="{{t "stats.weight.title"}}"
+  data-msg-adherence="{{t "stats.chart.adherence"}}"
+  data-msg-workout="{{t "stats.workout.title"}}"
+  data-msg-burned="{{t "stats.chart.burned"}}"
+  data-msg-cheats="{{t "stats.cheats.title"}}"
+  data-msg-meals="{{t "stats.chart.meals"}}"
+  data-msg-water="{{t "stats.water.title"}}"
+  data-msg-per-day="{{t "stats.chart.per_day"}}"
+  data-msg-no-data="{{t "stats.chart.no_data"}}"></div>{{end}}

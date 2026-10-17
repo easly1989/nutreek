@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/i18n"
 	"github.com/amon2126/nutreek/internal/macros"
 	"github.com/amon2126/nutreek/internal/service"
 	"github.com/amon2126/nutreek/internal/web"
@@ -26,6 +27,7 @@ type statsWeek struct {
 
 // statsInput is everything needed to build the page.
 type statsInput struct {
+	Lang          string             // the texts of the tiles are written in it; empty = default
 	Weeks         []statsWeek        // from the oldest to the most recent
 	Weights       []domain.WeightLog // in date order
 	TDEE          *service.TDEEReport
@@ -85,6 +87,7 @@ func shortDateIT(t time.Time) string {
 
 func buildStatsView(in statsInput) statsView {
 	var v statsView
+	tr := func(key string, args ...any) string { return i18n.T(in.Lang, key, args...) }
 	n := len(in.Weeks)
 	c := statsCharts{
 		Target:      in.TargetKcal,
@@ -158,59 +161,56 @@ func buildStatsView(in statsInput) statsView {
 	v.Charts = c
 
 	dash := "—"
-	day := statsTile{Label: "Media al giorno", Value: dash, Unit: "kcal"}
+	day := statsTile{Label: tr("stats.tile.avg_day"), Value: dash, Unit: "kcal"}
 	if days > 0 {
 		v.AvgDayKcal = kcal / float64(days)
 		v.HasMacro = true
 		day.Value = web.FormatNum(v.AvgDayKcal)
 	}
 	if in.TargetKcal > 0 {
-		day.Sub = "obiettivo " + web.FormatNum(in.TargetKcal)
+		day.Sub = tr("stats.tile.target", "Value", web.FormatNum(in.TargetKcal))
 	}
 
-	weight := statsTile{Label: "Peso", Value: dash, Unit: "kg", Sub: "nessuna pesata"}
+	weight := statsTile{Label: tr("stats.weight.title"), Value: dash, Unit: "kg", Sub: tr("stats.tile.no_weigh_in")}
 	if len(weights) > 0 {
 		last := weights[len(weights)-1]
 		weight.Value = web.FormatDec(last.WeightKg, 1)
-		weight.Sub = "una sola pesata"
+		weight.Sub = tr("stats.tile.one_weigh_in")
 		if len(weights) >= 2 {
-			weight.Sub = weightTrend(last.WeightKg-weights[0].WeightKg, last.MeasuredAt.Sub(weights[0].MeasuredAt))
+			weight.Sub = weightTrend(in.Lang, last.WeightKg-weights[0].WeightKg, last.MeasuredAt.Sub(weights[0].MeasuredAt))
 		}
 	}
 
-	work := statsTile{Label: "Allenamenti", Value: dash, Unit: "a settimana"}
-	cheat := statsTile{Label: "Sgarri", Value: dash, Unit: "a settimana"}
+	work := statsTile{Label: tr("stats.workout.title"), Value: dash, Unit: tr("stats.tile.per_week")}
+	cheat := statsTile{Label: tr("stats.cheats.title"), Value: dash, Unit: tr("stats.tile.per_week")}
 	if weeksWithMeals > 0 {
 		wm := float64(weeksWithMeals)
 		work.Value = web.FormatDec(float64(workouts)/wm, 1)
 		if workoutKcal > 0 {
-			work.Sub = web.FormatNum(workoutKcal/wm) + " kcal in media"
+			work.Sub = tr("stats.tile.kcal_avg", "Value", web.FormatNum(workoutKcal/wm))
 		}
 		cheat.Value = web.FormatDec(float64(cheats)/wm, 1)
 	}
-	switch {
-	case in.StreakDays == 1:
-		cheat.Sub = "1 giorno senza"
-	case in.StreakDays > 1:
-		cheat.Sub = fmt.Sprintf("%d giorni senza", in.StreakDays)
+	if in.StreakDays > 0 {
+		cheat.Sub = tr("stats.tile.days_clean", "Count", in.StreakDays)
 	}
 
-	water := statsTile{Label: "Acqua", Value: dash, Unit: "l al giorno"}
+	water := statsTile{Label: tr("stats.water.title"), Value: dash, Unit: tr("stats.water.unit")}
 	if waterWeeks > 0 {
 		water.Value = web.FormatDec(waterL/float64(waterWeeks), 1)
 	}
 	if in.WaterTargetML > 0 {
-		water.Sub = "obiettivo " + web.FormatDec(c.WaterTarget, 1) + " l"
+		water.Sub = tr("stats.tile.target", "Value", web.FormatDec(c.WaterTarget, 1)+" l")
 	}
 
 	v.Tiles = []statsTile{day, weight, work, cheat, water}
 	return v
 }
 
-// weightTrend describes the weight change: «−1,6 kg in 2 settimane».
-func weightTrend(delta float64, span time.Duration) string {
+// weightTrend describes the weight change in lang: «−1,6 kg in 2 settimane».
+func weightTrend(lang string, delta float64, span time.Duration) string {
 	if math.Abs(delta) < 0.05 {
-		return "stabile"
+		return i18n.T(lang, "stats.trend.steady")
 	}
 	s := web.FormatDec(math.Abs(delta), 1) + " kg"
 	if delta < 0 {
@@ -223,8 +223,8 @@ func weightTrend(delta float64, span time.Duration) string {
 	case d < 2:
 		return s
 	case d < 14:
-		return fmt.Sprintf("%s in %d giorni", s, d)
+		return i18n.T(lang, "stats.trend.days", "Delta", s, "Count", d)
 	default:
-		return fmt.Sprintf("%s in %d settimane", s, int(math.Round(float64(d)/7)))
+		return i18n.T(lang, "stats.trend.weeks", "Delta", s, "Count", int(math.Round(float64(d)/7)))
 	}
 }
