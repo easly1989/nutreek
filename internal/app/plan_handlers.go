@@ -565,7 +565,7 @@ func (a *App) handleApplyTemplate(w http.ResponseWriter, r *http.Request) {
 	tplIDStr := r.PostFormValue("template_id")
 	tplID, err := strconv.ParseInt(tplIDStr, 10, 64)
 	if err != nil || tplID <= 0 {
-		a.flashAndBack(w, r, weekStart, "Seleziona un template.")
+		a.flashAndBack(w, r, weekStart, "week.flash.select_template")
 		return
 	}
 	plan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), user.ID, weekStart)
@@ -579,12 +579,12 @@ func (a *App) handleApplyTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if hasMeals {
-		a.flashAndBack(w, r, weekStart, "La settimana ha gia' dei pasti: cancellali prima di applicare un template.")
+		a.flashAndBack(w, r, weekStart, "week.flash.has_meals_apply")
 		return
 	}
 	if err := a.WeeklyPlans.ApplyTemplate(r.Context(), plan.ID, user.ID, tplID); err != nil {
 		if errors.Is(err, db.ErrMealTemplateForbidden) || errors.Is(err, db.ErrMealTemplateNotFound) {
-			a.flashAndBack(w, r, weekStart, "Template non valido.")
+			a.flashAndBack(w, r, weekStart, "week.flash.template_invalid")
 			return
 		}
 		a.serverError(w, r, err)
@@ -595,7 +595,7 @@ func (a *App) handleApplyTemplate(w http.ResponseWriter, r *http.Request) {
 	if effective, err := a.Planner.EffectivePlanFull(r.Context(), user.ID); err == nil {
 		_ = a.WeeklyPlans.SetSourcePlan(r.Context(), plan.ID, effective.ID)
 	}
-	a.Sessions.Put(r.Context(), "flash", "Template applicato alla settimana.")
+	a.Sessions.Put(r.Context(), "flash", "week.flash.template_applied")
 	a.redirectToWeek(w, r, weekStart)
 }
 
@@ -625,10 +625,10 @@ func (a *App) handleCopyPrevious(w http.ResponseWriter, r *http.Request) {
 	if err := a.WeeklyPlans.CopyFrom(r.Context(), srcPlan.ID, dstPlan.ID, user.ID); err != nil {
 		switch {
 		case errors.Is(err, db.ErrSourcePlanEmpty):
-			a.flashAndBack(w, r, weekStart, "La settimana scorsa e' vuota: niente da copiare.")
+			a.flashAndBack(w, r, weekStart, "week.flash.previous_empty")
 			return
 		case errors.Is(err, db.ErrPlanNotEmpty):
-			a.flashAndBack(w, r, weekStart, "La settimana ha gia' dei pasti: cancellali prima di copiare.")
+			a.flashAndBack(w, r, weekStart, "week.flash.has_meals_copy")
 			return
 		case errors.Is(err, db.ErrPlanNotFound):
 			a.notFound(w, r)
@@ -637,7 +637,7 @@ func (a *App) handleCopyPrevious(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Piano copiato dalla settimana precedente.")
+	a.Sessions.Put(r.Context(), "flash", "week.flash.copied")
 	a.redirectToWeek(w, r, weekStart)
 }
 
@@ -661,7 +661,7 @@ func (a *App) handleResetWeek(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Settimana svuotata.")
+	a.Sessions.Put(r.Context(), "flash", "week.flash.reset")
 	a.redirectToWeek(w, r, weekStart)
 }
 
@@ -724,15 +724,15 @@ func (a *App) handleAddMeal(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.PostFormValue("name"))
 	day, parseErr := strconv.Atoi(dayStr)
 	if parseErr != nil || day < 0 || day > 6 {
-		a.flashAndBack(w, r, weekStart, "Giorno non valido.")
+		a.flashAndBack(w, r, weekStart, "week.flash.invalid_day")
 		return
 	}
 	if name == "" {
-		a.flashAndBack(w, r, weekStart, "Nome pasto obbligatorio.")
+		a.flashAndBack(w, r, weekStart, "week.flash.meal_name_required")
 		return
 	}
 	if !withinLen(name, MaxNameLen) {
-		a.flashAndBack(w, r, weekStart, "Nome troppo lungo (max 200 caratteri).")
+		a.flashAndBack(w, r, weekStart, "week.flash.name_too_long")
 		return
 	}
 	plan, err := a.WeeklyPlans.GetOrCreateForWeek(r.Context(), user.ID, weekStart)
@@ -759,7 +759,7 @@ func (a *App) handleRemoveMeal(w http.ResponseWriter, r *http.Request) {
 	day, dayErr := a.dayIndexFromMealID(r, mealID)
 	if err := a.WeeklyPlans.RemoveMeal(r.Context(), mealID, user.ID); err != nil {
 		if errors.Is(err, db.ErrMealNotFound) {
-			http.Error(w, "pasto non trovato", http.StatusNotFound)
+			http.Error(w, a.t(r, "week.error.meal_not_found"), http.StatusNotFound)
 			return
 		}
 		a.serverError(w, r, err)
@@ -787,7 +787,7 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 	qtyStr := r.PostFormValue("quantity")
 	qty, err := parseNonNegFloat(qtyStr)
 	if err != nil || qty <= 0 {
-		a.flashAndBack(w, r, weekStart, "Quantita' non valida.")
+		a.flashAndBack(w, r, weekStart, "week.flash.invalid_quantity")
 		return
 	}
 
@@ -797,7 +797,7 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PostFormValue("ref_id")
 		refID, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil || refID <= 0 {
-			a.flashAndBack(w, r, weekStart, "Seleziona una ricetta.")
+			a.flashAndBack(w, r, weekStart, "week.flash.select_recipe")
 			return
 		}
 		rPtr = &refID
@@ -806,7 +806,7 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		if barcode != "" {
 			ingID, err := a.resolveOFFBarcode(r.Context(), barcode)
 			if err != nil {
-				a.flashAndBack(w, r, weekStart, "Import OFF fallito: "+err.Error())
+				a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.off_import_failed", "Error", err.Error()))
 				return
 			}
 			iPtr = &ingID
@@ -817,13 +817,13 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 			}
 			refID, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil || refID <= 0 {
-				a.flashAndBack(w, r, weekStart, "Seleziona un ingrediente.")
+				a.flashAndBack(w, r, weekStart, "week.flash.select_ingredient")
 				return
 			}
 			iPtr = &refID
 		}
 	default:
-		a.flashAndBack(w, r, weekStart, "Tipo non valido.")
+		a.flashAndBack(w, r, weekStart, "week.flash.invalid_type")
 		return
 	}
 
@@ -834,7 +834,7 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, rPtr, iPtr, qty, qtyUnit); err != nil {
-		a.flashAndBack(w, r, weekStart, "Impossibile aggiungere la voce: "+err.Error())
+		a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.item_add_failed", "Error", err.Error()))
 		return
 	}
 	day, dayErr := a.dayIndexFromMealID(r, mealID)
@@ -938,7 +938,7 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, err)
 		}
 	default:
-		http.Error(w, "kind non valido", http.StatusBadRequest)
+		http.Error(w, a.t(r, "week.error.invalid_kind"), http.StatusBadRequest)
 	}
 }
 
@@ -954,7 +954,7 @@ func (a *App) handleRemoveMealItem(w http.ResponseWriter, r *http.Request) {
 	day, dayErr := a.dayIndexFromItemID(r, itemID)
 	if err := a.WeeklyPlans.RemoveItem(r.Context(), itemID, user.ID); err != nil {
 		if errors.Is(err, db.ErrMealItemNotFound) {
-			http.Error(w, "voce non trovata", http.StatusNotFound)
+			http.Error(w, a.t(r, "week.error.item_not_found"), http.StatusNotFound)
 			return
 		}
 		a.serverError(w, r, err)
@@ -976,7 +976,7 @@ func (a *App) handleReorderMeals(w http.ResponseWriter, r *http.Request) {
 	dayStr := r.URL.Query().Get("day_of_week")
 	day, err := strconv.Atoi(dayStr)
 	if err != nil || day < 0 || day > 6 {
-		http.Error(w, "day_of_week mancante o invalido", http.StatusBadRequest)
+		http.Error(w, a.t(r, "week.error.missing_day"), http.StatusBadRequest)
 		return
 	}
 	ids, err := parseIDList(r.PostFormValue("ids"))
@@ -991,7 +991,7 @@ func (a *App) handleReorderMeals(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.WeeklyPlans.ReorderMeals(r.Context(), plan.ID, user.ID, day, ids); err != nil {
 		if errors.Is(err, db.ErrReorderMismatch) {
-			http.Error(w, "ordine non valido", http.StatusConflict)
+			http.Error(w, a.t(r, "week.error.invalid_order"), http.StatusConflict)
 			return
 		}
 		a.serverError(w, r, err)
@@ -1016,7 +1016,7 @@ func (a *App) handleReorderMealItems(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.WeeklyPlans.ReorderMealItems(r.Context(), mealID, user.ID, ids); err != nil {
 		if errors.Is(err, db.ErrReorderMismatch) {
-			http.Error(w, "ordine non valido", http.StatusConflict)
+			http.Error(w, a.t(r, "week.error.invalid_order"), http.StatusConflict)
 			return
 		}
 		if errors.Is(err, db.ErrMealNotFound) || errors.Is(err, db.ErrPlanNotFound) {

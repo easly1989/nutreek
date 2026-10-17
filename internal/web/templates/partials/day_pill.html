@@ -16,8 +16,8 @@
    class="day-tab"{{if .OOB}} hx-swap-oob="true"{{end}}>
   <span class="flex items-center gap-1 text-[11px] sm:text-[12.5px] font-semibold opacity-85">
     <span class="sm:hidden">{{dayLetter .Day.Date}}</span>
-    <span class="hidden sm:inline">{{if eq .State "today"}}Oggi{{else}}{{dayShort .Day.Date}}{{end}}</span>
-    {{if .Progress.AnyExceeds}}<span class="w-1.5 h-1.5 rounded-full bg-danger" title="Uno o più macro oltre l'obiettivo"></span>{{end}}
+    <span class="hidden sm:inline">{{if eq .State "today"}}{{t "week.today"}}{{else}}{{dayShort .Day.Date}}{{end}}</span>
+    {{if .Progress.AnyExceeds}}<span class="w-1.5 h-1.5 rounded-full bg-danger" title="{{t "week.macro_over"}}"></span>{{end}}
   </span>
   <span class="text-[15px] font-bold tabular-nums leading-tight">
     <span class="sm:hidden">{{.Day.Date.Day}}</span>

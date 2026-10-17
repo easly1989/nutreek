@@ -15,14 +15,14 @@
   {{/* ---- The day's summary ---- */}}
   <div class="card p-4 flex flex-col gap-3.5 lg:col-start-2 lg:row-start-1">
     <div class="flex items-baseline justify-between gap-2">
-      <h2 class="text-[15px] font-bold">{{dayTitle .Day.Date}}{{if eq .State "today"}}<span class="ml-1.5 text-[12.5px] font-semibold text-accent">oggi</span>{{end}}</h2>
-      {{if gt .Progress.Kcal.Target 0.0}}<span class="text-[12.5px] text-muted">obiettivo {{num .Progress.Kcal.Target}} kcal</span>{{end}}
+      <h2 class="text-[15px] font-bold">{{dayTitle .Day.Date}}{{if eq .State "today"}}<span class="ml-1.5 text-[12.5px] font-semibold text-accent">{{t "week.today_badge"}}</span>{{end}}</h2>
+      {{if gt .Progress.Kcal.Target 0.0}}<span class="text-[12.5px] text-muted">{{t "week.goal" "Kcal" (num .Progress.Kcal.Target)}}</span>{{end}}
     </div>
 
     {{if .Progress.HasTarget}}
       {{with .Progress.Kcal}}
       <div class="flex items-center gap-4">
-        <svg role="img" aria-label="{{num .Actual}} kcal su {{num .Target}}" viewBox="0 0 104 104" class="w-[84px] h-[84px] lg:w-[104px] lg:h-[104px] shrink-0">
+        <svg role="img" aria-label="{{t "week.ring_label" "Actual" (num .Actual) "Target" (num .Target)}}" viewBox="0 0 104 104" class="w-[84px] h-[84px] lg:w-[104px] lg:h-[104px] shrink-0">
           <circle cx="52" cy="52" r="44" fill="none" stroke="var(--track)" stroke-width="9"/>
           <circle cx="52" cy="52" r="44" fill="none" stroke="var({{if .Overflow}}--danger{{else}}--accent{{end}})" stroke-width="9" stroke-linecap="round"
                   stroke-dasharray="{{ringDash .Pct}}" transform="rotate(-90 52 52)"/>
@@ -32,10 +32,10 @@
         <div class="flex flex-col gap-0.5">
           {{if .Overflow}}
             <span class="text-[18px] lg:text-[20px] font-bold tabular-nums text-danger">{{num (sub .Actual .Target)}} kcal</span>
-            <span class="text-muted">oltre l'obiettivo</span>
+            <span class="text-muted">{{t "week.over_goal"}}</span>
           {{else}}
             <span class="text-[18px] lg:text-[20px] font-bold tabular-nums">{{num (sub .Target .Actual)}} kcal</span>
-            <span class="text-muted">ancora da pianificare</span>
+            <span class="text-muted">{{t "week.left_to_plan"}}</span>
           {{end}}
         </div>
       </div>
@@ -48,8 +48,8 @@
     {{else}}
       <div class="flex flex-col gap-1">
         <span class="text-[20px] font-bold tabular-nums">{{num .Day.DayTotal.Kcal}} kcal</span>
-        <span class="text-muted tabular-nums">Proteine {{num .Day.DayTotal.Protein}} g, carboidrati {{num .Day.DayTotal.Carbs}} g, grassi {{num .Day.DayTotal.Fat}} g</span>
-        <a href="/profile" class="mt-1 text-accent font-semibold hover:underline">Imposta gli obiettivi per vedere i progressi</a>
+        <span class="text-muted tabular-nums">{{t "week.macros_summary" "Protein" (num .Day.DayTotal.Protein) "Carbs" (num .Day.DayTotal.Carbs) "Fat" (num .Day.DayTotal.Fat)}}</span>
+        <a href="/profile" class="mt-1 text-accent font-semibold hover:underline">{{t "week.set_goals"}}</a>
       </div>
     {{end}}
 
@@ -57,12 +57,12 @@
     <div class="flex flex-wrap gap-1.5">
       {{if .HasMeals}}
         {{if .Adherence.HasCheats}}
-          <span class="chip bg-danger-soft text-danger" title="Scostamento kcal dal piano: {{printf "%+.0f" .Adherence.KcalDiffPct}}%">Aderenza {{printf "%.0f" .Adherence.Score}}%</span>
+          <span class="chip bg-danger-soft text-danger" title="{{t "week.adherence_title" "Pct" (printf "%+.0f" .Adherence.KcalDiffPct)}}">{{t "week.adherence" "Score" (printf "%.0f" .Adherence.Score)}}</span>
         {{else}}
-          <span class="chip bg-accent-soft text-accent">Piano rispettato</span>
+          <span class="chip bg-accent-soft text-accent">{{t "week.plan_followed"}}</span>
         {{end}}
       {{end}}
-      {{if gt .WorkoutKcal 0.0}}<span class="chip bg-surface-2 text-text">−{{num .WorkoutKcal}} kcal di allenamento</span>{{end}}
+      {{if gt .WorkoutKcal 0.0}}<span class="chip bg-surface-2 text-text">{{t "week.workout_kcal_chip" "Kcal" (num .WorkoutKcal)}}</span>{{end}}
     </div>
     {{end}}
   </div>
@@ -75,7 +75,7 @@
       {{range .Day.Meals}}{{template "meal_card" (mealCtx . $.WeekStart $.CSRFToken)}}{{end}}
     </div>
     {{else}}
-    <div class="card px-4 py-6 text-center text-muted">Nessun pasto in questo giorno. Aggiungine uno qui sotto.</div>
+    <div class="card px-4 py-6 text-center text-muted">{{t "week.no_meals_day"}}</div>
     {{end}}
 
     <form method="post" action="/meals?start={{.WeekStart}}"
@@ -84,9 +84,9 @@
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <input type="hidden" name="start" value="{{.WeekStart}}">
       <input type="hidden" name="day_of_week" value="{{.Day.Index}}">
-      <label for="new-meal-name" class="sr-only">Nome del nuovo pasto</label>
-      <input id="new-meal-name" name="name" required maxlength="200" placeholder="Nuovo pasto, es. Merenda" class="field">
-      <button class="btn-secondary shrink-0">{{template "icon" "i-plus"}}Aggiungi</button>
+      <label for="new-meal-name" class="sr-only">{{t "week.new_meal_label"}}</label>
+      <input id="new-meal-name" name="name" required maxlength="200" placeholder="{{t "week.new_meal_placeholder"}}" class="field">
+      <button class="btn-secondary shrink-0">{{template "icon" "i-plus"}}{{t "week.add"}}</button>
     </form>
   </div>
 
@@ -97,32 +97,32 @@
     {{if or .Workouts .Activities}}
     <div class="card px-4 py-3 flex flex-col gap-2">
       <div class="flex items-baseline justify-between gap-2">
-        <h3 class="font-semibold">Allenamento</h3>
+        <h3 class="font-semibold">{{t "week.workout"}}</h3>
         {{if gt .WorkoutKcal 0.0}}<span class="text-muted tabular-nums">−{{num .WorkoutKcal}} kcal</span>{{end}}
       </div>
       {{range .Workouts}}
       <div class="flex items-center justify-between gap-2 min-h-[32px] border-t border-border">
-        <span>{{.ActivityName}} <span class="text-muted">{{.DurationMinutes}} min</span></span>
+        <span>{{.ActivityName}} <span class="text-muted">{{.DurationMinutes}} {{t "week.min"}}</span></span>
         <form method="post" action="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}"
               hx-post="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" class="icon-action hover:text-danger" title="Elimina allenamento" aria-label="Elimina allenamento {{.ActivityName}}">{{template "icon" "i-trash"}}</button>
+          <button type="submit" class="icon-action hover:text-danger" title="{{t "week.workout_delete"}}" aria-label="{{t "week.workout_delete_named" "Name" .ActivityName}}">{{template "icon" "i-trash"}}</button>
         </form>
       </div>
       {{end}}
       {{if .Activities}}
       <details class="group">
-        <summary class="list-none cursor-pointer inline-flex items-center gap-1.5 text-accent font-semibold text-[13px] select-none">{{template "icon" "i-plus"}}Aggiungi allenamento</summary>
+        <summary class="list-none cursor-pointer inline-flex items-center gap-1.5 text-accent font-semibold text-[13px] select-none">{{template "icon" "i-plus"}}{{t "week.workout_add"}}</summary>
         <form method="post" action="/allenamento?start={{$.WeekStart}}"
               hx-post="/allenamento?start={{$.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
               class="mt-2 flex flex-wrap gap-2">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
           <input type="hidden" name="logged_at" value="{{.DateStr}}">
-          <select name="activity_id" aria-label="Attività" class="field flex-1 min-w-[10rem]">
+          <select name="activity_id" aria-label="{{t "week.activity"}}" class="field flex-1 min-w-[10rem]">
             {{range .Activities}}<option value="{{.ID}}">{{.Name}} ({{num .KcalPerHour}} kcal/h)</option>{{end}}
           </select>
-          <input name="duration_minutes" type="number" min="1" max="720" required placeholder="min" aria-label="Durata in minuti" class="field w-20">
-          <button type="submit" class="btn-secondary">Salva</button>
+          <input name="duration_minutes" type="number" min="1" max="720" required placeholder="{{t "week.min"}}" aria-label="{{t "week.duration"}}" class="field w-20">
+          <button type="submit" class="btn-secondary">{{t "week.save"}}</button>
         </form>
       </details>
       {{end}}
@@ -137,11 +137,11 @@
 {{if gt .Target 0.0}}
 <div class="flex flex-col gap-1">
   <div class="flex justify-between gap-2">
-    <span class="font-semibold">{{.Label}}</span>
+    <span class="font-semibold">{{t .Label}}</span>
     <span class="tabular-nums"><strong class="{{if .Overflow}}text-danger{{end}}">{{num .Actual}} g</strong><span class="text-muted"> / {{num .Target}} g</span></span>
   </div>
   <span class="block h-1.5 rounded-full bg-track overflow-hidden" aria-hidden="true">
-    <span class="block h-full rounded-full {{if .Overflow}}bg-danger{{else if eq .Label "Proteine"}}bg-prot{{else if eq .Label "Carboidrati"}}bg-carb{{else}}bg-fat{{end}}" style="width:{{printf "%.0f" .Pct}}%"></span>
+    <span class="block h-full rounded-full {{if .Overflow}}bg-danger{{else if eq .Label "common.protein"}}bg-prot{{else if eq .Label "common.carbs"}}bg-carb{{else}}bg-fat{{end}}" style="width:{{printf "%.0f" .Pct}}%"></span>
   </span>
 </div>
 {{end}}
@@ -152,27 +152,27 @@
 {{$m := .Meal}}{{$ws := .WeekStart}}{{$csrf := .CSRFToken}}
 <article class="card" data-id="{{$m.Meal.ID}}">
   <header class="flex items-start gap-2 pl-1.5 pr-2 pt-2 pb-1.5">
-    <span data-meal-grip class="w-6 h-8 shrink-0 grid place-items-center text-muted cursor-grab touch-none" title="Trascina per riordinare" aria-hidden="true">{{template "icon" "i-grip"}}</span>
+    <span data-meal-grip class="w-6 h-8 shrink-0 grid place-items-center text-muted cursor-grab touch-none" title="{{t "week.drag"}}" aria-hidden="true">{{template "icon" "i-grip"}}</span>
     <div class="min-w-0 flex-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1">
       <h3 class="text-[15px] font-bold leading-6 {{if $m.HasCheats}}text-danger{{end}}">{{$m.Meal.Name}}</h3>
-      {{if $m.HasCheats}}<span class="chip bg-danger-soft text-danger">Sgarro</span>{{end}}
+      {{if $m.HasCheats}}<span class="chip bg-danger-soft text-danger">{{t "week.cheat"}}</span>{{end}}
       <span class="inline-flex gap-2.5 text-[12.5px] text-muted tabular-nums">
-        <span title="Proteine"><b class="text-prot font-semibold">P</b> {{num $m.MealTotal.Protein}} g</span>
-        <span title="Carboidrati"><b class="text-carb font-semibold">C</b> {{num $m.MealTotal.Carbs}} g</span>
-        <span title="Grassi"><b class="text-fat font-semibold">G</b> {{num $m.MealTotal.Fat}} g</span>
+        <span title="{{t "common.protein"}}"><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{num $m.MealTotal.Protein}} g</span>
+        <span title="{{t "common.carbs"}}"><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num $m.MealTotal.Carbs}} g</span>
+        <span title="{{t "common.fat"}}"><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{num $m.MealTotal.Fat}} g</span>
       </span>
     </div>
     <span class="shrink-0 font-bold tabular-nums leading-6 py-1">{{num $m.MealTotal.Kcal}} kcal</span>
     <div class="relative shrink-0">
-      <button type="button" class="icon-action" data-popover="meal-menu-{{$m.Meal.ID}}" aria-expanded="false" aria-controls="meal-menu-{{$m.Meal.ID}}" aria-label="Azioni sul pasto {{$m.Meal.Name}}">{{template "icon" "i-dots"}}</button>
+      <button type="button" class="icon-action" data-popover="meal-menu-{{$m.Meal.ID}}" aria-expanded="false" aria-controls="meal-menu-{{$m.Meal.ID}}" aria-label="{{t "week.meal_actions" "Name" $m.Meal.Name}}">{{template "icon" "i-dots"}}</button>
       <div id="meal-menu-{{$m.Meal.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
         <a href="/meals/{{$m.Meal.ID}}/items/new?cheat=1&start={{$ws}}" class="nav-link"
-           hx-get="/meals/{{$m.Meal.ID}}/items/new?cheat=1&start={{$ws}}" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-plus"}}Registra uno sgarro</a>
+           hx-get="/meals/{{$m.Meal.ID}}/items/new?cheat=1&start={{$ws}}" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-plus"}}{{t "week.log_cheat"}}</a>
         <form method="post" action="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}"
               hx-post="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
-              hx-confirm="Eliminare il pasto «{{$m.Meal.Name}}»?">
+              hx-confirm="{{t "week.delete_meal_confirm" "Name" $m.Meal.Name}}">
           <input type="hidden" name="csrf_token" value="{{$csrf}}">
-          <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina pasto</button>
+          <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}{{t "week.delete_meal"}}</button>
         </form>
       </div>
     </div>
@@ -188,12 +188,12 @@
   {{if $m.HasCheats}}
   <div class="mx-4 mt-2 mb-1 pl-3 border-l-2 border-danger">
     <div class="flex items-center justify-between gap-2 min-h-[32px]">
-      <span class="text-[12.5px] font-semibold text-danger">Mangiato al posto del piano</span>
+      <span class="text-[12.5px] font-semibold text-danger">{{t "week.eaten_instead"}}</span>
       <form method="post" action="/meals/{{$m.Meal.ID}}/cheat/clear?start={{$ws}}"
             hx-post="/meals/{{$m.Meal.ID}}/cheat/clear?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
-            hx-confirm="Annullare lo sgarro? Tornano a contare i valori del piano.">
+            hx-confirm="{{t "week.cheat_clear_confirm"}}">
         <input type="hidden" name="csrf_token" value="{{$csrf}}">
-        <button class="text-[12.5px] font-semibold text-muted hover:text-danger">Annulla sgarro</button>
+        <button class="text-[12.5px] font-semibold text-muted hover:text-danger">{{t "week.cheat_clear"}}</button>
       </form>
     </div>
     <ul>
@@ -206,21 +206,21 @@
   <a href="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}"
      hx-get="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}" hx-target="#modal-host" hx-swap="innerHTML"
      class="flex items-center gap-1.5 min-h-[38px] px-4 mt-1 border-t border-border text-accent font-semibold text-[13px] rounded-b-xl hover:bg-accent-soft">
-    {{template "icon" "i-plus"}}Aggiungi alimento
+    {{template "icon" "i-plus"}}{{t "week.add_food"}}
   </a>
 </article>
 {{end}}
 
 {{define "meal_item_row"}}
 {{- /* An item (or a cheat) of a meal. View model: web.ItemCtx. */ -}}
-{{$v := .View}}{{$it := $v.Item}}
+{{$v := .View}}{{$it := $v.Item}}{{$nm := ""}}{{if $it.Recipe}}{{$nm = $it.Recipe.Name}}{{else if $it.Ingredient}}{{$nm = $it.Ingredient.Name}}{{end}}
 <li class="group grid grid-cols-[minmax(0,1fr)_auto_3.5rem_auto] gap-x-2.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0" data-id="{{$it.ID}}">
   <div class="min-w-0 flex items-start gap-1">
     {{if not .Cheat}}<span data-item-grip class="hidden sm:grid w-4 h-5 -ml-4 place-items-center text-muted cursor-grab touch-none opacity-0 group-hover:opacity-100" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
     <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
       {{if $it.Recipe}}
-        <a href="/recipes/{{$it.Recipe.ID}}" class="font-medium hover:underline" title="Apri la ricetta">{{$it.Recipe.Name}}</a>
-        {{if $it.IsCustomized}}<span class="text-[12px] text-accent" title="Ingredienti personalizzati">modificata</span>{{end}}
+        <a href="/recipes/{{$it.Recipe.ID}}" class="font-medium hover:underline" title="{{t "week.open_recipe"}}">{{$it.Recipe.Name}}</a>
+        {{if $it.IsCustomized}}<span class="text-[12px] text-accent" title="{{t "week.customized_title"}}">{{t "week.customized"}}</span>{{end}}
         {{if $v.ScaledRecipeItems}}
         <span class="block text-[12.5px] text-muted truncate">{{range $i, $s := $v.ScaledRecipeItems}}{{if $i}}, {{end}}{{$s.Name}} {{num $s.Quantity}} {{$s.Unit}}{{end}}</span>
         {{end}}
@@ -230,16 +230,16 @@
     </div>
   </div>
   <span class="text-right text-muted tabular-nums whitespace-nowrap {{if .Struck}}line-through{{end}}">
-    {{- if $it.Recipe}}{{dec $it.Quantity 1}} di {{$it.Recipe.Servings}} porz.
-    {{- else if and $it.Ingredient (eq $it.QuantityUnit "pz") $it.Ingredient.UnitWeightG}}<span title="{{num $v.EffectiveGrams}} g">{{dec $it.Quantity 1}} pz</span>
+    {{- if $it.Recipe}}{{t "week.recipe_servings" "Qty" (dec $it.Quantity 1) "Servings" $it.Recipe.Servings}}
+    {{- else if and $it.Ingredient (eq $it.QuantityUnit "pz") $it.Ingredient.UnitWeightG}}<span title="{{num $v.EffectiveGrams}} g">{{dec $it.Quantity 1}} {{t "week.piece"}}</span>
     {{- else if $it.Ingredient}}{{num $it.Quantity}} {{$it.Ingredient.Unit}}{{end -}}
   </span>
   <span class="text-right tabular-nums {{if .Cheat}}text-danger{{end}} {{if .Struck}}line-through text-muted{{end}}"
-        title="Proteine {{dec $v.Macros.Protein 1}} g, carboidrati {{dec $v.Macros.Carbs 1}} g, grassi {{dec $v.Macros.Fat 1}} g">{{num $v.Macros.Kcal}}</span>
+        title="{{t "week.macros_summary" "Protein" (dec $v.Macros.Protein 1) "Carbs" (dec $v.Macros.Carbs 1) "Fat" (dec $v.Macros.Fat 1)}}">{{num $v.Macros.Kcal}}</span>
   <span class="flex items-center -mr-2 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
     {{if and $it.Recipe (not .Struck) (not .Cheat)}}
     <button type="button" hx-get="/meal-items/{{$it.ID}}/customize?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
-            class="icon-action" title="Personalizza ingredienti" aria-label="Personalizza {{$it.Recipe.Name}}">
+            class="icon-action" title="{{t "week.customize"}}" aria-label="{{t "week.customize_named" "Name" $it.Recipe.Name}}">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>
     </button>
     {{end}}
@@ -247,7 +247,7 @@
           hx-post="/{{if .Cheat}}meal-cheat-items{{else}}meal-items{{end}}/{{$it.ID}}/delete?start={{.WeekStart}}"
           hx-target="closest section[data-day]" hx-swap="outerHTML">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button class="icon-action hover:text-danger" title="Elimina" aria-label="Elimina {{if $it.Recipe}}{{$it.Recipe.Name}}{{else if $it.Ingredient}}{{$it.Ingredient.Name}}{{end}}">{{template "icon" "i-trash"}}</button>
+      <button class="icon-action hover:text-danger" title="{{t "week.delete"}}" aria-label="{{t "week.delete_named" "Name" $nm}}">{{template "icon" "i-trash"}}</button>
     </form>
   </span>
 </li>
@@ -257,9 +257,9 @@
 {{- /* The week's subtitle, updated OOB after every mutation.
        View model: weekSummary. */ -}}
 <p id="week-totals" class="mt-0.5 text-muted"{{if .OOB}} hx-swap-oob="true"{{end}}
-   title="Totale settimana: {{num .Total.Kcal}} kcal, proteine {{num .Total.Protein}} g, carboidrati {{num .Total.Carbs}} g, grassi {{num .Total.Fat}} g">
-  {{- if .PlannedDays}}Media {{num .AvgKcal}} kcal al giorno, {{.PlannedDays}} {{if eq .PlannedDays 1}}giorno pianificato{{else}}giorni pianificati{{end}}
-  {{- else}}Nessun pasto pianificato{{end -}}
+   title="{{t "week.total_title" "Kcal" (num .Total.Kcal) "Protein" (num .Total.Protein) "Carbs" (num .Total.Carbs) "Fat" (num .Total.Fat)}}">
+  {{- if .PlannedDays}}{{t "week.summary" "Kcal" (num .AvgKcal) "Count" .PlannedDays}}
+  {{- else}}{{t "week.no_meals_planned"}}{{end -}}
 </p>
 {{end}}
 

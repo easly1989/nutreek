@@ -39,18 +39,18 @@ func (a *App) handleGeneratePlan(w http.ResponseWriter, r *http.Request) {
 	err := a.Planner.GenerateWeek(r.Context(), user.ID, weekStart, target)
 	switch {
 	case errors.Is(err, service.ErrNoTarget):
-		a.flashAndBack(w, r, weekStart, "Imposta un target calorico nel profilo per generare il piano.")
+		a.flashAndBack(w, r, weekStart, "week.flash.no_target")
 		return
 	case errors.Is(err, service.ErrNoNutritionistPool):
-		a.flashAndBack(w, r, weekStart, "Aggiungi varianti al piano nutrizionista prima di generare.")
+		a.flashAndBack(w, r, weekStart, "week.flash.no_pool")
 		return
 	case errors.Is(err, service.ErrWeekNotEmpty):
-		a.flashAndBack(w, r, weekStart, "La settimana ha gia' dei pasti: svuotala prima di generare.")
+		a.flashAndBack(w, r, weekStart, "week.flash.has_meals_generate")
 		return
 	case err != nil:
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Piano generato automaticamente per la settimana.")
+	a.Sessions.Put(r.Context(), "flash", "week.flash.generated")
 	a.redirectToWeek(w, r, weekStart)
 }

@@ -22,7 +22,7 @@ func (a *App) handleWaterLog(w http.ResponseWriter, r *http.Request) {
 	}
 	amount, err := strconv.Atoi(r.PostFormValue("amount_ml"))
 	if err != nil || amount <= 0 || amount > maxWaterLogML {
-		http.Error(w, "quantita' non valida", http.StatusBadRequest)
+		http.Error(w, a.t(r, "week.error.invalid_amount"), http.StatusBadRequest)
 		return
 	}
 	if err := a.WaterLogs.Log(r.Context(), user.ID, date, amount); err != nil {
@@ -52,7 +52,7 @@ func (a *App) parseWaterDate(w http.ResponseWriter, r *http.Request) (time.Time,
 	}
 	date, err := time.Parse("2006-01-02", raw)
 	if err != nil {
-		http.Error(w, "data non valida", http.StatusBadRequest)
+		http.Error(w, a.t(r, "week.error.invalid_date"), http.StatusBadRequest)
 		return time.Time{}, false
 	}
 	return date, true

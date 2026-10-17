@@ -66,7 +66,7 @@ func (a *App) handleMealItemCustomizeSave(w http.ResponseWriter, r *http.Request
 	}
 	weekStart := parseWeekStart(r)
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "form invalido", http.StatusBadRequest)
+		http.Error(w, a.t(r, "week.error.invalid_form"), http.StatusBadRequest)
 		return
 	}
 
@@ -208,7 +208,7 @@ func (a *App) buildCustomizeForm(r *http.Request, item *domain.MealItemFull, wee
 
 func (a *App) renderCustomizeModal(w http.ResponseWriter, r *http.Request, data customizeFormData) {
 	mdata := modalDialogData{
-		Title:     "Personalizza ingredienti",
+		Title:     a.t(r, "week.customize"),
 		Inner:     "meal_item_customize_form",
 		InnerData: data,
 	}
