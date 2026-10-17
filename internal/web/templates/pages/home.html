@@ -10,9 +10,11 @@
     </div>
     <p class="text-[12.5px] text-muted">{{t "public.hero.note"}}</p>
   </div>
+  {{/* The product screenshot in the page's language: Italian, else English. */}}
+  {{$en := ne lang "it"}}
   <picture class="block rounded-[14px] border border-border overflow-hidden bg-surface max-w-[280px] lg:max-w-none mx-auto lg:mx-0" style="box-shadow: var(--shadow)">
-    <source media="(min-width: 1024px)" srcset="/static/img/home-settimana.webp" width="1280" height="800">
-    <img src="/static/img/home-settimana-telefono.webp" width="560" height="1091" alt="{{t "public.hero.image_alt"}}" class="block w-full h-auto">
+    <source media="(min-width: 1024px)" srcset="/static/img/home-settimana{{if $en}}-en{{end}}.webp" width="1280" height="800">
+    <img src="/static/img/home-settimana-telefono{{if $en}}-en{{end}}.webp" width="560" height="1091" alt="{{t "public.hero.image_alt"}}" class="block w-full h-auto">
   </picture>
 </section>
 
