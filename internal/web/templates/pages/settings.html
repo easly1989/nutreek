@@ -12,7 +12,7 @@
       <a href="#app" class="settings-toc">{{t "settings.toc.app"}}</a>
       {{if not .Demo}}<a href="#account" class="settings-toc">{{t "settings.toc.account"}}</a>{{end}}
       <a href="#dati" class="settings-toc">{{t "settings.toc.data"}}</a>
-      <a href="#token" class="settings-toc">{{t "settings.toc.tokens"}}</a>
+      {{if not .Demo}}<a href="#token" class="settings-toc">{{t "settings.toc.tokens"}}</a>{{end}}
       {{if not .Demo}}<a href="#elimina" class="settings-toc">{{t "settings.toc.delete"}}</a>{{end}}
     </nav>
 
@@ -122,6 +122,8 @@
         </div>
       </section>
 
+      {{/* The demo has no REST API (#185). */}}
+      {{if not .Demo}}
       <section id="token" class="card overflow-hidden scroll-mt-6">
         <div class="flex flex-wrap items-center gap-2 px-4 pt-4 pb-3">
           <h2 class="h2">{{t "settings.tokens.title"}}</h2>
@@ -166,6 +168,7 @@
         <p class="px-4 py-3 border-t border-border text-muted">{{t "settings.tokens.premium_note"}} <a href="/upgrade" class="text-accent font-semibold hover:underline">{{t "settings.tokens.see_includes"}}</a></p>
         {{end}}
       </section>
+      {{end}}
 
       {{if not .Demo}}
       <section id="elimina" class="card scroll-mt-6" style="border-color:color-mix(in srgb, var(--danger) 35%, var(--border))">

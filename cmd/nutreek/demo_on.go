@@ -17,7 +17,8 @@ import (
 
 // applyDemo turns the server into the public demo (#137): it refuses a
 // database with real users, makes sessions short, leaves nobody as owner and
-// every feature open, and gives the app its only way in.
+// every feature open, switches off backups, scopes the shared catalog to each
+// group, sets the limits and gives the app its only way in.
 func applyDemo(ctx context.Context, store *db.Store, sessions *scs.SessionManager, a *app.App, logger *slog.Logger) error {
 	cfg, err := demo.LoadConfig()
 	if err != nil {
@@ -31,10 +32,19 @@ func applyDemo(ctx context.Context, store *db.Store, sessions *scs.SessionManage
 	a.Cfg.OwnerEmail = ""
 	a.Cfg.AdminToken = ""
 	a.Cfg.PremiumEnabled = false
+	a.Cfg.BackupEnabled = false // throwaway data
+	db.ScopeCatalog(store.DB, demo.Peers)
 	svc := demo.New(store.DB, cfg)
 	a.Demo = svc
+	a.DemoLimits = app.DemoLimits{
+		MaxUsers:       cfg.MaxUsers,
+		StartsPerHour:  cfg.StartsPerHour,
+		MaxBody:        cfg.MaxBody,
+		MaxIngredients: cfg.MaxIngredients,
+		MaxRecipes:     cfg.MaxRecipes,
+	}
 	go svc.Run(ctx, logger)
-	logger.Info("demo build: accounts are throwaway", "idle", cfg.Idle.String())
+	logger.Info("demo build: accounts are throwaway", "idle", cfg.Idle.String(), "max_users", cfg.MaxUsers)
 	return nil
 }
 

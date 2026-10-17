@@ -44,6 +44,8 @@ func (r *WeeklyPlans) AddCheat(
 		if err := recipeVisibleTo(ctx, r.db, *recipeID, userID); err != nil {
 			return 0, err
 		}
+	} else if err := ingredientVisibleTo(ctx, r.db, *ingredientID, userID); err != nil {
+		return 0, err
 	}
 	var nextOrder int
 	if err := r.db.QueryRowContext(ctx,

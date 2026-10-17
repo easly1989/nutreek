@@ -519,6 +519,11 @@ func (n *NutritionistPlans) AddItem(ctx context.Context, planID, variationID int
 			return 0, err
 		}
 	}
+	if ingredientID != nil {
+		if err := ingredientVisibleTo(ctx, n.db, *ingredientID, owner); err != nil {
+			return 0, err
+		}
+	}
 
 	var maxOrder int
 	_ = n.db.QueryRowContext(ctx,

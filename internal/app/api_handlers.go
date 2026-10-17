@@ -141,7 +141,7 @@ func (a *App) handleAPIIngredients(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	items, err := a.Ingredients.SearchActive(r.Context(), q, limit)
+	items, err := a.Ingredients.SearchActive(r.Context(), userFromContext(r.Context()).ID, q, limit)
 	if err != nil {
 		writeJSONErr(w, http.StatusInternalServerError, "could not search the ingredients")
 		return

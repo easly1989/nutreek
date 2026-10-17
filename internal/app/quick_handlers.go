@@ -91,7 +91,12 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 	form.Barcode, _ = off.NormalizeBarcode(r.PostFormValue("barcode"))
 	if form.Barcode != "" {
 		if got, err := a.Ingredients.GetByBarcode(r.Context(), form.Barcode); err == nil {
-			a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.quick.barcode_taken", "Code", form.Barcode, "Name", got.Name))
+			msg := a.t(r, "ingredients.quick.barcode_taken", "Code", form.Barcode, "Name", got.Name)
+			if a.Ingredients.VisibleTo(r.Context(), got.ID, user.ID) != nil {
+				// The demo: the name belongs to another group.
+				msg = a.t(r, "ingredients.quick.barcode_taken_other", "Code", form.Barcode)
+			}
+			a.renderQuickIngredientFormOnly(w, r, form, msg)
 			return
 		}
 	}
