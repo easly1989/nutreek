@@ -17,9 +17,11 @@
   // The words on the charts come translated from the page (partials/chart_text.html).
   var T = (document.getElementById("chart-text") || {}).dataset || {};
 
-  // useGrouping "always": in Italian 2280 would stay without a dot.
+  // The page language picks the separators (1.894 / 1,894). useGrouping
+  // "always": in Italian 2280 would stay without a dot.
+  var LANG = document.documentElement.lang || "it";
   function fmt(v, d) {
-    return v.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: d || 0, useGrouping: "always" });
+    return v.toLocaleString(LANG, { minimumFractionDigits: 0, maximumFractionDigits: d || 0, useGrouping: "always" });
   }
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; });

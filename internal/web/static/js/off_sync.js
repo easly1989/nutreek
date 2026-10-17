@@ -13,7 +13,8 @@
   const feedback = document.getElementById('off-feedback');
   let pollTimer = null;
 
-  function fmt(n) { return Number(n || 0).toLocaleString('it-IT', { useGrouping: 'always' }); }
+  const LANG = document.documentElement.lang || 'it';
+  function fmt(n) { return Number(n || 0).toLocaleString(LANG, { useGrouping: 'always' }); }
   function set(field, text) {
     document.querySelectorAll('[data-off="' + field + '"]').forEach(function (el) { el.textContent = text; });
   }
@@ -21,8 +22,8 @@
     if (!s) return 'mai';
     const d = new Date(s);
     if (isNaN(d)) return s;
-    return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) + ', ' +
-      d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString(LANG, { day: 'numeric', month: 'long' }) + ', ' +
+      d.toLocaleTimeString(LANG, { hour: '2-digit', minute: '2-digit' });
   }
   function relDate(s) {
     if (!s) return 'mai aggiornati';

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -27,7 +26,7 @@ type statsWeek struct {
 
 // statsInput is everything needed to build the page.
 type statsInput struct {
-	Lang          string             // the texts of the tiles are written in it; empty = default
+	Lang          string             // number and date formats and the texts of the tiles; empty = Italian
 	Weeks         []statsWeek        // from the oldest to the most recent
 	Weights       []domain.WeightLog // in date order
 	TDEE          *service.TDEEReport
@@ -78,13 +77,6 @@ type statsView struct {
 	HasWorkout, HasCheats, HasWater                 bool
 }
 
-var monthsShortIT = [12]string{"gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"}
-
-// shortDateIT writes a date as on the chart axes: «12 ott».
-func shortDateIT(t time.Time) string {
-	return fmt.Sprintf("%d %s", t.Day(), monthsShortIT[t.Month()-1])
-}
-
 func buildStatsView(in statsInput) statsView {
 	var v statsView
 	tr := func(key string, args ...any) string { return i18n.T(in.Lang, key, args...) }
@@ -111,7 +103,7 @@ func buildStatsView(in statsInput) statsView {
 	var days, weeksWithMeals, workouts, cheats, waterWeeks, tdeePoints int
 	var workoutKcal, waterL float64
 	for i, w := range in.Weeks {
-		c.Labels[i] = shortDateIT(w.Start)
+		c.Labels[i] = web.ShortDate(in.Lang, w.Start)
 		row := statsWeekRow{Start: w.Start, DaysLogged: w.DaysLogged, Adherence: w.Adherence, HasAdherence: w.Planned}
 		if w.DaysLogged > 0 {
 			d := float64(w.DaysLogged)
@@ -154,7 +146,7 @@ func buildStatsView(in statsInput) statsView {
 			continue
 		}
 		weights = append(weights, wl)
-		c.WeightLabels = append(c.WeightLabels, shortDateIT(wl.MeasuredAt))
+		c.WeightLabels = append(c.WeightLabels, web.ShortDate(in.Lang, wl.MeasuredAt))
 		c.Weight = append(c.Weight, wl.WeightKg)
 	}
 	v.HasWeight = len(weights) >= 2
@@ -165,16 +157,16 @@ func buildStatsView(in statsInput) statsView {
 	if days > 0 {
 		v.AvgDayKcal = kcal / float64(days)
 		v.HasMacro = true
-		day.Value = web.FormatNum(v.AvgDayKcal)
+		day.Value = web.FormatNum(in.Lang, v.AvgDayKcal)
 	}
 	if in.TargetKcal > 0 {
-		day.Sub = tr("stats.tile.target", "Value", web.FormatNum(in.TargetKcal))
+		day.Sub = tr("stats.tile.target", "Value", web.FormatNum(in.Lang, in.TargetKcal))
 	}
 
 	weight := statsTile{Label: tr("stats.weight.title"), Value: dash, Unit: "kg", Sub: tr("stats.tile.no_weigh_in")}
 	if len(weights) > 0 {
 		last := weights[len(weights)-1]
-		weight.Value = web.FormatDec(last.WeightKg, 1)
+		weight.Value = web.FormatDec(in.Lang, last.WeightKg, 1)
 		weight.Sub = tr("stats.tile.one_weigh_in")
 		if len(weights) >= 2 {
 			weight.Sub = weightTrend(in.Lang, last.WeightKg-weights[0].WeightKg, last.MeasuredAt.Sub(weights[0].MeasuredAt))
@@ -185,11 +177,11 @@ func buildStatsView(in statsInput) statsView {
 	cheat := statsTile{Label: tr("stats.cheats.title"), Value: dash, Unit: tr("stats.tile.per_week")}
 	if weeksWithMeals > 0 {
 		wm := float64(weeksWithMeals)
-		work.Value = web.FormatDec(float64(workouts)/wm, 1)
+		work.Value = web.FormatDec(in.Lang, float64(workouts)/wm, 1)
 		if workoutKcal > 0 {
-			work.Sub = tr("stats.tile.kcal_avg", "Value", web.FormatNum(workoutKcal/wm))
+			work.Sub = tr("stats.tile.kcal_avg", "Value", web.FormatNum(in.Lang, workoutKcal/wm))
 		}
-		cheat.Value = web.FormatDec(float64(cheats)/wm, 1)
+		cheat.Value = web.FormatDec(in.Lang, float64(cheats)/wm, 1)
 	}
 	if in.StreakDays > 0 {
 		cheat.Sub = tr("stats.tile.days_clean", "Count", in.StreakDays)
@@ -197,10 +189,10 @@ func buildStatsView(in statsInput) statsView {
 
 	water := statsTile{Label: tr("stats.water.title"), Value: dash, Unit: tr("stats.water.unit")}
 	if waterWeeks > 0 {
-		water.Value = web.FormatDec(waterL/float64(waterWeeks), 1)
+		water.Value = web.FormatDec(in.Lang, waterL/float64(waterWeeks), 1)
 	}
 	if in.WaterTargetML > 0 {
-		water.Sub = tr("stats.tile.target", "Value", web.FormatDec(c.WaterTarget, 1)+" l")
+		water.Sub = tr("stats.tile.target", "Value", web.FormatDec(in.Lang, c.WaterTarget, 1)+" l")
 	}
 
 	v.Tiles = []statsTile{day, weight, work, cheat, water}
@@ -212,7 +204,7 @@ func weightTrend(lang string, delta float64, span time.Duration) string {
 	if math.Abs(delta) < 0.05 {
 		return i18n.T(lang, "stats.trend.steady")
 	}
-	s := web.FormatDec(math.Abs(delta), 1) + " kg"
+	s := web.FormatDec(lang, math.Abs(delta), 1) + " kg"
 	if delta < 0 {
 		s = "−" + s
 	} else {
