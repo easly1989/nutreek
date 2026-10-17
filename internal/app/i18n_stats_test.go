@@ -436,10 +436,10 @@ func TestEnglishShoppingStatsWeightProfile(t *testing.T) {
 		in.Lang = "en"
 		got := buildStatsView(in).Tiles
 		want := []statsTile{
-			{Label: "Daily average", Value: "1.917", Unit: "kcal", Sub: "goal 2.100"},
-			{Label: "Weight", Value: "72,4", Unit: "kg", Sub: "−1,6 kg in 2 weeks"},
+			{Label: "Daily average", Value: "1,917", Unit: "kcal", Sub: "goal 2,100"},
+			{Label: "Weight", Value: "72.4", Unit: "kg", Sub: "−1.6 kg in 2 weeks"},
 			{Label: "Workouts", Value: "2", Unit: "per week", Sub: "600 kcal on average"},
-			{Label: "Cheats", Value: "1,5", Unit: "per week", Sub: "6 days without"},
+			{Label: "Cheats", Value: "1.5", Unit: "per week", Sub: "6 days without"},
 			{Label: "Water", Value: "2", Unit: "l per day", Sub: "goal 2 l"},
 		}
 		for i := range want {
@@ -447,7 +447,7 @@ func TestEnglishShoppingStatsWeightProfile(t *testing.T) {
 				t.Errorf("tile %d = %+v, want %+v", i, got[i], want[i])
 			}
 		}
-		if s := weightTrend("en", 0.4, 5*24*time.Hour); s != "+0,4 kg in 5 days" {
+		if s := weightTrend("en", 0.4, 5*24*time.Hour); s != "+0.4 kg in 5 days" {
 			t.Errorf("trend = %q", s)
 		}
 		if s := weightTrend("en", 0.01, 0); s != "steady" {
