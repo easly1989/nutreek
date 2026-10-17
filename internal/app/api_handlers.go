@@ -87,7 +87,7 @@ func (a *App) handleAPIWeek(w http.ResponseWriter, r *http.Request) {
 	if s := r.URL.Query().Get("start"); s != "" {
 		parsed, err := time.Parse("2006-01-02", s)
 		if err != nil {
-			writeJSONErr(w, http.StatusBadRequest, "parametro start non valido (formato YYYY-MM-DD)")
+			writeJSONErr(w, http.StatusBadRequest, "invalid start parameter (format YYYY-MM-DD)")
 			return
 		}
 		weekStart = db.MondayOf(parsed)
@@ -97,12 +97,12 @@ func (a *App) handleAPIWeek(w http.ResponseWriter, r *http.Request) {
 
 	plan, err := a.WeeklyPlans.GetOrCreateForWeek(ctx, user.ID, weekStart)
 	if err != nil {
-		writeJSONErr(w, http.StatusInternalServerError, "errore caricamento piano")
+		writeJSONErr(w, http.StatusInternalServerError, "could not load the plan")
 		return
 	}
 	full, err := a.WeeklyPlans.LoadFull(ctx, plan)
 	if err != nil {
-		writeJSONErr(w, http.StatusInternalServerError, "errore caricamento piano")
+		writeJSONErr(w, http.StatusInternalServerError, "could not load the plan")
 		return
 	}
 
@@ -143,7 +143,7 @@ func (a *App) handleAPIIngredients(w http.ResponseWriter, r *http.Request) {
 
 	items, err := a.Ingredients.SearchActive(r.Context(), q, limit)
 	if err != nil {
-		writeJSONErr(w, http.StatusInternalServerError, "errore ricerca ingredienti")
+		writeJSONErr(w, http.StatusInternalServerError, "could not search the ingredients")
 		return
 	}
 
@@ -177,20 +177,20 @@ func (a *App) handleAPILogWater(w http.ResponseWriter, r *http.Request) {
 		AmountML int    `json:"amount_ml"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSONErr(w, http.StatusBadRequest, "JSON non valido")
+		writeJSONErr(w, http.StatusBadRequest, "invalid JSON")
 		return
 	}
 	date, err := time.Parse("2006-01-02", body.Date)
 	if err != nil {
-		writeJSONErr(w, http.StatusBadRequest, "campo date non valido (formato YYYY-MM-DD)")
+		writeJSONErr(w, http.StatusBadRequest, "invalid date field (format YYYY-MM-DD)")
 		return
 	}
 	if body.AmountML <= 0 {
-		writeJSONErr(w, http.StatusBadRequest, "amount_ml deve essere positivo")
+		writeJSONErr(w, http.StatusBadRequest, "amount_ml must be positive")
 		return
 	}
 	if err := a.WaterLogs.Log(r.Context(), user.ID, date, body.AmountML); err != nil {
-		writeJSONErr(w, http.StatusInternalServerError, "errore salvataggio idratazione")
+		writeJSONErr(w, http.StatusInternalServerError, "could not save the water intake")
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"ok": "true"})
@@ -206,21 +206,21 @@ func (a *App) handleAPILogWeight(w http.ResponseWriter, r *http.Request) {
 		WeightKg float64 `json:"weight_kg"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSONErr(w, http.StatusBadRequest, "JSON non valido")
+		writeJSONErr(w, http.StatusBadRequest, "invalid JSON")
 		return
 	}
 	date, err := time.Parse("2006-01-02", body.Date)
 	if err != nil {
-		writeJSONErr(w, http.StatusBadRequest, "campo date non valido (formato YYYY-MM-DD)")
+		writeJSONErr(w, http.StatusBadRequest, "invalid date field (format YYYY-MM-DD)")
 		return
 	}
 	if body.WeightKg <= 0 || body.WeightKg > 500 {
-		writeJSONErr(w, http.StatusBadRequest, "weight_kg non valido")
+		writeJSONErr(w, http.StatusBadRequest, "invalid weight_kg")
 		return
 	}
 	id, err := a.WeightLogs.LogWeight(r.Context(), user.ID, date, body.WeightKg, nil)
 	if err != nil {
-		writeJSONErr(w, http.StatusInternalServerError, "errore salvataggio peso")
+		writeJSONErr(w, http.StatusInternalServerError, "could not save the weight")
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
@@ -237,25 +237,25 @@ func (a *App) handleAPILogWorkout(w http.ResponseWriter, r *http.Request) {
 		DurationMinutes int    `json:"duration_minutes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSONErr(w, http.StatusBadRequest, "JSON non valido")
+		writeJSONErr(w, http.StatusBadRequest, "invalid JSON")
 		return
 	}
 	date, err := time.Parse("2006-01-02", body.Date)
 	if err != nil {
-		writeJSONErr(w, http.StatusBadRequest, "campo date non valido (formato YYYY-MM-DD)")
+		writeJSONErr(w, http.StatusBadRequest, "invalid date field (format YYYY-MM-DD)")
 		return
 	}
 	if body.ActivityID <= 0 {
-		writeJSONErr(w, http.StatusBadRequest, "activity_id obbligatorio")
+		writeJSONErr(w, http.StatusBadRequest, "activity_id is required")
 		return
 	}
 	if body.DurationMinutes <= 0 {
-		writeJSONErr(w, http.StatusBadRequest, "duration_minutes deve essere positivo")
+		writeJSONErr(w, http.StatusBadRequest, "duration_minutes must be positive")
 		return
 	}
 	id, err := a.WorkoutLogs.CreateWorkoutLog(r.Context(), user.ID, body.ActivityID, date, body.DurationMinutes, nil)
 	if err != nil {
-		writeJSONErr(w, http.StatusInternalServerError, "errore salvataggio allenamento")
+		writeJSONErr(w, http.StatusInternalServerError, "could not save the workout")
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
@@ -266,7 +266,7 @@ func (a *App) handleAPILogWorkout(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleAPIActivities(w http.ResponseWriter, r *http.Request) {
 	activities, err := a.WorkoutLogs.ListActivities(r.Context())
 	if err != nil {
-		writeJSONErr(w, http.StatusInternalServerError, "errore caricamento attività")
+		writeJSONErr(w, http.StatusInternalServerError, "could not load the activities")
 		return
 	}
 	writeJSON(w, http.StatusOK, activities)
