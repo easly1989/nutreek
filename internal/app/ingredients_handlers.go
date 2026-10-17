@@ -733,38 +733,9 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		Sodium:          strings.TrimSpace(r.PostFormValue("sodium")),
 	}
 
-	if form.Name == "" {
-		a.renderIngredientError(w, r, form, a.t(r, "ingredients.error.name_required"))
-		return
-	}
-	if !withinLen(form.Name, MaxNameLen) {
-		a.renderIngredientError(w, r, form, a.t(r, "ingredients.error.name_too_long", "Max", MaxNameLen))
-		return
-	}
-	unit := domain.IngredientUnit(form.Unit)
-	if unit != domain.UnitGram && unit != domain.UnitMilliliter {
-		a.renderIngredientError(w, r, form, a.t(r, "ingredients.error.unit"))
-		return
-	}
-
-	kcal, err := parseNonNegFloat(form.Kcal)
-	if err != nil {
-		a.renderIngredientError(w, r, form, a.numberError(r, "ingredients.error.kcal", err))
-		return
-	}
-	protein, err := parseNonNegFloat(form.Protein)
-	if err != nil {
-		a.renderIngredientError(w, r, form, a.numberError(r, "ingredients.error.protein", err))
-		return
-	}
-	carbs, err := parseNonNegFloat(form.Carbs)
-	if err != nil {
-		a.renderIngredientError(w, r, form, a.numberError(r, "ingredients.error.carbs", err))
-		return
-	}
-	fat, err := parseNonNegFloat(form.Fat)
-	if err != nil {
-		a.renderIngredientError(w, r, form, a.numberError(r, "ingredients.error.fat", err))
+	vals, msg := a.validateIngredient(r, form)
+	if msg != "" {
+		a.renderIngredientError(w, r, form, msg)
 		return
 	}
 
@@ -778,6 +749,7 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 	if user != nil {
 		id := user.ID
 		creatorID = &id
+		var err error
 		if categoryID, err = a.ownCategory(r.Context(), user.ID, form.CategoryID); err != nil {
 			a.renderIngredientError(w, r, form, a.t(r, "ingredients.error.category"))
 			return
@@ -800,7 +772,7 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ingID, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, creatorID, unitWeightG, defaultQuantity,
+	ingID, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, vals.Unit, vals.Kcal, vals.Protein, vals.Carbs, vals.Fat, creatorID, unitWeightG, defaultQuantity,
 		parseOptionalFloat(form.Fiber), parseOptionalFloat(form.Sugars),
 		parseOptionalFloat(form.SaturatedFat), parseOptionalFloat(form.Sodium))
 	if err != nil {
@@ -1146,38 +1118,9 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		_ = a.Render.Render(w, r, http.StatusUnprocessableEntity, "ingredient_edit", data)
 	}
 
-	if form.Name == "" {
-		renderEditErr(a.t(r, "ingredients.error.name_required"))
-		return
-	}
-	if !withinLen(form.Name, MaxNameLen) {
-		renderEditErr(a.t(r, "ingredients.error.name_too_long", "Max", MaxNameLen))
-		return
-	}
-	unit := domain.IngredientUnit(form.Unit)
-	if unit != domain.UnitGram && unit != domain.UnitMilliliter {
-		renderEditErr(a.t(r, "ingredients.error.unit"))
-		return
-	}
-
-	kcal, err := parseNonNegFloat(form.Kcal)
-	if err != nil {
-		renderEditErr(a.numberError(r, "ingredients.error.kcal", err))
-		return
-	}
-	protein, err := parseNonNegFloat(form.Protein)
-	if err != nil {
-		renderEditErr(a.numberError(r, "ingredients.error.protein", err))
-		return
-	}
-	carbs, err := parseNonNegFloat(form.Carbs)
-	if err != nil {
-		renderEditErr(a.numberError(r, "ingredients.error.carbs", err))
-		return
-	}
-	fat, err := parseNonNegFloat(form.Fat)
-	if err != nil {
-		renderEditErr(a.numberError(r, "ingredients.error.fat", err))
+	vals, msg := a.validateIngredient(r, form)
+	if msg != "" {
+		renderEditErr(msg)
 		return
 	}
 
@@ -1204,7 +1147,7 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := a.Ingredients.Update(r.Context(), id, form.Name, brandPtr, unit, kcal, protein, carbs, fat, unitWeightG, defaultQuantity,
+	if err := a.Ingredients.Update(r.Context(), id, form.Name, brandPtr, vals.Unit, vals.Kcal, vals.Protein, vals.Carbs, vals.Fat, unitWeightG, defaultQuantity,
 		parseOptionalFloat(form.Fiber), parseOptionalFloat(form.Sugars),
 		parseOptionalFloat(form.SaturatedFat), parseOptionalFloat(form.Sodium)); err != nil {
 		a.serverError(w, r, err)
@@ -1272,6 +1215,45 @@ func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form
 	if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "ingredient_new", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+// ingredientValues are the fields every ingredient form has, parsed.
+type ingredientValues struct {
+	Unit                      domain.IngredientUnit
+	Kcal, Protein, Carbs, Fat float64
+}
+
+// validateIngredient checks the name, the unit and the four macros shared by
+// the new, edit and quick forms. It returns them parsed, or the message to
+// show ("" when the form is valid).
+func (a *App) validateIngredient(r *http.Request, form ingredientForm) (ingredientValues, string) {
+	var v ingredientValues
+	if form.Name == "" {
+		return v, a.t(r, "ingredients.error.name_required")
+	}
+	if !withinLen(form.Name, MaxNameLen) {
+		return v, a.t(r, "ingredients.error.name_too_long", "Max", MaxNameLen)
+	}
+	v.Unit = domain.IngredientUnit(form.Unit)
+	if v.Unit != domain.UnitGram && v.Unit != domain.UnitMilliliter {
+		return v, a.t(r, "ingredients.error.unit")
+	}
+	for _, f := range []struct {
+		key, raw string
+		dst      *float64
+	}{
+		{"ingredients.error.kcal", form.Kcal, &v.Kcal},
+		{"ingredients.error.protein", form.Protein, &v.Protein},
+		{"ingredients.error.carbs", form.Carbs, &v.Carbs},
+		{"ingredients.error.fat", form.Fat, &v.Fat},
+	} {
+		x, err := parseNonNegFloat(f.raw)
+		if err != nil {
+			return v, a.numberError(r, f.key, err)
+		}
+		*f.dst = x
+	}
+	return v, ""
 }
 
 // parseOptionalFloat is like parseNonNegFloat but returns nil instead of an
