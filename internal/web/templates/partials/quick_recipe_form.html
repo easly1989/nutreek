@@ -13,13 +13,13 @@
 
   {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2" role="alert">{{.Error}}</p>{{end}}
 
-  <p class="text-muted">La ricetta nasce vuota: aprila da <a href="/recipes" class="underline">Ricette</a> per aggiungere gli ingredienti.</p>
-  <label class="lab">Nome<input name="name" required maxlength="200" value="{{.Form.Name}}" autofocus class="field"></label>
-  <label class="lab w-[120px]">Porzioni<input name="servings" required inputmode="numeric" value="{{.Form.Servings}}" class="field tabular-nums"></label>
+  <p class="text-muted">{{t "recipes.quick.note_before"}} <a href="/recipes" class="underline">{{t "recipes.title"}}</a> {{t "recipes.quick.note_after"}}</p>
+  <label class="lab">{{t "recipes.form.name"}}<input name="name" required maxlength="200" value="{{.Form.Name}}" autofocus class="field"></label>
+  <label class="lab w-[120px]">{{t "recipes.form.servings"}}<input name="servings" required inputmode="numeric" value="{{.Form.Servings}}" class="field tabular-nums"></label>
 
   <div class="flex justify-end gap-2 pt-1">
-    <button type="button" data-modal-close class="btn-secondary">Annulla</button>
-    <button class="btn-primary">Crea ricetta</button>
+    <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+    <button class="btn-primary">{{t "recipes.form.create"}}</button>
   </div>
 </form>
 {{end}}
