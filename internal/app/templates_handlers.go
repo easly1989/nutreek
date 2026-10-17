@@ -11,6 +11,8 @@ import (
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/i18n"
+	"github.com/amon2126/nutreek/internal/web"
 )
 
 // ---- view models -----------------------------------------------------------
@@ -40,8 +42,6 @@ type slotGroup struct {
 	Slots []domain.MealTemplateSlot
 }
 
-var dayFullNames = []string{"Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"}
-
 // localPath returns next when it is a path of this app ("/..." but not
 // "//host" nor "/\host"), otherwise fallback: it prevents an open redirect. No
 // control characters: browsers strip them, and "/\t/host" becomes "//host".
@@ -57,13 +57,10 @@ func localPath(next, fallback string) string {
 // current order (slots already arrive ORDER BY day_of_week, sort_order).
 // It always returns 8 groups (-1 + 0..6) even when empty, so drag-and-drop
 // works with a single element too.
-func groupSlotsByDay(slots []domain.MealTemplateSlot) []slotGroup {
+func groupSlotsByDay(lang string, slots []domain.MealTemplateSlot) []slotGroup {
 	out := make([]slotGroup, 0, 8)
 	for _, day := range []int{domain.DayOfWeekEvery, 0, 1, 2, 3, 4, 5, 6} {
-		g := slotGroup{Day: day}
-		if day >= 0 {
-			g.Label = dayFullNames[day]
-		}
+		g := slotGroup{Day: day, Label: web.DayName(lang, day)}
 		for _, s := range slots {
 			if s.DayOfWeek == day {
 				g.Slots = append(g.Slots, s)
@@ -147,7 +144,7 @@ func (a *App) renderTemplateEdit(
 		authPageData: a.baseData(r),
 		Template:     tpl,
 		Templates:    all,
-		SlotGroups:   groupSlotsByDay(tpl.Slots),
+		SlotGroups:   groupSlotsByDay(i18n.FromContext(r.Context()), tpl.Slots),
 		NameForm:     nameForm,
 		NameError:    nameErr,
 		SlotForm:     slotF,
