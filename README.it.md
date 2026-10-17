@@ -31,6 +31,8 @@ Ingredienti con la copia locale di OpenFoodFacts (ricerca in meno di 50 ms, anch
 
 Gira **nativamente** (un binario Go, nessuna dipendenza esterna) o in **un solo container Docker**: SQLite è incluso, non c'è un database da gestire a parte.
 
+L'interfaccia è in **italiano** e in **inglese**. Ogni utente sceglie la lingua in Impostazioni; senza una scelta segue quella del browser, e le pagine prima dell'accesso hanno un selettore. Chiunque può aggiungere un'altra lingua con una pull request: vedi la [guida per i traduttori](docs/translating.md) (in inglese).
+
 ---
 
 ## Funzionalità
@@ -51,13 +53,14 @@ Gira **nativamente** (un binario Go, nessuna dipendenza esterna) o in **un solo 
 | **Admin panel** | Feature flags, gestione utenti, sottoscrizioni premium (owner-only) |
 | **Premium gating** | Middleware `requireFeature`, cache 60s, badge UI, redirect `/upgrade` |
 | **Aspetto** | Stile «Sereno»: modalità chiaro / scuro / come il sistema × colore bosco / mare / tramonto / grafite; sidebar su desktop, barra in basso sul telefono; tour guidato |
+| **Lingue** | Italiano e inglese, per utente o dal browser; traduzioni della comunità benvenute, segnate «beta» finché non sono complete ([guida](docs/translating.md)) |
 | **App sul telefono** | Installabile (manifest e icone nel colore scelto, service worker per i file statici); fotocamera e installazione richiedono https |
 
 ---
 
 ## Screenshot
 
-Dati demo. Lo stesso aspetto in chiaro e in scuro, su desktop e sul telefono.
+Dati demo. Lo stesso aspetto in chiaro e in scuro, su desktop e sul telefono. Il README in inglese mostra l'interfaccia in inglese.
 
 ### La settimana
 
