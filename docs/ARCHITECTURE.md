@@ -117,6 +117,13 @@ changes the text.
   loaded; `<html lang>` and the app manifest follow it. Users who signed up
   before migration 0030 keep Italian; new ones follow the browser.
 - REST API v1 errors are always in English, whatever the language.
+- `TestEnglishEveryPage` (#160) signs in through the router and opens every page
+  in English. It builds the route list from the router (`chi.Walk`): a new GET
+  route needs a page in the test, or an entry in `notHTML` with the reason. It
+  fails on Italian words, on text the English and Italian pages share (brands,
+  units and borrowed words are listed in `sameInBothOK`), and on a catalog key
+  shown as text. Text that comes from the database (names users typed, products
+  of OpenFoodFacts, demo data) goes in the test's `data` list.
 
 ---
 

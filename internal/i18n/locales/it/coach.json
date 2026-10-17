@@ -15,6 +15,7 @@
   "coach.clients.add": "Aggiungi cliente",
   "coach.clients.add_note": "Il cliente deve essere già registrato qui.",
   "coach.plans.title": "Libreria piani",
+  "coach.plans.default_name": "Piano Nutrizionista",
   "coach.plans.no_clients": "nessun cliente",
   "coach.plans.client_count": {
     "one": "{{.Count}} cliente",

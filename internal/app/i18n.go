@@ -1,11 +1,14 @@
 package app
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/amon2126/nutreek/internal/config"
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/i18n"
+	"github.com/amon2126/nutreek/internal/off"
 )
 
 // langCookie holds the language picked on the public pages or in Settings,
@@ -36,6 +39,32 @@ func requestLang(r *http.Request) string {
 // that is not a key comes back unchanged.
 func (a *App) t(r *http.Request, key string, args ...any) string {
 	return i18n.T(i18n.FromContext(r.Context()), key, args...)
+}
+
+// reasons are the errors a flash message can quote, with the catalog key of
+// their text. Any other error is quoted as it is (a network or database error,
+// in English).
+var reasons = []struct {
+	err error
+	key string
+}{
+	{off.ErrNotFound, "week.reason.off_not_found"},
+	{off.ErrUnavailable, "week.reason.off_unavailable"},
+	{errOFFNoMacros, "week.reason.off_no_macros"},
+	{db.ErrPlanNotFound, "week.reason.plan_not_found"},
+	{db.ErrMealNotFound, "week.reason.meal_not_found"},
+	{db.ErrRecipeNotFound, "week.reason.recipe_not_found"},
+	{db.ErrIngredientNotFound, "week.reason.ingredient_not_found"},
+}
+
+// errText is the text of err to quote in a message to the user.
+func (a *App) errText(r *http.Request, err error) string {
+	for _, reason := range reasons {
+		if errors.Is(err, reason.err) {
+			return a.t(r, reason.key)
+		}
+	}
+	return err.Error()
 }
 
 // handleLanguage (POST /language) saves the language picked in Settings or on

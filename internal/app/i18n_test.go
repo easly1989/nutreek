@@ -40,32 +40,43 @@ func init() {
 
 var (
 	reScript   = regexp.MustCompile(`(?s)<script\b[^>]*>(.*?)</script>`)
+	reStyle    = regexp.MustCompile(`(?s)<style\b[^>]*>.*?</style>`)
 	reJSString = regexp.MustCompile(`"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'`)
-	reAttr     = regexp.MustCompile(`\b(?:aria-label|title|placeholder|alt|data-msg-[\w-]+|data-confirm-[\w-]+)="([^"]*)"`)
-	reTag      = regexp.MustCompile(`(?s)<[^>]*>`)
-	reComment  = regexp.MustCompile(`(?s)<!--.*?-->`)
-	reWord     = regexp.MustCompile(`[\p{L}]+`)
+	reAttr     = regexp.MustCompile(`\b(?:aria-label|title|placeholder|alt|data-(?:msg|confirm|placeholder)[\w-]*)="([^"]*)"`)
+	// A tag ends at the first ">" outside quotes: Tailwind classes hold some.
+	reTag     = regexp.MustCompile(`(?s)<(?:[^>"']|"[^"]*"|'[^']*')*>`)
+	reComment = regexp.MustCompile(`(?s)<!--.*?-->`)
+	reWord    = regexp.MustCompile(`[\p{L}]+`)
 )
 
-// italianIn returns the pieces of user-visible text in page (text, the
-// attributes people read, the strings in inline scripts) that look Italian.
-// data are texts that come from the database, not from the interface.
-func italianIn(page string, data []string) []string {
+// pageChunks returns the pieces of user-visible text in page: the text, the
+// attributes people read (or scripts show) and the strings in inline scripts.
+func pageChunks(page string) []string {
 	var chunks []string
 	for _, m := range reScript.FindAllStringSubmatch(page, -1) {
 		for _, s := range reJSString.FindAllStringSubmatch(m[1], -1) {
 			chunks = append(chunks, s[1]+s[2])
 		}
 	}
-	page = reScript.ReplaceAllString(page, "\n")
+	return append(chunks, pageTextChunks(page)...)
+}
+
+// pageTextChunks is pageChunks without the strings of inline scripts.
+func pageTextChunks(page string) []string {
+	var chunks []string
+	page = reStyle.ReplaceAllString(reScript.ReplaceAllString(page, "\n"), "\n")
 	for _, m := range reAttr.FindAllStringSubmatch(page, -1) {
 		chunks = append(chunks, m[1])
 	}
 	page = reComment.ReplaceAllString(page, "\n")
-	chunks = append(chunks, strings.Split(reTag.ReplaceAllString(page, "\n"), "\n")...)
+	return append(chunks, strings.Split(reTag.ReplaceAllString(page, "\n"), "\n")...)
+}
 
+// italianIn returns the pieces of user-visible text in page that look Italian.
+// data are texts that come from the database, not from the interface.
+func italianIn(page string, data []string) []string {
 	var found []string
-	for _, c := range chunks {
+	for _, c := range pageChunks(page) {
 		c = strings.TrimSpace(html.UnescapeString(c))
 		for _, d := range data {
 			c = strings.ReplaceAll(c, d, "")
