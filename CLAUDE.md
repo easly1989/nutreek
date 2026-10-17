@@ -199,6 +199,7 @@ until it completes (~10 min, ~0.9 GB of bandwidth).
 - Pattern: table tests, `t.Cleanup()` for resources, a temporary SQLite DB for isolation
 - GitHub Actions CI (`.github/workflows/ci.yml`): tests with `-race`, golangci-lint (`.golangci.yml`), binary and Docker image build, govulncheck
 - Release (`.github/workflows/release.yml`): publishing a GitHub Release `vX.Y.Z` builds and pushes the public image `ghcr.io/easly1989/nutreek` tagged `:latest`, `:vX.Y.Z`, `:vX.Y`
+- Demo (`.github/workflows/docker-demo.yml`): every published release (not prereleases) and a run by hand push `ghcr.io/easly1989/nutreek:demo` and `:demo-<version>`, then deploy it on Northflank. CI runs `go test -tags demo ./cmd/nutreek/`, an end-to-end test of the demo binary. Setup and secrets: [`docs/demo.md`](docs/demo.md)
 - Manual UI testing: `make dev` → `localhost:8080`
 
 ---
