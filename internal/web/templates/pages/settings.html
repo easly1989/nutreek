@@ -18,6 +18,17 @@
 
     <div class="flex flex-col gap-4 min-w-0">
       <section id="aspetto" class="card scroll-mt-6">
+        {{/* Language (#159): saved in the account; "" follows the browser. */}}
+        <form method="post" action="/language" class="settings-sec">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="next" value="/settings">
+          <div><h2 class="h2">{{t "layout.language"}}</h2><p class="settings-d">{{t "settings.language.desc"}}</p></div>
+          {{$cur := .User.Locale}}
+          <div class="segmented grid-flow-col auto-cols-fr" role="radiogroup" aria-label="{{t "layout.language"}}">
+            <button name="lang" value="" role="radio" aria-checked="{{eq $cur ""}}" class="px-3">{{t "settings.language.browser"}}</button>
+            {{range languages}}<button name="lang" value="{{.Code}}" lang="{{.Code}}" role="radio" aria-checked="{{eq $cur .Code}}" class="px-3">{{.Name}}</button>{{end}}
+          </div>
+        </form>
         <div class="settings-sec">
           <div><h2 class="h2">{{t "layout.appearance.mode"}}</h2><p class="settings-d">{{t "settings.mode.desc"}}</p></div>
           <div class="grid grid-cols-3 gap-2.5" role="radiogroup" aria-label="{{t "layout.appearance.mode"}}">

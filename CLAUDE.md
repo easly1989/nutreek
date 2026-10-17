@@ -11,7 +11,8 @@ Main features: ingredients (local OpenFoodFacts search over FTS5), recipes, week
 ## Language
 
 - **Code, docs, commits, issues and pull requests are in English** (#146): comments, doc comments, test names and messages, log messages, `CHANGELOG.md`, everything under `docs/`.
-- **The text users see is moving into translation catalogs** (#141): `internal/i18n/locales/<lang>/<area>.json`, Italian and English written together, `{{t "key"}}` in templates and `a.t(r, "key")` in handlers (see `docs/ARCHITECTURE.md`, Translations). Done so far: the shared layout and Ingredients (#151). The other areas still have Italian written in templates and handlers until their ticket. The `lang=en` cookie shows English.
+- **The text users see lives in translation catalogs** (#141): `internal/i18n/locales/<lang>/<area>.json`, Italian and English written together, `{{t "key"}}` in templates and `a.t(r, "key")` in handlers (see `docs/ARCHITECTURE.md`, Translations). New text goes into both catalogs, never straight into a template or handler.
+- **The language** is the user's choice in Settings, else the `lang` cookie (the signed-out pages' selector), else the browser's `Accept-Language`, else English (#159). REST API errors are always English.
 - History stays as written: commits, issues and pull requests before #146 are in Italian, and the CHANGELOG entries up to 2.0.0 link to them.
 - `README.it.md` is the Italian README and stays Italian.
 
@@ -168,7 +169,7 @@ until it completes (~10 min, ~0.9 GB of bandwidth).
 
 ## Code conventions
 
-- **Language**: English for code, comments, commits and docs; see [Language](#language). User-facing text goes into the translation catalogs as each area is translated (#141).
+- **Language**: English for code, comments, commits and docs; see [Language](#language). User-facing text goes into the translation catalogs (#141).
 - **Commit style**: Conventional Commits with a scope, in English
   Examples: `feat(shopping): add past weeks dropdown`, `fix(plan): correct cheat macro totals`
 - **Handler names**: `handle{Section}{Action}` (e.g. `handleIngredientCreate`)

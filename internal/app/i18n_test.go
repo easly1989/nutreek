@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"html"
@@ -202,9 +203,7 @@ func TestEnglishLayoutAndIngredients(t *testing.T) {
 		if p.form != nil {
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}
-		if lang != "" {
-			req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-		}
+		req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 		if p.id != 0 {
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("id", strconv.FormatInt(p.id, 10))
@@ -265,16 +264,41 @@ func TestEnglishLayoutAndIngredients(t *testing.T) {
 	})
 }
 
-// A cookie with an unsupported language falls back to Italian.
-func TestLanguageCookieUnsupported(t *testing.T) {
-	var got string
-	h := languageMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got = i18n.FromContext(r.Context())
-	}))
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.AddCookie(&http.Cookie{Name: langCookie, Value: "xx"})
-	h.ServeHTTP(httptest.NewRecorder(), req)
-	if got != "it" {
-		t.Errorf("language = %q, want it", got)
+// The request's language: the user's choice, the cookie, the browser, English.
+func TestRequestLanguage(t *testing.T) {
+	cases := []struct {
+		name, locale, cookie, accept, want string
+		signedIn                           bool
+	}{
+		{name: "nothing: English", want: "en"},
+		{name: "browser", accept: "it-IT,it;q=0.9", want: "it"},
+		{name: "browser in another language", accept: "de-DE", want: "en"},
+		{name: "cookie beats the browser", cookie: "it", accept: "en-US", want: "it"},
+		{name: "unsupported cookie", cookie: "xx", accept: "it", want: "it"},
+		{name: "user beats the cookie", signedIn: true, locale: "en", cookie: "it", accept: "it", want: "en"},
+		{name: "user following the browser", signedIn: true, locale: "", cookie: "en", accept: "it", want: "en"},
+		{name: "user following the browser, no cookie", signedIn: true, accept: "it", want: "it"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var got string
+			h := languageMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				got = i18n.FromContext(r.Context())
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			if c.cookie != "" {
+				req.AddCookie(&http.Cookie{Name: langCookie, Value: c.cookie})
+			}
+			if c.accept != "" {
+				req.Header.Set("Accept-Language", c.accept)
+			}
+			if c.signedIn {
+				req = requestWithUser(req, &domain.User{ID: 1, Locale: c.locale})
+			}
+			h.ServeHTTP(httptest.NewRecorder(), req)
+			if got != c.want {
+				t.Errorf("language = %q, want %q", got, c.want)
+			}
+		})
 	}
 }
