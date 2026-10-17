@@ -17,9 +17,9 @@
         <summary class="flex items-center gap-3 min-h-[52px] py-1.5 pl-4 lg:pl-5 pr-4 cursor-pointer list-none hover:bg-surface-2 group-open:bg-accent-soft [&::-webkit-details-marker]:hidden">
           <span class="grow min-w-0">
             <b class="block truncate font-semibold">{{.Name}}</b>
-            <span class="text-[12.5px] text-muted">{{.Servings}} {{if eq .Servings 1}}porzione{{else}}porzioni{{end}}{{if .IsPublic}} · pubblica{{end}}</span>
+            <span class="text-[12.5px] text-muted">{{t "picker.servings" "Count" .Servings}}{{if .IsPublic}} · {{t "picker.public"}}{{end}}</span>
           </span>
-          <span class="text-right tabular-nums whitespace-nowrap"><b>{{num $kcal}}</b> <span class="text-[12.5px] text-muted">kcal / porz.</span></span>
+          <span class="text-right tabular-nums whitespace-nowrap"><b>{{num $kcal}}</b> <span class="text-[12.5px] text-muted">{{t "picker.kcal_per_serving"}}</span></span>
           <span class="w-8 h-8 shrink-0 grid place-items-center rounded-full border border-border bg-surface text-accent group-open:rotate-45 transition-transform" aria-hidden="true">{{template "icon_sm" "i-plus"}}</span>
         </summary>
         <form method="post" action="{{$action}}" class="flex flex-wrap items-center gap-2 pl-4 lg:pl-5 pr-4 pt-1 pb-3 bg-accent-soft" data-kcal-each="{{$kcal}}"
@@ -32,17 +32,17 @@
             <input type="hidden" name="kind" value="recipe">
             <input type="hidden" name="ref_id" value="{{.ID}}">
           {{end}}
-          <input name="quantity" required inputmode="decimal" value="1" aria-label="Porzioni" class="field w-[76px] text-right tabular-nums">
-          <span class="text-muted">porzioni</span>
+          <input name="quantity" required inputmode="decimal" value="1" aria-label="{{t "picker.servings_label"}}" class="field w-[76px] text-right tabular-nums">
+          <span class="text-muted">{{t "picker.servings_unit"}}</span>
           <span class="ml-auto font-bold tabular-nums whitespace-nowrap" data-kcal-preview></span>
-          <button class="btn h-[30px] px-3 text-[12.5px] {{if $.Cheat}}bg-danger text-surface hover:opacity-90{{else}}btn-primary{{end}}">{{if $.Cheat}}Registra sgarro{{else}}Aggiungi{{end}}</button>
+          <button class="btn h-[30px] px-3 text-[12.5px] {{if $.Cheat}}bg-danger text-surface hover:opacity-90{{else}}btn-primary{{end}}">{{if $.Cheat}}{{t "picker.add_cheat"}}{{else}}{{t "picker.add"}}{{end}}</button>
         </form>
       </details>
     {{end}}
   </div>
 {{else}}
   <p class="px-5 py-8 text-center text-muted">
-    {{if .Query}}Nessuna ricetta trovata per «{{.Query}}».{{else}}Nessuna ricetta ancora: creane una con «Nuova ricetta».{{end}}
+    {{if .Query}}{{t "picker.no_recipe_for" "Query" .Query}}{{else}}{{t "picker.no_recipes"}}{{end}}
   </p>
 {{end}}
 {{end}}

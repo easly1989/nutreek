@@ -26,21 +26,21 @@ func (a *App) handleWorkoutLog(w http.ResponseWriter, r *http.Request) {
 
 	activityID, err := strconv.ParseInt(activityIDStr, 10, 64)
 	if err != nil || activityID <= 0 {
-		a.Sessions.Put(r.Context(), "flash", "Seleziona un'attività valida.")
+		a.Sessions.Put(r.Context(), "flash", "week.flash.select_activity")
 		a.redirectToWeek(w, r, weekStart)
 		return
 	}
 
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		a.Sessions.Put(r.Context(), "flash", "Data non valida.")
+		a.Sessions.Put(r.Context(), "flash", "week.flash.invalid_date")
 		a.redirectToWeek(w, r, weekStart)
 		return
 	}
 
 	minutes, err := strconv.Atoi(minutesStr)
 	if err != nil || minutes <= 0 || minutes > 720 {
-		a.Sessions.Put(r.Context(), "flash", "Durata non valida (1–720 minuti).")
+		a.Sessions.Put(r.Context(), "flash", "week.flash.invalid_duration")
 		a.redirectToWeek(w, r, weekStart)
 		return
 	}

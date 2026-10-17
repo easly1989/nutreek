@@ -1,9 +1,9 @@
-{{define "title"}}{{if .Cheat}}Sgarro{{else}}Aggiungi a {{.MealName}}{{end}} — Nutreek{{end}}
+{{define "title"}}{{if .Cheat}}{{t "picker.page_title_cheat"}}{{else}}{{t "picker.title_add" "Meal" .MealName}}{{end}} — Nutreek{{end}}
 {{define "content"}}
 {{/* Full page: the no-JavaScript fallback of the picker dialog. */}}
 <div class="flex flex-col gap-4 lg:gap-[18px] max-w-[640px]">
   <div>
-    <a href="/?start={{.WeekStart}}" class="crumb">{{template "icon_sm" "i-chevron-left"}}Settimana</a>
+    <a href="/?start={{.WeekStart}}" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "picker.back"}}</a>
     <h1 class="h1">{{template "meal_picker_title" .}}</h1>
     <p class="text-muted mt-1">{{dayTitle .Date}} {{monthName .Date}}</p>
   </div>
@@ -11,7 +11,7 @@
 </div>
 {{end}}
 
-{{define "meal_picker_title"}}{{if .Cheat}}Registra uno sgarro a {{.MealName}}{{else}}Aggiungi a {{.MealName}}{{end}}{{end}}
+{{define "meal_picker_title"}}{{if .Cheat}}{{t "picker.title_cheat" "Meal" .MealName}}{{else}}{{t "picker.title_add" "Meal" .MealName}}{{end}}{{end}}
 
 {{define "meal_picker_dialog"}}
 {{- /* The same thing in a dialog over the week (a bottom sheet on the
@@ -22,36 +22,38 @@
       <h2 class="text-[17px] font-bold">{{template "meal_picker_title" .}}</h2>
       <p class="text-muted">{{dayTitle .Date}} {{monthName .Date}}</p>
     </div>
-    <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="Chiudi">{{template "icon" "i-close"}}</button>
+    <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
   </div>
   {{template "meal_picker_body" .}}
 </dialog>
 {{end}}
 
 {{define "meal_picker_body"}}
-{{- /* The picker's search + results. picker.js handles Ingrediente/Ricetta
-       and the refresh after «Nuovo ingrediente». */ -}}
+{{- /* The picker's search + results. picker.js handles Ingredient/Recipe
+       and the refresh after «New ingredient». */ -}}
 {{- $extra := printf "start=%s" .WeekStart -}}
 {{- if .Cheat}}{{$extra = print $extra "&as=cheat"}}{{else}}{{$extra = print $extra "&meal_name=" (urlquery .MealName)}}{{end -}}
 {{- if .InDialog}}{{$extra = print $extra "&dialog=1"}}{{end -}}
 <div class="flex flex-col min-h-0 grow" data-meal-picker data-picker-url="/meals/{{.MealID}}/picker" data-picker-extra="{{$extra}}">
   <div class="flex flex-col gap-2.5 px-4 lg:px-5 pb-3 border-b border-border">
-    {{if .Cheat}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2">Lo sgarro prende il posto delle voci previste per questo pasto nel conteggio della giornata.</p>{{end}}
+    {{if .Cheat}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2">{{t "picker.cheat_note"}}</p>{{end}}
     <div class="flex items-center gap-2">
-      <span class="segmented" role="radiogroup" aria-label="Cosa aggiungere">
-        <button type="button" role="radio" aria-checked="true" class="px-3.5" data-picker-tab="ingredient">Ingrediente</button>
-        <button type="button" role="radio" aria-checked="false" class="px-3.5" data-picker-tab="recipe">Ricetta</button>
+      <span class="segmented" role="radiogroup" aria-label="{{t "picker.what_to_add"}}">
+        <button type="button" role="radio" aria-checked="true" class="px-3.5" data-picker-tab="ingredient">{{t "picker.tab_ingredient"}}</button>
+        <button type="button" role="radio" aria-checked="false" class="px-3.5" data-picker-tab="recipe">{{t "picker.tab_recipe"}}</button>
       </span>
       <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2.5" data-quick-target="ingredient"
-              hx-get="/quick/ingredient" hx-target="#modal-host-2" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Nuovo ingrediente</button>
+              hx-get="/quick/ingredient" hx-target="#modal-host-2" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}{{t "picker.new_ingredient"}}</button>
       <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2.5 hidden" data-quick-target="recipe"
-              hx-get="/quick/recipe" hx-target="#modal-host-2" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Nuova ricetta</button>
+              hx-get="/quick/recipe" hx-target="#modal-host-2" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}{{t "picker.new_recipe"}}</button>
     </div>
     <div class="flex gap-2 [&>.scan-btn]:h-[42px] [&>.scan-btn]:w-[42px]">
       <label class="field-ico grow">
         {{template "icon" "i-search"}}
-        <input id="picker-search-{{.MealID}}" type="search" name="q" placeholder="Cerca tra i tuoi ingredienti e su OpenFoodFacts" aria-label="Cerca" autocomplete="off" class="field field-lg" autofocus
+        <input id="picker-search-{{.MealID}}" type="search" name="q" placeholder="{{t "picker.search_ingredients"}}" aria-label="{{t "picker.search_label"}}" autocomplete="off" class="field field-lg" autofocus
                data-ingredient-search
+               data-placeholder-ingredient="{{t "picker.search_ingredients"}}"
+               data-placeholder-recipe="{{t "picker.search_recipes"}}"
                data-search-url="/meals/{{.MealID}}/picker"
                data-search-extra="kind=ingredient&{{$extra}}"
                data-search-target="#picker-results-{{.MealID}}"
@@ -59,11 +61,11 @@
       </label>
       {{template "scan_button" (printf "#picker-search-%d" .MealID)}}
     </div>
-    <p id="picker-spinner-{{.MealID}}" class="hidden text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco anche su OpenFoodFacts…</p>
+    <p id="picker-spinner-{{.MealID}}" class="hidden text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>{{t "picker.searching_off"}}</p>
   </div>
   <div id="picker-results-{{.MealID}}" data-picker-list aria-live="polite" class="overflow-y-auto min-h-0 grow pb-2"
        hx-get="/meals/{{.MealID}}/picker?kind=ingredient&q=&{{$extra}}" hx-trigger="load" hx-swap="innerHTML">
-    <p class="px-5 py-8 text-center text-muted animate-pulse">Carico…</p>
+    <p class="px-5 py-8 text-center text-muted animate-pulse">{{t "picker.loading"}}</p>
   </div>
 </div>
 {{end}}

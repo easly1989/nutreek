@@ -24,7 +24,7 @@ func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 	qtyStr := r.PostFormValue("quantity")
 	qty, err := parseNonNegFloat(qtyStr)
 	if err != nil || qty <= 0 {
-		a.flashAndBack(w, r, weekStart, "Quantita' non valida.")
+		a.flashAndBack(w, r, weekStart, "week.flash.invalid_quantity")
 		return
 	}
 
@@ -34,7 +34,7 @@ func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PostFormValue("ref_id")
 		refID, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil || refID <= 0 {
-			a.flashAndBack(w, r, weekStart, "Seleziona una ricetta.")
+			a.flashAndBack(w, r, weekStart, "week.flash.select_recipe")
 			return
 		}
 		rPtr = &refID
@@ -43,7 +43,7 @@ func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 		if barcode != "" {
 			ingID, err := a.resolveOFFBarcode(r.Context(), barcode)
 			if err != nil {
-				a.flashAndBack(w, r, weekStart, "Import OFF fallito: "+err.Error())
+				a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.off_import_failed", "Error", err.Error()))
 				return
 			}
 			iPtr = &ingID
@@ -54,13 +54,13 @@ func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 			}
 			refID, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil || refID <= 0 {
-				a.flashAndBack(w, r, weekStart, "Seleziona un ingrediente.")
+				a.flashAndBack(w, r, weekStart, "week.flash.select_ingredient")
 				return
 			}
 			iPtr = &refID
 		}
 	default:
-		a.flashAndBack(w, r, weekStart, "Tipo non valido.")
+		a.flashAndBack(w, r, weekStart, "week.flash.invalid_type")
 		return
 	}
 
@@ -74,7 +74,7 @@ func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := a.WeeklyPlans.AddCheat(r.Context(), mealID, user.ID, rPtr, iPtr, qty); err != nil {
-		a.flashAndBack(w, r, weekStart, "Impossibile aggiungere lo sgarro: "+err.Error())
+		a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.cheat_add_failed", "Error", err.Error()))
 		return
 	}
 	day, dayErr := a.dayIndexFromMealID(r, mealID)
@@ -102,7 +102,7 @@ func (a *App) handleRemoveMealCheat(w http.ResponseWriter, r *http.Request) {
 		 WHERE mci.id = ?`, cheatID).Scan(&day)
 	if err := a.WeeklyPlans.RemoveCheat(r.Context(), cheatID, user.ID); err != nil {
 		if errors.Is(err, db.ErrCheatNotFound) {
-			http.Error(w, "sgarro non trovato", http.StatusNotFound)
+			http.Error(w, a.t(r, "week.error.cheat_not_found"), http.StatusNotFound)
 			return
 		}
 		a.serverError(w, r, err)
