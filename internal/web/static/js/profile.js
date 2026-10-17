@@ -48,10 +48,11 @@
     if (bmi < 30.0) return 'Sovrappeso';
     return 'Obesità';
   }
-  // Italian-style numbers: 1.690, 23,6 (useGrouping "always": without it, 1690
-  // would stay without a dot).
+  // Numbers in the page language: 1.690 / 1,690 (useGrouping "always": without
+  // it, 1690 would stay without a separator in Italian).
+  const LANG = document.documentElement.lang || 'it';
   function fmt(v, d) {
-    return Number(v).toLocaleString('it-IT', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0, useGrouping: 'always' });
+    return Number(v).toLocaleString(LANG, { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0, useGrouping: 'always' });
   }
   function getActivityFactor() {
     const sel = el('f-activity');
