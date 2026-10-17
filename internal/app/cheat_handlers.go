@@ -43,7 +43,7 @@ func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 		if barcode != "" {
 			ingID, err := a.resolveOFFBarcode(r.Context(), barcode)
 			if err != nil {
-				a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.off_import_failed", "Error", err.Error()))
+				a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.off_import_failed", "Error", a.errText(r, err)))
 				return
 			}
 			iPtr = &ingID
@@ -74,7 +74,7 @@ func (a *App) handleAddMealCheat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := a.WeeklyPlans.AddCheat(r.Context(), mealID, user.ID, rPtr, iPtr, qty); err != nil {
-		a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.cheat_add_failed", "Error", err.Error()))
+		a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.cheat_add_failed", "Error", a.errText(r, err)))
 		return
 	}
 	day, dayErr := a.dayIndexFromMealID(r, mealID)

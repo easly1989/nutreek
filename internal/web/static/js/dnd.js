@@ -12,11 +12,11 @@
   "use strict";
 
   if (typeof Sortable === "undefined") {
-    console.warn("Sortable non caricato: drag-and-drop disabilitato.");
+    console.warn("Sortable not loaded: drag and drop is off.");
     return;
   }
   if (typeof htmx === "undefined") {
-    console.warn("htmx non caricato: drag-and-drop disabilitato.");
+    console.warn("htmx not loaded: drag and drop is off.");
     return;
   }
 

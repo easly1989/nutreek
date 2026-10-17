@@ -129,6 +129,14 @@ func funcMap(lang string) template.FuncMap {
 			}
 			return i18n.TOr(lang, "reference."+kind+"."+code, name)
 		},
+		// planName shows a nutrition plan's name: the one every user's first plan
+		// gets from the database (migrations 0017, 0025) is translated.
+		"planName": func(name string) string {
+			if name == "Piano Nutrizionista" {
+				return i18n.T(lang, "coach.plans.default_name")
+			}
+			return name
+		},
 		"dayLabel": func(d int) string { return dayLabel(lang, d) },
 		// row passes a row template the row and the page that holds it
 		// (CSRF, week): html/template does not allow struct literals.

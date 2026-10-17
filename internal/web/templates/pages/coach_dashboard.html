@@ -23,7 +23,7 @@
             {{$assigned := .AssignedPlanID}}
             <select name="plan_id" class="field h-[34px] text-[13px]" data-autosubmit aria-label="{{t "coach.clients.plan_of" "Name" .Client.DisplayName}}">
               <option value="">{{t "coach.clients.own_plan"}}</option>
-              {{range $.Plans}}<option value="{{.ID}}"{{if and $assigned (eq .ID (deref $assigned))}} selected{{end}}>{{.Name}}</option>{{end}}
+              {{range $.Plans}}<option value="{{.ID}}"{{if and $assigned (eq .ID (deref $assigned))}} selected{{end}}>{{planName .Name}}</option>{{end}}
             </select>
             <noscript><button class="btn-secondary h-[34px]">{{t "coach.clients.assign"}}</button></noscript>
           </form>
@@ -55,7 +55,7 @@
       <ul class="border-t border-border divide-y divide-border">
         {{range .Plans}}{{$n := index $.PlanClients .ID}}
         <li class="grid grid-cols-[minmax(0,1fr)_auto_32px] gap-3 items-center px-4 py-2.5">
-          <span class="flex flex-col min-w-0"><b class="truncate">{{.Name}}</b><span class="text-[12.5px] text-muted">{{if eq $n 0}}{{t "coach.plans.no_clients"}}{{else}}{{t "coach.plans.client_count" "Count" $n}}{{end}}</span></span>
+          <span class="flex flex-col min-w-0"><b class="truncate">{{planName .Name}}</b><span class="text-[12.5px] text-muted">{{if eq $n 0}}{{t "coach.plans.no_clients"}}{{else}}{{t "coach.plans.client_count" "Count" $n}}{{end}}</span></span>
           {{if .IsActive}}
           <a href="/piano-nutrizionale" class="chip chip-soft" title="{{t "coach.plans.in_editor_title"}}">{{t "coach.plans.in_editor"}}</a>
           {{else}}
@@ -65,18 +65,18 @@
           </form>
           {{end}}
           <div class="relative">
-            <button type="button" class="icon-action" data-popover="plan-menu-{{.ID}}" aria-expanded="false" aria-controls="plan-menu-{{.ID}}" aria-label="{{t "coach.plans.actions" "Name" .Name}}">{{template "icon" "i-dots"}}</button>
+            <button type="button" class="icon-action" data-popover="plan-menu-{{.ID}}" aria-expanded="false" aria-controls="plan-menu-{{.ID}}" aria-label="{{t "coach.plans.actions" "Name" (planName .Name)}}">{{template "icon" "i-dots"}}</button>
             <div id="plan-menu-{{.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-[260px] z-40 p-1.5 flex flex-col gap-0.5">
               <details>
                 <summary class="nav-link cursor-pointer list-none [&::-webkit-details-marker]:hidden">{{template "icon" "i-edit"}}{{t "coach.plans.rename"}}</summary>
                 <form method="post" action="/coach/plans/{{.ID}}/rename" class="flex gap-2 px-2.5 pt-1 pb-2">
                   <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                  <input name="name" value="{{.Name}}" required maxlength="200" aria-label="{{t "coach.plans.new_name"}}" class="field">
+                  <input name="name" value="{{planName .Name}}" required maxlength="200" aria-label="{{t "coach.plans.new_name"}}" class="field">
                   <button class="btn-primary shrink-0">{{t "coach.plans.save"}}</button>
                 </form>
               </details>
               {{if not .IsActive}}
-              <form method="post" action="/coach/plans/{{.ID}}/delete" data-confirm="{{t "coach.plans.delete_confirm" "Name" .Name}}">
+              <form method="post" action="/coach/plans/{{.ID}}/delete" data-confirm="{{t "coach.plans.delete_confirm" "Name" (planName .Name)}}">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                 <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}{{t "coach.plans.delete"}}</button>
               </form>
