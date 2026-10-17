@@ -1,14 +1,14 @@
-{{define "title"}}Ricette — Nutreek{{end}}
+{{define "title"}}{{t "recipes.title"}} — Nutreek{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="h1">Ricette</h1>
-      <p class="text-muted">{{.MineN}} {{if eq .MineN 1}}tua ricetta{{else}}tue ricette{{end}}{{if .OthersN}}, {{.OthersN}} {{if eq .OthersN 1}}pubblica{{else}}pubbliche{{end}} di altri{{end}}</p>
+      <h1 class="h1">{{t "recipes.title"}}</h1>
+      <p class="text-muted">{{t "recipes.list.mine" "Count" .MineN}}{{if .OthersN}}, {{t "recipes.list.others" "Count" .OthersN}}{{end}}</p>
     </div>
     <div class="flex items-center gap-2">
-      <a href="/recipes/new#importa" class="btn-secondary">{{template "icon" "i-link"}}Importa da URL</a>
-      <a href="/recipes/new" class="btn-primary">{{template "icon" "i-plus"}}Nuova ricetta</a>
+      <a href="/recipes/new#importa" class="btn-secondary">{{template "icon" "i-link"}}{{t "recipes.import_from_url"}}</a>
+      <a href="/recipes/new" class="btn-primary">{{template "icon" "i-plus"}}{{t "recipes.new"}}</a>
     </div>
   </div>
 
@@ -18,14 +18,14 @@
     <input type="hidden" name="f" value="{{.Filter}}">
     <label class="field-ico">
       {{template "icon" "i-search"}}
-      <input type="search" name="q" value="{{.Query}}" placeholder="Cerca una ricetta" aria-label="Cerca una ricetta"
+      <input type="search" name="q" value="{{.Query}}" placeholder="{{t "recipes.search"}}" aria-label="{{t "recipes.search"}}"
              class="field field-lg" autocomplete="off"
              hx-get="/recipes" hx-trigger="input changed delay:200ms, search"
              hx-include="closest form" hx-target="#recipe-results" hx-swap="outerHTML" hx-push-url="true">
     </label>
     <div class="flex flex-wrap gap-2">
       {{range .Filters}}
-        <a href="/recipes?f={{.Key}}{{with $.Query}}&q={{.}}{{end}}" class="filter{{if .On}} is-on{{end}}"{{if .On}} aria-current="page"{{end}}>{{.Label}} <span class="cnt">{{.Count}}</span></a>
+        <a href="/recipes?f={{.Key}}{{with $.Query}}&q={{.}}{{end}}" class="filter{{if .On}} is-on{{end}}"{{if .On}} aria-current="page"{{end}}>{{t .Label}} <span class="cnt">{{.Count}}</span></a>
       {{end}}
     </div>
   </form>
@@ -37,12 +37,19 @@
 (function () {
   'use strict';
 
+  // The texts come translated from the bulk form's data-msg-* attributes;
+  // {n} stands for the count.
+  function msg(form, one, other, n) {
+    return (n === 1 ? form.dataset[one] : form.dataset[other]).replace('{n}', n);
+  }
+
   function refreshToolbar() {
+    var form = document.getElementById('recipes-bulk-form');
     var checked = document.querySelectorAll('[data-recipes-checkbox]:checked');
     var toolbar = document.querySelector('[data-recipes-toolbar]');
     var countEl = document.querySelector('[data-recipes-selected-count]');
-    if (!toolbar || !countEl) return;
-    countEl.textContent = checked.length === 1 ? '1 ricetta selezionata' : checked.length + ' ricette selezionate';
+    if (!form || !toolbar || !countEl) return;
+    countEl.textContent = msg(form, 'msgSelectedOne', 'msgSelectedOther', checked.length);
     toolbar.classList.toggle('hidden', checked.length === 0);
     var all = document.querySelector('[data-recipes-select-all]');
     var boxes = document.querySelectorAll('[data-recipes-checkbox]');
@@ -73,16 +80,16 @@
     if (checked.length === 0) return;
     var usages = 0;
     checked.forEach(function (cb) { usages += parseInt(cb.dataset.usages || '0', 10); });
-    var msg = checked.length === 1 ? 'Eliminare la ricetta selezionata?' : 'Eliminare ' + checked.length + ' ricette?';
-    if (usages > 0) msg += ' Sono usate in ' + usages + (usages === 1 ? ' voce' : ' voci') + ' dei piani settimanali, che verranno rimosse.';
-    msg += ' L’operazione non è reversibile.';
-    window._showConfirm(msg, function () {
+    var text = msg(form, 'msgDeleteOne', 'msgDeleteOther', checked.length);
+    if (usages > 0) text += ' ' + msg(form, 'msgUsedOne', 'msgUsedOther', usages);
+    text += ' ' + form.dataset.msgIrreversible;
+    window._showConfirm(text, function () {
       form.dataset.confirmed = '1';
       form.requestSubmit ? form.requestSubmit() : form.submit();
     });
   }, true);
 
-  // Dopo la ricerca live la barra di selezione riparte da zero.
+  // After a live search the selection bar starts from zero.
   document.body.addEventListener('htmx:afterSettle', refreshToolbar);
 }());
 </script>
@@ -92,51 +99,55 @@
 <div id="recipe-results" class="flex flex-col gap-3">
   {{if .Rows}}
     {{- $mine := eq .Filter "mine" "used" "public" -}}
-    <form id="recipes-bulk-form" method="post" action="/recipes/bulk-delete" class="flex flex-col gap-3">
+    <form id="recipes-bulk-form" method="post" action="/recipes/bulk-delete" class="flex flex-col gap-3"
+          data-msg-selected-one="{{t "recipes.bulk.selected_one"}}" data-msg-selected-other="{{t "recipes.bulk.selected_other"}}"
+          data-msg-delete-one="{{t "recipes.bulk.delete_one"}}" data-msg-delete-other="{{t "recipes.bulk.delete_other"}}"
+          data-msg-used-one="{{t "recipes.bulk.used_one"}}" data-msg-used-other="{{t "recipes.bulk.used_other"}}"
+          data-msg-irreversible="{{t "recipes.delete.irreversible"}}">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
       {{if $mine}}
       <div data-recipes-toolbar class="selbar hidden" role="status">
-        <span data-recipes-selected-count class="grow">0 ricette selezionate</span>
-        <button type="button" data-recipes-clear class="btn-ghost h-[30px] px-2.5 text-[12.5px]">Deseleziona</button>
-        <button type="submit" class="btn-danger h-[30px] px-2.5 text-[12.5px]">{{template "icon_sm" "i-trash"}}Elimina</button>
+        <span data-recipes-selected-count class="grow"></span>
+        <button type="button" data-recipes-clear class="btn-ghost h-[30px] px-2.5 text-[12.5px]">{{t "recipes.bulk.clear"}}</button>
+        <button type="submit" class="btn-danger h-[30px] px-2.5 text-[12.5px]">{{template "icon_sm" "i-trash"}}{{t "recipes.bulk.delete"}}</button>
       </div>
       {{end}}
 
       <div class="card divide-y divide-border">
         <div class="hidden lg:grid grid-cols-[18px_minmax(0,1fr)_96px_180px_32px] gap-3.5 items-center min-h-[38px] pl-4 pr-3 text-[12.5px] font-semibold text-muted">
-          {{if $mine}}<input type="checkbox" class="check" data-recipes-select-all aria-label="Seleziona tutte">{{else}}<span></span>{{end}}
-          <span>Nome</span>
-          <span class="text-right">kcal / porzione</span>
-          <span>Macro per porzione</span>
+          {{if $mine}}<input type="checkbox" class="check" data-recipes-select-all aria-label="{{t "recipes.table.select_all"}}">{{else}}<span></span>{{end}}
+          <span>{{t "recipes.table.name"}}</span>
+          <span class="text-right">{{t "recipes.table.kcal_per_serving"}}</span>
+          <span>{{t "recipes.table.macros_per_serving"}}</span>
           <span></span>
         </div>
         {{range .Rows}}
           <div class="grid grid-cols-[minmax(0,1fr)_auto_32px] lg:grid-cols-[18px_minmax(0,1fr)_96px_180px_32px] gap-x-3 lg:gap-x-3.5 gap-y-1 items-center max-lg:[&:nth-child(2)]:!border-t-0 min-h-[60px] py-2.5 pl-3.5 lg:pl-4 pr-2 lg:pr-3">
             {{if .Mine}}
               <input type="checkbox" class="check hidden lg:block" name="recipe_id" value="{{.Recipe.ID}}"
-                     data-recipes-checkbox data-usages="{{.Usages}}" aria-label="Seleziona {{.Recipe.Name}}">
+                     data-recipes-checkbox data-usages="{{.Usages}}" aria-label="{{t "recipes.row.select" "Name" .Recipe.Name}}">
             {{else}}<span class="hidden lg:block"></span>{{end}}
             <div class="flex flex-col gap-1 min-w-0">
               <a href="/recipes/{{.Recipe.ID}}" class="font-semibold hover:underline truncate">{{.Recipe.Name}}</a>
               <span class="flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
-                {{.Recipe.Servings}} {{if eq .Recipe.Servings 1}}porzione{{else}}porzioni{{end}}
-                {{if and .Mine (gt .Usages 0)}}<span class="chip chip-n">In uso in {{.Usages}} {{if eq .Usages 1}}voce{{else}}voci{{end}}</span>{{end}}
-                {{if and .Mine .Recipe.IsPublic}}<span class="chip chip-soft">Pubblica</span>{{end}}
+                {{t "recipes.servings" "Count" .Recipe.Servings}}
+                {{if and .Mine (gt .Usages 0)}}<span class="chip chip-n">{{t "recipes.in_use" "Count" .Usages}}</span>{{end}}
+                {{if and .Mine .Recipe.IsPublic}}<span class="chip chip-soft">{{t "recipes.public"}}</span>{{end}}
               </span>
             </div>
             <span class="text-right tabular-nums whitespace-nowrap"><b>{{num .PerServing.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal</span></span>
             <span class="col-span-3 lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums">
-              <span><b class="text-prot font-semibold">P</b> {{num .PerServing.Protein}} g</span>
-              <span><b class="text-carb font-semibold">C</b> {{num .PerServing.Carbs}} g</span>
-              <span><b class="text-fat font-semibold">G</b> {{num .PerServing.Fat}} g</span>
+              <span><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{num .PerServing.Protein}} g</span>
+              <span><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num .PerServing.Carbs}} g</span>
+              <span><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{num .PerServing.Fat}} g</span>
             </span>
             <div class="relative row-start-1 col-start-3 lg:row-start-auto lg:col-start-auto">
-              <button type="button" class="icon-action" data-popover="recipe-menu-{{.Recipe.ID}}" aria-expanded="false" aria-controls="recipe-menu-{{.Recipe.ID}}" aria-label="Azioni su {{.Recipe.Name}}">{{template "icon" "i-dots"}}</button>
+              <button type="button" class="icon-action" data-popover="recipe-menu-{{.Recipe.ID}}" aria-expanded="false" aria-controls="recipe-menu-{{.Recipe.ID}}" aria-label="{{t "recipes.row.actions" "Name" .Recipe.Name}}">{{template "icon" "i-dots"}}</button>
               <div id="recipe-menu-{{.Recipe.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5 flex flex-col">
-                <a href="/recipes/{{.Recipe.ID}}" class="nav-link">{{template "icon" (or (and .Mine "i-edit") "i-recipes")}}{{if .Mine}}Modifica{{else}}Apri{{end}}</a>
-                <button type="button" class="nav-link w-full" hx-get="/recipes/{{.Recipe.ID}}/duplicate" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-copy"}}Duplica</button>
-                {{if .Mine}}<button type="submit" form="recipe-delete-{{.Recipe.ID}}" class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina</button>{{end}}
+                <a href="/recipes/{{.Recipe.ID}}" class="nav-link">{{template "icon" (or (and .Mine "i-edit") "i-recipes")}}{{if .Mine}}{{t "recipes.row.edit"}}{{else}}{{t "recipes.row.open"}}{{end}}</a>
+                <button type="button" class="nav-link w-full" hx-get="/recipes/{{.Recipe.ID}}/duplicate" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-copy"}}{{t "recipes.row.duplicate"}}</button>
+                {{if .Mine}}<button type="submit" form="recipe-delete-{{.Recipe.ID}}" class="nav-link w-full text-danger">{{template "icon" "i-trash"}}{{t "recipes.row.delete"}}</button>{{end}}
               </div>
             </div>
           </div>
@@ -147,19 +158,19 @@
          them with the form="" attribute. */}}
     {{range .Rows}}{{if .Mine}}
       <form id="recipe-delete-{{.Recipe.ID}}" method="post" action="/recipes/{{.Recipe.ID}}/delete" class="hidden"
-            data-confirm="Eliminare la ricetta «{{.Recipe.Name}}»?{{if gt .Usages 0}} È usata in {{.Usages}} {{if eq .Usages 1}}voce{{else}}voci{{end}} dei piani settimanali, che verranno rimosse.{{end}} L’operazione non è reversibile.">
+            data-confirm="{{t "recipes.delete.confirm" "Name" .Recipe.Name}}{{if gt .Usages 0}} {{t "recipes.delete.used" "Count" .Usages}}{{end}} {{t "recipes.delete.irreversible"}}">
         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
       </form>
     {{end}}{{end}}
   {{else if .Query}}
-    <p class="card px-6 py-10 text-center text-muted">Nessuna ricetta trovata per «{{.Query}}».</p>
+    <p class="card px-6 py-10 text-center text-muted">{{t "recipes.empty.none_for" "Query" .Query}}</p>
   {{else if eq .Filter "mine"}}
     <div class="card border-dashed px-6 py-12 text-center flex flex-col items-center gap-3">
-      <p class="text-muted">Non hai ancora nessuna ricetta.</p>
-      <a href="/recipes/new" class="btn-primary">{{template "icon" "i-plus"}}Crea la prima ricetta</a>
+      <p class="text-muted">{{t "recipes.empty.first"}}</p>
+      <a href="/recipes/new" class="btn-primary">{{template "icon" "i-plus"}}{{t "recipes.empty.create_first"}}</a>
     </div>
   {{else}}
-    <p class="card px-6 py-10 text-center text-muted">Nessuna ricetta in questo elenco.</p>
+    <p class="card px-6 py-10 text-center text-muted">{{t "recipes.empty.list"}}</p>
   {{end}}
 </div>
 {{end}}

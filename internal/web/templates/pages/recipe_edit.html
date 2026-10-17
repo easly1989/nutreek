@@ -3,25 +3,25 @@
 <div class="flex flex-col gap-4 lg:gap-[18px]">
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0">
-      <a href="/recipes" class="crumb">{{template "icon_sm" "i-chevron-left"}}Ricette</a>
+      <a href="/recipes" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "recipes.title"}}</a>
       <h1 class="h1">{{.Recipe.Name}}</h1>
       <p class="flex flex-wrap items-center gap-2 mt-1 text-muted">
-        Di {{.Recipe.AuthorName}}
-        <span class="chip chip-n">{{.Recipe.Servings}} {{if eq .Recipe.Servings 1}}porzione{{else}}porzioni{{end}}</span>
-        {{if .Recipe.IsPublic}}<span class="chip chip-soft">Pubblica</span>{{end}}
-        {{if .Recipe.IsDraft}}<span class="chip chip-warn">Bozza</span>{{end}}
+        {{t "recipes.edit.by" "Author" .Recipe.AuthorName}}
+        <span class="chip chip-n">{{t "recipes.servings" "Count" .Recipe.Servings}}</span>
+        {{if .Recipe.IsPublic}}<span class="chip chip-soft">{{t "recipes.public"}}</span>{{end}}
+        {{if .Recipe.IsDraft}}<span class="chip chip-warn">{{t "recipes.draft"}}</span>{{end}}
       </p>
     </div>
     <div class="flex items-center gap-2">
-      <button type="button" class="btn-secondary" hx-get="/recipes/{{.Recipe.ID}}/duplicate" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-copy"}}Duplica</button>
+      <button type="button" class="btn-secondary" hx-get="/recipes/{{.Recipe.ID}}/duplicate" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-copy"}}{{t "recipes.row.duplicate"}}</button>
       {{if .CanEdit}}
       <div class="relative">
-        <button type="button" class="btn-secondary btn-icon" data-popover="recipe-actions" aria-expanded="false" aria-controls="recipe-actions" aria-label="Altre azioni">{{template "icon" "i-dots"}}</button>
+        <button type="button" class="btn-secondary btn-icon" data-popover="recipe-actions" aria-expanded="false" aria-controls="recipe-actions" aria-label="{{t "recipes.edit.more_actions"}}">{{template "icon" "i-dots"}}</button>
         <div id="recipe-actions" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5">
           <form method="post" action="/recipes/{{.Recipe.ID}}/delete"
-                data-confirm="Eliminare la ricetta «{{.Recipe.Name}}»?{{if gt .Usages 0}} È usata in {{.Usages}} {{if eq .Usages 1}}voce{{else}}voci{{end}} dei piani settimanali, che verranno rimosse.{{end}} L’operazione non è reversibile.">
+                data-confirm="{{t "recipes.delete.confirm" "Name" .Recipe.Name}}{{if gt .Usages 0}} {{t "recipes.delete.used" "Count" .Usages}}{{end}} {{t "recipes.delete.irreversible"}}">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina ricetta</button>
+            <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}{{t "recipes.edit.delete"}}</button>
           </form>
         </div>
       </div>
@@ -30,7 +30,7 @@
   </div>
 
   {{if .Recipe.IsDraft}}
-    <p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-3"><strong>Bozza non confermata.</strong> È una copia non ancora salvata: cambia almeno un ingrediente (aggiungi, rimuovi o cambia quantità) per confermarla. Finché resta una bozza non compare negli elenchi né nei piani settimanali.</p>
+    <p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-3"><strong>{{t "recipes.edit.draft_title"}}</strong> {{t "recipes.edit.draft_text"}}</p>
   {{end}}
   {{if .Error}}<p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-3" role="alert">{{.Error}}</p>{{end}}
 
@@ -38,8 +38,8 @@
     <div class="flex flex-col gap-3 min-w-0">
       <section class="card">
         <div class="flex items-center gap-2.5 px-4 py-3 border-b border-border">
-          <h2 class="h2">Ingredienti</h2>
-          <span class="ml-auto text-[12.5px] text-muted">quantità per la ricetta intera</span>
+          <h2 class="h2">{{t "recipes.edit.ingredients"}}</h2>
+          <span class="ml-auto text-[12.5px] text-muted">{{t "recipes.edit.quantities_note"}}</span>
         </div>
         {{if .Recipe.Items}}
           <div class="divide-y divide-border">
@@ -51,14 +51,14 @@
                 {{if $.CanEdit}}
                   <form method="post" action="/recipes/{{$.Recipe.ID}}/items/{{.ID}}/delete">
                     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                    <button class="icon-action" aria-label="Rimuovi {{.Ingredient.Name}}" title="Rimuovi">{{template "icon_sm" "i-trash"}}</button>
+                    <button class="icon-action" aria-label="{{t "recipes.edit.remove_item" "Name" .Ingredient.Name}}" title="{{t "recipes.edit.remove"}}">{{template "icon_sm" "i-trash"}}</button>
                   </form>
                 {{else}}<span></span>{{end}}
               </div>
             {{end}}
           </div>
         {{else}}
-          <p class="px-4 py-8 text-center text-muted">Nessun ingrediente nella ricetta.{{if .CanEdit}} Cercane uno qui sotto.{{end}}</p>
+          <p class="px-4 py-8 text-center text-muted">{{t "recipes.edit.no_ingredients"}}{{if .CanEdit}} {{t "recipes.edit.search_below"}}{{end}}</p>
         {{end}}
 
         {{if .CanEdit}}
@@ -68,21 +68,21 @@
               <label class="field-ico grow">
                 {{template "icon" "i-search"}}
                 <input id="recipe-ing-search" type="search" name="q" class="field" autocomplete="off"
-                       placeholder="Aggiungi un ingrediente: cerca tra i tuoi e su OpenFoodFacts"
-                       aria-label="Aggiungi un ingrediente"
+                       placeholder="{{t "recipes.edit.add_placeholder"}}"
+                       aria-label="{{t "recipes.edit.add_label"}}"
                        data-ingredient-search
                        data-search-url="/recipes/{{.Recipe.ID}}/picker"
                        data-search-target="#picker-results"
                        data-search-spinner="#recipe-picker-spinner">
               </label>
               {{template "scan_button" "#recipe-ing-search"}}
-              <button type="button" class="btn-ghost shrink-0 px-2.5 sm:px-3.5" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML" aria-label="Nuovo ingrediente" title="Nuovo ingrediente">{{template "icon" "i-plus"}}<span class="hidden sm:inline">Nuovo ingrediente</span></button>
+              <button type="button" class="btn-ghost shrink-0 px-2.5 sm:px-3.5" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML" aria-label="{{t "ingredients.new"}}" title="{{t "ingredients.new"}}">{{template "icon" "i-plus"}}<span class="hidden sm:inline">{{t "ingredients.new"}}</span></button>
             </div>
-            <p id="recipe-picker-spinner" class="hidden px-4 pb-2 text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco anche su OpenFoodFacts…</p>
+            <p id="recipe-picker-spinner" class="hidden px-4 pb-2 text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>{{t "ingredients.search.searching_off"}}</p>
             <div id="picker-results" data-picker-list aria-live="polite" class="empty:hidden border-t border-border pb-1"></div>
           </div>
           <script>
-          // Dopo «Nuovo ingrediente» il picker si aggiorna con la query corrente.
+          // After "New ingredient" the picker refreshes with the current query.
           window.addEventListener('ingredient-created', function () {
             var search = document.getElementById('recipe-ing-search');
             htmx.ajax('GET', '/recipes/{{.Recipe.ID}}/picker?q=' + encodeURIComponent((search && search.value) || ''), {
@@ -96,18 +96,18 @@
       {{if .CanEdit}}
       <form method="post" action="/recipes/{{.Recipe.ID}}" class="card p-4 flex flex-col gap-3">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <h2 class="h2">Dettagli</h2>
-        <label class="lab">Nome<input name="name" required value="{{.Form.Name}}" class="field"></label>
-        <label class="lab">Descrizione<textarea name="description" rows="2" class="field">{{.Form.Description}}</textarea></label>
+        <h2 class="h2">{{t "recipes.form.details"}}</h2>
+        <label class="lab">{{t "recipes.form.name"}}<input name="name" required value="{{.Form.Name}}" class="field"></label>
+        <label class="lab">{{t "recipes.form.description"}}<textarea name="description" rows="2" class="field">{{.Form.Description}}</textarea></label>
         <div class="flex flex-wrap items-end gap-4">
-          <label class="lab w-[120px]">Porzioni<input name="servings" required inputmode="numeric" value="{{.Form.Servings}}" class="field tabular-nums"></label>
-          <label class="flex items-center gap-2 h-9 cursor-pointer"><input type="checkbox" name="is_public" class="toggle" {{if .Form.IsPublic}}checked{{end}}>Visibile agli altri utenti</label>
-          <button class="btn-primary ml-auto">Salva</button>
+          <label class="lab w-[120px]">{{t "recipes.form.servings"}}<input name="servings" required inputmode="numeric" value="{{.Form.Servings}}" class="field tabular-nums"></label>
+          <label class="flex items-center gap-2 h-9 cursor-pointer"><input type="checkbox" name="is_public" class="toggle" {{if .Form.IsPublic}}checked{{end}}>{{t "recipes.form.visible"}}</label>
+          <button class="btn-primary ml-auto">{{t "recipes.form.save"}}</button>
         </div>
       </form>
       {{else if .Recipe.Description}}
       <section class="card p-4 flex flex-col gap-2">
-        <h2 class="h2">Descrizione</h2>
+        <h2 class="h2">{{t "recipes.form.description"}}</h2>
         <p class="whitespace-pre-line">{{.Recipe.Description}}</p>
       </section>
       {{end}}
@@ -115,7 +115,7 @@
 
     <aside class="flex flex-col gap-3 order-first lg:order-none">
       <section class="card p-4 flex flex-col gap-3">
-        <div class="flex items-center"><h2 class="h2">Per porzione</h2><span class="ml-auto text-[12.5px] text-muted">1 di {{.Recipe.Servings}}</span></div>
+        <div class="flex items-center"><h2 class="h2">{{t "recipes.edit.per_serving"}}</h2><span class="ml-auto text-[12.5px] text-muted">{{t "recipes.edit.one_of" "Servings" .Recipe.Servings}}</span></div>
         <p><span class="text-[28px] font-bold tabular-nums">{{num .PerServing.Kcal}}</span> <span class="text-muted">kcal</span></p>
         <span class="flex h-2 rounded-full overflow-hidden bg-track" aria-hidden="true">
           <span class="bg-prot" style="width:{{printf "%.1f" .Shares.Protein}}%"></span>
@@ -123,16 +123,16 @@
           <span class="bg-fat" style="width:{{printf "%.1f" .Shares.Fat}}%"></span>
         </span>
         <div class="flex flex-col gap-2 tabular-nums">
-          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-prot"></span>Proteine<span class="ml-auto"><b>{{num .PerServing.Protein}} g</b> <span class="text-muted">{{num .Shares.Protein}}%</span></span></div>
-          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-carb"></span>Carboidrati<span class="ml-auto"><b>{{num .PerServing.Carbs}} g</b> <span class="text-muted">{{num .Shares.Carbs}}%</span></span></div>
-          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-fat"></span>Grassi<span class="ml-auto"><b>{{num .PerServing.Fat}} g</b> <span class="text-muted">{{num .Shares.Fat}}%</span></span></div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-prot"></span>{{t "common.protein"}}<span class="ml-auto"><b>{{num .PerServing.Protein}} g</b> <span class="text-muted">{{num .Shares.Protein}}%</span></span></div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-carb"></span>{{t "common.carbs"}}<span class="ml-auto"><b>{{num .PerServing.Carbs}} g</b> <span class="text-muted">{{num .Shares.Carbs}}%</span></span></div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-fat"></span>{{t "common.fat"}}<span class="ml-auto"><b>{{num .PerServing.Fat}} g</b> <span class="text-muted">{{num .Shares.Fat}}%</span></span></div>
         </div>
-        <div class="flex items-center pt-2.5 border-t border-border text-[12.5px] text-muted">Ricetta intera<b class="ml-auto text-text tabular-nums">{{num .Total.Kcal}} kcal</b></div>
+        <div class="flex items-center pt-2.5 border-t border-border text-[12.5px] text-muted">{{t "recipes.edit.whole_recipe"}}<b class="ml-auto text-text tabular-nums">{{num .Total.Kcal}} kcal</b></div>
       </section>
       {{if .CanEdit}}
       <section class="card p-4 flex flex-col gap-2">
-        <h2 class="text-[14px] font-bold">Nei tuoi piani</h2>
-        <p class="text-muted">{{if gt .Usages 0}}Usata in {{.Usages}} {{if eq .Usages 1}}voce{{else}}voci{{end}} dei piani settimanali. Se la elimini, {{if eq .Usages 1}}sparisce{{else}}spariscono{{end}} anche da lì.{{else}}Non è ancora usata nei piani settimanali.{{end}}</p>
+        <h2 class="text-[14px] font-bold">{{t "recipes.edit.in_your_plans"}}</h2>
+        <p class="text-muted">{{if gt .Usages 0}}{{t "recipes.edit.usage" "Count" .Usages}}{{else}}{{t "recipes.edit.no_usage"}}{{end}}</p>
       </section>
       {{end}}
     </aside>
