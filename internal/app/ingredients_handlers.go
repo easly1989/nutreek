@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"html/template"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/i18n"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/web"
 )
@@ -61,17 +64,6 @@ func (r ingredientRow) Brand() string {
 		return r.OFF.Brand
 	}
 	return ""
-}
-
-// SourceLabel returns the label for the badge.
-func (r ingredientRow) SourceLabel() string {
-	if r.Local != nil {
-		if r.Local.Source == domain.IngredientSourceOFF {
-			return "OpenFoodFacts"
-		}
-		return "Locale"
-	}
-	return "OpenFoodFacts (importabile)"
 }
 
 // Kcal/Protein/Carbs/Fat/Unit expose the macros to the template.
@@ -369,7 +361,7 @@ func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 		AllAllergens:  allergens,
 		AllCategories: categories,
 	}
-	if err := a.Render.Render(w, http.StatusOK, "ingredients_list", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "ingredients_list", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -393,7 +385,7 @@ func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Requ
 		OFFWarning:   warn,
 		Filter:       f,
 	}
-	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "ingredient_results", data); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "ingredient_results", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -541,7 +533,7 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 	products, offErr := a.OFF.SearchByName(ctx, q)
 	if offErr != nil {
 		a.Logger.Warn("OFF search failed", "err", offErr, "q", q)
-		return rows, "Ricerca OpenFoodFacts non disponibile, mostro solo gli ingredienti locali.", nil
+		return rows, i18n.T(i18n.FromContext(ctx), "ingredients.off.search_unavailable"), nil
 	}
 	// FTS5 does a native AND across tokens + prefix match: no extra filter needed.
 	for i := range products {
@@ -577,7 +569,7 @@ func (a *App) searchBarcode(ctx context.Context, code string, live bool) ([]ingr
 		return nil, "", nil
 	case errors.Is(err, off.ErrUnavailable):
 		a.Logger.Warn("OFF barcode lookup failed", "err", err, "barcode", code)
-		return nil, "OpenFoodFacts non risponde: riprova tra poco, oppure crea l'ingrediente.", nil
+		return nil, i18n.T(i18n.FromContext(ctx), "ingredients.off.barcode_unavailable"), nil
 	case err != nil:
 		return nil, "", err
 	}
@@ -709,7 +701,7 @@ func (a *App) handleIngredientNewForm(w http.ResponseWriter, r *http.Request) {
 		Allergens:         allergens,
 		SelectedAllergens: map[int64]bool{},
 	}
-	if err := a.Render.Render(w, http.StatusOK, "ingredient_new", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "ingredient_new", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -742,37 +734,37 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if form.Name == "" {
-		a.renderIngredientError(w, r, form, "Il nome e' obbligatorio.")
+		a.renderIngredientError(w, r, form, a.t(r, "ingredients.error.name_required"))
 		return
 	}
-	if len(form.Name) > 200 {
-		a.renderIngredientError(w, r, form, "Nome troppo lungo (max 200 caratteri).")
+	if !withinLen(form.Name, MaxNameLen) {
+		a.renderIngredientError(w, r, form, a.t(r, "ingredients.error.name_too_long", "Max", MaxNameLen))
 		return
 	}
 	unit := domain.IngredientUnit(form.Unit)
 	if unit != domain.UnitGram && unit != domain.UnitMilliliter {
-		a.renderIngredientError(w, r, form, "Unita' non valida (usare g o ml).")
+		a.renderIngredientError(w, r, form, a.t(r, "ingredients.error.unit"))
 		return
 	}
 
 	kcal, err := parseNonNegFloat(form.Kcal)
 	if err != nil {
-		a.renderIngredientError(w, r, form, "Kcal/100 non valida: "+err.Error())
+		a.renderIngredientError(w, r, form, a.numberError(r, "ingredients.error.kcal", err))
 		return
 	}
 	protein, err := parseNonNegFloat(form.Protein)
 	if err != nil {
-		a.renderIngredientError(w, r, form, "Proteine/100 non valide: "+err.Error())
+		a.renderIngredientError(w, r, form, a.numberError(r, "ingredients.error.protein", err))
 		return
 	}
 	carbs, err := parseNonNegFloat(form.Carbs)
 	if err != nil {
-		a.renderIngredientError(w, r, form, "Carbo/100 non validi: "+err.Error())
+		a.renderIngredientError(w, r, form, a.numberError(r, "ingredients.error.carbs", err))
 		return
 	}
 	fat, err := parseNonNegFloat(form.Fat)
 	if err != nil {
-		a.renderIngredientError(w, r, form, "Grassi/100 non validi: "+err.Error())
+		a.renderIngredientError(w, r, form, a.numberError(r, "ingredients.error.fat", err))
 		return
 	}
 
@@ -787,7 +779,7 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		id := user.ID
 		creatorID = &id
 		if categoryID, err = a.ownCategory(r.Context(), user.ID, form.CategoryID); err != nil {
-			a.renderIngredientError(w, r, form, "Categoria non valida: scegline una delle tue.")
+			a.renderIngredientError(w, r, form, a.t(r, "ingredients.error.category"))
 			return
 		}
 	}
@@ -825,7 +817,7 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		_ = a.Categories.SetIngredientAllergens(r.Context(), ingID, form.AllergenIDs)
 	}
 
-	a.Sessions.Put(r.Context(), "flash", "Ingrediente creato.")
+	a.Sessions.Put(r.Context(), "flash", "ingredients.flash.created")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 
@@ -834,7 +826,7 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) {
 	barcode := strings.TrimSpace(r.PostFormValue("barcode"))
 	if barcode == "" {
-		http.Error(w, "barcode mancante", http.StatusBadRequest)
+		http.Error(w, a.t(r, "ingredients.error.barcode_missing"), http.StatusBadRequest)
 		return
 	}
 
@@ -845,7 +837,7 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if existing != nil {
-		a.Sessions.Put(r.Context(), "flash", "Ingrediente gia' presente nel DB.")
+		a.Sessions.Put(r.Context(), "flash", "ingredients.flash.already_imported")
 		http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 		return
 	}
@@ -853,19 +845,18 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 	product, err := a.OFF.GetByBarcode(r.Context(), barcode)
 	if err != nil {
 		if errors.Is(err, off.ErrNotFound) {
-			http.Error(w, "Prodotto non trovato su OpenFoodFacts", http.StatusNotFound)
+			http.Error(w, a.t(r, "ingredients.off.not_found"), http.StatusNotFound)
 			return
 		}
 		a.Logger.Error("OFF GetByBarcode failed", "err", err, "barcode", barcode)
-		http.Error(w, "OpenFoodFacts non raggiungibile, riprova fra poco.", http.StatusBadGateway)
+		http.Error(w, a.t(r, "ingredients.off.unreachable"), http.StatusBadGateway)
 		return
 	}
 	if !product.HasFullNutrients {
 		// The live API lacks the 4 macros for this barcode too (OFF data
 		// genuinely incomplete). Redirect with a flash instead of a raw error:
 		// the user can create a local ingredient by hand.
-		a.Sessions.Put(r.Context(), "flash",
-			"OpenFoodFacts non ha i macro completi per questo prodotto. Creane uno locale.")
+		a.Sessions.Put(r.Context(), "flash", "ingredients.flash.off_incomplete")
 		http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 		return
 	}
@@ -886,7 +877,7 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Ingrediente importato da OpenFoodFacts.")
+	a.Sessions.Put(r.Context(), "flash", "ingredients.flash.imported")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 
@@ -976,26 +967,30 @@ func (a *App) handleOFFMacroCheck(w http.ResponseWriter, r *http.Request) {
 
 	product, err := a.OFF.FindByBarcode(r.Context(), barcode, true)
 	if err != nil || !product.HasFullNutrients {
-		writeMacroFragment(w, false, 0, 0, 0, 0)
+		a.writeMacroFragment(w, r, false, 0, 0, 0, 0)
 		return
 	}
-	writeMacroFragment(w, true, product.Kcal, product.Protein, product.Carbs, product.Fat)
+	a.writeMacroFragment(w, r, true, product.Kcal, product.Protein, product.Carbs, product.Fat)
 }
 
 // writeMacroFragment writes the kcal and macros per 100 g of an OFF product
 // in the format of the ingredient_results rows.
-func writeMacroFragment(w http.ResponseWriter, full bool, kcal, protein, carbs, fat float64) {
+func (a *App) writeMacroFragment(w http.ResponseWriter, r *http.Request, full bool, kcal, protein, carbs, fat float64) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	esc := func(key string) string { return html.EscapeString(a.t(r, key)) }
 	if full {
 		fmt.Fprintf(w,
 			`<span class="flex items-center gap-2.5 text-[12.5px] text-muted tabular-nums">`+
 				`<span class="text-[14px] text-text"><b>%s</b> kcal</span>`+
-				`<span><b class="text-prot font-semibold">P</b> %s g</span>`+
-				`<span><b class="text-carb font-semibold">C</b> %s g</span>`+
-				`<span><b class="text-fat font-semibold">G</b> %s g</span></span>`,
-			web.FormatNum(kcal), web.FormatDec(protein, 1), web.FormatDec(carbs, 1), web.FormatDec(fat, 1))
+				`<span><b class="text-prot font-semibold">%s</b> %s g</span>`+
+				`<span><b class="text-carb font-semibold">%s</b> %s g</span>`+
+				`<span><b class="text-fat font-semibold">%s</b> %s g</span></span>`,
+			web.FormatNum(kcal),
+			esc("common.protein_short"), web.FormatDec(protein, 1),
+			esc("common.carbs_short"), web.FormatDec(carbs, 1),
+			esc("common.fat_short"), web.FormatDec(fat, 1))
 	} else {
-		fmt.Fprint(w, `<span class="text-[12.5px] text-muted">Macro non disponibili su OpenFoodFacts</span>`)
+		fmt.Fprintf(w, `<span class="text-[12.5px] text-muted">%s</span>`, esc("ingredients.row.no_macros"))
 	}
 }
 
@@ -1054,7 +1049,7 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	if data.ReadOnly {
 		data.Author = a.ingredientAuthor(r.Context(), ing, nil)
 	}
-	if err := a.Render.Render(w, http.StatusOK, "ingredient_edit", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "ingredient_edit", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -1148,41 +1143,41 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 			Allergens:         allergens,
 			SelectedAllergens: allergenIDSet(form.AllergenIDs),
 		}
-		_ = a.Render.Render(w, http.StatusUnprocessableEntity, "ingredient_edit", data)
+		_ = a.Render.Render(w, r, http.StatusUnprocessableEntity, "ingredient_edit", data)
 	}
 
 	if form.Name == "" {
-		renderEditErr("Il nome è obbligatorio.")
+		renderEditErr(a.t(r, "ingredients.error.name_required"))
 		return
 	}
-	if len(form.Name) > 200 {
-		renderEditErr("Nome troppo lungo (max 200 caratteri).")
+	if !withinLen(form.Name, MaxNameLen) {
+		renderEditErr(a.t(r, "ingredients.error.name_too_long", "Max", MaxNameLen))
 		return
 	}
 	unit := domain.IngredientUnit(form.Unit)
 	if unit != domain.UnitGram && unit != domain.UnitMilliliter {
-		renderEditErr("Unità non valida (usare g o ml).")
+		renderEditErr(a.t(r, "ingredients.error.unit"))
 		return
 	}
 
 	kcal, err := parseNonNegFloat(form.Kcal)
 	if err != nil {
-		renderEditErr("Kcal/100 non valida: " + err.Error())
+		renderEditErr(a.numberError(r, "ingredients.error.kcal", err))
 		return
 	}
 	protein, err := parseNonNegFloat(form.Protein)
 	if err != nil {
-		renderEditErr("Proteine/100 non valide: " + err.Error())
+		renderEditErr(a.numberError(r, "ingredients.error.protein", err))
 		return
 	}
 	carbs, err := parseNonNegFloat(form.Carbs)
 	if err != nil {
-		renderEditErr("Carbo/100 non validi: " + err.Error())
+		renderEditErr(a.numberError(r, "ingredients.error.carbs", err))
 		return
 	}
 	fat, err := parseNonNegFloat(form.Fat)
 	if err != nil {
-		renderEditErr("Grassi/100 non validi: " + err.Error())
+		renderEditErr(a.numberError(r, "ingredients.error.fat", err))
 		return
 	}
 
@@ -1205,7 +1200,7 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	categoryID, err := a.ownCategory(r.Context(), user.ID, form.CategoryID)
 	if err != nil {
-		renderEditErr("Categoria non valida: scegline una delle tue.")
+		renderEditErr(a.t(r, "ingredients.error.category"))
 		return
 	}
 
@@ -1222,7 +1217,7 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 	// Update the allergens (replace: an empty list removes every tag).
 	_ = a.Categories.SetIngredientAllergens(r.Context(), id, form.AllergenIDs)
 
-	a.Sessions.Put(r.Context(), "flash", "Ingrediente aggiornato.")
+	a.Sessions.Put(r.Context(), "flash", "ingredients.flash.updated")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 
@@ -1242,7 +1237,7 @@ func (a *App) saveIngredientCategoryOnly(w http.ResponseWriter, r *http.Request,
 		data := ingredientEditData{
 			authPageData:      a.baseData(r),
 			Form:              form,
-			Error:             "Categoria non valida: scegline una delle tue.",
+			Error:             a.t(r, "ingredients.error.category"),
 			IngredientID:      ing.ID,
 			IsOFF:             ing.Source == domain.IngredientSourceOFF,
 			Categories:        cats,
@@ -1251,14 +1246,14 @@ func (a *App) saveIngredientCategoryOnly(w http.ResponseWriter, r *http.Request,
 			ReadOnly:          true,
 			Author:            a.ingredientAuthor(r.Context(), ing, nil),
 		}
-		_ = a.Render.Render(w, http.StatusUnprocessableEntity, "ingredient_edit", data)
+		_ = a.Render.Render(w, r, http.StatusUnprocessableEntity, "ingredient_edit", data)
 		return
 	}
 	if err := a.Categories.SetIngredientCategory(r.Context(), user.ID, ing.ID, categoryID); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Categoria salvata.")
+	a.Sessions.Put(r.Context(), "flash", "ingredients.flash.category_saved")
 	http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
 }
 
@@ -1274,7 +1269,7 @@ func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form
 		Allergens:         allergens,
 		SelectedAllergens: allergenIDSet(form.AllergenIDs),
 	}
-	if err := a.Render.Render(w, http.StatusUnprocessableEntity, "ingredient_new", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "ingredient_new", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -1304,6 +1299,9 @@ func parseNonNegFloat(s string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return 0, errNotNumber
+	}
 	if v < 0 {
 		return 0, errNegative
 	}
@@ -1312,9 +1310,23 @@ func parseNonNegFloat(s string) (float64, error) {
 
 // errors exposed as vars to give meaningful messages without pkg errors.
 var (
-	errEmpty    = simpleErr("valore mancante")
-	errNegative = simpleErr("valore negativo")
+	errEmpty     = simpleErr("valore mancante")
+	errNegative  = simpleErr("valore negativo")
+	errNotNumber = simpleErr("non è un numero")
 )
+
+// numberError is the validation message of a number field that
+// parseNonNegFloat rejected: key names the field, err gives the reason.
+func (a *App) numberError(r *http.Request, key string, err error) string {
+	reason := "ingredients.error.not_a_number"
+	switch {
+	case errors.Is(err, errEmpty):
+		reason = "ingredients.error.missing"
+	case errors.Is(err, errNegative):
+		reason = "ingredients.error.negative"
+	}
+	return a.t(r, key, "Reason", a.t(r, reason))
+}
 
 type simpleErr string
 

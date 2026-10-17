@@ -182,7 +182,7 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 	if hasActiveTemplate {
 		data.ActiveTemplate = tpls[0].Name
 	}
-	if err := a.Render.Render(w, http.StatusOK, "piano_nutrizionale", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "piano_nutrizionale", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -305,7 +305,7 @@ func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
 			VariationID:  variationID,
 			SearchedOFF:  includeOFFParam(r),
 		}
-		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
+		if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 			a.serverError(w, r, err)
 		}
 	case "recipe":
@@ -315,7 +315,7 @@ func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data.VariationID = variationID
-		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "recipe_picker_results", data); err != nil {
+		if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "recipe_picker_results", data); err != nil {
 			a.serverError(w, r, err)
 		}
 	default:

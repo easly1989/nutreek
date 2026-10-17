@@ -12,24 +12,27 @@ import (
 	"strings"
 	"time"
 
+	"github.com/amon2126/nutreek/internal/i18n"
 	"github.com/amon2126/nutreek/internal/off"
 )
 
 // Renderer keeps the parsed templates and offers Render to write them to the
 // response. Every page is a combination of the base layout + a page file.
 type Renderer struct {
-	pages map[string]*template.Template
+	pages map[string]map[string]*template.Template // language → page → template
 }
 
 // NewRenderer loads the templates from the given filesystem (usually the
 // embed). It looks for files in templates/layouts/*.html and templates/pages/*.html.
+// Every page is parsed once per language, with a t function bound to it, so
+// {{t "key"}} works in partials without passing the language around.
 func NewRenderer(tfs fs.FS) (*Renderer, error) {
 	layoutFiles, err := fs.Glob(tfs, "templates/layouts/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("glob layouts: %w", err)
 	}
 	if len(layoutFiles) == 0 {
-		return nil, fmt.Errorf("nessun layout trovato in templates/layouts")
+		return nil, fmt.Errorf("no layout found in templates/layouts")
 	}
 	pageFiles, err := fs.Glob(tfs, "templates/pages/*.html")
 	if err != nil {
@@ -38,28 +41,45 @@ func NewRenderer(tfs fs.FS) (*Renderer, error) {
 
 	partialFiles, _ := fs.Glob(tfs, "templates/partials/*.html")
 
-	r := &Renderer{pages: make(map[string]*template.Template, len(pageFiles))}
-	for _, pageFile := range pageFiles {
-		name := strings.TrimSuffix(path.Base(pageFile), ".html")
-		files := append([]string{}, layoutFiles...)
-		files = append(files, partialFiles...)
-		files = append(files, pageFile)
-		tpl, err := template.New(name).Funcs(funcMap()).ParseFS(tfs, files...)
-		if err != nil {
-			return nil, fmt.Errorf("parse %s: %w", pageFile, err)
+	r := &Renderer{pages: make(map[string]map[string]*template.Template, len(i18n.Languages))}
+	for _, l := range i18n.Languages {
+		funcs := funcMap(l.Code)
+		pages := make(map[string]*template.Template, len(pageFiles))
+		for _, pageFile := range pageFiles {
+			name := strings.TrimSuffix(path.Base(pageFile), ".html")
+			files := append([]string{}, layoutFiles...)
+			files = append(files, partialFiles...)
+			files = append(files, pageFile)
+			tpl, err := template.New(name).Funcs(funcs).ParseFS(tfs, files...)
+			if err != nil {
+				return nil, fmt.Errorf("parse %s: %w", pageFile, err)
+			}
+			pages[name] = tpl
 		}
-		r.pages[name] = tpl
+		r.pages[l.Code] = pages
 	}
 	return r, nil
+}
+
+// page returns the template of the page in the request's language.
+func (r *Renderer) page(req *http.Request, name string) (*template.Template, error) {
+	tpl, ok := r.pages[i18n.FromContext(req.Context())][name]
+	if !ok {
+		tpl, ok = r.pages[i18n.Default][name]
+	}
+	if !ok {
+		return nil, fmt.Errorf("template %q not registered", name)
+	}
+	return tpl, nil
 }
 
 // Render writes the page with the "layout" layout. It buffers before writing
 // to the ResponseWriter so a template error does not produce a half-written
 // response (which would go out with a useless 200).
-func (r *Renderer) Render(w http.ResponseWriter, status int, name string, data any) error {
-	tpl, ok := r.pages[name]
-	if !ok {
-		return fmt.Errorf("template %q not registered", name)
+func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, name string, data any) error {
+	tpl, err := r.page(req, name)
+	if err != nil {
+		return err
 	}
 	var buf bytes.Buffer
 	if err := tpl.ExecuteTemplate(&buf, "layout", data); err != nil {
@@ -67,7 +87,7 @@ func (r *Renderer) Render(w http.ResponseWriter, status int, name string, data a
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	_, err := buf.WriteTo(w)
+	_, err = buf.WriteTo(w)
 	return err
 }
 
@@ -76,10 +96,10 @@ func (r *Renderer) Render(w http.ResponseWriter, status int, name string, data a
 // HTMX responses that insert fragments into the existing page. `page` is any
 // registered page: it only serves to locate the template, since ParseFS
 // shares the partials among all the pages.
-func (r *Renderer) RenderPartial(w http.ResponseWriter, status int, page, partial string, data any) error {
-	tpl, ok := r.pages[page]
-	if !ok {
-		return fmt.Errorf("template %q not registered", page)
+func (r *Renderer) RenderPartial(w http.ResponseWriter, req *http.Request, status int, page, partial string, data any) error {
+	tpl, err := r.page(req, page)
+	if err != nil {
+		return err
 	}
 	var buf bytes.Buffer
 	if err := tpl.ExecuteTemplate(&buf, partial, data); err != nil {
@@ -87,13 +107,17 @@ func (r *Renderer) RenderPartial(w http.ResponseWriter, status int, page, partia
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	_, err := buf.WriteTo(w)
+	_, err = buf.WriteTo(w)
 	return err
 }
 
-func funcMap() template.FuncMap {
+func funcMap(lang string) template.FuncMap {
 	return template.FuncMap{
-		"add": func(a, b int) int { return a + b },
+		// t translates a catalog key into the page's language; extra
+		// arguments are placeholder name/value pairs: {{t "x.count" "Count" 3}}.
+		"t":    func(key string, args ...any) string { return i18n.T(lang, key, args...) },
+		"lang": func() string { return lang },
+		"add":  func(a, b int) int { return a + b },
 		"dayLabel": func(d int) string {
 			switch {
 			case d == -1:

@@ -1,5 +1,5 @@
 {{define "layout"}}<!doctype html>
-<html lang="it" data-mode="{{.Appearance.Mode}}" data-accent="{{.Appearance.Accent}}">
+<html lang="{{lang}}" data-mode="{{.Appearance.Mode}}" data-accent="{{.Appearance.Accent}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -28,34 +28,35 @@
   <script src="{{asset "js/tour.js"}}" defer></script>
   {{end}}
 </head>
-<body class="bg-bg text-text min-h-screen"{{if .ShowTour}} data-show-tour="1"{{end}}>
+<body class="bg-bg text-text min-h-screen"{{if .ShowTour}} data-show-tour="1"{{end}}
+      data-confirm-ok="{{t "common.confirm"}}" data-confirm-cancel="{{t "common.cancel"}}">
   {{template "icon_sprite"}}
 
   {{if and .User (not .Bare)}}
   {{- $p := .ActiveNav -}}
 
   {{/* Sidebar: desktop only (lg). On the phone the bottom bar replaces it. */}}
-  <nav id="sidebar" aria-label="Sezioni"
+  <nav id="sidebar" aria-label="{{t "layout.nav.sections"}}"
        class="hidden lg:flex fixed inset-y-0 left-0 z-30 w-[220px] flex-col gap-5 px-3 py-5 bg-surface border-r border-border overflow-y-auto">
     {{template "brand"}}
     <ul class="flex flex-col gap-0.5">
-      {{template "nav_link" (nav $p "/" "Settimana" "i-week")}}
-      {{template "nav_link" (nav $p "/recipes" "Ricette" "i-recipes")}}
-      {{template "nav_link" (nav $p "/ingredients" "Ingredienti" "i-ingredients")}}
-      {{template "nav_link" (nav $p "/piano-nutrizionale" "Piano nutrizionale" "i-plan")}}
-      {{template "nav_link" (nav $p "/shopping-list" "Lista della spesa" "i-cart")}}
-      {{template "nav_link" (nav $p "/stats" "Statistiche" "i-stats")}}
-      {{template "nav_link" (nav $p "/profile/peso" "Peso" "i-weight")}}
+      {{template "nav_link" (nav $p "/" (t "layout.nav.week") "i-week")}}
+      {{template "nav_link" (nav $p "/recipes" (t "layout.nav.recipes") "i-recipes")}}
+      {{template "nav_link" (nav $p "/ingredients" (t "layout.nav.ingredients") "i-ingredients")}}
+      {{template "nav_link" (nav $p "/piano-nutrizionale" (t "layout.nav.plan") "i-plan")}}
+      {{template "nav_link" (nav $p "/shopping-list" (t "layout.nav.shopping") "i-cart")}}
+      {{template "nav_link" (nav $p "/stats" (t "layout.nav.stats") "i-stats")}}
+      {{template "nav_link" (nav $p "/profile/peso" (t "layout.nav.weight") "i-weight")}}
     </ul>
     <ul class="flex flex-col gap-0.5 pt-4 border-t border-border">
-      {{template "nav_link" (nav $p "/settings" "Impostazioni" "i-settings")}}
-      {{if eq .User.Role "coach"}}{{template "nav_link" (nav $p "/coach" "Pannello coach" "i-coach")}}{{end}}
-      {{if .IsOwner}}{{template "nav_link" (nav $p "/admin/panel" "Amministrazione" "i-shield")}}{{end}}
-      <li><a href="/onboarding?restart=true" class="nav-link{{if eq $p "/onboarding"}} is-active{{end}}">{{template "icon" "i-help"}}Guida rapida</a></li>
+      {{template "nav_link" (nav $p "/settings" (t "layout.nav.settings") "i-settings")}}
+      {{if eq .User.Role "coach"}}{{template "nav_link" (nav $p "/coach" (t "layout.nav.coach") "i-coach")}}{{end}}
+      {{if .IsOwner}}{{template "nav_link" (nav $p "/admin/panel" (t "layout.nav.admin") "i-shield")}}{{end}}
+      <li><a href="/onboarding?restart=true" class="nav-link{{if eq $p "/onboarding"}} is-active{{end}}">{{template "icon" "i-help"}}{{t "layout.nav.quick_guide"}}</a></li>
       <li>
         <form method="post" action="/tour/restart">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" class="nav-link w-full">{{template "icon" "i-play"}}Tour guidato</button>
+          <button type="submit" class="nav-link w-full">{{template "icon" "i-play"}}{{t "layout.nav.tour"}}</button>
         </form>
       </li>
     </ul>
@@ -65,9 +66,9 @@
         {{/* The panel is fixed next to the sidebar: inside the sidebar
              (overflow-y-auto) it would be cut off. */}}
         <button type="button" class="nav-link w-full" data-popover="appearance-desktop" aria-expanded="false" aria-controls="appearance-desktop">
-          <span class="w-[18px] h-[18px] grid place-items-center"><span class="w-3.5 h-3.5 rounded-full bg-accent"></span></span>Aspetto
+          <span class="w-[18px] h-[18px] grid place-items-center"><span class="w-3.5 h-3.5 rounded-full bg-accent"></span></span>{{t "layout.appearance"}}
         </button>
-        <div id="appearance-desktop" class="menu-panel hidden fixed left-[228px] bottom-4 w-[280px] z-40" role="dialog" aria-label="Aspetto">
+        <div id="appearance-desktop" class="menu-panel hidden fixed left-[228px] bottom-4 w-[280px] z-40" role="dialog" aria-label="{{t "layout.appearance"}}">
           {{template "appearance_controls" .Appearance}}
         </div>
       </div>
@@ -77,7 +78,7 @@
       </a>
       <form method="post" action="/logout">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <button class="nav-link w-full text-muted">{{template "icon" "i-logout"}}Esci</button>
+        <button class="nav-link w-full text-muted">{{template "icon" "i-logout"}}{{t "layout.logout"}}</button>
       </form>
     </div>
   </nav>
@@ -85,35 +86,35 @@
   {{/* Bottom bar: phone and tablet. The four everyday sections plus
        «Altro», which opens a sheet with the rest. */}}
   {{- $tabOn := or (navActive $p "/") (navActive $p "/shopping-list") (navActive $p "/recipes") (navActive $p "/stats") -}}
-  <nav id="bottom-nav" aria-label="Sezioni"
+  <nav id="bottom-nav" aria-label="{{t "layout.nav.sections"}}"
        class="lg:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-5 bg-surface border-t border-border px-1.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
-    {{template "tab_link" (nav $p "/" "Settimana" "i-week")}}
-    {{template "tab_link" (nav $p "/shopping-list" "Spesa" "i-cart")}}
-    {{template "tab_link" (nav $p "/recipes" "Ricette" "i-recipes")}}
-    {{template "tab_link" (nav $p "/stats" "Statistiche" "i-stats")}}
+    {{template "tab_link" (nav $p "/" (t "layout.nav.week") "i-week")}}
+    {{template "tab_link" (nav $p "/shopping-list" (t "layout.nav.shopping_short") "i-cart")}}
+    {{template "tab_link" (nav $p "/recipes" (t "layout.nav.recipes") "i-recipes")}}
+    {{template "tab_link" (nav $p "/stats" (t "layout.nav.stats") "i-stats")}}
     <button type="button" class="tab-link{{if not $tabOn}} is-active{{end}}" data-sheet="more-sheet" aria-haspopup="dialog">
-      {{template "icon_lg" "i-more"}}Altro
+      {{template "icon_lg" "i-more"}}{{t "layout.nav.more"}}
     </button>
   </nav>
 
-  <dialog id="more-sheet" class="sheet" aria-label="Altre sezioni">
+  <dialog id="more-sheet" class="sheet" aria-label="{{t "layout.nav.more_sections"}}">
     <div class="flex items-center justify-between px-4 pt-4 pb-2">
       <span class="font-bold text-[15px]">{{.User.DisplayName}}</span>
-      <button type="button" class="btn-secondary btn-icon" data-sheet-close aria-label="Chiudi">{{template "icon" "i-close"}}</button>
+      <button type="button" class="btn-secondary btn-icon" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
     </div>
     <ul class="grid grid-cols-2 gap-1 px-3">
-      {{template "nav_link" (nav $p "/ingredients" "Ingredienti" "i-ingredients")}}
-      {{template "nav_link" (nav $p "/piano-nutrizionale" "Piano nutrizionale" "i-plan")}}
-      {{template "nav_link" (nav $p "/profile/peso" "Peso" "i-weight")}}
-      <li><a href="/profile" class="nav-link{{if eq $p "/profile"}} is-active{{end}}">{{template "icon" "i-user"}}Profilo</a></li>
-      {{template "nav_link" (nav $p "/settings" "Impostazioni" "i-settings")}}
-      <li><a href="/onboarding?restart=true" class="nav-link{{if eq $p "/onboarding"}} is-active{{end}}">{{template "icon" "i-help"}}Guida rapida</a></li>
-      {{if eq .User.Role "coach"}}{{template "nav_link" (nav $p "/coach" "Pannello coach" "i-coach")}}{{end}}
-      {{if .IsOwner}}{{template "nav_link" (nav $p "/admin/panel" "Amministrazione" "i-shield")}}{{end}}
+      {{template "nav_link" (nav $p "/ingredients" (t "layout.nav.ingredients") "i-ingredients")}}
+      {{template "nav_link" (nav $p "/piano-nutrizionale" (t "layout.nav.plan") "i-plan")}}
+      {{template "nav_link" (nav $p "/profile/peso" (t "layout.nav.weight") "i-weight")}}
+      <li><a href="/profile" class="nav-link{{if eq $p "/profile"}} is-active{{end}}">{{template "icon" "i-user"}}{{t "layout.nav.profile"}}</a></li>
+      {{template "nav_link" (nav $p "/settings" (t "layout.nav.settings") "i-settings")}}
+      <li><a href="/onboarding?restart=true" class="nav-link{{if eq $p "/onboarding"}} is-active{{end}}">{{template "icon" "i-help"}}{{t "layout.nav.quick_guide"}}</a></li>
+      {{if eq .User.Role "coach"}}{{template "nav_link" (nav $p "/coach" (t "layout.nav.coach") "i-coach")}}{{end}}
+      {{if .IsOwner}}{{template "nav_link" (nav $p "/admin/panel" (t "layout.nav.admin") "i-shield")}}{{end}}
       <li>
         <form method="post" action="/tour/restart">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" class="nav-link w-full">{{template "icon" "i-play"}}Tour guidato</button>
+          <button type="submit" class="nav-link w-full">{{template "icon" "i-play"}}{{t "layout.nav.tour"}}</button>
         </form>
       </li>
     </ul>
@@ -122,7 +123,7 @@
     </div>
     <form method="post" action="/logout" class="px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button class="btn-secondary w-full">{{template "icon" "i-logout"}}Esci</button>
+      <button class="btn-secondary w-full">{{template "icon" "i-logout"}}{{t "layout.logout"}}</button>
     </form>
   </dialog>
   {{else}}
@@ -130,9 +131,9 @@
     {{template "brand"}}
     <div class="ml-auto flex items-center gap-2">
       {{block "topbar_actions" .}}
-      {{if eq .ActiveNav "/login"}}<a href="/register" class="btn-ghost">Registrati</a>
-      {{else if eq .ActiveNav "/register"}}<a href="/login" class="btn-ghost">Accedi</a>
-      {{else if not .User}}<a href="/login" class="btn-ghost">Accedi</a><a href="/register" class="btn-primary">Registrati</a>{{end}}
+      {{if eq .ActiveNav "/login"}}<a href="/register" class="btn-ghost">{{t "layout.register"}}</a>
+      {{else if eq .ActiveNav "/register"}}<a href="/login" class="btn-ghost">{{t "layout.login"}}</a>
+      {{else if not .User}}<a href="/login" class="btn-ghost">{{t "layout.login"}}</a><a href="/register" class="btn-primary">{{t "layout.register"}}</a>{{end}}
       {{end}}
     </div>
   </header>
@@ -144,7 +145,7 @@
         <div id="flash-msg" role="status" class="mb-4 rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-center justify-between gap-3">
           <span>{{.Flash}}</span>
           <button type="button" onclick="document.getElementById('flash-msg').remove()"
-                  class="shrink-0 opacity-70 hover:opacity-100 text-xl leading-none" aria-label="Chiudi">&times;</button>
+                  class="shrink-0 opacity-70 hover:opacity-100 text-xl leading-none" aria-label="{{t "common.close"}}">&times;</button>
         </div>
         <script>
           (function(){
@@ -164,13 +165,13 @@
   {{if .User}}{{template "scanner_dialog"}}{{end}}
   {{block "scripts" .}}{{end}}
 
-  <!-- Toast errori HTMX (rete/server) -->
+  {{/* Toast for HTMX errors (network, server). */}}
   <div id="htmx-error-toast"
        class="hidden fixed bottom-20 lg:bottom-4 right-4 left-4 sm:left-auto z-50 rounded-xl bg-danger-soft text-danger px-4 py-3 text-sm sm:max-w-xs"
        style="box-shadow: var(--shadow)" role="alert" aria-live="polite">
-    <span id="htmx-error-msg">Errore di rete. Riprova.</span>
+    <span id="htmx-error-msg">{{t "layout.toast.network"}}</span>
     <button onclick="this.parentElement.classList.add('hidden')"
-            class="ml-3 opacity-70 hover:opacity-100" aria-label="Chiudi">×</button>
+            class="ml-3 opacity-70 hover:opacity-100" aria-label="{{t "common.close"}}">×</button>
   </div>
   <script>
   (function () {
@@ -183,11 +184,11 @@
     }
     document.body.addEventListener('htmx:responseError', function (e) {
       var code = e.detail.xhr ? e.detail.xhr.status : '';
-      if (code === 429) { showToast('Troppe richieste. Riprova tra un momento.'); }
-      else { showToast('Errore del server (' + code + '). Riprova.'); }
+      if (code === 429) { showToast({{t "layout.toast.too_many"}}); }
+      else { showToast({{t "layout.toast.server" "Code" "%CODE%"}}.replace("%CODE%", code)); }
     });
     document.body.addEventListener('htmx:sendError', function () {
-      showToast('Errore di rete. Controlla la connessione e riprova.');
+      showToast({{t "layout.toast.offline"}});
     });
   })();
   </script>
@@ -208,33 +209,35 @@
 {{/* Barcode scanner (#59, static/js/scanner.js). The button sits next to a
      picker's search: . is the field's selector. It stays hidden until
      scanner.js finds a camera and a secure context. */}}
-{{define "scan_button"}}<button type="button" class="scan-only scan-btn" data-scan-for="{{.}}" aria-label="Scansiona il codice a barre" title="Scansiona il codice a barre">{{template "icon" "i-scan"}}</button>{{end}}
+{{define "scan_button"}}<button type="button" class="scan-only scan-btn" data-scan-for="{{.}}" aria-label="{{t "layout.scanner.title"}}" title="{{t "layout.scanner.title"}}">{{template "icon" "i-scan"}}</button>{{end}}
 
 {{/* A dialog over the picker: the camera, or (without permission or without
      a camera) the reason; below, the digits typed by hand. */}}
-{{define "scanner_dialog"}}<dialog id="scanner" class="dialog-panel" aria-labelledby="scanner-title">
+{{define "scanner_dialog"}}<dialog id="scanner" class="dialog-panel" aria-labelledby="scanner-title"
+        data-msg-denied="{{t "layout.scanner.denied"}}" data-msg-not-found="{{t "layout.scanner.not_found"}}"
+        data-msg-unsupported="{{t "layout.scanner.unsupported"}}">
   <div class="flex flex-col min-h-0">
     <div class="flex items-center gap-3 pl-4 lg:pl-5 pr-4 pt-4 pb-3">
-      <h2 id="scanner-title" class="grow text-[17px] font-bold">Scansiona il codice a barre</h2>
-      <button type="button" data-scan-close class="btn-secondary btn-icon" aria-label="Chiudi">{{template "icon" "i-close"}}</button>
+      <h2 id="scanner-title" class="grow text-[17px] font-bold">{{t "layout.scanner.title"}}</h2>
+      <button type="button" data-scan-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
     </div>
     <div data-scan-cam class="scan-cam mx-4 lg:mx-5">
-      <video data-scan-video playsinline muted aria-label="Inquadratura della fotocamera"></video>
+      <video data-scan-video playsinline muted aria-label="{{t "layout.scanner.video"}}"></video>
       <div class="scan-frame" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
       <div class="scan-line" aria-hidden="true"></div>
-      <p class="scan-hint">Inquadra il codice a barre</p>
+      <p class="scan-hint">{{t "layout.scanner.hint"}}</p>
     </div>
     <div data-scan-problem class="hidden mx-4 lg:mx-5 rounded-xl bg-warn-bg text-warn-fg p-3.5 flex gap-3 items-start" role="status">
       {{template "icon" "i-camera-off"}}
-      <div class="grow flex flex-col gap-1"><b>La fotocamera non è disponibile</b><span data-scan-problem-text></span></div>
+      <div class="grow flex flex-col gap-1"><b>{{t "layout.scanner.no_camera"}}</b><span data-scan-problem-text></span></div>
     </div>
     <form data-scan-manual class="flex flex-col gap-2 px-4 lg:px-5 pt-3.5 pb-5" novalidate>
-      <label for="scan-code" class="text-[12.5px] font-semibold text-muted">Non si legge? Scrivi le cifre sotto le barre</label>
+      <label for="scan-code" class="text-[12.5px] font-semibold text-muted">{{t "layout.scanner.manual"}}</label>
       <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-        <input id="scan-code" data-scan-code class="field field-lg tabular-nums tracking-wide" inputmode="numeric" autocomplete="off" maxlength="16" placeholder="8 o 13 cifre" aria-describedby="scan-error">
-        <button class="btn-secondary h-[42px]">Cerca</button>
+        <input id="scan-code" data-scan-code class="field field-lg tabular-nums tracking-wide" inputmode="numeric" autocomplete="off" maxlength="16" placeholder="{{t "layout.scanner.placeholder"}}" aria-describedby="scan-error">
+        <button class="btn-secondary h-[42px]">{{t "layout.scanner.search"}}</button>
       </div>
-      <p id="scan-error" data-scan-error class="hidden text-[12.5px] text-danger" role="alert">Il codice non torna: controlla le cifre (8, 12 o 13).</p>
+      <p id="scan-error" data-scan-error class="hidden text-[12.5px] text-danger" role="alert">{{t "layout.scanner.bad_code"}}</p>
     </form>
   </div>
 </dialog>{{end}}
@@ -247,20 +250,20 @@
      (static/js/theme.js); the server reads them again on the next load. */}}
 {{define "appearance_controls"}}<div class="flex flex-col gap-3">
   <div class="flex flex-col gap-1.5">
-    <span class="text-[12.5px] font-semibold text-muted">Modalità</span>
-    <div class="segmented grid-cols-3" role="radiogroup" aria-label="Modalità">
-      <button type="button" role="radio" data-appearance-mode="chiaro" aria-checked="{{eq .Mode "chiaro"}}">Chiaro</button>
-      <button type="button" role="radio" data-appearance-mode="scuro" aria-checked="{{eq .Mode "scuro"}}">Scuro</button>
-      <button type="button" role="radio" data-appearance-mode="sistema" aria-checked="{{eq .Mode "sistema"}}">Sistema</button>
+    <span class="text-[12.5px] font-semibold text-muted">{{t "layout.appearance.mode"}}</span>
+    <div class="segmented grid-cols-3" role="radiogroup" aria-label="{{t "layout.appearance.mode"}}">
+      <button type="button" role="radio" data-appearance-mode="chiaro" aria-checked="{{eq .Mode "chiaro"}}">{{t "layout.appearance.light"}}</button>
+      <button type="button" role="radio" data-appearance-mode="scuro" aria-checked="{{eq .Mode "scuro"}}">{{t "layout.appearance.dark"}}</button>
+      <button type="button" role="radio" data-appearance-mode="sistema" aria-checked="{{eq .Mode "sistema"}}">{{t "layout.appearance.system"}}</button>
     </div>
   </div>
   <div class="flex flex-col gap-1.5">
-    <span class="text-[12.5px] font-semibold text-muted">Colore</span>
-    <div class="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Colore">
-      <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Accent "bosco"}}"><span class="swatch-dot" style="background:{{accentColor "bosco"}}"></span>Bosco</button>
-      <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Accent "mare"}}"><span class="swatch-dot" style="background:{{accentColor "mare"}}"></span>Mare</button>
-      <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Accent "tramonto"}}"><span class="swatch-dot" style="background:{{accentColor "tramonto"}}"></span>Tramonto</button>
-      <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Accent "grafite"}}"><span class="swatch-dot" style="background:{{accentColor "grafite"}}"></span>Grafite</button>
+    <span class="text-[12.5px] font-semibold text-muted">{{t "layout.appearance.color"}}</span>
+    <div class="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="{{t "layout.appearance.color"}}">
+      <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Accent "bosco"}}"><span class="swatch-dot" style="background:{{accentColor "bosco"}}"></span>{{t "layout.appearance.bosco"}}</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Accent "mare"}}"><span class="swatch-dot" style="background:{{accentColor "mare"}}"></span>{{t "layout.appearance.mare"}}</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Accent "tramonto"}}"><span class="swatch-dot" style="background:{{accentColor "tramonto"}}"></span>{{t "layout.appearance.tramonto"}}</button>
+      <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Accent "grafite"}}"><span class="swatch-dot" style="background:{{accentColor "grafite"}}"></span>{{t "layout.appearance.grafite"}}</button>
     </div>
   </div>
 </div>{{end}}

@@ -367,7 +367,7 @@ func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, 
 	}
 	week.OOB = true
 	resp := dayMutationResponse{Card: card, Week: week}
-	if err := a.Render.RenderPartial(w, http.StatusOK, "dashboard", "day_card_with_pill_oob", resp); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "dashboard", "day_card_with_pill_oob", resp); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -548,7 +548,7 @@ func (a *App) renderDashboard(
 	if applyErr != "" || mealErr != "" {
 		status = http.StatusUnprocessableEntity
 	}
-	if err := a.Render.Render(w, status, "dashboard", data); err != nil {
+	if err := a.Render.Render(w, r, status, "dashboard", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -924,7 +924,7 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			InDialog:          inDialog,
 			SearchedOFF:       includeOFFParam(r),
 		}
-		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
+		if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 			a.serverError(w, r, err)
 		}
 	case "recipe":
@@ -934,7 +934,7 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data.MealID, data.WeekStart, data.Cheat, data.InDialog = mealID, weekStartStr, asCheat, inDialog
-		if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "recipe_picker_results", data); err != nil {
+		if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "recipe_picker_results", data); err != nil {
 			a.serverError(w, r, err)
 		}
 	default:
@@ -1101,9 +1101,9 @@ func (a *App) handleAddItemForm(w http.ResponseWriter, r *http.Request) {
 		InDialog:     r.Header.Get("HX-Request") == "true",
 	}
 	if data.InDialog {
-		err = a.Render.RenderPartial(w, http.StatusOK, "meal_item_new", "meal_picker_dialog", data)
+		err = a.Render.RenderPartial(w, r, http.StatusOK, "meal_item_new", "meal_picker_dialog", data)
 	} else {
-		err = a.Render.Render(w, http.StatusOK, "meal_item_new", data)
+		err = a.Render.Render(w, r, http.StatusOK, "meal_item_new", data)
 	}
 	if err != nil {
 		a.serverError(w, r, err)

@@ -1,17 +1,17 @@
-{{define "title"}}Nuovo ingrediente — Nutreek{{end}}
+{{define "title"}}{{t "ingredients.new"}} — Nutreek{{end}}
 {{define "content"}}
 <form method="post" action="/ingredients" class="flex flex-col gap-4 lg:gap-[18px] max-w-[760px]">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
   <div>
-    <a href="/ingredients" class="crumb">{{template "icon_sm" "i-chevron-left"}}Ingredienti</a>
-    <h1 class="h1">Nuovo ingrediente</h1>
-    <p class="text-muted mt-1">Verrà confrontato con OpenFoodFacts per completarne i dati.</p>
+    <a href="/ingredients" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "ingredients.title"}}</a>
+    <h1 class="h1">{{t "ingredients.new"}}</h1>
+    <p class="text-muted mt-1">{{t "ingredients.new.hint"}}</p>
   </div>
   {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-4 py-2.5" role="alert">{{.Error}}</p>{{end}}
   {{template "ingredient_fields" .}}
   <div class="flex justify-end gap-2">
-    <a href="/ingredients" class="btn-secondary">Annulla</a>
-    <button class="btn-primary">Salva ingrediente</button>
+    <a href="/ingredients" class="btn-secondary">{{t "common.cancel"}}</a>
+    <button class="btn-primary">{{t "ingredients.new.save"}}</button>
   </div>
 </form>
 {{end}}

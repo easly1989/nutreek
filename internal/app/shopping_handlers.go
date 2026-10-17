@@ -125,7 +125,7 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		PrevWeek:      weekStart.AddDate(0, 0, -7).Format("2006-01-02"),
 		NextWeek:      weekStart.AddDate(0, 0, 7).Format("2006-01-02"),
 	}
-	if err := a.Render.Render(w, http.StatusOK, "shopping_list", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "shopping_list", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }

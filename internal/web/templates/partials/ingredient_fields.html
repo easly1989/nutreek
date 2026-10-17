@@ -5,60 +5,60 @@
        everything is disabled except the category, which is the viewer's. */ -}}
 {{- $u := or .Form.Unit "g" -}}{{- $ro := .ReadOnly -}}
 <section class="card p-4 flex flex-col gap-3">
-  <h2 class="h2">Prodotto</h2>
+  <h2 class="h2">{{t "ingredients.form.product"}}</h2>
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    <label class="lab sm:col-span-2">Nome<input name="name" required maxlength="200" value="{{.Form.Name}}" class="field"{{if $ro}} disabled{{end}}></label>
-    <label class="lab">Marca (facoltativa)<input name="brand" value="{{.Form.Brand}}" placeholder="es. Fage" class="field"{{if $ro}} disabled{{end}}></label>
+    <label class="lab sm:col-span-2">{{t "ingredients.form.name"}}<input name="name" required maxlength="200" value="{{.Form.Name}}" class="field"{{if $ro}} disabled{{end}}></label>
+    <label class="lab">{{t "ingredients.form.brand"}}<input name="brand" value="{{.Form.Brand}}" placeholder="{{t "ingredients.form.brand_placeholder"}}" class="field"{{if $ro}} disabled{{end}}></label>
     {{if .Categories}}
-    <label class="lab">{{if $ro}}La tua categoria{{else}}Categoria{{end}}
+    <label class="lab">{{if $ro}}{{t "ingredients.form.your_category"}}{{else}}{{t "ingredients.form.category"}}{{end}}
       <select name="category_id" class="field">
-        <option value="">Nessuna categoria</option>
+        <option value="">{{t "ingredients.form.no_category"}}</option>
         {{range .Categories}}<option value="{{.ID}}"{{if eq $.Form.CategoryID (printf "%d" .ID)}} selected{{end}}>{{.Name}}</option>{{end}}
       </select>
     </label>
     {{end}}
-    <div class="lab">Si misura in
-      <span class="segmented w-max" role="radiogroup" aria-label="Unità"
+    <div class="lab">{{t "ingredients.form.measured_in"}}
+      <span class="segmented w-max" role="radiogroup" aria-label="{{t "ingredients.form.unit"}}"
             onchange="this.closest('form').querySelectorAll('[data-unit-label]').forEach(function(e){e.textContent=event.target.value})">
-        <label><input type="radio" name="unit" value="g"{{if ne $u "ml"}} checked{{end}}{{if $ro}} disabled{{end}}>grammi</label>
-        <label><input type="radio" name="unit" value="ml"{{if eq $u "ml"}} checked{{end}}{{if $ro}} disabled{{end}}>millilitri</label>
+        <label><input type="radio" name="unit" value="g"{{if ne $u "ml"}} checked{{end}}{{if $ro}} disabled{{end}}>{{t "ingredients.form.grams"}}</label>
+        <label><input type="radio" name="unit" value="ml"{{if eq $u "ml"}} checked{{end}}{{if $ro}} disabled{{end}}>{{t "ingredients.form.millilitres"}}</label>
       </span>
     </div>
   </div>
 </section>
 
 <section class="card p-4 flex flex-col gap-3">
-  <div class="flex items-baseline gap-2"><h2 class="h2">Valori per 100 <span data-unit-label>{{$u}}</span></h2><p class="text-[12.5px] text-muted">dall’etichetta nutrizionale</p></div>
+  <div class="flex items-baseline gap-2"><h2 class="h2">{{t "ingredients.form.values_per_100"}} <span data-unit-label>{{$u}}</span></h2><p class="text-[12.5px] text-muted">{{t "ingredients.form.from_label"}}</p></div>
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-    <label class="lab">Calorie<span class="field-unit"><input name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>kcal</em></span></label>
-    <label class="lab"><span><b class="text-prot">●</b> Proteine</span><span class="field-unit"><input name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
-    <label class="lab"><span><b class="text-carb">●</b> Carboidrati</span><span class="field-unit"><input name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
-    <label class="lab"><span><b class="text-fat">●</b> Grassi</span><span class="field-unit"><input name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
+    <label class="lab">{{t "common.calories"}}<span class="field-unit"><input name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>kcal</em></span></label>
+    <label class="lab"><span><b class="text-prot">●</b> {{t "common.protein"}}</span><span class="field-unit"><input name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
+    <label class="lab"><span><b class="text-carb">●</b> {{t "common.carbs"}}</span><span class="field-unit"><input name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
+    <label class="lab"><span><b class="text-fat">●</b> {{t "common.fat"}}</span><span class="field-unit"><input name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
   </div>
   <details class="group border-t border-border pt-3"{{if or .Form.Fiber .Form.Sugars .Form.SaturatedFat .Form.Sodium}} open{{end}}>
     <summary class="inline-flex items-center gap-1 text-accent font-semibold cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-      <span class="transition-transform group-open:rotate-90">{{template "icon_sm" "i-chevron-right"}}</span>Micronutrienti (facoltativi)
+      <span class="transition-transform group-open:rotate-90">{{template "icon_sm" "i-chevron-right"}}</span>{{t "ingredients.form.micros"}}
     </summary>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-      <label class="lab">Fibre<span class="field-unit"><input name="fiber" inputmode="decimal" value="{{.Form.Fiber}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
-      <label class="lab">Zuccheri<span class="field-unit"><input name="sugars" inputmode="decimal" value="{{.Form.Sugars}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
-      <label class="lab">Grassi saturi<span class="field-unit"><input name="saturated_fat" inputmode="decimal" value="{{.Form.SaturatedFat}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
-      <label class="lab">Sodio<span class="field-unit"><input name="sodium" inputmode="decimal" value="{{.Form.Sodium}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
+      <label class="lab">{{t "ingredients.form.fiber"}}<span class="field-unit"><input name="fiber" inputmode="decimal" value="{{.Form.Fiber}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
+      <label class="lab">{{t "ingredients.form.sugars"}}<span class="field-unit"><input name="sugars" inputmode="decimal" value="{{.Form.Sugars}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
+      <label class="lab">{{t "ingredients.form.saturated_fat"}}<span class="field-unit"><input name="saturated_fat" inputmode="decimal" value="{{.Form.SaturatedFat}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
+      <label class="lab">{{t "ingredients.form.sodium"}}<span class="field-unit"><input name="sodium" inputmode="decimal" value="{{.Form.Sodium}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
     </div>
   </details>
 </section>
 
 <section class="card p-4 flex flex-col gap-3">
-  <div class="flex items-baseline gap-2"><h2 class="h2">Porzione</h2><p class="text-[12.5px] text-muted">per aggiungerlo a pezzi nei pasti</p></div>
+  <div class="flex items-baseline gap-2"><h2 class="h2">{{t "ingredients.form.portion"}}</h2><p class="text-[12.5px] text-muted">{{t "ingredients.form.portion_hint"}}</p></div>
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    <label class="lab">Peso di un pezzo (facoltativo)<span class="field-unit"><input name="unit_weight_g" inputmode="decimal" value="{{.Form.UnitWeightG}}" placeholder="es. 150 per una mela" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
-    <label class="lab">Quantità proposta nel picker<input name="default_quantity" inputmode="decimal" value="{{.Form.DefaultQuantity}}" placeholder="es. 1 pezzo o 150 g" class="field tabular-nums"{{if $ro}} disabled{{end}}></label>
+    <label class="lab">{{t "ingredients.form.piece_weight"}}<span class="field-unit"><input name="unit_weight_g" inputmode="decimal" value="{{.Form.UnitWeightG}}" placeholder="{{t "ingredients.form.piece_weight_placeholder"}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
+    <label class="lab">{{t "ingredients.form.default_quantity"}}<input name="default_quantity" inputmode="decimal" value="{{.Form.DefaultQuantity}}" placeholder="{{t "ingredients.form.default_quantity_placeholder"}}" class="field tabular-nums"{{if $ro}} disabled{{end}}></label>
   </div>
 </section>
 
 {{if .Allergens}}
 <section class="card p-4 flex flex-col gap-3">
-  <div class="flex items-baseline gap-2"><h2 class="h2">Allergeni</h2><p class="text-[12.5px] text-muted">tocca quelli presenti</p></div>
+  <div class="flex items-baseline gap-2"><h2 class="h2">{{t "ingredients.form.allergens"}}</h2><p class="text-[12.5px] text-muted">{{t "ingredients.form.allergens_hint"}}</p></div>
   <div class="flex flex-wrap gap-2">
     {{range .Allergens}}
       <label class="filter cursor-pointer has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent">

@@ -1,4 +1,4 @@
-{{define "title"}}Pagina non trovata — Nutreek{{end}}
+{{define "title"}}{{t "layout.error.not_found_tab"}} — Nutreek{{end}}
 {{define "content"}}
-{{template "error_page" (list "404" "Questa pagina non c'è" "Il link è sbagliato o la pagina è stata spostata. Una ricetta o un piano eliminati non si possono più aprire." "i-search")}}
+{{template "error_page" (list "404" (t "layout.error.not_found_title") (t "layout.error.not_found_text") "i-search")}}
 {{end}}
