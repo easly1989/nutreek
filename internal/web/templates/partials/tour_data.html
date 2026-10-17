@@ -1,0 +1,9 @@
+{{/* The guided tour's texts in the page language (static/js/tour.js reads them). */}}
+{{define "tour_data"}}<script type="application/json" id="tour-steps">{
+  "welcome": {"title": {{t "tour.welcome.title"}}, "text": {{t "tour.welcome.text"}}},
+  "week": {"title": {{t "tour.week.title"}}, "text": {{t "tour.week.text"}}},
+  "days": {"title": {{t "tour.days.title"}}, "text": {{t "tour.days.text"}}},
+  "template": {"title": {{t "tour.template.title"}}, "text": {{t "tour.template.text"}}},
+  "sections": {"title": {{t "tour.sections.title"}}, "text": {{t "tour.sections.text"}}},
+  "buttons": {"skip": {{t "tour.button.skip"}}, "start": {{t "tour.button.start"}}, "back": {{t "tour.button.back"}}, "next": {{t "tour.button.next"}}, "finish": {{t "tour.button.finish"}}}
+}</script>{{end}}
