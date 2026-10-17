@@ -22,6 +22,11 @@ jobs:
       - name: Run tests
         run: go test ./... -race -count=1
 
+      # Italian and English must be complete: TestCatalogs fails otherwise. A
+      # community language only warns here, with the keys to translate.
+      - name: Check translations
+        run: go run ./cmd/i18ncheck
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

@@ -22,6 +22,8 @@
   "layout.appearance": "Aspetto",
   "layout.appearance.mode": "Modalità",
   "layout.language": "Lingua",
+  "layout.beta": "beta",
+  "layout.beta_hint": "Traduzione della comunità: parte del testo potrebbe essere ancora in inglese",
   "layout.appearance.light": "Chiaro",
   "layout.appearance.dark": "Scuro",
   "layout.appearance.system": "Sistema",

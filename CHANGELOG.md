@@ -19,6 +19,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 - Choosing the language (#159, part of #141): Italian, English or "like the browser" in Settings → Appearance and language, saved in the account; a selector on the signed-out pages, kept in a cookie. Without a choice the browser's languages decide, with English as the fallback. Existing users stay in Italian (migration 0030)
 
+- A guide for community translators (#162, part of #141): `CONTRIBUTING.md`, `docs/translating.md` with a glossary, and a "New language" issue template. A language other than Italian and English is marked "beta" in the language selectors; a key it lacks shows the English text, and CI only warns about it, listing the keys (`go run ./cmd/i18ncheck`)
+
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)

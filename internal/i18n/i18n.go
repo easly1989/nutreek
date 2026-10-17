@@ -24,7 +24,7 @@ import (
 type Language struct {
 	Code string // BCP 47 tag, also the catalog directory
 	Name string // native name, as the language picker shows it
-	Beta bool   // translation still incomplete
+	Beta bool   // community translation: may be incomplete, shown with a "beta" mark
 }
 
 // Languages is the single list of supported languages.
