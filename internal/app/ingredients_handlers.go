@@ -950,6 +950,7 @@ func (a *App) handleOFFMacroCheck(w http.ResponseWriter, r *http.Request) {
 func (a *App) writeMacroFragment(w http.ResponseWriter, r *http.Request, full bool, kcal, protein, carbs, fat float64) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	esc := func(key string) string { return html.EscapeString(a.t(r, key)) }
+	lang := i18n.FromContext(r.Context())
 	if full {
 		fmt.Fprintf(w,
 			`<span class="flex items-center gap-2.5 text-[12.5px] text-muted tabular-nums">`+
@@ -957,10 +958,10 @@ func (a *App) writeMacroFragment(w http.ResponseWriter, r *http.Request, full bo
 				`<span><b class="text-prot font-semibold">%s</b> %s g</span>`+
 				`<span><b class="text-carb font-semibold">%s</b> %s g</span>`+
 				`<span><b class="text-fat font-semibold">%s</b> %s g</span></span>`,
-			web.FormatNum(kcal),
-			esc("common.protein_short"), web.FormatDec(protein, 1),
-			esc("common.carbs_short"), web.FormatDec(carbs, 1),
-			esc("common.fat_short"), web.FormatDec(fat, 1))
+			web.FormatNum(lang, kcal),
+			esc("common.protein_short"), web.FormatDec(lang, protein, 1),
+			esc("common.carbs_short"), web.FormatDec(lang, carbs, 1),
+			esc("common.fat_short"), web.FormatDec(lang, fat, 1))
 	} else {
 		fmt.Fprintf(w, `<span class="text-[12.5px] text-muted">%s</span>`, esc("ingredients.row.no_macros"))
 	}
