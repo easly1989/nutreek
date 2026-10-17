@@ -118,6 +118,15 @@ func funcMap(lang string) template.FuncMap {
 		"t":    func(key string, args ...any) string { return i18n.T(lang, key, args...) },
 		"lang": func() string { return lang },
 		"add":  func(a, b int) int { return a + b },
+		// ref shows reference data from the database (allergens, activities)
+		// by its stable code: {{ref "allergen" .Code .Name}}. Without a code
+		// or a translation it shows the stored name.
+		"ref": func(kind, code, name string) string {
+			if code == "" {
+				return name
+			}
+			return i18n.TOr(lang, "reference."+kind+"."+code, name)
+		},
 		"dayLabel": func(d int) string {
 			switch {
 			case d == -1:

@@ -42,6 +42,18 @@ func TestTranslateFallback(t *testing.T) {
 	}
 }
 
+func TestTOr(t *testing.T) {
+	if got := TOr("en", "reference.allergen.gluten", "glutine"); got != "gluten" {
+		t.Errorf("known key: got %q, want gluten", got)
+	}
+	if got := TOr("it", "reference.allergen.gluten", "x"); got != "glutine" {
+		t.Errorf("known key in Italian: got %q, want glutine", got)
+	}
+	if got := TOr("en", "reference.allergen.saffron", "zafferano"); got != "zafferano" {
+		t.Errorf("missing key: got %q, want the fallback", got)
+	}
+}
+
 func TestContextLanguage(t *testing.T) {
 	if got := FromContext(context.Background()); got != Default {
 		t.Errorf("empty context: got %q, want %q", got, Default)
