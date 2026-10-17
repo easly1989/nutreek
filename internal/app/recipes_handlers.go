@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -44,12 +43,13 @@ type recipeListRow struct {
 	PerServing macros.Macros
 }
 
-// recipeFilters lists the filters of the recipe list, in chip order.
+// recipeFilters lists the filters of the recipe list, in chip order. Label is
+// a catalog key.
 var recipeFilters = []struct{ Key, Label string }{
-	{"mine", "Le mie"},
-	{"others", "Pubbliche di altri"},
-	{"used", "In uso nei piani"},
-	{"public", "Rese pubbliche"},
+	{"mine", "recipes.filter.mine"},
+	{"others", "recipes.filter.others"},
+	{"used", "recipes.filter.used"},
+	{"public", "recipes.filter.public"},
 }
 
 // matchRecipeFilter says whether the row belongs to filter key.
@@ -123,7 +123,7 @@ type recipeDuplicateData struct {
 	authPageData
 	SrcID   int64
 	SrcName string
-	NewName string // prefilled value (default "Copia di X")
+	NewName string // prefilled value (default "Copy of X")
 	Error   string
 }
 
@@ -219,7 +219,7 @@ func (a *App) handleRecipeImport(w http.ResponseWriter, r *http.Request) {
 		renderImport(recipeNewData{
 			authPageData: a.baseData(r),
 			Form:         recipeForm{Servings: "1"},
-			ImportError:  "Incolla l'URL di una ricetta da importare.",
+			ImportError:  a.t(r, "recipes.import.error.empty"),
 		})
 		return
 	}
@@ -227,11 +227,11 @@ func (a *App) handleRecipeImport(w http.ResponseWriter, r *http.Request) {
 	parsed, err := recipeimport.NewFetcher().FetchAndParse(r.Context(), srcURL)
 	if err != nil {
 		a.Logger.Info("recipe import failed", "url", srcURL, "err", err)
-		msg := "Impossibile importare la ricetta da questo URL."
+		msg := a.t(r, "recipes.import.error.failed")
 		if errors.Is(err, recipeimport.ErrNoRecipe) {
-			msg = "La pagina non contiene una ricetta in formato strutturato (schema.org/Recipe)."
+			msg = a.t(r, "recipes.import.error.no_recipe")
 		} else if errors.Is(err, recipeimport.ErrInvalidURL) {
-			msg = "URL non valido: usa un link http(s) verso un sito pubblico."
+			msg = a.t(r, "recipes.import.error.invalid_url")
 		}
 		renderImport(recipeNewData{
 			authPageData: a.baseData(r),
@@ -276,23 +276,11 @@ func (a *App) handleRecipeCreate(w http.ResponseWriter, r *http.Request) {
 		Servings:    strings.TrimSpace(r.PostFormValue("servings")),
 		IsPublic:    r.PostFormValue("is_public") == "on",
 	}
-	if form.Name == "" {
-		a.renderRecipeNewError(w, r, form, "Il nome e' obbligatorio.")
+	if msg := a.validateRecipeMeta(r, form); msg != "" {
+		a.renderRecipeNewError(w, r, form, msg)
 		return
 	}
-	if !withinLen(form.Name, MaxNameLen) {
-		a.renderRecipeNewError(w, r, form, "Nome troppo lungo (max 200 caratteri).")
-		return
-	}
-	if !withinLen(form.Description, MaxDescriptionLen) {
-		a.renderRecipeNewError(w, r, form, "Descrizione troppo lunga (max 2000 caratteri).")
-		return
-	}
-	servings, err := strconv.Atoi(form.Servings)
-	if err != nil || servings <= 0 {
-		a.renderRecipeNewError(w, r, form, "Porzioni: serve un intero > 0.")
-		return
-	}
+	servings, _ := strconv.Atoi(form.Servings)
 	var descPtr *string
 	if form.Description != "" {
 		descPtr = &form.Description
@@ -300,14 +288,31 @@ func (a *App) handleRecipeCreate(w http.ResponseWriter, r *http.Request) {
 	id, err := a.Recipes.Create(r.Context(), user.ID, form.Name, descPtr, servings, form.IsPublic)
 	if err != nil {
 		if errors.Is(err, db.ErrRecipeNameTaken) {
-			a.renderRecipeNewError(w, r, form, "Esiste già una tua ricetta con questo nome.")
+			a.renderRecipeNewError(w, r, form, a.t(r, "recipes.error.name_taken"))
 			return
 		}
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Ricetta creata.")
+	a.Sessions.Put(r.Context(), "flash", "recipes.flash.created")
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
+}
+
+// validateRecipeMeta checks the name, description and servings of a recipe
+// form and returns the translated error, or "" when they are valid.
+func (a *App) validateRecipeMeta(r *http.Request, form recipeForm) string {
+	switch {
+	case form.Name == "":
+		return a.t(r, "recipes.error.name_required")
+	case !withinLen(form.Name, MaxNameLen):
+		return a.t(r, "recipes.error.name_too_long", "Max", MaxNameLen)
+	case !withinLen(form.Description, MaxDescriptionLen):
+		return a.t(r, "recipes.error.description_too_long", "Max", MaxDescriptionLen)
+	}
+	if servings, err := strconv.Atoi(form.Servings); err != nil || servings <= 0 {
+		return a.t(r, "recipes.error.servings")
+	}
+	return ""
 }
 
 func (a *App) renderRecipeNewError(w http.ResponseWriter, r *http.Request, form recipeForm, msg string) {
@@ -399,7 +404,7 @@ func (a *App) renderRecipeEdit(
 	}
 }
 
-// handleRecipeUpdate gestisce POST /recipes/{id} (modifica meta).
+// handleRecipeUpdate handles POST /recipes/{id} (edits the metadata).
 func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
@@ -413,23 +418,11 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 		Servings:    strings.TrimSpace(r.PostFormValue("servings")),
 		IsPublic:    r.PostFormValue("is_public") == "on",
 	}
-	if form.Name == "" {
-		a.reRenderEdit(w, r, id, "Il nome e' obbligatorio.", "")
+	if msg := a.validateRecipeMeta(r, form); msg != "" {
+		a.reRenderEdit(w, r, id, msg, "")
 		return
 	}
-	if !withinLen(form.Name, MaxNameLen) {
-		a.reRenderEdit(w, r, id, "Nome troppo lungo (max 200 caratteri).", "")
-		return
-	}
-	if !withinLen(form.Description, MaxDescriptionLen) {
-		a.reRenderEdit(w, r, id, "Descrizione troppo lunga (max 2000 caratteri).", "")
-		return
-	}
-	servings, err := strconv.Atoi(form.Servings)
-	if err != nil || servings <= 0 {
-		a.reRenderEdit(w, r, id, "Porzioni: serve un intero > 0.", "")
-		return
-	}
+	servings, _ := strconv.Atoi(form.Servings)
 	// Draft: saving the metadata is blocked until the user changes the
 	// ingredients (add/remove), making the content differ from the other
 	// recipes. The message names the recipe it is still identical to, to
@@ -440,9 +433,9 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 			simulated = append(simulated, it.RecipeItem)
 		}
 		other, _ := a.Recipes.IdenticalContentRecipe(r.Context(), user.ID, simulated, id)
-		msg := "Questa ricetta è una bozza. Modifica almeno un ingrediente (aggiungi, rimuovi o cambia quantità) prima di salvare."
+		msg := a.t(r, "recipes.error.draft")
 		if other != "" {
-			msg = "Questa bozza ha gli stessi ingredienti di \"" + other + "\". Modifica almeno un ingrediente prima di salvare."
+			msg = a.t(r, "recipes.error.draft_same", "Other", other)
 		}
 		a.reRenderEdit(w, r, id, msg, "")
 		return
@@ -453,13 +446,13 @@ func (a *App) handleRecipeUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.Recipes.Update(r.Context(), id, user.ID, form.Name, descPtr, servings, form.IsPublic); err != nil {
 		if errors.Is(err, db.ErrRecipeNameTaken) {
-			a.reRenderEdit(w, r, id, "Esiste già una tua ricetta con questo nome.", "")
+			a.reRenderEdit(w, r, id, a.t(r, "recipes.error.name_taken"), "")
 			return
 		}
 		a.handleRecipeError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Ricetta aggiornata.")
+	a.Sessions.Put(r.Context(), "flash", "recipes.flash.updated")
 	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(id, 10), http.StatusSeeOther)
 }
 
@@ -480,7 +473,7 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 	qtyStr := strings.TrimSpace(r.PostFormValue("quantity"))
 	qty, err := parseNonNegFloat(qtyStr)
 	if err != nil || qty <= 0 {
-		a.reRenderEditItem(w, r, id, "Quantita' non valida.", qtyStr, r.PostFormValue("ingredient_id"))
+		a.reRenderEditItem(w, r, id, a.t(r, "recipes.error.quantity"), qtyStr, r.PostFormValue("ingredient_id"))
 		return
 	}
 
@@ -491,7 +484,8 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		// Idempotent OFF auto-import.
 		resolved, err := a.resolveOFFBarcode(r.Context(), barcode)
 		if err != nil {
-			a.reRenderEditItem(w, r, id, "Import OFF fallito: "+err.Error(), qtyStr, "")
+			a.Logger.Warn("OFF import failed", "barcode", barcode, "err", err)
+			a.reRenderEditItem(w, r, id, a.t(r, "recipes.error.off_import"), qtyStr, "")
 			return
 		}
 		ingID = resolved
@@ -499,7 +493,7 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		ingIDStr := r.PostFormValue("ingredient_id")
 		parsed, err := strconv.ParseInt(ingIDStr, 10, 64)
 		if err != nil || parsed <= 0 {
-			a.reRenderEditItem(w, r, id, "Seleziona un ingrediente.", qtyStr, ingIDStr)
+			a.reRenderEditItem(w, r, id, a.t(r, "recipes.error.select_ingredient"), qtyStr, ingIDStr)
 			return
 		}
 		ingID = parsed
@@ -531,8 +525,7 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	} else if other != "" {
-		a.reRenderEditItem(w, r, id,
-			"Aggiungendo questo ingrediente la ricetta diventerebbe identica a \""+other+"\". Modifica le quantità o cambia ingrediente.",
+		a.reRenderEditItem(w, r, id, a.t(r, "recipes.error.identical_on_add", "Other", other),
 			qtyStr, strconv.FormatInt(ingID, 10))
 		return
 	}
@@ -569,7 +562,7 @@ func (a *App) handleRecipePicker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rec.UserID != user.ID {
-		http.Error(w, "non sei l'autore", http.StatusForbidden)
+		http.Error(w, a.t(r, "recipes.error.not_author"), http.StatusForbidden)
 		return
 	}
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -625,14 +618,13 @@ func (a *App) handleRecipeRemoveItem(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	} else if other != "" {
-		a.reRenderEdit(w, r, id, "",
-			"Rimuovendo questo ingrediente la ricetta diventerebbe identica a \""+other+"\". Mantieni la voce o modifica altre quantità.")
+		a.reRenderEdit(w, r, id, "", a.t(r, "recipes.error.identical_on_remove", "Other", other))
 		return
 	}
 
 	if err := a.Recipes.RemoveItem(r.Context(), itemID, user.ID); err != nil {
 		if errors.Is(err, db.ErrRecipeItemNotFound) {
-			http.Error(w, "voce non trovata", http.StatusNotFound)
+			http.Error(w, a.t(r, "recipes.error.item_not_found"), http.StatusNotFound)
 			return
 		}
 		a.serverError(w, r, err)
@@ -663,10 +655,9 @@ func (a *App) handleRecipeDelete(w http.ResponseWriter, r *http.Request) {
 		a.handleRecipeError(w, r, err)
 		return
 	}
-	msg := "Ricetta eliminata."
+	msg := "recipes.flash.deleted" // a key; the one with a count is translated now
 	if usages > 0 {
-		msg = fmt.Sprintf("Ricetta eliminata. Rimossa anche da %d %s nei piani settimanali.",
-			usages, pluralize(usages, "voce", "voci"))
+		msg = a.t(r, "recipes.flash.deleted_used", "Count", usages)
 	}
 	a.Sessions.Put(r.Context(), "flash", msg)
 	http.Redirect(w, r, "/recipes", http.StatusSeeOther)
@@ -678,7 +669,7 @@ func (a *App) handleRecipeDelete(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleRecipesBulkDelete(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "form invalido", http.StatusBadRequest)
+		http.Error(w, a.t(r, "recipes.error.invalid_form"), http.StatusBadRequest)
 		return
 	}
 	raw := r.PostForm["recipe_id"]
@@ -689,7 +680,7 @@ func (a *App) handleRecipesBulkDelete(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(ids) == 0 {
-		a.Sessions.Put(r.Context(), "flash", "Nessuna ricetta selezionata.")
+		a.Sessions.Put(r.Context(), "flash", "recipes.flash.none_selected")
 		http.Redirect(w, r, "/recipes", http.StatusSeeOther)
 		return
 	}
@@ -699,25 +690,19 @@ func (a *App) handleRecipesBulkDelete(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	var msg string
-	switch {
-	case n == 0:
-		msg = "Nessuna ricetta eliminata."
-	case n == 1:
-		msg = "1 ricetta eliminata."
-	default:
-		msg = fmt.Sprintf("%d ricette eliminate.", n)
+	msg := a.t(r, "recipes.flash.none_deleted")
+	if n > 0 {
+		msg = a.t(r, "recipes.flash.bulk_deleted", "Count", n)
 	}
 	if usages > 0 && n > 0 {
-		msg += fmt.Sprintf(" Rimosse %d %s nei piani settimanali.",
-			usages, pluralize(usages, "voce", "voci"))
+		msg += " " + a.t(r, "recipes.flash.bulk_removed", "Count", usages)
 	}
 	a.Sessions.Put(r.Context(), "flash", msg)
 	http.Redirect(w, r, "/recipes", http.StatusSeeOther)
 }
 
 // handleRecipeDuplicateForm GET /recipes/{id}/duplicate
-// Renders the modal with the "new name" field prefilled to "Copia di X".
+// Renders the modal with the "new name" field prefilled to "Copy of X".
 func (a *App) handleRecipeDuplicateForm(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	id, err := parseID(r, "id")
@@ -734,7 +719,7 @@ func (a *App) handleRecipeDuplicateForm(w http.ResponseWriter, r *http.Request) 
 		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
 		SrcID:        src.ID,
 		SrcName:      src.Name,
-		NewName:      proposeDuplicateName(src.Name),
+		NewName:      a.t(r, "recipes.duplicate.copy_of", "Name", src.Name),
 	})
 }
 
@@ -749,7 +734,7 @@ func (a *App) handleRecipeDuplicate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Load src first of all so renderErr can pass SrcName and the text
-	// "Stai duplicando X" stays visible on errors too.
+	// the "You are duplicating X" text stays visible on errors too.
 	src, err := a.Recipes.GetWithItems(r.Context(), srcID, user.ID)
 	if err != nil {
 		a.handleRecipeError(w, r, err)
@@ -769,28 +754,28 @@ func (a *App) handleRecipeDuplicate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newName == "" {
-		renderErr("Inserisci un nome per la copia.")
+		renderErr(a.t(r, "recipes.error.copy_name_required"))
 		return
 	}
 	if !withinLen(newName, MaxNameLen) {
-		renderErr("Nome troppo lungo (max 200 caratteri).")
+		renderErr(a.t(r, "recipes.error.name_too_long", "Max", MaxNameLen))
 		return
 	}
 	if strings.EqualFold(newName, src.Name) {
-		renderErr("Il nome della copia deve essere diverso dall'originale.")
+		renderErr(a.t(r, "recipes.error.copy_name_same"))
 		return
 	}
 
 	newID, err := a.Recipes.Duplicate(r.Context(), srcID, user.ID, newName)
 	if err != nil {
 		if errors.Is(err, db.ErrRecipeNameTaken) {
-			renderErr("Esiste già una tua ricetta con questo nome.")
+			renderErr(a.t(r, "recipes.error.name_taken"))
 			return
 		}
 		a.handleRecipeError(w, r, err)
 		return
 	}
-	a.Sessions.Put(r.Context(), "flash", "Ricetta duplicata. Modifica gli ingredienti per personalizzarla.")
+	a.Sessions.Put(r.Context(), "flash", "recipes.flash.duplicated")
 	// HTMX honors HX-Redirect and does a full reload of the given URL.
 	w.Header().Set("HX-Redirect", "/recipes/"+strconv.FormatInt(newID, 10))
 	w.WriteHeader(http.StatusNoContent)
@@ -798,7 +783,7 @@ func (a *App) handleRecipeDuplicate(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) renderRecipeDuplicateModal(w http.ResponseWriter, r *http.Request, data recipeDuplicateData) {
 	mdata := modalDialogData{
-		Title:     "Duplica ricetta",
+		Title:     a.t(r, "recipes.duplicate.title"),
 		Inner:     "recipe_duplicate_form",
 		InnerData: data,
 	}
@@ -813,21 +798,6 @@ func (a *App) renderRecipeDuplicateFormOnly(w http.ResponseWriter, r *http.Reque
 	if err := a.Render.RenderPartial(w, r, http.StatusOK, "recipes_list", "recipe_duplicate_form", data); err != nil {
 		a.serverError(w, r, err)
 	}
-}
-
-// proposeDuplicateName returns a plausible name for the copy. When the user
-// then confirms and that name is taken, the UNIQUE constraint sends it back
-// with an explicit error.
-func proposeDuplicateName(name string) string {
-	return "Copia di " + name
-}
-
-// pluralize picks singular/plural based on the count.
-func pluralize(n int, singular, plural string) string {
-	if n == 1 {
-		return singular
-	}
-	return plural
 }
 
 // ---- picker ricette --------------------------------------------------------
@@ -900,7 +870,7 @@ func (a *App) handleRecipeError(w http.ResponseWriter, r *http.Request, err erro
 	case errors.Is(err, db.ErrRecipeNotFound):
 		a.notFound(w, r)
 	case errors.Is(err, db.ErrRecipeForbidden):
-		http.Error(w, "operazione non consentita", http.StatusForbidden)
+		http.Error(w, a.t(r, "recipes.error.forbidden"), http.StatusForbidden)
 	default:
 		a.serverError(w, r, err)
 	}

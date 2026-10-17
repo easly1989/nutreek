@@ -1,31 +1,31 @@
-{{define "title"}}Nuova ricetta — Nutreek{{end}}
+{{define "title"}}{{t "recipes.new"}} — Nutreek{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px] max-w-[760px]">
   <div>
-    <a href="/recipes" class="crumb">{{template "icon_sm" "i-chevron-left"}}Ricette</a>
-    <h1 class="h1">Nuova ricetta</h1>
+    <a href="/recipes" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "recipes.title"}}</a>
+    <h1 class="h1">{{t "recipes.new"}}</h1>
   </div>
 
   {{/* Import from a URL: paste a recipe's link and prefill the form from
        the page's schema.org/Recipe data. */}}
   <form id="importa" method="post" action="/recipes/import" class="card p-4 flex flex-col gap-3 scroll-mt-6">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <div class="flex items-baseline gap-2"><h2 class="h2">Importa da URL</h2><p class="text-[12.5px] text-muted">facoltativo</p></div>
+    <div class="flex items-baseline gap-2"><h2 class="h2">{{t "recipes.import_from_url"}}</h2><p class="text-[12.5px] text-muted">{{t "recipes.import.optional"}}</p></div>
     <div class="flex gap-2">
       <label class="field-ico grow">
         {{template "icon" "i-link"}}
-        <input name="import_url" type="url" inputmode="url" value="{{.ImportSource}}" placeholder="https://sito.it/ricetta/..." aria-label="Indirizzo della ricetta" class="field">
+        <input name="import_url" type="url" inputmode="url" value="{{.ImportSource}}" placeholder="{{t "recipes.import.placeholder"}}" aria-label="{{t "recipes.import.label"}}" class="field">
       </label>
-      <button class="btn-secondary">Importa</button>
+      <button class="btn-secondary">{{t "recipes.import.button"}}</button>
     </div>
-    <p class="text-[12.5px] text-muted">Legge nome, porzioni e ingredienti dai siti che pubblicano la ricetta in formato schema.org.</p>
+    <p class="text-[12.5px] text-muted">{{t "recipes.import.help"}}</p>
     {{if .ImportError}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2" role="alert">{{.ImportError}}</p>{{end}}
   </form>
 
   {{if .ImportedIngredients}}
     <section class="card p-4 flex flex-col gap-2 bg-accent-soft border-transparent">
-      <h2 class="h2">Ingredienti trovati ({{len .ImportedIngredients}})</h2>
-      <p class="text-muted">Aggiungili dopo aver creato la ricetta: i macro si calcolano solo da ingredienti del database.</p>
+      <h2 class="h2">{{t "recipes.import.found" "Count" (len .ImportedIngredients)}}</h2>
+      <p class="text-muted">{{t "recipes.import.found_hint"}}</p>
       <ul class="list-disc list-inside">{{range .ImportedIngredients}}<li>{{.}}</li>{{end}}</ul>
     </section>
   {{end}}
@@ -34,16 +34,16 @@
 
   <form method="post" action="/recipes" class="card p-4 flex flex-col gap-3">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <h2 class="h2">Dettagli</h2>
-    <label class="lab">Nome<input name="name" required value="{{.Form.Name}}" class="field"></label>
-    <label class="lab">Descrizione (facoltativa)<textarea name="description" rows="3" class="field">{{.Form.Description}}</textarea></label>
+    <h2 class="h2">{{t "recipes.form.details"}}</h2>
+    <label class="lab">{{t "recipes.form.name"}}<input name="name" required value="{{.Form.Name}}" class="field"></label>
+    <label class="lab">{{t "recipes.form.description_optional"}}<textarea name="description" rows="3" class="field">{{.Form.Description}}</textarea></label>
     <div class="flex flex-wrap items-end gap-4">
-      <label class="lab w-[120px]">Porzioni<input name="servings" required inputmode="numeric" value="{{.Form.Servings}}" class="field tabular-nums"></label>
-      <label class="flex items-center gap-2 h-9 cursor-pointer"><input type="checkbox" name="is_public" class="toggle" {{if .Form.IsPublic}}checked{{end}}>Visibile agli altri utenti</label>
+      <label class="lab w-[120px]">{{t "recipes.form.servings"}}<input name="servings" required inputmode="numeric" value="{{.Form.Servings}}" class="field tabular-nums"></label>
+      <label class="flex items-center gap-2 h-9 cursor-pointer"><input type="checkbox" name="is_public" class="toggle" {{if .Form.IsPublic}}checked{{end}}>{{t "recipes.form.visible"}}</label>
     </div>
     <div class="flex justify-end gap-2 pt-1">
-      <a href="/recipes" class="btn-secondary">Annulla</a>
-      <button class="btn-primary">Crea ricetta</button>
+      <a href="/recipes" class="btn-secondary">{{t "common.cancel"}}</a>
+      <button class="btn-primary">{{t "recipes.form.create"}}</button>
     </div>
   </form>
 </div>
