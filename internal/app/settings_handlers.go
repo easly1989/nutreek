@@ -153,7 +153,7 @@ func (a *App) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	if verr := auth.VerifyPassword(user.PasswordHash, password); verr != nil {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
-		data.DeleteError = "Password non corretta."
+		data.DeleteError = a.t(r, "settings.delete.err_password")
 		if rerr := a.Render.Render(w, r, http.StatusUnprocessableEntity, "settings", data); rerr != nil {
 			a.serverError(w, r, rerr)
 		}
@@ -188,18 +188,18 @@ func (a *App) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	if err := auth.VerifyPassword(user.PasswordHash, currentPw); err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
-			renderErr("Password attuale non corretta.")
+			renderErr(a.t(r, "settings.password.err_current"))
 		} else {
 			a.serverError(w, r, err)
 		}
 		return
 	}
 	if len(newPw) < 8 {
-		renderErr("La nuova password deve essere di almeno 8 caratteri.")
+		renderErr(a.t(r, "settings.password.err_short"))
 		return
 	}
 	if newPw != confirmPw {
-		renderErr("Le password non coincidono.")
+		renderErr(a.t(r, "settings.password.err_mismatch"))
 		return
 	}
 

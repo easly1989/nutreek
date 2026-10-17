@@ -15,7 +15,7 @@ import (
 // Useful for the admin panel and for operational checks with curl.
 func (a *App) handleAdminOFFStatus(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
-		http.Error(w, "OFF syncer non configurato", http.StatusServiceUnavailable)
+		http.Error(w, "OFF syncer not configured", http.StatusServiceUnavailable)
 		return
 	}
 	state, err := a.OFFSyncer.LoadState(r.Context())
@@ -37,7 +37,7 @@ func (a *App) handleAdminOFFStatus(w http.ResponseWriter, r *http.Request) {
 // of the sync, not while streaming — acceptable for an admin use case).
 func (a *App) handleAdminOFFRefresh(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
-		http.Error(w, "OFF syncer non configurato", http.StatusServiceUnavailable)
+		http.Error(w, "OFF syncer not configured", http.StatusServiceUnavailable)
 		return
 	}
 	if a.OFFSyncer.IsSyncing() {

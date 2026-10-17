@@ -1,0 +1,10 @@
+{
+  "upgrade.subtitle": "The extra features of this instance.",
+  "upgrade.active": "Premium is active on your account: everything is already unlocked.",
+  "upgrade.open_to_all": "On this instance all features are currently open to everyone.",
+  "upgrade.blocked": "{{.Name}} is part of Premium.",
+  "upgrade.includes": "What's included",
+  "upgrade.none": "No premium features are active.",
+  "upgrade.how_title": "How to get it",
+  "upgrade.how_text": "The administrator of this instance turns Premium on for your account. Write to them with the email you sign in with"
+}

@@ -1,47 +1,47 @@
-{{define "title"}}Impostazioni — Nutreek{{end}}
+{{define "title"}}{{t "settings.title"}} — Nutreek{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
   <header>
-    <h1 class="h1">Impostazioni</h1>
-    <p class="text-muted mt-0.5">Aspetto, account e i tuoi dati.</p>
+    <h1 class="h1">{{t "settings.title"}}</h1>
+    <p class="text-muted mt-0.5">{{t "settings.subtitle"}}</p>
   </header>
 
   <div class="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] items-start">
-    <nav class="hidden lg:flex sticky top-6 flex-col gap-0.5" aria-label="Sezioni delle impostazioni">
-      <a href="#aspetto" class="settings-toc" aria-current="true">Aspetto</a>
-      <a href="#app" class="settings-toc">App sul telefono</a>
-      <a href="#account" class="settings-toc">Account</a>
-      <a href="#dati" class="settings-toc">I tuoi dati</a>
-      <a href="#token" class="settings-toc">Token API</a>
-      <a href="#elimina" class="settings-toc">Elimina account</a>
+    <nav class="hidden lg:flex sticky top-6 flex-col gap-0.5" aria-label="{{t "settings.toc_label"}}">
+      <a href="#aspetto" class="settings-toc" aria-current="true">{{t "settings.toc.appearance"}}</a>
+      <a href="#app" class="settings-toc">{{t "settings.toc.app"}}</a>
+      <a href="#account" class="settings-toc">{{t "settings.toc.account"}}</a>
+      <a href="#dati" class="settings-toc">{{t "settings.toc.data"}}</a>
+      <a href="#token" class="settings-toc">{{t "settings.toc.tokens"}}</a>
+      <a href="#elimina" class="settings-toc">{{t "settings.toc.delete"}}</a>
     </nav>
 
     <div class="flex flex-col gap-4 min-w-0">
       <section id="aspetto" class="card scroll-mt-6">
         <div class="settings-sec">
-          <div><h2 class="h2">Modalità</h2><p class="settings-d">Su questo dispositivo, salvata in un cookie.</p></div>
-          <div class="grid grid-cols-3 gap-2.5" role="radiogroup" aria-label="Modalità">
+          <div><h2 class="h2">{{t "layout.appearance.mode"}}</h2><p class="settings-d">{{t "settings.mode.desc"}}</p></div>
+          <div class="grid grid-cols-3 gap-2.5" role="radiogroup" aria-label="{{t "layout.appearance.mode"}}">
             <button type="button" role="radio" class="mode-card" data-appearance-mode="chiaro" aria-checked="{{eq .Appearance.Mode "chiaro"}}">
               <span class="mode-pv" style="background:#F7F8FA"><span style="background:#fff;border-right:1px solid #E3E6EA"></span></span>
-              <span class="flex items-center gap-2">{{template "icon_sm" "i-sun"}}Chiaro</span>
+              <span class="flex items-center gap-2">{{template "icon_sm" "i-sun"}}{{t "layout.appearance.light"}}</span>
             </button>
             <button type="button" role="radio" class="mode-card" data-appearance-mode="scuro" aria-checked="{{eq .Appearance.Mode "scuro"}}">
               <span class="mode-pv" style="background:#16181C;border-color:#30343B"><span style="background:#1E2126;border-right:1px solid #30343B"></span></span>
-              <span class="flex items-center gap-2">{{template "icon_sm" "i-moon"}}Scuro</span>
+              <span class="flex items-center gap-2">{{template "icon_sm" "i-moon"}}{{t "layout.appearance.dark"}}</span>
             </button>
             <button type="button" role="radio" class="mode-card" data-appearance-mode="sistema" aria-checked="{{eq .Appearance.Mode "sistema"}}">
               <span class="mode-pv" style="background:linear-gradient(110deg,#F7F8FA 50%,#16181C 50%)"></span>
-              <span class="flex items-center gap-2">{{template "icon_sm" "i-monitor"}}<span class="sm:hidden">Sistema</span><span class="hidden sm:inline">Come il sistema</span></span>
+              <span class="flex items-center gap-2">{{template "icon_sm" "i-monitor"}}<span class="sm:hidden">{{t "layout.appearance.system"}}</span><span class="hidden sm:inline">{{t "settings.mode.like_system"}}</span></span>
             </button>
           </div>
         </div>
         <div class="settings-sec">
-          <div><h2 class="h2">Colore</h2><p class="settings-d">Il colore di pulsanti, link e grafici.</p></div>
-          <div class="grid grid-cols-4 gap-2 max-w-[340px]" role="radiogroup" aria-label="Colore">
-            <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Appearance.Accent "bosco"}}"><span class="swatch-dot" style="background:{{accentColor "bosco"}}"></span>Bosco</button>
-            <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Appearance.Accent "mare"}}"><span class="swatch-dot" style="background:{{accentColor "mare"}}"></span>Mare</button>
-            <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Appearance.Accent "tramonto"}}"><span class="swatch-dot" style="background:{{accentColor "tramonto"}}"></span>Tramonto</button>
-            <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Appearance.Accent "grafite"}}"><span class="swatch-dot" style="background:{{accentColor "grafite"}}"></span>Grafite</button>
+          <div><h2 class="h2">{{t "layout.appearance.color"}}</h2><p class="settings-d">{{t "settings.color.desc"}}</p></div>
+          <div class="grid grid-cols-4 gap-2 max-w-[340px]" role="radiogroup" aria-label="{{t "layout.appearance.color"}}">
+            <button type="button" role="radio" class="swatch" data-appearance-accent="bosco" aria-checked="{{eq .Appearance.Accent "bosco"}}"><span class="swatch-dot" style="background:{{accentColor "bosco"}}"></span>{{t "layout.appearance.bosco"}}</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="mare" aria-checked="{{eq .Appearance.Accent "mare"}}"><span class="swatch-dot" style="background:{{accentColor "mare"}}"></span>{{t "layout.appearance.mare"}}</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="tramonto" aria-checked="{{eq .Appearance.Accent "tramonto"}}"><span class="swatch-dot" style="background:{{accentColor "tramonto"}}"></span>{{t "layout.appearance.tramonto"}}</button>
+            <button type="button" role="radio" class="swatch" data-appearance-accent="grafite" aria-checked="{{eq .Appearance.Accent "grafite"}}"><span class="swatch-dot" style="background:{{accentColor "grafite"}}"></span>{{t "layout.appearance.grafite"}}</button>
           </div>
         </div>
       </section>
@@ -50,37 +50,37 @@
            static/js/pwa.js; without JS the generic one stays. */}}
       <section id="app" class="card scroll-mt-6">
         <div class="settings-sec">
-          <div><h2 class="h2">App sul telefono</h2><p class="settings-d">Nutreek si apre a schermo intero come un'app, senza barra del browser, e carica più in fretta.</p></div>
+          <div><h2 class="h2">{{t "settings.app.title"}}</h2><p class="settings-d">{{t "settings.app.desc"}}</p></div>
           <div data-pwa>
             <div data-pwa-state="altro" class="flex items-center gap-3">
               {{template "app_icon"}}
-              <div class="flex flex-col gap-0.5"><b>Nutreek</b><span class="text-[12.5px] text-muted">Dal menu del browser scegli «Installa app» o «Aggiungi a schermata Home». Non serve uno store.</span></div>
+              <div class="flex flex-col gap-0.5"><b>Nutreek</b><span class="text-[12.5px] text-muted">{{t "settings.app.generic"}}</span></div>
             </div>
             <div data-pwa-state="prompt" class="hidden flex flex-col gap-3">
               <div class="flex items-center gap-3">
                 {{template "app_icon"}}
-                <div class="flex flex-col gap-0.5"><b>Nutreek</b><span class="text-[12.5px] text-muted">Si installa dal browser, non serve uno store.</span></div>
+                <div class="flex flex-col gap-0.5"><b>Nutreek</b><span class="text-[12.5px] text-muted">{{t "settings.app.prompt_text"}}</span></div>
               </div>
-              <button type="button" class="btn-primary self-start" data-pwa-install>{{template "icon_sm" "i-download"}}Installa l'app</button>
+              <button type="button" class="btn-primary self-start" data-pwa-install>{{template "icon_sm" "i-download"}}{{t "settings.app.install"}}</button>
             </div>
             <div data-pwa-state="ios" class="hidden flex flex-col gap-3">
               <div class="flex items-center gap-3">
                 {{template "app_icon"}}
-                <div class="flex flex-col gap-0.5"><b>Nutreek</b><span class="text-[12.5px] text-muted">Su iPhone e iPad si aggiunge da Safari.</span></div>
+                <div class="flex flex-col gap-0.5"><b>Nutreek</b><span class="text-[12.5px] text-muted">{{t "settings.app.ios_text"}}</span></div>
               </div>
               <ol class="flex flex-col gap-2.5">
-                <li class="flex items-center gap-2.5"><span class="step-n">1</span><span>Tocca <span class="kbd">{{template "icon_sm" "i-share"}}Condividi</span> nella barra di Safari</span></li>
-                <li class="flex items-center gap-2.5"><span class="step-n">2</span><span>Scegli <span class="kbd">{{template "icon_sm" "i-square-plus"}}Aggiungi alla schermata Home</span></span></li>
-                <li class="flex items-center gap-2.5"><span class="step-n">3</span><span>Conferma con <b>Aggiungi</b></span></li>
+                <li class="flex items-center gap-2.5"><span class="step-n">1</span><span>{{t "settings.app.ios_1_pre"}} <span class="kbd">{{template "icon_sm" "i-share"}}{{t "settings.app.ios_1_key"}}</span> {{t "settings.app.ios_1_post"}}</span></li>
+                <li class="flex items-center gap-2.5"><span class="step-n">2</span><span>{{t "settings.app.ios_2_pre"}} <span class="kbd">{{template "icon_sm" "i-square-plus"}}{{t "settings.app.ios_2_key"}}</span></span></li>
+                <li class="flex items-center gap-2.5"><span class="step-n">3</span><span>{{t "settings.app.ios_3_pre"}} <b>{{t "settings.app.ios_3_key"}}</b></span></li>
               </ol>
             </div>
             <div data-pwa-state="installata" class="hidden flex items-center gap-3">
               {{template "app_icon"}}
-              <div class="flex flex-col gap-0.5"><b>Già installata</b><span class="text-[12.5px] text-muted">Stai usando Nutreek come app. Per toglierla, tieni premuta l'icona sulla schermata Home.</span></div>
+              <div class="flex flex-col gap-0.5"><b>{{t "settings.app.installed_title"}}</b><span class="text-[12.5px] text-muted">{{t "settings.app.installed_text"}}</span></div>
             </div>
             <div data-pwa-state="http" class="hidden flex items-start gap-3">
               <span class="thumb">{{template "icon_sm" "i-lock"}}</span>
-              <div class="flex flex-col gap-0.5"><b>Serve una connessione sicura</b><span class="text-[12.5px] text-muted">L'installazione e la fotocamera funzionano solo se Nutreek è aperto in https. Chi gestisce questa istanza può attivarlo dal proxy (per esempio Traefik o Caddy).</span></div>
+              <div class="flex flex-col gap-0.5"><b>{{t "settings.app.https_title"}}</b><span class="text-[12.5px] text-muted">{{t "settings.app.https_text"}}</span></div>
             </div>
           </div>
         </div>
@@ -88,79 +88,79 @@
 
       <section class="card">
         <div id="account" class="settings-sec scroll-mt-6">
-          <div><h2 class="h2">Account</h2><p class="settings-d break-all">{{.User.Email}}</p></div>
+          <div><h2 class="h2">{{t "settings.account.title"}}</h2><p class="settings-d break-all">{{.User.Email}}</p></div>
           <form method="post" action="/settings/password" class="flex flex-col gap-3 max-w-[420px]">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            {{if .PasswordOK}}<p role="status" class="rounded-xl bg-accent-soft text-accent px-3 py-2 font-semibold">Password cambiata.</p>{{end}}
+            {{if .PasswordOK}}<p role="status" class="rounded-xl bg-accent-soft text-accent px-3 py-2 font-semibold">{{t "settings.password.changed"}}</p>{{end}}
             {{if .PasswordError}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-3 py-2">{{.PasswordError}}</p>{{end}}
-            <label class="lab">Password attuale<input name="current_password" type="password" required autocomplete="current-password" class="field"></label>
-            <label class="lab">Nuova password<input name="new_password" type="password" required minlength="8" autocomplete="new-password" class="field"><span class="font-medium">Almeno 8 caratteri.</span></label>
-            <label class="lab">Ripeti la nuova password<input name="confirm_password" type="password" required autocomplete="new-password" class="field"></label>
-            <button class="btn-secondary self-start">{{template "icon_sm" "i-lock"}}Cambia password</button>
+            <label class="lab">{{t "settings.password.current"}}<input name="current_password" type="password" required autocomplete="current-password" class="field"></label>
+            <label class="lab">{{t "settings.password.new"}}<input name="new_password" type="password" required minlength="8" autocomplete="new-password" class="field"><span class="font-medium">{{t "settings.password.hint"}}</span></label>
+            <label class="lab">{{t "settings.password.confirm"}}<input name="confirm_password" type="password" required autocomplete="new-password" class="field"></label>
+            <button class="btn-secondary self-start">{{template "icon_sm" "i-lock"}}{{t "settings.password.submit"}}</button>
           </form>
         </div>
         <div id="dati" class="settings-sec scroll-mt-6">
-          <div><h2 class="h2">I tuoi dati</h2><p class="settings-d">Diritto alla portabilità (GDPR art. 20).</p></div>
+          <div><h2 class="h2">{{t "settings.data.title"}}</h2><p class="settings-d">{{t "settings.data.desc"}}</p></div>
           <div class="flex flex-wrap items-center gap-3">
-            <a href="/settings/export" class="btn-secondary">{{template "icon_sm" "i-download"}}Esporta in JSON</a>
-            <span class="text-[12.5px] text-muted">Peso, allenamenti, ricette, piani: tutto in un file.</span>
+            <a href="/settings/export" class="btn-secondary">{{template "icon_sm" "i-download"}}{{t "settings.data.export"}}</a>
+            <span class="text-[12.5px] text-muted">{{t "settings.data.export_hint"}}</span>
           </div>
         </div>
       </section>
 
       <section id="token" class="card overflow-hidden scroll-mt-6">
         <div class="flex flex-wrap items-center gap-2 px-4 pt-4 pb-3">
-          <h2 class="h2">Token API</h2>
+          <h2 class="h2">{{t "settings.tokens.title"}}</h2>
           {{if not (index .Features "api_access")}}<span class="chip chip-warn">Premium</span>{{end}}
-          <span class="ml-auto text-[12.5px] text-muted">per app esterne, es. Home Assistant</span>
+          <span class="ml-auto text-[12.5px] text-muted">{{t "settings.tokens.for_apps"}}</span>
         </div>
 
         {{if .NewTokenPlain}}
         <div role="status" class="mx-4 mb-3 rounded-xl bg-accent-soft p-3 flex flex-col gap-1.5">
-          <p class="font-semibold text-accent">Token creato: copialo adesso, non si vedrà più.</p>
+          <p class="font-semibold text-accent">{{t "settings.tokens.created"}}</p>
           <code class="block font-mono text-[12.5px] break-all bg-surface border border-border rounded-lg px-3 py-2 select-all">{{.NewTokenPlain}}</code>
         </div>
         {{end}}
 
         {{if .APITokens}}
         <ul class="border-t border-border divide-y divide-border">
-          <li class="list-head-sm hidden sm:grid grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>Nome</span><span>Creato</span><span>Ultimo uso</span><span></span></li>
+          <li class="list-head-sm hidden sm:grid grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>{{t "settings.tokens.col_name"}}</span><span>{{t "settings.tokens.col_created"}}</span><span>{{t "settings.tokens.col_last_used"}}</span><span></span></li>
           {{range .APITokens}}
           <li class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 items-center px-4 py-2 min-h-12">
             <span class="flex items-center gap-2.5 min-w-0"><span class="thumb w-[30px] h-[30px]">{{template "icon_sm" "i-key"}}</span><b class="truncate">{{.Name}}</b></span>
             <span class="hidden sm:block text-muted tabular-nums">{{.CreatedAt.Day}} {{monthName .CreatedAt}}</span>
-            <span class="hidden sm:block text-muted tabular-nums">{{with .LastUsedAt}}{{.Day}} {{monthName .}}{{else}}mai{{end}}</span>
-            <form method="post" action="/settings/api-tokens/{{.ID}}/revoke" data-confirm="Revocare il token «{{.Name}}»? Le app che lo usano smetteranno di funzionare." class="justify-self-end">
+            <span class="hidden sm:block text-muted tabular-nums">{{with .LastUsedAt}}{{.Day}} {{monthName .}}{{else}}{{t "settings.tokens.never"}}{{end}}</span>
+            <form method="post" action="/settings/api-tokens/{{.ID}}/revoke" data-confirm="{{t "settings.tokens.revoke_confirm" "Name" .Name}}" class="justify-self-end">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button class="btn-danger h-8">Revoca</button>
+              <button class="btn-danger h-8">{{t "settings.tokens.revoke"}}</button>
             </form>
           </li>
           {{end}}
         </ul>
         {{else}}
-        <p class="border-t border-border px-4 py-4 text-muted">Nessun token per ora.</p>
+        <p class="border-t border-border px-4 py-4 text-muted">{{t "settings.tokens.empty"}}</p>
         {{end}}
 
         {{if index .Features "api_access"}}
         <form method="post" action="/settings/api-tokens" class="flex gap-2 px-4 py-3 border-t border-border">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <input name="name" required maxlength="100" placeholder="Nome del nuovo token" aria-label="Nome del nuovo token" class="field max-w-[320px]">
-          <button class="btn-secondary shrink-0">{{template "icon_sm" "i-plus"}}Crea token</button>
+          <input name="name" required maxlength="100" placeholder="{{t "settings.tokens.name_placeholder"}}" aria-label="{{t "settings.tokens.name_placeholder"}}" class="field max-w-[320px]">
+          <button class="btn-secondary shrink-0">{{template "icon_sm" "i-plus"}}{{t "settings.tokens.create"}}</button>
         </form>
-        <p class="px-4 py-3 border-t border-border text-[12.5px] text-muted">Il valore si vede una volta sola, appena creato.</p>
+        <p class="px-4 py-3 border-t border-border text-[12.5px] text-muted">{{t "settings.tokens.once"}}</p>
         {{else}}
-        <p class="px-4 py-3 border-t border-border text-muted">Creare token fa parte di Premium. <a href="/upgrade" class="text-accent font-semibold hover:underline">Scopri cosa include</a></p>
+        <p class="px-4 py-3 border-t border-border text-muted">{{t "settings.tokens.premium_note"}} <a href="/upgrade" class="text-accent font-semibold hover:underline">{{t "settings.tokens.see_includes"}}</a></p>
         {{end}}
       </section>
 
       <section id="elimina" class="card scroll-mt-6" style="border-color:color-mix(in srgb, var(--danger) 35%, var(--border))">
         <div class="settings-sec">
-          <div><h2 class="h2 text-danger">Elimina account</h2><p class="settings-d">Cancella per sempre piani, ricette, pesate e tutto il resto (GDPR art. 17).</p></div>
-          <form method="post" action="/settings/delete-account" class="flex flex-wrap items-end gap-2" data-confirm="Eliminare l'account e tutti i dati? Non si può annullare.">
+          <div><h2 class="h2 text-danger">{{t "settings.delete.title"}}</h2><p class="settings-d">{{t "settings.delete.desc"}}</p></div>
+          <form method="post" action="/settings/delete-account" class="flex flex-wrap items-end gap-2" data-confirm="{{t "settings.delete.confirm"}}">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             {{if .DeleteError}}<p role="alert" class="basis-full rounded-xl bg-danger-soft text-danger px-3 py-2">{{.DeleteError}}</p>{{end}}
-            <label class="lab flex-1 min-w-[200px] max-w-[280px]">Conferma con la password<input name="password" type="password" required autocomplete="current-password" class="field"></label>
-            <button class="btn bg-danger text-surface hover:opacity-90">Elimina account</button>
+            <label class="lab flex-1 min-w-[200px] max-w-[280px]">{{t "settings.delete.password"}}<input name="password" type="password" required autocomplete="current-password" class="field"></label>
+            <button class="btn bg-danger text-surface hover:opacity-90">{{t "settings.delete.submit"}}</button>
           </form>
         </div>
       </section>
@@ -173,7 +173,7 @@
 
 {{define "scripts"}}
 <script>
-// Indice delle sezioni: segna quella in vista.
+// Table of contents: marks the section in view.
 (function () {
   var links = document.querySelectorAll(".settings-toc");
   if (!links.length || !("IntersectionObserver" in window)) return;
