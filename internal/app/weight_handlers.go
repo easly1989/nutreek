@@ -11,6 +11,8 @@ import (
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/i18n"
+	"github.com/amon2126/nutreek/internal/web"
 )
 
 type weightPageData struct {
@@ -63,19 +65,20 @@ func (a *App) weightPage(r *http.Request) (weightPageData, error) {
 		return data, err
 	}
 	data.Logs = logs
+	lang := i18n.FromContext(r.Context())
 	today := todayDate()
 	inRange, err := a.WeightLogs.ForRange(r.Context(), user.ID, today.AddDate(0, 0, -data.Range), today)
 	if err != nil {
 		return data, err
 	}
 	for _, l := range inRange {
-		data.Charts.WeightLabels = append(data.Charts.WeightLabels, shortDateIT(l.MeasuredAt))
+		data.Charts.WeightLabels = append(data.Charts.WeightLabels, web.ShortDate(lang, l.MeasuredAt))
 		data.Charts.Weight = append(data.Charts.Weight, l.WeightKg)
 	}
 	data.HasChart = len(inRange) >= 2
 	if data.HasChart {
 		first, last := inRange[0], inRange[len(inRange)-1]
-		data.Trend = weightTrend(last.WeightKg-first.WeightKg, last.MeasuredAt.Sub(first.MeasuredAt))
+		data.Trend = weightTrend(lang, last.WeightKg-first.WeightKg, last.MeasuredAt.Sub(first.MeasuredAt))
 	}
 	return data, nil
 }
