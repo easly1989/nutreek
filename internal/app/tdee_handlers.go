@@ -17,7 +17,7 @@ func (a *App) handleAcceptTDEESuggestion(w http.ResponseWriter, r *http.Request)
 	val := r.PostFormValue("estimated_tdee")
 	v, err := strconv.ParseFloat(val, 64)
 	if err != nil || v < 500 || v > 8000 {
-		http.Error(w, "Valore TDEE non valido", http.StatusBadRequest)
+		http.Error(w, a.t(r, "stats.tdee.invalid"), http.StatusBadRequest)
 		return
 	}
 	rounded := math.Round(v)
@@ -26,6 +26,6 @@ func (a *App) handleAcceptTDEESuggestion(w http.ResponseWriter, r *http.Request)
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Put(ctx, "flash", "Target calorico aggiornato a "+strconv.FormatInt(int64(rounded), 10)+" kcal/giorno.")
+	a.Sessions.Put(ctx, "flash", a.t(r, "stats.flash.target_updated", "Kcal", strconv.FormatInt(int64(rounded), 10)))
 	http.Redirect(w, r, "/stats", http.StatusSeeOther)
 }
