@@ -119,7 +119,7 @@ func funcMap(lang string) template.FuncMap {
 		"lang": func() string { return lang },
 		// languages lists the languages the interface speaks, for the pickers.
 		"languages": func() []i18n.Language { return i18n.Languages },
-		"add":  func(a, b int) int { return a + b },
+		"add":       func(a, b int) int { return a + b },
 		// ref shows reference data from the database (allergens, activities)
 		// by its stable code: {{ref "allergen" .Code .Name}}. Without a code
 		// or a translation it shows the stored name.

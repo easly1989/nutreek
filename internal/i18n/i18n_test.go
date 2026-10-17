@@ -60,8 +60,8 @@ func TestMatch(t *testing.T) {
 		{"it-IT,it;q=0.9,en-US;q=0.8", "it"},
 		{"it", "it"},
 		{"en-GB,en;q=0.9", "en"},
-		{"de-DE,de;q=0.9", "en"},           // neither: English
-		{"de-DE,it;q=0.5", "it"},           // the first supported one wins
+		{"de-DE,de;q=0.9", "en"},            // neither: English
+		{"de-DE,it;q=0.5", "it"},            // the first supported one wins
 		{"fr-CH, fr;q=0.9, en;q=0.8", "en"}, // English listed after an unsupported one
 		{"not a header", "en"},
 	}
