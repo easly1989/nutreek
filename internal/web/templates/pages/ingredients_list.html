@@ -46,9 +46,9 @@
       <label class="filter relative pr-8{{if $f.AllergenID}} is-on{{end}}">
         <select name="allergen" onchange="this.form.requestSubmit()" aria-label="{{t "ingredients.filter.allergen"}}" class="absolute inset-0 opacity-0 cursor-pointer">
           <option value="">{{t "ingredients.filter.allergen_all"}}</option>
-          {{range .AllAllergens}}<option value="{{.ID}}"{{if eq $f.AllergenID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+          {{range .AllAllergens}}<option value="{{.ID}}"{{if eq $f.AllergenID .ID}} selected{{end}}>{{ref "allergen" .Code .Name}}</option>{{end}}
         </select>
-        {{if $f.AllergenID}}{{range .AllAllergens}}{{if eq $f.AllergenID .ID}}{{t "ingredients.filter.contains" "Name" .Name}}{{end}}{{end}}{{else}}{{t "ingredients.filter.allergen_all"}}{{end}}
+        {{if $f.AllergenID}}{{range .AllAllergens}}{{if eq $f.AllergenID .ID}}{{t "ingredients.filter.contains" "Name" (ref "allergen" .Code .Name)}}{{end}}{{end}}{{else}}{{t "ingredients.filter.allergen_all"}}{{end}}
         <span class="absolute right-2.5">{{template "icon_sm" "i-chevron-down"}}</span>
       </label>
       {{end}}
