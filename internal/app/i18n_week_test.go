@@ -26,7 +26,7 @@ func init() {
 	for _, w := range strings.Fields(`aggiungi aggiungine aggiunta elimina eliminare sgarro sgarri pasto pasti
 		allenamento acqua oggi svuota svuotare genera sceglie applica ripristina personalizza porzioni porz
 		obiettivo obiettivi pianificare pianificato pianificati rispettato aderenza scostamento trascina
-		riordinare mangiato voce voci quantita attivo scegli schema pubblica ricetta suggeriti importati
+		riordinare mangiato voce voci quantita attivo scegli pubblica ricetta suggeriti importati
 		primo carico riprova esporta lista precedente successiva scorsa mancante invalido seleziona
 		obbligatorio troppo lungo fallito impossibile giorno giorni durata minuti allenamenti variazioni
 		consumato escludere originale rimane invariata`) {
