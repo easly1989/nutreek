@@ -2,12 +2,7 @@ package i18n
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io/fs"
 	"maps"
-	"path"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -81,100 +76,105 @@ func TestContextLanguage(t *testing.T) {
 	}
 }
 
-// complete are the languages that must translate every key; the others may
-// leave keys to the English fallback.
-var complete = []string{"it", "en"}
-
-var placeholder = regexp.MustCompile(`{{\s*\.(\w+)\s*}}`)
-
-func placeholders(s string) []string {
-	var out []string
-	for _, m := range placeholder.FindAllStringSubmatch(s, -1) {
-		out = append(out, m[1])
-	}
-	slices.Sort(out)
-	return slices.Compact(out)
-}
-
-// pluralForms reads a catalog value: a string, or an object of CLDR plural
-// forms that has at least "other".
-func pluralForms(raw json.RawMessage) (map[string]string, error) {
-	var s string
-	if json.Unmarshal(raw, &s) == nil {
-		return map[string]string{"other": s}, nil
-	}
-	var forms map[string]string
-	if err := json.Unmarshal(raw, &forms); err != nil {
-		return nil, fmt.Errorf("not a string nor an object of plural forms")
-	}
-	for form := range forms {
-		if !slices.Contains([]string{"zero", "one", "two", "few", "many", "other"}, form) {
-			return nil, fmt.Errorf("unknown plural form %q", form)
-		}
-	}
-	if _, ok := forms["other"]; !ok {
-		return nil, fmt.Errorf(`plural forms without "other"`)
-	}
-	return forms, nil
-}
-
-// TestCatalogs keeps the catalogs consistent: every file a flat object of
-// non-empty strings (or plural forms), keys prefixed with their area, the
-// same placeholders as English, and the complete languages missing no key.
+// TestCatalogs keeps the real catalogs consistent (see Check). The keys a
+// community language lacks are logged (go test -v), not failures.
 func TestCatalogs(t *testing.T) {
-	catalogs := map[string]map[string]string{} // language → key → text
-	for _, l := range Languages {
-		catalogs[l.Code] = map[string]string{}
-		files, _ := fs.Glob(locales, "locales/"+l.Code+"/*.json")
-		if len(files) == 0 {
-			t.Errorf("%s: no catalog files", l.Code)
-		}
-		for _, f := range files {
-			buf, _ := fs.ReadFile(locales, f)
-			var m map[string]json.RawMessage
-			if err := json.Unmarshal(buf, &m); err != nil {
-				t.Errorf("%s: %v", f, err)
-				continue
-			}
-			area := strings.TrimSuffix(path.Base(f), ".json")
-			for k, raw := range m {
-				if !strings.HasPrefix(k, area+".") {
-					t.Errorf("%s: key %q must start with %q", f, k, area+".")
-				}
-				forms, err := pluralForms(raw)
-				if err != nil {
-					t.Errorf("%s: key %q: %v", f, k, err)
-					continue
-				}
-				for form, v := range forms {
-					if strings.TrimSpace(v) == "" {
-						t.Errorf("%s: key %q (%s) is empty", f, k, form)
-					}
-				}
-				// Placeholders are compared over all the forms together.
-				catalogs[l.Code][k] = strings.Join(slices.Collect(maps.Values(forms)), "\n")
-			}
-		}
+	r := CheckEmbedded()
+	for _, e := range r.Errors {
+		t.Error(e)
 	}
+	for code, keys := range r.Missing {
+		t.Logf("%s: %d keys to translate (English is shown for now)", code, len(keys))
+	}
+}
 
-	en := catalogs["en"]
-	for code, cat := range catalogs {
-		for k, v := range cat {
-			ref, ok := en[k]
-			if !ok {
-				t.Errorf("%s: key %q is not in English", code, k)
-				continue
-			}
-			if got, want := placeholders(v), placeholders(ref); !slices.Equal(got, want) {
-				t.Errorf("%s: key %q has placeholders %v, English has %v", code, k, got, want)
-			}
-		}
+// memFS builds an in-memory locales tree from "lang/area" → JSON.
+func memFS(files map[string]string) fstest.MapFS {
+	m := fstest.MapFS{}
+	for name, data := range files {
+		m["locales/"+name+".json"] = &fstest.MapFile{Data: []byte(data)}
 	}
-	for _, code := range complete {
-		for k := range en {
-			if _, ok := catalogs[code][k]; !ok {
-				t.Errorf("%s: missing key %q", code, k)
+	return m
+}
+
+func TestCheck(t *testing.T) {
+	base := map[string]string{
+		"en/demo": `{"demo.title": "Title", "demo.hello": "Hello {{.Name}}", "demo.items": {"one": "{{.Count}} item", "other": "{{.Count}} items"}}`,
+		"it/demo": `{"demo.title": "Titolo", "demo.hello": "Ciao {{.Name}}", "demo.items": {"one": "{{.Count}} voce", "other": "{{.Count}} voci"}}`,
+	}
+	with := func(extra map[string]string) fstest.MapFS {
+		files := maps.Clone(base)
+		maps.Copy(files, extra)
+		return memFS(files)
+	}
+	codes := []string{"it", "en", "de"}
+	strict := []string{"it", "en"}
+
+	tests := []struct {
+		name        string
+		fsys        fstest.MapFS
+		wantErrors  []string // substrings, one per expected error
+		wantMissing []string // keys missing in "de"
+	}{
+		{"community language complete", with(map[string]string{
+			"de/demo": `{"demo.title": "Titel", "demo.hello": "Hallo {{.Name}}", "demo.items": {"one": "{{.Count}} Eintrag", "other": "{{.Count}} Einträge"}}`,
+		}), nil, nil},
+		{"community language missing keys only warns", with(map[string]string{
+			"de/demo": `{"demo.title": "Titel"}`,
+		}), nil, []string{"demo.hello", "demo.items"}},
+		{"community language without an area file only warns", with(map[string]string{
+			"de/other": `{"other.x": "x"}`,
+		}), []string{`key "other.x" is not in English`}, []string{"demo.hello", "demo.items", "demo.title"}},
+		{"community language with a key English lacks fails", with(map[string]string{
+			"de/demo": `{"demo.title": "Titel", "demo.hello": "Hallo {{.Name}}", "demo.items": "{{.Count}} x", "demo.extra": "Zusatz"}`,
+		}), []string{`"demo.extra" is not in English`}, nil},
+		{"community language with an empty value fails", with(map[string]string{
+			"de/demo": `{"demo.title": " ", "demo.hello": "Hallo {{.Name}}", "demo.items": "{{.Count}} x"}`,
+		}), []string{`"demo.title" (other) is empty`}, nil},
+		{"community language with other placeholders fails", with(map[string]string{
+			"de/demo": `{"demo.title": "Titel", "demo.hello": "Hallo {{.Nom}}", "demo.items": "{{.Count}}"}`,
+		}), []string{`"demo.hello" has placeholders [Nom], English has [Name]`}, nil},
+		{"community language with a key outside its area fails", with(map[string]string{
+			"de/demo": `{"demo.title": "Titel", "demo.hello": "Hallo {{.Name}}", "demo.items": "{{.Count}} x", "week.title": "Woche"}`,
+		}), []string{`must start with "demo."`, `"week.title" is not in English`}, nil},
+		{"community language with a broken file fails", with(map[string]string{
+			"de/demo": `{"demo.title": `,
+		}), []string{"unexpected end of JSON input"}, []string{"demo.hello", "demo.items", "demo.title"}},
+		{"plural forms must have other", with(map[string]string{
+			"de/demo": `{"demo.title": "Titel", "demo.hello": "Hallo {{.Name}}", "demo.items": {"one": "{{.Count}} Eintrag"}}`,
+		}), []string{`plural forms without "other"`}, []string{"demo.items"}},
+		{"folder missing from the language list fails", with(map[string]string{
+			"de/demo": `{"demo.title": "Titel", "demo.hello": "Hallo {{.Name}}", "demo.items": "{{.Count}}"}`,
+			"fr/demo": `{"demo.title": "Titre"}`,
+		}), []string{"locales/fr is not in Languages"}, nil},
+		{"language listed without files fails", memFS(base), []string{"de: no catalog files"}, []string{"demo.hello", "demo.items", "demo.title"}},
+		{"Italian missing a key fails", memFS(map[string]string{
+			"en/demo": base["en/demo"],
+			"it/demo": `{"demo.title": "Titolo"}`,
+			"de/demo": `{"demo.title": "Titel"}`,
+		}), []string{`it: missing key "demo.hello"`, `it: missing key "demo.items"`}, []string{"demo.hello", "demo.items"}},
+		{"a key English lacks fails in Italian", with(map[string]string{
+			"it/demo": `{"demo.title": "Titolo", "demo.hello": "Ciao {{.Name}}", "demo.items": "{{.Count}} x", "demo.only_it": "solo"}`,
+			"de/demo": `{"demo.title": "Titel", "demo.hello": "Hallo {{.Name}}", "demo.items": "{{.Count}} x"}`,
+		}), []string{`it: key "demo.only_it" is not in English`}, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Check(tt.fsys, codes, strict)
+			if len(r.Errors) != len(tt.wantErrors) {
+				t.Errorf("errors = %q, want %d matching %q", r.Errors, len(tt.wantErrors), tt.wantErrors)
 			}
-		}
+			for _, want := range tt.wantErrors {
+				if !slices.ContainsFunc(r.Errors, func(e string) bool { return strings.Contains(e, want) }) {
+					t.Errorf("no error contains %q in %q", want, r.Errors)
+				}
+			}
+			if got := r.Missing["de"]; !slices.Equal(got, tt.wantMissing) {
+				t.Errorf("missing in de = %q, want %q", got, tt.wantMissing)
+			}
+			if len(r.Missing["it"])+len(r.Missing["en"]) > 0 {
+				t.Errorf("a complete language is reported as a warning: %v", r.Missing)
+			}
+		})
 	}
 }
