@@ -33,7 +33,8 @@ func applyDemo(ctx context.Context, store *db.Store, sessions *scs.SessionManage
 	a.Cfg.PremiumEnabled = false
 	a.Cfg.BackupEnabled = false // throwaway data
 	db.ScopeCatalog(store.DB, demo.Peers)
-	a.Demo = demo.New(store.DB, cfg)
+	svc := demo.New(store.DB, cfg)
+	a.Demo = svc
 	a.DemoLimits = app.DemoLimits{
 		MaxUsers:       cfg.MaxUsers,
 		StartsPerHour:  cfg.StartsPerHour,
@@ -41,6 +42,7 @@ func applyDemo(ctx context.Context, store *db.Store, sessions *scs.SessionManage
 		MaxIngredients: cfg.MaxIngredients,
 		MaxRecipes:     cfg.MaxRecipes,
 	}
+	go svc.Run(ctx, logger)
 	logger.Info("demo build: accounts are throwaway", "idle", cfg.Idle.String(), "max_users", cfg.MaxUsers)
 	return nil
 }

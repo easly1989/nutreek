@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/demo"
@@ -178,6 +179,33 @@ func TestDemoEntry(t *testing.T) {
 	}
 	if code, loc := b.post("/settings", "/logout", nil); code != http.StatusSeeOther || loc != "/" {
 		t.Errorf("logout: %d to %q, want the entry", code, loc)
+	}
+}
+
+// Requests keep a demo alive; once purged, its session lets nobody in.
+func TestDemoPurgedSession(t *testing.T) {
+	a := newDemoApp(t, DemoLimits{})
+	svc := demo.New(a.Store.DB, demo.Config{Idle: time.Hour})
+	a.Demo = svc
+	b := newBrowser(t, a)
+	if code, _ := b.post("/", "/demo/session", nil); code != http.StatusSeeOther {
+		t.Fatalf("POST /demo/session: %d", code)
+	}
+	if _, err := a.Store.DB.Exec(`UPDATE demo_groups SET last_seen_at = '2000-01-01 00:00:00'`); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, _ := b.get("/recipes"); code != http.StatusOK {
+		t.Fatalf("GET /recipes: %d", code)
+	}
+	if n, err := svc.Purge(context.Background(), false); err != nil || n != 0 {
+		t.Fatalf("a demo in use was purged: %d, %v", n, err)
+	}
+
+	if _, err := svc.Purge(context.Background(), true); err != nil {
+		t.Fatal(err)
+	}
+	if code, loc, _ := b.get("/recipes"); code != http.StatusSeeOther || loc != "/" {
+		t.Errorf("GET /recipes after the purge: %d to %q, want the entry", code, loc)
 	}
 }
 
