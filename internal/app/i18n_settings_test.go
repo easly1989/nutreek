@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"io/fs"
 	"net/http"
@@ -139,7 +140,7 @@ func TestEnglishSettingsAdminCoach(t *testing.T) {
 	}
 	pages := []page{
 		// Settings.
-		{name: "settings", target: "/settings", want: []string{"Appearance, account and your data.", "Like the system", "Forest", "Install the app", "Add to Home Screen", "Export as JSON", "Create token", "Delete account", "never"}, handler: a.handleSettingsPage},
+		{name: "settings", target: "/settings", want: []string{"Appearance, language, account and your data.", "Like the browser", "Like the system", "Forest", "Install the app", "Add to Home Screen", "Export as JSON", "Create token", "Delete account", "never"}, handler: a.handleSettingsPage},
 		{name: "settings, password changed", target: "/settings?ok=password", want: []string{"Password changed."}, handler: a.handleSettingsPage},
 		{name: "settings, free plan", target: "/settings", as: bob, premium: true, handler: a.handleSettingsPage},
 		{name: "settings, premium", target: "/settings", as: dan, premium: true, handler: a.handleSettingsPage},
@@ -180,9 +181,7 @@ func TestEnglishSettingsAdminCoach(t *testing.T) {
 		if p.form != nil {
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}
-		if lang != "" {
-			req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-		}
+		req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 		viewer := ada
 		if p.as != nil {
 			viewer = p.as

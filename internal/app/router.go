@@ -46,11 +46,11 @@ func (a *App) Router() http.Handler {
 	r.Use(middleware.StripSlashes)
 	r.Use(securityHeaders)
 	r.Use(requestIDMiddleware)
-	r.Use(languageMiddleware)
 	r.Use(a.requestLogger)
 	r.Use(a.Sessions.LoadAndSave)
 	r.Use(a.csrfMiddleware)
 	r.Use(a.loadUserMiddleware)
+	r.Use(languageMiddleware) // after the user: their choice comes first
 
 	// Styled 404 page for unmatched paths. chi calls this handler after
 	// running the middleware chain above: the page sees the
@@ -75,6 +75,7 @@ func (a *App) Router() http.Handler {
 	r.Get("/", a.handleDashboard)
 
 	registerLimiter := newIPRateLimiter(5, oneMinute)
+	r.Post("/language", a.handleLanguage)
 	r.Get("/login", a.handleLoginForm)
 	r.Post("/login", a.handleLogin)
 	r.Get("/register", a.handleRegisterForm)

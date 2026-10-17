@@ -1,8 +1,10 @@
 {
   "settings.title": "Impostazioni",
-  "settings.subtitle": "Aspetto, account e i tuoi dati.",
+  "settings.subtitle": "Aspetto, lingua, account e i tuoi dati.",
   "settings.toc_label": "Sezioni delle impostazioni",
-  "settings.toc.appearance": "Aspetto",
+  "settings.toc.appearance": "Aspetto e lingua",
+  "settings.language.desc": "Di solito quella del browser. Vale per il tuo account, su tutti i dispositivi.",
+  "settings.language.browser": "Come il browser",
   "settings.toc.app": "App sul telefono",
   "settings.toc.account": "Account",
   "settings.toc.data": "I tuoi dati",
