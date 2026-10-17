@@ -19,7 +19,7 @@ func (a *App) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		}
 		got := strings.TrimSpace(r.Header.Get("X-Admin-Token"))
 		if got == "" || subtle.ConstantTimeCompare([]byte(got), []byte(expected)) != 1 {
-			http.Error(w, "admin token non valido", http.StatusForbidden)
+			http.Error(w, "invalid admin token", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -31,7 +31,7 @@ func (a *App) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 // without waiting for the ticker.
 func (a *App) handleAdminReconcile(w http.ResponseWriter, r *http.Request) {
 	if a.Reconciler == nil {
-		http.Error(w, "reconciler non configurato", http.StatusServiceUnavailable)
+		http.Error(w, "reconciler not configured", http.StatusServiceUnavailable)
 		return
 	}
 	stats, err := a.Reconciler.RunOnce(r.Context())

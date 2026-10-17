@@ -1,4 +1,4 @@
-{{define "title"}}Amministrazione — Nutreek{{end}}
+{{define "title"}}{{t "admin.title"}} — Nutreek{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
   {{template "admin_header" "panoramica"}}
@@ -6,30 +6,30 @@
   {{if not .PremiumEnabled}}{{template "premium_off_note"}}{{end}}
 
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    <div class="tile"><span class="tile-k">Utenti</span><span class="tile-v">{{.UserCount}}</span><span class="tile-s">{{if eq .CoachCount 1}}1 coach{{else}}{{.CoachCount}} coach{{end}}</span></div>
-    <div class="tile"><span class="tile-k">Premium</span><span class="tile-v">{{.PremiumCount}}</span><span class="tile-s">{{if .PremiumEnabled}}gating attivo{{else}}gating spento{{end}}</span></div>
-    <div class="tile"><span class="tile-k">Funzionalità attive</span><span class="tile-v">{{.ActiveCount}} <small>di {{len .Features}}</small></span><span class="tile-s">{{.PremiumFeats}} premium</span></div>
-    <div class="tile"><span class="tile-k">Prodotti OpenFoodFacts</span><span class="tile-v" data-off="count">—</span><span class="tile-s" data-off="synced-rel">&nbsp;</span></div>
+    <div class="tile"><span class="tile-k">{{t "admin.overview.users"}}</span><span class="tile-v">{{.UserCount}}</span><span class="tile-s">{{t "admin.overview.coaches" "Count" .CoachCount}}</span></div>
+    <div class="tile"><span class="tile-k">Premium</span><span class="tile-v">{{.PremiumCount}}</span><span class="tile-s">{{if .PremiumEnabled}}{{t "admin.overview.gating_on"}}{{else}}{{t "admin.overview.gating_off"}}{{end}}</span></div>
+    <div class="tile"><span class="tile-k">{{t "admin.overview.active_features"}}</span><span class="tile-v">{{.ActiveCount}} <small>{{t "admin.overview.of_total" "Total" (len .Features)}}</small></span><span class="tile-s">{{t "admin.overview.premium_features" "Count" .PremiumFeats}}</span></div>
+    <div class="tile"><span class="tile-k">{{t "admin.overview.off_products"}}</span><span class="tile-v" data-off="count">—</span><span class="tile-s" data-off="synced-rel">&nbsp;</span></div>
   </div>
 
   <div class="grid gap-4 lg:gap-[18px] lg:grid-cols-[minmax(0,1fr)_360px] items-start">
     <section id="funzionalita" class="card overflow-hidden scroll-mt-6">
       <div class="flex items-baseline justify-between px-4 pt-3.5 pb-3">
-        <h2 class="h2">Funzionalità</h2>
-        <span class="text-[12.5px] text-muted">si applicano subito</span>
+        <h2 class="h2">{{t "admin.features.title"}}</h2>
+        <span class="text-[12.5px] text-muted">{{t "admin.features.hint"}}</span>
       </div>
       <ul class="border-t border-border divide-y divide-border">
-        <li class="grid grid-cols-[minmax(0,1fr)_72px_72px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>Funzionalità</span><span class="text-center">Attiva</span><span class="text-center">Premium</span></li>
+        <li class="grid grid-cols-[minmax(0,1fr)_72px_72px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>{{t "admin.features.col_feature"}}</span><span class="text-center">{{t "admin.features.col_active"}}</span><span class="text-center">Premium</span></li>
         {{range .Features}}
         <li class="grid grid-cols-[minmax(0,1fr)_72px_72px] gap-3 items-center px-4 py-2.5">
           <span class="flex flex-col min-w-0"><b>{{.Name}}</b><span class="text-[12.5px] text-muted truncate">{{.Key}}</span></span>
           <form method="post" action="/admin/panel/features/{{.Key}}/toggle" class="justify-self-center">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <input type="checkbox" class="toggle" data-autosubmit{{if .Enabled}} checked{{end}} aria-label="{{.Name}} attiva">
+            <input type="checkbox" class="toggle" data-autosubmit{{if .Enabled}} checked{{end}} aria-label="{{t "admin.features.active_label" "Name" .Name}}">
           </form>
           <form method="post" action="/admin/panel/features/{{.Key}}/premium" class="justify-self-center">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <input type="checkbox" class="toggle" data-autosubmit{{if .IsPremium}} checked{{end}} aria-label="{{.Name}} solo Premium">
+            <input type="checkbox" class="toggle" data-autosubmit{{if .IsPremium}} checked{{end}} aria-label="{{t "admin.features.premium_label" "Name" .Name}}">
           </form>
         </li>
         {{end}}
@@ -37,21 +37,30 @@
     </section>
 
     {{if .HasOFF}}
-    <section id="off-sync-card" class="card overflow-hidden" data-csrf="{{.CSRFToken}}">
+    <section id="off-sync-card" class="card overflow-hidden" data-csrf="{{.CSRFToken}}" data-locale="{{lang}}"
+      data-msg-never="{{t "admin.off.never"}}" data-msg-never-rel="{{t "admin.off.never_updated"}}"
+      data-msg-today="{{t "admin.off.updated_today"}}" data-msg-yesterday="{{t "admin.off.updated_yesterday"}}"
+      data-msg-days-ago="{{t "admin.off.updated_days_ago" "N" "{n}"}}"
+      data-msg-syncing="{{t "admin.off.state_syncing"}}" data-msg-ready="{{t "admin.off.state_ready"}}" data-msg-empty="{{t "admin.off.state_empty"}}"
+      data-msg-last-error="{{t "admin.off.last_error" "Error" "{e}"}}" data-msg-status-failed="{{t "admin.off.status_failed" "Error" "{e}"}}"
+      data-msg-finished="{{t "admin.off.finished" "N" "{n}"}}" data-msg-starting="{{t "admin.off.starting"}}"
+      data-msg-started="{{t "admin.off.started"}}" data-msg-already-running="{{t "admin.off.already_running"}}"
+      data-msg-start-failed="{{t "admin.off.start_failed" "Status" "{status}"}}" data-msg-network-error="{{t "admin.off.network_error" "Error" "{e}"}}"
+      data-confirm-force="{{t "admin.off.confirm_force"}}" data-confirm-refresh="{{t "admin.off.confirm_refresh"}}">
       <div class="flex items-center gap-3 px-4 pt-3.5 pb-3">
         <span class="thumb">{{template "icon" "i-database"}}</span>
-        <div class="flex flex-col"><h2 class="h2">OpenFoodFacts</h2><span class="text-[12.5px] text-muted">Copia locale per la ricerca degli ingredienti.</span></div>
+        <div class="flex flex-col"><h2 class="h2">OpenFoodFacts</h2><span class="text-[12.5px] text-muted">{{t "admin.off.desc"}}</span></div>
       </div>
       <dl class="border-t border-border flex flex-col py-1.5 text-[13px]">
-        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">Stato</dt><dd data-off="state" class="font-semibold">—</dd></div>
-        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">Ultimo aggiornamento</dt><dd data-off="synced" class="tabular-nums">—</dd></div>
-        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">Prodotti</dt><dd data-off="count" class="tabular-nums">—</dd></div>
-        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">Con macro completi</dt><dd data-off="full" class="tabular-nums">—</dd></div>
+        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">{{t "admin.off.state"}}</dt><dd data-off="state" class="font-semibold">—</dd></div>
+        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">{{t "admin.off.last_update"}}</dt><dd data-off="synced" class="tabular-nums">—</dd></div>
+        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">{{t "admin.off.products"}}</dt><dd data-off="count" class="tabular-nums">—</dd></div>
+        <div class="flex justify-between gap-2 px-4 py-1.5"><dt class="text-muted">{{t "admin.off.full_macros"}}</dt><dd data-off="full" class="tabular-nums">—</dd></div>
       </dl>
       <p data-off="error" class="hidden mx-4 mb-3 rounded-xl bg-danger-soft text-danger px-3 py-2 text-[12.5px]"></p>
       <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-t border-border">
-        <button type="button" id="off-sync-btn" class="btn-secondary disabled:opacity-50">{{template "icon_sm" "i-refresh"}}Aggiorna ora</button>
-        <label class="flex items-center gap-2 text-[13px] cursor-pointer"><input type="checkbox" id="off-force" class="check">Scarica di nuovo tutto</label>
+        <button type="button" id="off-sync-btn" class="btn-secondary disabled:opacity-50">{{template "icon_sm" "i-refresh"}}{{t "admin.off.refresh"}}</button>
+        <label class="flex items-center gap-2 text-[13px] cursor-pointer"><input type="checkbox" id="off-force" class="check">{{t "admin.off.force"}}</label>
       </div>
       <p id="off-feedback" role="status" class="hidden px-4 pb-3 text-[12.5px]"></p>
     </section>
@@ -62,7 +71,7 @@
 
 {{define "scripts"}}
 <script>
-// Interruttori: cambiano subito, senza un pulsante «Salva».
+// Switches apply at once, there is no Save button.
 document.querySelectorAll("[data-autosubmit]").forEach(function (i) {
   i.addEventListener("change", function () { i.form.requestSubmit(); });
 });

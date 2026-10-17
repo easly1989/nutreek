@@ -50,7 +50,7 @@ func (a *App) requireOwnerMiddleware(next http.Handler) http.Handler {
 // of X-Admin-Token. It also includes a diagnostic sample of the products in the DB.
 func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
-		http.Error(w, "OFF syncer non configurato", http.StatusServiceUnavailable)
+		http.Error(w, "OFF syncer not configured", http.StatusServiceUnavailable)
 		return
 	}
 	state, err := a.OFFSyncer.LoadState(r.Context())
@@ -102,7 +102,7 @@ func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 // ETag and force a full re-download (useful after parser changes).
 func (a *App) handleOwnerOFFRefresh(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
-		http.Error(w, "OFF syncer non configurato", http.StatusServiceUnavailable)
+		http.Error(w, "OFF syncer not configured", http.StatusServiceUnavailable)
 		return
 	}
 	if a.OFFSyncer.IsSyncing() {

@@ -216,7 +216,7 @@ func (a *App) handleAdminUserGrantPremium(w http.ResponseWriter, r *http.Request
 	if v := r.PostFormValue("expires_at"); v != "" {
 		t, err := time.Parse("2006-01-02", v)
 		if err != nil {
-			a.Sessions.Put(r.Context(), "flash", "Data di scadenza non valida.")
+			a.Sessions.Put(r.Context(), "flash", "admin.flash.bad_expiry")
 			http.Redirect(w, r, "/admin/panel/users", http.StatusSeeOther)
 			return
 		}
@@ -256,7 +256,7 @@ func (a *App) handleAdminUserRole(w http.ResponseWriter, r *http.Request) {
 	}
 	role := r.PostFormValue("role")
 	if err := a.Users.UpdateRole(r.Context(), userID, role); err != nil {
-		a.Sessions.Put(r.Context(), "flash", "Ruolo non valido.")
+		a.Sessions.Put(r.Context(), "flash", "admin.flash.bad_role")
 		http.Redirect(w, r, "/admin/panel/users", http.StatusSeeOther)
 		return
 	}

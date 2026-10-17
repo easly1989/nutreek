@@ -1,4 +1,4 @@
-{{define "title"}}Utenti — Amministrazione — Nutreek{{end}}
+{{define "title"}}{{t "admin.users.title"}} — {{t "admin.title"}} — Nutreek{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
   {{template "admin_header" "utenti"}}
@@ -6,9 +6,9 @@
   {{if not .PremiumEnabled}}{{template "premium_off_note"}}{{end}}
 
   <div class="flex flex-wrap items-center gap-2">
-    <label class="field-ico flex-1 min-w-[220px] max-w-[420px]">{{template "icon" "i-search"}}<input id="user-search" type="search" class="field" placeholder="Cerca per nome o email" aria-label="Cerca per nome o email"></label>
-    <div class="flex gap-2" role="group" aria-label="Filtra gli utenti">
-      <button type="button" class="filter is-on" data-user-filter="" aria-pressed="true">Tutti <span class="cnt">{{len .Users}}</span></button>
+    <label class="field-ico flex-1 min-w-[220px] max-w-[420px]">{{template "icon" "i-search"}}<input id="user-search" type="search" class="field" placeholder="{{t "admin.users.search"}}" aria-label="{{t "admin.users.search"}}"></label>
+    <div class="flex gap-2" role="group" aria-label="{{t "admin.users.filter_label"}}">
+      <button type="button" class="filter is-on" data-user-filter="" aria-pressed="true">{{t "admin.users.filter_all"}} <span class="cnt">{{len .Users}}</span></button>
       <button type="button" class="filter" data-user-filter="premium" aria-pressed="false">Premium <span class="cnt">{{.PremiumUsers}}</span></button>
       <button type="button" class="filter" data-user-filter="coach" aria-pressed="false">Coach <span class="cnt">{{.CoachUsers}}</span></button>
     </div>
@@ -16,38 +16,38 @@
 
   <section class="card">
     <ul class="divide-y divide-border">
-      <li class="list-head hidden lg:grid grid-cols-[minmax(0,1.6fr)_120px_100px_minmax(0,1.4fr)_32px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>Utente</span><span>Registrato</span><span>Ruolo</span><span>Piano</span><span></span></li>
+      <li class="list-head hidden lg:grid grid-cols-[minmax(0,1.6fr)_120px_100px_minmax(0,1.4fr)_32px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>{{t "admin.users.col_user"}}</span><span>{{t "admin.users.col_joined"}}</span><span>{{t "admin.users.col_role"}}</span><span>{{t "admin.users.col_plan"}}</span><span></span></li>
       {{range .Users}}
       <li class="user-row grid grid-cols-[minmax(0,1fr)_auto_32px] lg:grid-cols-[minmax(0,1.6fr)_120px_100px_minmax(0,1.4fr)_32px] gap-3 items-center px-4 py-2.5"
           data-search="{{.DisplayName}} {{.Email}}"{{if .Premium}} data-premium{{end}}{{if eq .Role "coach"}} data-coach{{end}}>
         <span class="flex items-center gap-3 min-w-0">
           <span class="w-9 h-9 shrink-0 rounded-full bg-surface-2 grid place-items-center font-bold">{{initial .DisplayName}}</span>
-          <span class="flex flex-col min-w-0"><b class="truncate">{{.DisplayName}}{{if .IsOwner}} <span class="chip chip-n ml-1">proprietario</span>{{end}}</b><span class="text-[12.5px] text-muted truncate">{{.Email}}</span></span>
+          <span class="flex flex-col min-w-0"><b class="truncate">{{.DisplayName}}{{if .IsOwner}} <span class="chip chip-n ml-1">{{t "admin.users.owner"}}</span>{{end}}</b><span class="text-[12.5px] text-muted truncate">{{.Email}}</span></span>
         </span>
         <span class="hidden lg:block text-muted tabular-nums">{{.CreatedAt.Day}} {{monthName .CreatedAt}}{{if ne .CreatedAt.Year $.Now.Year}} {{.CreatedAt.Year}}{{end}}</span>
-        <span class="hidden lg:block">{{if eq .Role "coach"}}Coach{{else}}Utente{{end}}</span>
+        <span class="hidden lg:block">{{if eq .Role "coach"}}Coach{{else}}{{t "admin.users.role_user"}}{{end}}</span>
         <span>
           {{if .Premium}}
-          <span class="chip {{if .ExpiresSoon}}chip-warn{{else}}chip-soft{{end}}" title="Origine: {{.SubSource}}"><span class="lg:hidden">Premium</span><span class="hidden lg:inline">{{with .SubExpires}}Premium fino al {{.Day}} {{monthName .}}{{else}}Premium, senza scadenza{{end}}</span></span>
+          <span class="chip {{if .ExpiresSoon}}chip-warn{{else}}chip-soft{{end}}" title="{{t "admin.users.source" "Source" .SubSource}}"><span class="lg:hidden">Premium</span><span class="hidden lg:inline">{{with .SubExpires}}{{t "admin.users.premium_until"}} {{.Day}} {{monthName .}}{{else}}{{t "admin.users.premium_forever"}}{{end}}</span></span>
           {{else}}
           <span class="chip chip-n">Free</span>
           {{end}}
         </span>
         <div class="relative">
-          <button type="button" class="icon-action" data-popover="user-menu-{{.ID}}" aria-expanded="false" aria-controls="user-menu-{{.ID}}" aria-label="Azioni su {{.DisplayName}}">{{template "icon" "i-dots"}}</button>
+          <button type="button" class="icon-action" data-popover="user-menu-{{.ID}}" aria-expanded="false" aria-controls="user-menu-{{.ID}}" aria-label="{{t "admin.users.actions" "Name" .DisplayName}}">{{template "icon" "i-dots"}}</button>
           <div id="user-menu-{{.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-[260px] z-40 p-1.5 flex flex-col gap-0.5">
             {{if .Premium}}
-            <form method="post" action="/admin/panel/users/{{.ID}}/premium/revoke" data-confirm="Togliere Premium a {{.DisplayName}}?">
+            <form method="post" action="/admin/panel/users/{{.ID}}/premium/revoke" data-confirm="{{t "admin.users.revoke_confirm" "Name" .DisplayName}}">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button class="nav-link w-full text-danger">{{template "icon" "i-star"}}Revoca premium</button>
+              <button class="nav-link w-full text-danger">{{template "icon" "i-star"}}{{t "admin.users.revoke"}}</button>
             </form>
             {{else}}
             <details class="group">
-              <summary class="nav-link cursor-pointer list-none [&::-webkit-details-marker]:hidden">{{template "icon" "i-star"}}Assegna premium…</summary>
+              <summary class="nav-link cursor-pointer list-none [&::-webkit-details-marker]:hidden">{{template "icon" "i-star"}}{{t "admin.users.grant_menu"}}</summary>
               <form method="post" action="/admin/panel/users/{{.ID}}/premium" class="flex flex-col gap-2 px-2.5 pt-1 pb-2">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <label class="lab">Scade il <input type="date" name="expires_at" class="field"><span class="font-medium">Vuoto: senza scadenza.</span></label>
-                <button class="btn-primary">Assegna premium</button>
+                <label class="lab">{{t "admin.users.expires_on"}} <input type="date" name="expires_at" class="field"><span class="font-medium">{{t "admin.users.expires_hint"}}</span></label>
+                <button class="btn-primary">{{t "admin.users.grant"}}</button>
               </form>
             </details>
             {{end}}
@@ -55,28 +55,28 @@
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               {{if eq .Role "coach"}}
               <input type="hidden" name="role" value="user">
-              <button class="nav-link w-full">{{template "icon" "i-user"}}Rendi utente</button>
+              <button class="nav-link w-full">{{template "icon" "i-user"}}{{t "admin.users.make_user"}}</button>
               {{else}}
               <input type="hidden" name="role" value="coach">
-              <button class="nav-link w-full">{{template "icon" "i-coach"}}Rendi coach</button>
+              <button class="nav-link w-full">{{template "icon" "i-coach"}}{{t "admin.users.make_coach"}}</button>
               {{end}}
             </form>
           </div>
         </div>
       </li>
       {{else}}
-      <li class="px-4 py-8 text-center text-muted">Nessun utente registrato.</li>
+      <li class="px-4 py-8 text-center text-muted">{{t "admin.users.none"}}</li>
       {{end}}
     </ul>
-    <p id="user-empty" class="hidden px-4 py-8 text-center text-muted">Nessun utente corrisponde alla ricerca.</p>
+    <p id="user-empty" class="hidden px-4 py-8 text-center text-muted">{{t "admin.users.none_match"}}</p>
   </section>
-  <p class="text-[12.5px] text-muted">Il premium si assegna a mano; licenze e pagamenti useranno la stessa sottoscrizione.</p>
+  <p class="text-[12.5px] text-muted">{{t "admin.users.note"}}</p>
 </div>
 {{end}}
 
 {{define "scripts"}}
 <script>
-// Ricerca e filtri sull'elenco, senza ricaricare la pagina.
+// Search and filters on the list, without reloading the page.
 (function () {
   var q = document.getElementById("user-search"), rows = document.querySelectorAll(".user-row");
   var empty = document.getElementById("user-empty"), filter = "";
