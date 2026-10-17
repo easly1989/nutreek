@@ -19,14 +19,14 @@
   {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2" role="alert">{{.Error}}</p>{{end}}
   {{with .Form.Barcode}}
   <input type="hidden" name="barcode" value="{{.}}">
-  <p class="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-[13px]">{{template "icon_sm" "i-barcode"}}<span>Codice <b class="tabular-nums">{{.}}</b>: resta collegato, la prossima scansione lo trova tra i tuoi.</span></p>
+  <p class="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-[13px]">{{template "icon_sm" "i-barcode"}}<span>{{t "ingredients.quick.barcode"}} <b class="tabular-nums">{{.}}</b>: {{t "ingredients.quick.barcode_note"}}</span></p>
   {{end}}
 
   <div class="grid grid-cols-2 gap-3">
-    <label class="lab col-span-2">Nome<input name="name" required maxlength="200" value="{{.Form.Name}}" autofocus class="field"></label>
-    <label class="lab">Marca (facoltativa)<input name="brand" value="{{.Form.Brand}}" class="field"></label>
-    <div class="lab">Si misura in
-      <span class="segmented w-max" role="radiogroup" aria-label="Unità"
+    <label class="lab col-span-2">{{t "ingredients.form.name"}}<input name="name" required maxlength="200" value="{{.Form.Name}}" autofocus class="field"></label>
+    <label class="lab">{{t "ingredients.form.brand"}}<input name="brand" value="{{.Form.Brand}}" class="field"></label>
+    <div class="lab">{{t "ingredients.form.measured_in"}}
+      <span class="segmented w-max" role="radiogroup" aria-label="{{t "ingredients.form.unit"}}"
             onchange="this.closest('form').querySelectorAll('[data-unit-label]').forEach(function(e){e.textContent=event.target.value})">
         <label><input type="radio" name="unit" value="g"{{if ne $u "ml"}} checked{{end}}>g</label>
         <label><input type="radio" name="unit" value="ml"{{if eq $u "ml"}} checked{{end}}>ml</label>
@@ -35,24 +35,24 @@
   </div>
 
   <fieldset class="flex flex-col gap-2 pt-3 border-t border-border">
-    <legend class="contents"><span class="h2 mb-1">Valori per 100 <span data-unit-label>{{$u}}</span></span></legend>
+    <legend class="contents"><span class="h2 mb-1">{{t "ingredients.form.values_per_100"}} <span data-unit-label>{{$u}}</span></span></legend>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <label class="lab">Calorie<span class="field-unit"><input name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="field tabular-nums"><em>kcal</em></span></label>
-      <label class="lab"><span><b class="text-prot">●</b> Proteine</span><span class="field-unit"><input name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="field tabular-nums"><em>g</em></span></label>
-      <label class="lab"><span><b class="text-carb">●</b> Carboidrati</span><span class="field-unit"><input name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="field tabular-nums"><em>g</em></span></label>
-      <label class="lab"><span><b class="text-fat">●</b> Grassi</span><span class="field-unit"><input name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="field tabular-nums"><em>g</em></span></label>
+      <label class="lab">{{t "common.calories"}}<span class="field-unit"><input name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="field tabular-nums"><em>kcal</em></span></label>
+      <label class="lab"><span><b class="text-prot">●</b> {{t "common.protein"}}</span><span class="field-unit"><input name="protein" required inputmode="decimal" value="{{.Form.Protein}}" class="field tabular-nums"><em>g</em></span></label>
+      <label class="lab"><span><b class="text-carb">●</b> {{t "common.carbs"}}</span><span class="field-unit"><input name="carbs" required inputmode="decimal" value="{{.Form.Carbs}}" class="field tabular-nums"><em>g</em></span></label>
+      <label class="lab"><span><b class="text-fat">●</b> {{t "common.fat"}}</span><span class="field-unit"><input name="fat" required inputmode="decimal" value="{{.Form.Fat}}" class="field tabular-nums"><em>g</em></span></label>
     </div>
   </fieldset>
 
-  <label class="lab pt-3 border-t border-border">Peso di un pezzo (facoltativo, per aggiungerlo a pezzi)
-    <span class="field-unit sm:w-1/2"><input name="unit_weight_g" inputmode="decimal" value="{{.Form.UnitWeightG}}" placeholder="es. 150" class="field tabular-nums"><em>g</em></span>
+  <label class="lab pt-3 border-t border-border">{{t "ingredients.quick.piece_weight"}}
+    <span class="field-unit sm:w-1/2"><input name="unit_weight_g" inputmode="decimal" value="{{.Form.UnitWeightG}}" placeholder="{{t "ingredients.quick.piece_weight_placeholder"}}" class="field tabular-nums"><em>g</em></span>
   </label>
 
   <div class="flex items-center justify-between gap-2">
-    <a href="/ingredients/new" class="text-[12.5px] text-muted hover:text-text underline">Form completo</a>
+    <a href="/ingredients/new" class="text-[12.5px] text-muted hover:text-text underline">{{t "ingredients.quick.full_form"}}</a>
     <span class="flex gap-2">
-      <button type="button" data-modal-close class="btn-secondary">Annulla</button>
-      <button class="btn-primary">Crea ingrediente</button>
+      <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+      <button class="btn-primary">{{t "ingredients.quick.create"}}</button>
     </span>
   </div>
 </form>

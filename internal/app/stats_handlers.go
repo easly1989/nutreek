@@ -158,7 +158,7 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 		TDEEReport:    tdeeReport,
 		TargetKcal:    target,
 	}
-	if err := a.Render.Render(w, http.StatusOK, "stats", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "stats", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }

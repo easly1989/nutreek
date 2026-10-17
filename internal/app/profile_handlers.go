@@ -107,7 +107,7 @@ func (a *App) handleProfilePage(w http.ResponseWriter, r *http.Request) {
 			data.HasTDEE = true
 		}
 	}
-	if err := a.Render.Render(w, http.StatusOK, "profile", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "profile", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -134,7 +134,7 @@ func (a *App) handleProfileSave(w http.ResponseWriter, r *http.Request) {
 			Form:         form,
 			Error:        msg,
 		}
-		if err := a.Render.Render(w, http.StatusUnprocessableEntity, "profile", data); err != nil {
+		if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "profile", data); err != nil {
 			a.serverError(w, r, err)
 		}
 	}

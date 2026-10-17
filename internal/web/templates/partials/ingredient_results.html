@@ -9,28 +9,28 @@
 {{if .Rows}}
   <div class="card overflow-hidden">
     <div class="hidden lg:grid grid-cols-[36px_minmax(0,1fr)_84px_190px_96px] gap-3.5 items-center min-h-[38px] pl-4 pr-3 text-[12.5px] font-semibold text-muted">
-      <span class="col-span-2">{{len .Rows}} {{if eq (len .Rows) 1}}risultato{{else}}risultati{{end}}</span>
+      <span class="col-span-2">{{t "ingredients.results.count" "Count" (len .Rows)}}</span>
       <span class="text-right">kcal / 100 g</span>
-      <span>Macro per 100 g</span>
+      <span>{{t "ingredients.results.macros_header"}}</span>
       <span></span>
     </div>
     {{if gt $locals 0}}
-      <p class="px-4 py-2 border-t border-border bg-surface-2 text-[12.5px] font-bold text-muted">I tuoi ingredienti</p>
+      <p class="px-4 py-2 border-t border-border bg-surface-2 text-[12.5px] font-bold text-muted">{{t "ingredients.results.yours"}}</p>
       {{range .Rows}}{{if not .IsOFF}}{{template "ingredient_row" (pickerRow . $)}}{{end}}{{end}}
     {{end}}
     {{if gt $offs 0}}
-      <p class="px-4 py-2 border-t border-border bg-surface-2 text-[12.5px] font-bold text-muted">Da OpenFoodFacts</p>
+      <p class="px-4 py-2 border-t border-border bg-surface-2 text-[12.5px] font-bold text-muted">{{t "ingredients.results.from_off"}}</p>
       {{range .Rows}}{{if .IsOFF}}{{template "ingredient_row" (pickerRow . $)}}{{end}}{{end}}
     {{end}}
   </div>
 {{else if .Query}}
-  <p class="card px-6 py-10 text-center text-muted">Nessun ingrediente trovato per «{{.Query}}».</p>
+  <p class="card px-6 py-10 text-center text-muted">{{t "ingredients.results.none_for" "Query" .Query}}</p>
 {{else if or .Filter.Src .Filter.CategoryID .Filter.AllergenID}}
-  <p class="card px-6 py-10 text-center text-muted">Nessun ingrediente con questi filtri.</p>
+  <p class="card px-6 py-10 text-center text-muted">{{t "ingredients.results.none_filtered"}}</p>
 {{else}}
   <div class="card border-dashed px-6 py-12 text-center flex flex-col items-center gap-3">
-    <p class="text-muted">Non hai ancora nessun ingrediente. Cercalo su OpenFoodFacts qui sopra o crealo tu.</p>
-    <a href="/ingredients/new" class="btn-primary">{{template "icon" "i-plus"}}Nuovo ingrediente</a>
+    <p class="text-muted">{{t "ingredients.results.empty"}}</p>
+    <a href="/ingredients/new" class="btn-primary">{{template "icon" "i-plus"}}{{t "ingredients.new"}}</a>
   </div>
 {{end}}
 {{end}}
@@ -43,7 +43,7 @@
     {{if $r.IsOFF}}{{template "off_thumb" $r.ImageURL}}{{else}}{{template "icon_sm" "i-ingredients"}}{{end}}
   </span>
   <div class="flex flex-col gap-1 min-w-0">
-    <span class="truncate"><b class="font-semibold">{{$r.Name}}</b>{{if and (not $r.IsOFF) (not $r.CanEdit) $r.Author}} <span class="text-muted text-[12.5px]">di {{$r.Author}}</span>{{end}}{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
+    <span class="truncate"><b class="font-semibold">{{$r.Name}}</b>{{if and (not $r.IsOFF) (not $r.CanEdit) $r.Author}} <span class="text-muted text-[12.5px]">{{t "ingredients.row.by" "Author" $r.Author}}</span>{{end}}{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
     {{if or $r.Category $r.Allergens $r.IsOFF}}
     <span class="flex flex-wrap gap-1">
       {{if $r.IsOFF}}<span class="chip chip-soft">OpenFoodFacts</span>{{end}}
@@ -56,15 +56,15 @@
     <span class="hidden lg:block text-right tabular-nums"><b>{{num $r.Kcal}}</b></span>
     <span class="col-span-3 lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums pl-[48px] lg:pl-0">
       <span class="lg:hidden text-text"><b>{{num $r.Kcal}}</b> kcal</span>
-      <span><b class="text-prot font-semibold">P</b> {{dec $r.Protein 1}} g</span>
-      <span><b class="text-carb font-semibold">C</b> {{dec $r.Carbs 1}} g</span>
-      <span><b class="text-fat font-semibold">G</b> {{dec $r.Fat 1}} g</span>
+      <span><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{dec $r.Protein 1}} g</span>
+      <span><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{dec $r.Carbs 1}} g</span>
+      <span><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{dec $r.Fat 1}} g</span>
     </span>
   {{else}}
     {{/* The OFF dump often lacks the macros: we ask the product for them. */}}
     <span class="col-span-3 lg:col-span-2 row-start-2 lg:row-start-auto pl-[48px] lg:pl-0"
           hx-get="/off/check/{{$r.Barcode}}" hx-trigger="load delay:600ms" hx-swap="innerHTML">
-      <span class="text-[12.5px] text-muted animate-pulse">Verifico i macro…</span>
+      <span class="text-[12.5px] text-muted animate-pulse">{{t "ingredients.row.checking"}}</span>
     </span>
   {{end}}
   <span class="row-start-1 col-start-3 lg:row-start-auto lg:col-start-auto text-right">
@@ -72,11 +72,11 @@
       <form method="post" action="/ingredients/off-import">
         <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
         <input type="hidden" name="barcode" value="{{$r.Barcode}}">
-        <button class="btn-secondary h-[30px] px-3 text-[12.5px]">Importa</button>
+        <button class="btn-secondary h-[30px] px-3 text-[12.5px]">{{t "ingredients.row.import"}}</button>
       </form>
     {{else}}
-      {{if $r.CanEdit}}<a href="/ingredients/{{$r.LocalID}}/edit" class="btn-ghost h-[30px] px-3 text-[12.5px]">Modifica</a>
-      {{else}}<a href="/ingredients/{{$r.LocalID}}/edit" class="btn-ghost h-[30px] px-3 text-[12.5px]" aria-label="Scegli la tua categoria per {{$r.Name}}">Categoria</a>{{end}}
+      {{if $r.CanEdit}}<a href="/ingredients/{{$r.LocalID}}/edit" class="btn-ghost h-[30px] px-3 text-[12.5px]">{{t "ingredients.row.edit"}}</a>
+      {{else}}<a href="/ingredients/{{$r.LocalID}}/edit" class="btn-ghost h-[30px] px-3 text-[12.5px]" aria-label="{{t "ingredients.row.category_label" "Name" $r.Name}}">{{t "ingredients.row.category"}}</a>{{end}}
     {{end}}
   </span>
 </div>

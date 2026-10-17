@@ -1,13 +1,13 @@
-{{define "title"}}Ingredienti — Nutreek{{end}}
+{{define "title"}}{{t "ingredients.title"}} — Nutreek{{end}}
 {{define "content"}}
 {{- $f := .Filter -}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="h1">Ingredienti</h1>
-      <p class="text-muted">I tuoi ingredienti e il catalogo OpenFoodFacts</p>
+      <h1 class="h1">{{t "ingredients.title"}}</h1>
+      <p class="text-muted">{{t "ingredients.subtitle"}}</p>
     </div>
-    <a href="/ingredients/new" class="btn-primary">{{template "icon" "i-plus"}}Nuovo ingrediente</a>
+    <a href="/ingredients/new" class="btn-primary">{{template "icon" "i-plus"}}{{t "ingredients.new"}}</a>
   </div>
 
   {{/* The filters are a GET form: without JS they apply with Enter or when a
@@ -17,7 +17,7 @@
     {{with $f.Src}}<input type="hidden" name="src" value="{{.}}">{{end}}
     <label class="field-ico">
       {{template "icon" "i-search"}}
-      <input type="search" name="q" value="{{.Query}}" placeholder="Cerca tra i tuoi ingredienti e su OpenFoodFacts" aria-label="Cerca un ingrediente"
+      <input type="search" name="q" value="{{.Query}}" placeholder="{{t "ingredients.search.placeholder"}}" aria-label="{{t "ingredients.search.label"}}"
              class="field field-lg" autocomplete="off" autofocus
              data-ingredient-search
              data-search-url="/ingredients/search"
@@ -27,37 +27,37 @@
              {{if not $f.WantsOFF}}data-search-no-off="1"{{end}}>
     </label>
     <div class="flex flex-wrap items-center gap-2">
-      <nav class="segmented" aria-label="Provenienza">
-        <a href="{{($f.WithSrc "").Href .Query}}"{{if eq $f.Src ""}} aria-current="page"{{end}}>Tutti</a>
-        <a href="{{($f.WithSrc "mine").Href .Query}}"{{if eq $f.Src "mine"}} aria-current="page"{{end}}>I miei</a>
+      <nav class="segmented" aria-label="{{t "ingredients.filter.source"}}">
+        <a href="{{($f.WithSrc "").Href .Query}}"{{if eq $f.Src ""}} aria-current="page"{{end}}>{{t "ingredients.filter.all"}}</a>
+        <a href="{{($f.WithSrc "mine").Href .Query}}"{{if eq $f.Src "mine"}} aria-current="page"{{end}}>{{t "ingredients.filter.mine"}}</a>
         <a href="{{($f.WithSrc "off").Href .Query}}"{{if eq $f.Src "off"}} aria-current="page"{{end}}>OpenFoodFacts</a>
       </nav>
       {{if .AllCategories}}
       <label class="filter relative pr-8{{if $f.CategoryID}} is-on{{end}}">
-        <select name="category" onchange="this.form.requestSubmit()" aria-label="Categoria" class="absolute inset-0 opacity-0 cursor-pointer">
-          <option value="">Categoria: tutte</option>
+        <select name="category" onchange="this.form.requestSubmit()" aria-label="{{t "ingredients.filter.category"}}" class="absolute inset-0 opacity-0 cursor-pointer">
+          <option value="">{{t "ingredients.filter.category_all"}}</option>
           {{range .AllCategories}}<option value="{{.ID}}"{{if eq $f.CategoryID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
         </select>
-        {{if $f.CategoryID}}{{range .AllCategories}}{{if eq $f.CategoryID .ID}}{{.Name}}{{end}}{{end}}{{else}}Categoria: tutte{{end}}
+        {{if $f.CategoryID}}{{range .AllCategories}}{{if eq $f.CategoryID .ID}}{{.Name}}{{end}}{{end}}{{else}}{{t "ingredients.filter.category_all"}}{{end}}
         <span class="absolute right-2.5">{{template "icon_sm" "i-chevron-down"}}</span>
       </label>
       {{end}}
       {{if .AllAllergens}}
       <label class="filter relative pr-8{{if $f.AllergenID}} is-on{{end}}">
-        <select name="allergen" onchange="this.form.requestSubmit()" aria-label="Allergene" class="absolute inset-0 opacity-0 cursor-pointer">
-          <option value="">Allergene: tutti</option>
+        <select name="allergen" onchange="this.form.requestSubmit()" aria-label="{{t "ingredients.filter.allergen"}}" class="absolute inset-0 opacity-0 cursor-pointer">
+          <option value="">{{t "ingredients.filter.allergen_all"}}</option>
           {{range .AllAllergens}}<option value="{{.ID}}"{{if eq $f.AllergenID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
         </select>
-        {{if $f.AllergenID}}Contiene {{range .AllAllergens}}{{if eq $f.AllergenID .ID}}{{.Name}}{{end}}{{end}}{{else}}Allergene: tutti{{end}}
+        {{if $f.AllergenID}}{{range .AllAllergens}}{{if eq $f.AllergenID .ID}}{{t "ingredients.filter.contains" "Name" .Name}}{{end}}{{end}}{{else}}{{t "ingredients.filter.allergen_all"}}{{end}}
         <span class="absolute right-2.5">{{template "icon_sm" "i-chevron-down"}}</span>
       </label>
       {{end}}
-      {{if or $f.CategoryID $f.AllergenID}}<a href="{{$f.WithoutTags.Href .Query}}" class="btn-ghost h-8 px-2.5">Azzera filtri</a>{{end}}
-      <noscript><button class="btn-secondary h-8">Applica</button></noscript>
+      {{if or $f.CategoryID $f.AllergenID}}<a href="{{$f.WithoutTags.Href .Query}}" class="btn-ghost h-8 px-2.5">{{t "ingredients.filter.reset"}}</a>{{end}}
+      <noscript><button class="btn-secondary h-8">{{t "ingredients.filter.apply"}}</button></noscript>
     </div>
   </form>
 
-  <p id="ingredient-search-spinner" class="hidden text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco anche su OpenFoodFacts…</p>
+  <p id="ingredient-search-spinner" class="hidden text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>{{t "ingredients.search.searching_off"}}</p>
 
   <div id="ingredient-results">
     {{template "ingredient_results" .}}

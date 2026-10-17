@@ -1,23 +1,23 @@
-{{define "title"}}Modifica ingrediente — Nutreek{{end}}
+{{define "title"}}{{t "ingredients.edit.title"}} — Nutreek{{end}}
 {{define "content"}}
 <form method="post" action="/ingredients/{{.IngredientID}}" class="flex flex-col gap-4 lg:gap-[18px] max-w-[760px]">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
   <div>
-    <a href="/ingredients" class="crumb">{{template "icon_sm" "i-chevron-left"}}Ingredienti</a>
+    <a href="/ingredients" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "ingredients.title"}}</a>
     <h1 class="h1">{{.Form.Name}}</h1>
-    {{if and .ReadOnly .Author}}<p class="text-muted mt-1">di {{.Author}}</p>{{end}}
+    {{if and .ReadOnly .Author}}<p class="text-muted mt-1">{{t "ingredients.row.by" "Author" .Author}}</p>{{end}}
   </div>
   {{if .ReadOnly}}
   <p class="rounded-xl bg-accent-soft px-4 py-2.5">
-    {{- if .Author}}Nome, macro e allergeni li modifica solo {{.Author}}, che l’ha creato.{{else}}Nome, macro e allergeni li modifica solo l’amministratore.{{end}}
-    {{if .Categories}}Qui scegli in quale delle <b>tue</b> categorie tenerlo.{{else}}Per tenerlo in una tua categoria, prima creane una dalla pagina <a href="/ingredients" class="text-accent font-semibold underline">Ingredienti</a>.{{end}}</p>
-  {{else if .IsOFF}}<p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">Importato da OpenFoodFacts: le modifiche restano solo qui e non vengono sincronizzate.</p>{{end}}
+    {{- if .Author}}{{t "ingredients.edit.readonly_author" "Author" .Author}}{{else}}{{t "ingredients.edit.readonly_admin"}}{{end}}
+    {{if .Categories}}{{t "ingredients.edit.choose_category"}}{{else}}{{t "ingredients.edit.create_category_first"}} <a href="/ingredients" class="text-accent font-semibold underline">{{t "ingredients.title"}}</a>.{{end}}</p>
+  {{else if .IsOFF}}<p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">{{t "ingredients.edit.off_note"}}</p>{{end}}
   {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-4 py-2.5" role="alert">{{.Error}}</p>{{end}}
   {{template "ingredient_fields" .}}
   <div class="flex justify-end gap-2">
-    <a href="/ingredients" class="btn-secondary">Annulla</a>
-    {{if not .ReadOnly}}<button class="btn-primary">Salva modifiche</button>
-    {{else if .Categories}}<button class="btn-primary">Salva categoria</button>{{end}}
+    <a href="/ingredients" class="btn-secondary">{{t "common.cancel"}}</a>
+    {{if not .ReadOnly}}<button class="btn-primary">{{t "ingredients.edit.save"}}</button>
+    {{else if .Categories}}<button class="btn-primary">{{t "ingredients.edit.save_category"}}</button>{{end}}
   </div>
 </form>
 {{end}}

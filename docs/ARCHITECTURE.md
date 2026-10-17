@@ -71,6 +71,7 @@ repositories.
 | `config/` | Loading the `NUTREEK_*` environment variables |
 | `db/` | One repository per domain; inline SQL, `db/migrations/` embedded and applied by goose |
 | `domain/` | Plain domain structs (no business logic) |
+| `i18n/` | The supported languages and the translation catalogs (`locales/<lang>/<area>.json`), loaded with go-i18n |
 | `macros/` | Pure, tested macro calculations (kcal/protein/carbs/fat) |
 | `off/` | OpenFoodFacts client, local dump sync, periodic reconciler |
 | `planner/` | Greedy weekly plan generation |
@@ -79,6 +80,30 @@ repositories.
 | `service/` | Orchestration: `PlannerService`, `TDEEService` |
 | `tdee/` | Adaptive TDEE estimate (pure algorithm over the weight/intake trend) |
 | `web/` | HTML templates + static assets, embedded in the binary |
+
+---
+
+## Translations
+
+The interface text lives in `internal/i18n/locales/<lang>/<area>.json`: one flat
+object of keys per area (`layout`, `common`, `ingredients`, …), in the go-i18n v2
+JSON format Weblate reads. Keys are English and start with their area
+(`ingredients.new`); placeholders use the Go template syntax (`{{.Count}}`), and
+an object of plural forms (`one`, `other`, …) replaces the string when a count
+changes the text.
+
+- Templates call `{{t "key"}}`, with placeholders as pairs:
+  `{{t "ingredients.results.count" "Count" 3}}`. The renderer parses every page
+  once per language, so `t` works in partials too.
+- Handlers call `a.t(r, "key")`. Flash messages are stored as keys and translated
+  when shown; validation errors are translated where they are built.
+- Text a script shows comes from the page, translated, in `data-*` attributes.
+- A missing key falls back to English, then to the key itself. `TestCatalogs`
+  fails when Italian or English lack a key, a value is empty, or the placeholders
+  differ from English.
+- The language comes from the `lang` cookie when it names a supported language,
+  otherwise Italian. Nothing sets the cookie yet: until every area is translated
+  (#141) it only serves to test English.
 
 ---
 

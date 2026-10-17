@@ -7,8 +7,10 @@ require (
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/justinas/nosurf v1.2.0
+	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/pressly/goose/v3 v3.29.0
 	golang.org/x/crypto v0.58.0
+	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.60.1
 )
 

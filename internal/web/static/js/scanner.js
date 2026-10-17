@@ -114,11 +114,12 @@
         if (my !== session) return;
         stop();
         var name = err && err.name;
+        // The texts come translated from the dialog's data-msg-* attributes.
         show("problem", name === "NotAllowedError" || name === "SecurityError"
-          ? "Il browser non ha dato il permesso. Consentilo dall'icona accanto all'indirizzo, oppure scrivi il codice qui sotto."
+          ? dlg.dataset.msgDenied
           : name === "NotFoundError" || name === "OverconstrainedError"
-            ? "Non trovo una fotocamera su questo dispositivo. Scrivi il codice qui sotto."
-            : "Lo scanner non parte su questo browser. Scrivi il codice qui sotto.");
+            ? dlg.dataset.msgNotFound
+            : dlg.dataset.msgUnsupported);
       });
   }
 

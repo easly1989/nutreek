@@ -1,0 +1,12 @@
+{
+  "common.cancel": "Cancel",
+  "common.close": "Close",
+  "common.confirm": "Confirm",
+  "common.calories": "Calories",
+  "common.protein": "Protein",
+  "common.carbs": "Carbs",
+  "common.fat": "Fat",
+  "common.protein_short": "P",
+  "common.carbs_short": "C",
+  "common.fat_short": "F"
+}

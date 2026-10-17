@@ -181,12 +181,12 @@ func (a *App) handleRecipesList(w http.ResponseWriter, r *http.Request) {
 	data.authPageData = a.baseData(r)
 	// The live search (HTMX) replaces only the results.
 	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "recipe-results" {
-		if err := a.Render.RenderPartial(w, http.StatusOK, "recipes_list", "recipe_results", data); err != nil {
+		if err := a.Render.RenderPartial(w, r, http.StatusOK, "recipes_list", "recipe_results", data); err != nil {
 			a.serverError(w, r, err)
 		}
 		return
 	}
-	if err := a.Render.Render(w, http.StatusOK, "recipes_list", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "recipes_list", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -198,7 +198,7 @@ func (a *App) handleRecipeNewForm(w http.ResponseWriter, r *http.Request) {
 		authPageData: a.baseData(r),
 		Form:         recipeForm{Servings: "1"},
 	}
-	if err := a.Render.Render(w, http.StatusOK, "recipe_new", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusOK, "recipe_new", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -210,7 +210,7 @@ func (a *App) handleRecipeNewForm(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleRecipeImport(w http.ResponseWriter, r *http.Request) {
 	srcURL := strings.TrimSpace(r.PostFormValue("import_url"))
 	renderImport := func(data recipeNewData) {
-		if err := a.Render.Render(w, http.StatusOK, "recipe_new", data); err != nil {
+		if err := a.Render.Render(w, r, http.StatusOK, "recipe_new", data); err != nil {
 			a.serverError(w, r, err)
 		}
 	}
@@ -312,7 +312,7 @@ func (a *App) handleRecipeCreate(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) renderRecipeNewError(w http.ResponseWriter, r *http.Request, form recipeForm, msg string) {
 	data := recipeNewData{authPageData: a.baseData(r), Form: form, Error: msg}
-	if err := a.Render.Render(w, http.StatusUnprocessableEntity, "recipe_new", data); err != nil {
+	if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "recipe_new", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -394,7 +394,7 @@ func (a *App) renderRecipeEdit(
 	if formError != "" || itemError != "" {
 		status = http.StatusUnprocessableEntity
 	}
-	if err := a.Render.Render(w, status, "recipe_edit", data); err != nil {
+	if err := a.Render.Render(w, r, status, "recipe_edit", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -587,7 +587,7 @@ func (a *App) handleRecipePicker(w http.ResponseWriter, r *http.Request) {
 		RecipeID:     id,
 		SearchedOFF:  includeOFFParam(r),
 	}
-	if err := a.Render.RenderPartial(w, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -802,7 +802,7 @@ func (a *App) renderRecipeDuplicateModal(w http.ResponseWriter, r *http.Request,
 		Inner:     "recipe_duplicate_form",
 		InnerData: data,
 	}
-	if err := a.Render.RenderPartial(w, http.StatusOK, "recipes_list", "modal_dialog", mdata); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "recipes_list", "modal_dialog", mdata); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -810,7 +810,7 @@ func (a *App) renderRecipeDuplicateModal(w http.ResponseWriter, r *http.Request,
 func (a *App) renderRecipeDuplicateFormOnly(w http.ResponseWriter, r *http.Request, data recipeDuplicateData) {
 	// 200 (not 422) because HTMX 1.x by default swaps only on 2xx: with 422
 	// the response would be ignored and the user would not see the inline warning.
-	if err := a.Render.RenderPartial(w, http.StatusOK, "recipes_list", "recipe_duplicate_form", data); err != nil {
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "recipes_list", "recipe_duplicate_form", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
