@@ -161,7 +161,7 @@
       <form method="post" action="/language" class="mt-8 flex flex-wrap items-center justify-center gap-1 text-[13px] text-muted" aria-label="{{t "layout.language"}}">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <input type="hidden" name="next" value="{{.ActiveNav}}">
-        {{$cur := lang}}{{range languages}}<button name="lang" value="{{.Code}}" lang="{{.Code}}" class="h-[36px] px-2.5 rounded-lg hover:bg-surface-2 {{if eq $cur .Code}}font-semibold text-text{{end}}"{{if eq $cur .Code}} aria-current="true"{{end}}>{{.Name}}</button>{{end}}
+        {{$cur := lang}}{{range languages}}<button name="lang" value="{{.Code}}" lang="{{.Code}}" class="h-[36px] px-2.5 rounded-lg hover:bg-surface-2 {{if eq $cur .Code}}font-semibold text-text{{end}}"{{if eq $cur .Code}} aria-current="true"{{end}}>{{.Name}}{{if .Beta}}<span lang="{{lang}}" class="chip chip-warn ml-1.5 h-[18px] px-1.5 text-[10.5px] align-middle" title="{{t "layout.beta_hint"}}">{{t "layout.beta"}}</span>{{end}}</button>{{end}}
       </form>
       {{end}}
     </div>
