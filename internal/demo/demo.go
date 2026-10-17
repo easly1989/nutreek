@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/amon2126/nutreek/internal/profile"
@@ -75,14 +76,19 @@ func Prepare(ctx context.Context, db *sql.DB) error {
 	return err
 }
 
-// Service creates the demo's accounts.
+// Service creates the demo's accounts and deletes them (purge.go).
 type Service struct {
 	db  *sql.DB
 	cfg Config
+
+	mu   sync.Mutex
+	seen map[int64]time.Time // user id → last write of their group's last_seen_at
 }
 
 // New returns the demo service on a database Prepare has accepted.
-func New(db *sql.DB, cfg Config) *Service { return &Service{db: db, cfg: cfg} }
+func New(db *sql.DB, cfg Config) *Service {
+	return &Service{db: db, cfg: cfg, seen: map[int64]time.Time{}}
+}
 
 // IdleHours is how long a demo lasts without use, in whole hours rounded up,
 // for the notices.
