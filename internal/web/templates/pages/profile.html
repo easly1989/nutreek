@@ -1,73 +1,99 @@
-{{define "title"}}Profilo — Nutreek{{end}}
+{{define "title"}}{{t "profile.title"}} — Nutreek{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px] max-w-5xl">
   <header class="flex items-start justify-between gap-3">
     <div>
-      <h1 class="h1">Profilo</h1>
-      <p class="text-muted mt-0.5">I tuoi dati fisici e gli obiettivi di ogni giorno.</p>
+      <h1 class="h1">{{t "profile.title"}}</h1>
+      <p class="text-muted mt-0.5">{{t "profile.subtitle"}}</p>
     </div>
-    <a href="/profile/peso" class="btn-ghost shrink-0">{{template "icon" "i-weight"}}Storico peso</a>
+    <a href="/profile/peso" class="btn-ghost shrink-0">{{template "icon" "i-weight"}}{{t "profile.weight_history"}}</a>
   </header>
 
   {{if .Error}}
   <p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>
   {{end}}
 
-  <form id="profile-form" method="post" action="/profile" class="grid gap-4 lg:gap-[18px] lg:grid-cols-[minmax(0,1fr)_300px] items-start">
+  <form id="profile-form" method="post" action="/profile"
+        data-msg-bmi-underweight="{{t "profile.bmi.underweight"}}"
+        data-msg-bmi-normal="{{t "profile.bmi.normal"}}"
+        data-msg-bmi-overweight="{{t "profile.bmi.overweight"}}"
+        data-msg-bmi-obese="{{t "profile.bmi.obese"}}"
+        data-msg-with-sedentary="{{t "profile.js.with_sedentary"}}"
+        data-msg-with-light="{{t "profile.js.with_light"}}"
+        data-msg-with-moderate="{{t "profile.js.with_moderate"}}"
+        data-msg-with-active="{{t "profile.js.with_active"}}"
+        data-msg-with-athlete="{{t "profile.js.with_athlete"}}"
+        data-msg-no-activity="{{t "profile.js.no_activity"}}"
+        data-msg-tdee-ratio="{{t "profile.js.tdee_ratio" "Value" "{value}"}}"
+        data-msg-macro-total="{{t "profile.js.macro_total" "Kcal" "{kcal}"}}"
+        data-msg-macro-equal="{{t "profile.js.macro_equal" "Kcal" "{kcal}"}}"
+        data-msg-macro-over="{{t "profile.js.macro_over" "Kcal" "{kcal}" "Diff" "{diff}"}}"
+        data-msg-macro-under="{{t "profile.js.macro_under" "Kcal" "{kcal}" "Diff" "{diff}"}}"
+        data-msg-rebalance-protein="{{t "profile.js.rebalance_protein" "Value" "{value}"}}"
+        data-msg-rebalance-carbs="{{t "profile.js.rebalance_carbs" "Value" "{value}"}}"
+        data-msg-rebalance-fat="{{t "profile.js.rebalance_fat" "Value" "{value}"}}"
+        data-msg-suggested="{{t "profile.js.suggested" "Value" "{value}"}}"
+        data-msg-err-kcal-low="{{t "profile.js.kcal_low"}}"
+        data-msg-err-protein-high="{{t "profile.js.protein_high"}}"
+        data-msg-err-fat-low="{{t "profile.js.fat_low"}}"
+        data-msg-err-protein-over="{{t "profile.js.protein_over"}}"
+        data-msg-err-fat-over="{{t "profile.js.fat_over"}}"
+        data-msg-err-macro-sum="{{t "profile.error.macro_sum"}}"
+        class="grid gap-4 lg:gap-[18px] lg:grid-cols-[minmax(0,1fr)_300px] items-start">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
     <div class="flex flex-col gap-4">
       <section class="card p-4 lg:p-5 flex flex-col gap-4">
-        <h2 class="h2">Dati fisici</h2>
+        <h2 class="h2">{{t "profile.body.title"}}</h2>
         <div class="grid grid-cols-2 gap-3.5">
-          <label class="lab">Peso
+          <label class="lab">{{t "profile.body.weight"}}
             <span class="field-unit"><input id="f-weight" name="weight_kg" inputmode="decimal" value="{{.Form.WeightKg}}" placeholder="72,5" class="field"><em>kg</em></span>
           </label>
-          <label class="lab">Altezza
+          <label class="lab">{{t "profile.body.height"}}
             <span class="field-unit"><input id="f-height" name="height_cm" inputmode="decimal" value="{{.Form.HeightCm}}" placeholder="175" class="field"><em>cm</em></span>
           </label>
-          <label class="lab">Anno di nascita
+          <label class="lab">{{t "profile.body.birth_year"}}
             <input id="f-birth" name="birth_year" inputmode="numeric" value="{{.Form.BirthYear}}" placeholder="1990" class="field">
           </label>
         </div>
         <fieldset class="lab">
-          <legend class="mb-1.5">Sesso biologico</legend>
+          <legend class="mb-1.5">{{t "profile.body.sex"}}</legend>
           <div class="segmented grid-cols-3">
-            <label><input type="radio" name="sex" value="M"{{if eq .Form.Sex "M"}} checked{{end}}>Uomo</label>
-            <label><input type="radio" name="sex" value="F"{{if eq .Form.Sex "F"}} checked{{end}}>Donna</label>
-            <label><input type="radio" name="sex" value=""{{if eq .Form.Sex ""}} checked{{end}}><span class="sm:hidden">Non lo dico</span><span class="hidden sm:inline">Preferisco non dirlo</span></label>
+            <label><input type="radio" name="sex" value="M"{{if eq .Form.Sex "M"}} checked{{end}}>{{t "profile.body.male"}}</label>
+            <label><input type="radio" name="sex" value="F"{{if eq .Form.Sex "F"}} checked{{end}}>{{t "profile.body.female"}}</label>
+            <label><input type="radio" name="sex" value=""{{if eq .Form.Sex ""}} checked{{end}}><span class="sm:hidden">{{t "profile.body.sex_none_short"}}</span><span class="hidden sm:inline">{{t "profile.body.sex_none"}}</span></label>
           </div>
         </fieldset>
-        <label class="lab">Attività fisica
+        <label class="lab">{{t "profile.body.activity"}}
           <select id="f-activity" name="activity_level" class="field">
-            <option value=""{{if eq .Form.ActivityLevel ""}} selected{{end}}>Non specificata</option>
-            <option value="sedentary"{{if eq .Form.ActivityLevel "sedentary"}} selected{{end}}>Sedentaria: solo vita quotidiana</option>
-            <option value="light"{{if eq .Form.ActivityLevel "light"}} selected{{end}}>Leggera: 1–3 allenamenti a settimana</option>
-            <option value="moderate"{{if eq .Form.ActivityLevel "moderate"}} selected{{end}}>Moderata: 3–5 allenamenti a settimana</option>
-            <option value="active"{{if eq .Form.ActivityLevel "active"}} selected{{end}}>Intensa: 6–7 allenamenti a settimana</option>
-            <option value="athlete"{{if eq .Form.ActivityLevel "athlete"}} selected{{end}}>Atleta: allenamento intenso ogni giorno o lavoro fisico</option>
+            <option value=""{{if eq .Form.ActivityLevel ""}} selected{{end}}>{{t "profile.activity.none"}}</option>
+            <option value="sedentary"{{if eq .Form.ActivityLevel "sedentary"}} selected{{end}}>{{t "profile.activity.sedentary"}}</option>
+            <option value="light"{{if eq .Form.ActivityLevel "light"}} selected{{end}}>{{t "profile.activity.light"}}</option>
+            <option value="moderate"{{if eq .Form.ActivityLevel "moderate"}} selected{{end}}>{{t "profile.activity.moderate"}}</option>
+            <option value="active"{{if eq .Form.ActivityLevel "active"}} selected{{end}}>{{t "profile.activity.active"}}</option>
+            <option value="athlete"{{if eq .Form.ActivityLevel "athlete"}} selected{{end}}>{{t "profile.activity.athlete"}}</option>
           </select>
         </label>
-        <p class="text-[12.5px] text-muted">Peso, altezza, età e sesso servono a stimare il metabolismo basale (Mifflin-St Jeor).</p>
+        <p class="text-[12.5px] text-muted">{{t "profile.body.hint"}}</p>
       </section>
 
       <section class="card p-4 lg:p-5 flex flex-col gap-4">
         <div class="flex flex-wrap items-center gap-2">
-          <h2 class="h2 mr-auto">Obiettivi di ogni giorno</h2>
-          <span class="text-[12.5px] text-muted">Parti da un modello:</span>
+          <h2 class="h2 mr-auto">{{t "profile.goals.title"}}</h2>
+          <span class="text-[12.5px] text-muted">{{t "profile.goals.presets"}}</span>
           <span class="flex flex-wrap gap-2">
-            <button type="button" id="btn-maintenance" class="filter preset-btn disabled:opacity-40 disabled:cursor-not-allowed" data-preset="maintenance" disabled title="Fabbisogno × 1 · proteine 1,6 g/kg · grassi 28% delle kcal">Mantenimento</button>
-            <button type="button" id="btn-cut" class="filter preset-btn disabled:opacity-40 disabled:cursor-not-allowed" data-preset="cut" disabled title="Fabbisogno × 0,8 · proteine 2 g/kg · grassi 25% delle kcal">Dimagrimento</button>
-            <button type="button" id="btn-bulk" class="filter preset-btn disabled:opacity-40 disabled:cursor-not-allowed" data-preset="bulk" disabled title="Fabbisogno × 1,1 · proteine 1,8 g/kg · grassi 25% delle kcal">Massa</button>
+            <button type="button" id="btn-maintenance" class="filter preset-btn disabled:opacity-40 disabled:cursor-not-allowed" data-preset="maintenance" disabled title="{{t "profile.goals.maintenance_hint"}}">{{t "profile.goals.maintenance"}}</button>
+            <button type="button" id="btn-cut" class="filter preset-btn disabled:opacity-40 disabled:cursor-not-allowed" data-preset="cut" disabled title="{{t "profile.goals.cut_hint"}}">{{t "profile.goals.cut"}}</button>
+            <button type="button" id="btn-bulk" class="filter preset-btn disabled:opacity-40 disabled:cursor-not-allowed" data-preset="bulk" disabled title="{{t "profile.goals.bulk_hint"}}">{{t "profile.goals.bulk"}}</button>
           </span>
         </div>
-        <p id="presets-hint" class="-mt-2 text-[12.5px] text-muted">I modelli si attivano quando i dati fisici sono completi.</p>
+        <p id="presets-hint" class="-mt-2 text-[12.5px] text-muted">{{t "profile.goals.presets_hint"}}</p>
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {{template "profile_macro" (list "f-tk" "target_kcal" "Calorie" "kcal" "" "2000" .Form.TargetKcal)}}
-          {{template "profile_macro" (list "f-tp" "target_protein" "Proteine" "g" "--ch-prot" "120" .Form.TargetProtein)}}
-          {{template "profile_macro" (list "f-tc" "target_carbs" "Carboidrati" "g" "--ch-carb" "250" .Form.TargetCarbs)}}
-          {{template "profile_macro" (list "f-tf" "target_fat" "Grassi" "g" "--ch-fat" "70" .Form.TargetFat)}}
+          {{template "profile_macro" (list "f-tk" "target_kcal" (t "common.calories") "kcal" "" "2000" .Form.TargetKcal)}}
+          {{template "profile_macro" (list "f-tp" "target_protein" (t "common.protein") "g" "--ch-prot" "120" .Form.TargetProtein)}}
+          {{template "profile_macro" (list "f-tc" "target_carbs" (t "common.carbs") "g" "--ch-carb" "250" .Form.TargetCarbs)}}
+          {{template "profile_macro" (list "f-tf" "target_fat" (t "common.fat") "g" "--ch-fat" "70" .Form.TargetFat)}}
         </div>
 
         <div id="macro-split" class="hidden flex flex-col gap-1.5">
@@ -80,32 +106,32 @@
         </div>
 
         <div id="rebalance-panel" class="hidden rounded-xl bg-accent-soft p-3 flex flex-col gap-2">
-          <p><b>Ricalcolo gli altri macro?</b> <span id="rebalance-text" class="tabular-nums"></span></p>
+          <p><b>{{t "profile.goals.rebalance_question"}}</b> <span id="rebalance-text" class="tabular-nums"></span></p>
           <div class="flex gap-2">
-            <button type="button" id="rebalance-apply" class="btn-primary">Ricalcola</button>
-            <button type="button" id="rebalance-dismiss" class="btn-ghost">Lascia così</button>
+            <button type="button" id="rebalance-apply" class="btn-primary">{{t "profile.goals.rebalance_apply"}}</button>
+            <button type="button" id="rebalance-dismiss" class="btn-ghost">{{t "profile.goals.rebalance_dismiss"}}</button>
           </div>
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-3.5 border-t border-border items-end">
-          <label class="lab">Acqua
+          <label class="lab">{{t "profile.goals.water"}}
             <span class="field-unit"><input id="f-water" name="water_target_ml" inputmode="numeric" value="{{.Form.WaterTargetML}}" placeholder="2000" class="field"><em>ml</em></span>
           </label>
-          <button type="button" id="btn-reset-macros" class="btn-ghost justify-self-start lg:col-start-4 lg:justify-self-end">Svuota gli obiettivi</button>
+          <button type="button" id="btn-reset-macros" class="btn-ghost justify-self-start lg:col-start-4 lg:justify-self-end">{{t "profile.goals.clear"}}</button>
         </div>
-        <p class="-mt-2 text-[12.5px] text-muted">Un campo vuoto vuol dire nessun obiettivo per quel valore.</p>
+        <p class="-mt-2 text-[12.5px] text-muted">{{t "profile.goals.empty_hint"}}</p>
       </section>
 
       <div class="savebar flex items-center gap-3">
-        <button id="profile-save-btn" class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">Salva profilo</button>
-        <a href="/onboarding?restart=true" class="btn-ghost">Rifai la configurazione iniziale</a>
+        <button id="profile-save-btn" class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{{t "profile.save"}}</button>
+        <a href="/onboarding?restart=true" class="btn-ghost">{{t "profile.redo_setup"}}</a>
       </div>
     </div>
 
     <aside class="card overflow-hidden lg:sticky lg:top-6">
       <div class="flex items-baseline justify-between px-4 pt-3.5 pb-3">
-        <h2 class="h2">Indici</h2>
-        <span class="text-[12.5px] text-muted">calcolati ora</span>
+        <h2 class="h2">{{t "profile.indices.title"}}</h2>
+        <span class="text-[12.5px] text-muted">{{t "profile.indices.now"}}</span>
       </div>
       <dl id="indices-dynamic" class="border-t border-border divide-y divide-border{{if not .HasIndices}} hidden{{end}}">
         <div class="grid grid-cols-[1fr_auto] gap-x-2 px-4 py-3">
@@ -113,16 +139,16 @@
           <dd id="bmi-category" class="text-[12.5px] text-muted">{{if .HasIndices}}{{.BMICategory}}{{end}}</dd>
         </div>
         <div class="grid grid-cols-[1fr_auto] gap-x-2 px-4 py-3">
-          <dt class="text-muted">Metabolismo basale</dt><dd id="bmr-value" class="text-xl font-bold tabular-nums">{{if .HasIndices}}{{num .BMRValue}}{{end}}</dd>
-          <dd class="text-[12.5px] text-muted">kcal a riposo</dd>
+          <dt class="text-muted">{{t "profile.indices.bmr"}}</dt><dd id="bmr-value" class="text-xl font-bold tabular-nums">{{if .HasIndices}}{{num .BMRValue}}{{end}}</dd>
+          <dd class="text-[12.5px] text-muted">{{t "profile.indices.bmr_unit"}}</dd>
         </div>
         <div class="grid grid-cols-[1fr_auto] gap-x-2 px-4 py-3">
-          <dt class="text-muted">Fabbisogno (TDEE)</dt><dd id="tdee-value" class="text-xl font-bold tabular-nums">{{if .HasTDEE}}{{num .TDEEValue}}{{else}}—{{end}}</dd>
-          <dd id="tdee-label" class="text-[12.5px] text-muted">{{if .HasTDEE}}kcal al giorno{{else}}scegli l'attività fisica{{end}}</dd>
+          <dt class="text-muted">{{t "profile.indices.tdee"}}</dt><dd id="tdee-value" class="text-xl font-bold tabular-nums">{{if .HasTDEE}}{{num .TDEEValue}}{{else}}—{{end}}</dd>
+          <dd id="tdee-label" class="text-[12.5px] text-muted">{{if .HasTDEE}}{{t "profile.indices.tdee_unit"}}{{else}}{{t "profile.indices.tdee_choose"}}{{end}}</dd>
         </div>
       </dl>
-      <p id="indices-placeholder" class="border-t border-border px-4 py-3 text-muted{{if .HasIndices}} hidden{{end}}">Completa peso, altezza, anno di nascita e sesso per calcolarli.</p>
-      <p class="border-t border-border px-4 py-3 text-[12.5px] text-muted">Si aggiornano mentre scrivi.</p>
+      <p id="indices-placeholder" class="border-t border-border px-4 py-3 text-muted{{if .HasIndices}} hidden{{end}}">{{t "profile.indices.placeholder"}}</p>
+      <p class="border-t border-border px-4 py-3 text-[12.5px] text-muted">{{t "profile.indices.live"}}</p>
     </aside>
   </form>
 </div>

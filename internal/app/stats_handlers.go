@@ -146,7 +146,7 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 	data := statsPageData{
 		authPageData: a.baseData(r),
 		View: buildStatsView(statsInput{
-			Lang:          i18n.FromContext(r.Context()),
+			Lang:          i18n.FromContext(ctx),
 			Weeks:         weeks,
 			Weights:       weights,
 			TDEE:          tdeeReport,

@@ -1,9 +1,9 @@
-{{define "title"}}Peso — Nutreek{{end}}
+{{define "title"}}{{t "weight.title"}} — Nutreek{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px] max-w-5xl">
   <header>
-    <h1 class="h1">Peso</h1>
-    <p class="text-muted mt-0.5">Pesati alla stessa ora, meglio al mattino: il trend conta più del singolo giorno.</p>
+    <h1 class="h1">{{t "weight.title"}}</h1>
+    <p class="text-muted mt-0.5">{{t "weight.subtitle"}}</p>
   </header>
 
   {{if .Error}}
@@ -16,27 +16,27 @@
       <section class="card p-4 lg:p-5 flex flex-col gap-3">
         <div class="flex flex-wrap items-end gap-3">
           <div class="flex flex-col">
-            <span class="text-[12.5px] text-muted">Ultima pesata, {{$last.MeasuredAt.Day}} {{monthName $last.MeasuredAt}}</span>
+            <span class="text-[12.5px] text-muted">{{t "weight.last" "Date" (printf "%d %s" $last.MeasuredAt.Day (monthName $last.MeasuredAt))}}</span>
             <span><span class="text-[34px] leading-tight font-bold tabular-nums">{{dec $last.WeightKg 1}}</span> <span class="text-muted">kg</span></span>
           </div>
           {{with $.Trend}}<span class="chip chip-soft mb-1.5">{{.}}</span>{{end}}
-          <nav class="segmented ml-auto mb-0.5" aria-label="Intervallo del grafico">
-            <a href="/profile/peso?giorni=30"{{if eq $.Range 30}} aria-current="page"{{end}}>30 giorni</a>
-            <a href="/profile/peso?giorni=90"{{if eq $.Range 90}} aria-current="page"{{end}}>90 giorni</a>
-            <a href="/profile/peso?giorni=365"{{if eq $.Range 365}} aria-current="page"{{end}}>1 anno</a>
+          <nav class="segmented ml-auto mb-0.5" aria-label="{{t "weight.range_nav"}}">
+            <a href="/profile/peso?giorni=30"{{if eq $.Range 30}} aria-current="page"{{end}}>{{t "weight.range_30"}}</a>
+            <a href="/profile/peso?giorni=90"{{if eq $.Range 90}} aria-current="page"{{end}}>{{t "weight.range_90"}}</a>
+            <a href="/profile/peso?giorni=365"{{if eq $.Range 365}} aria-current="page"{{end}}>{{t "weight.range_365"}}</a>
           </nav>
         </div>
         {{if $.HasChart}}
         <div data-chart="weight"></div>
         {{else}}
-        <p class="text-muted py-6 text-center">Con almeno due pesate in questo intervallo qui vedi l'andamento.</p>
+        <p class="text-muted py-6 text-center">{{t "weight.chart_empty"}}</p>
         {{end}}
       </section>
 
       <section class="card overflow-hidden">
         <div class="flex items-baseline justify-between px-4 pt-3.5 pb-3">
-          <h2 class="h2">Pesate</h2>
-          <span class="text-[12.5px] text-muted">{{len .}} in tutto</span>
+          <h2 class="h2">{{t "weight.list_title"}}</h2>
+          <span class="text-[12.5px] text-muted">{{t "weight.total" "Total" (len .)}}</span>
         </div>
         <ul class="border-t border-border divide-y divide-border">
           {{range $i, $l := .}}
@@ -44,41 +44,41 @@
             <span class="tabular-nums">{{$l.MeasuredAt.Day}} {{monthName $l.MeasuredAt}}{{if ne $l.MeasuredAt.Year $last.MeasuredAt.Year}} {{$l.MeasuredAt.Year}}{{end}}</span>
             <b class="tabular-nums text-right sm:text-left">{{dec $l.WeightKg 1}} kg</b>
             <span class="hidden sm:block text-[12.5px] text-muted truncate">{{with $l.Note}}{{.}}{{end}}</span>
-            <form method="post" action="/profile/peso/{{$l.ID}}/delete" data-confirm="Eliminare la pesata del {{$l.MeasuredAt.Day}} {{monthName $l.MeasuredAt}}?">
+            <form method="post" action="/profile/peso/{{$l.ID}}/delete" data-confirm="{{t "weight.delete_confirm" "Date" (printf "%d %s" $l.MeasuredAt.Day (monthName $l.MeasuredAt))}}">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <button class="icon-action hover:text-danger" aria-label="Elimina la pesata del {{$l.MeasuredAt.Day}} {{monthName $l.MeasuredAt}}" title="Elimina">{{template "icon" "i-trash"}}</button>
+              <button class="icon-action hover:text-danger" aria-label="{{t "weight.delete_label" "Date" (printf "%d %s" $l.MeasuredAt.Day (monthName $l.MeasuredAt))}}" title="{{t "weight.delete"}}">{{template "icon" "i-trash"}}</button>
             </form>
           </li>
           {{end}}
         </ul>
         {{if gt (len .) 5}}
-        <button type="button" id="weight-more" aria-expanded="false" class="w-full px-4 py-3 border-t border-border text-left text-accent font-semibold hover:bg-surface-2">Mostra tutte</button>
+        <button type="button" id="weight-more" aria-expanded="false" data-msg-all="{{t "weight.show_all"}}" data-msg-less="{{t "weight.show_less"}}" class="w-full px-4 py-3 border-t border-border text-left text-accent font-semibold hover:bg-surface-2">{{t "weight.show_all"}}</button>
         {{end}}
       </section>
       {{else}}
       <div class="card px-4 py-8 flex flex-col items-center gap-3 text-center">
         <span class="thumb w-12 h-12 rounded-xl bg-accent-soft text-accent">{{template "icon_lg" "i-weight"}}</span>
-        <p class="font-semibold">Nessuna pesata ancora</p>
-        <p class="text-muted max-w-sm">Registra la prima qui a lato: con qualche pesata vedrai l'andamento e il fabbisogno stimato.</p>
+        <p class="font-semibold">{{t "weight.empty_title"}}</p>
+        <p class="text-muted max-w-sm">{{t "weight.empty_text"}}</p>
       </div>
       {{end}}
     </div>
 
     <section class="card p-4 lg:p-5 order-1 lg:order-2">
       <form method="post" action="/profile/peso" class="flex flex-col gap-3">
-        <h2 class="h2">Nuova pesata</h2>
+        <h2 class="h2">{{t "weight.new"}}</h2>
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <label class="lab">Peso
+        <label class="lab">{{t "weight.weight"}}
           <span class="field-unit"><input id="w-kg" name="weight_kg" inputmode="decimal" placeholder="72,5" required class="field field-lg"><em>kg</em></span>
         </label>
-        <label class="lab">Data
+        <label class="lab">{{t "weight.date"}}
           <input id="w-date" name="measured_at" type="date" value="{{.TodayStr}}" max="{{.TodayStr}}" required class="field">
         </label>
-        <label class="lab">Nota
-          <input id="w-note" name="note" maxlength="200" placeholder="facoltativa, es. dopo la palestra" class="field">
+        <label class="lab">{{t "weight.note"}}
+          <input id="w-note" name="note" maxlength="200" placeholder="{{t "weight.note_placeholder"}}" class="field">
         </label>
-        <button class="btn-primary">Salva pesata</button>
-        <p class="text-[12.5px] text-muted">Le pesate servono anche a stimare il tuo fabbisogno.</p>
+        <button class="btn-primary">{{t "weight.save"}}</button>
+        <p class="text-[12.5px] text-muted">{{t "weight.hint"}}</p>
       </form>
     </section>
   </div>
@@ -87,6 +87,7 @@
 
 {{define "scripts"}}
 {{if .HasChart}}
+{{template "chart_text"}}
 <script type="application/json" id="chart-data">{{.Charts}}</script>
 <script src="{{asset "js/charts.js"}}"></script>
 {{end}}
@@ -98,7 +99,7 @@
     var open = b.getAttribute("aria-expanded") !== "true";
     document.querySelectorAll("[data-weight-more]").forEach(function (r) { r.classList.toggle("hidden", !open); });
     b.setAttribute("aria-expanded", open);
-    b.textContent = open ? "Mostra solo le ultime 5" : "Mostra tutte";
+    b.textContent = open ? b.dataset.msgLess : b.dataset.msgAll;
   });
 })();
 </script>
