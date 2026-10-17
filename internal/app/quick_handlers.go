@@ -147,7 +147,7 @@ func (a *App) handleQuickRecipeForm(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) renderQuickRecipeModal(w http.ResponseWriter, r *http.Request, form recipeForm, errMsg string) {
 	data := modalDialogData{
-		Title: "Nuova ricetta",
+		Title: a.t(r, "recipes.new"),
 		Inner: "quick_recipe_form",
 		InnerData: quickRecipeData{
 			authPageData: authPageData{CSRFToken: nosurf.Token(r)},
@@ -179,18 +179,18 @@ func (a *App) handleQuickRecipeCreate(w http.ResponseWriter, r *http.Request) {
 		Servings: strings.TrimSpace(r.PostFormValue("servings")),
 	}
 	if form.Name == "" || !withinLen(form.Name, MaxNameLen) {
-		a.renderQuickRecipeFormOnly(w, r, form, "Nome ricetta non valido.")
+		a.renderQuickRecipeFormOnly(w, r, form, a.t(r, "recipes.quick.error.name"))
 		return
 	}
 	servings, err := strconv.Atoi(form.Servings)
 	if err != nil || servings <= 0 {
-		a.renderQuickRecipeFormOnly(w, r, form, "Porzioni non valide.")
+		a.renderQuickRecipeFormOnly(w, r, form, a.t(r, "recipes.quick.error.servings"))
 		return
 	}
 	id, err := a.Recipes.Create(r.Context(), user.ID, form.Name, nil, servings, false)
 	if err != nil {
 		if errors.Is(err, db.ErrRecipeNameTaken) {
-			a.renderQuickRecipeFormOnly(w, r, form, "Esiste già una tua ricetta con questo nome.")
+			a.renderQuickRecipeFormOnly(w, r, form, a.t(r, "recipes.error.name_taken"))
 			return
 		}
 		a.serverError(w, r, err)

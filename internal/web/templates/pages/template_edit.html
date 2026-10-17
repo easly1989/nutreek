@@ -1,26 +1,26 @@
-{{define "title"}}{{.Template.Name}} — Template{{end}}
+{{define "title"}}{{.Template.Name}} — {{t "templates.title"}}{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0">
-      <a href="/piano-nutrizionale?tab=template" class="crumb">{{template "icon_sm" "i-chevron-left"}}Piano nutrizionale</a>
-      <h1 class="h1 flex flex-wrap items-center gap-2">{{.Template.Name}}{{if .Template.IsActive}} <span class="chip chip-soft">Attivo</span>{{end}}</h1>
-      <p class="text-muted mt-1">Lo schema dei pasti: la settimana e il piano nutrizionale partono da qui.</p>
+      <a href="/piano-nutrizionale?tab=template" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "plan.title"}}</a>
+      <h1 class="h1 flex flex-wrap items-center gap-2">{{.Template.Name}}{{if .Template.IsActive}} <span class="chip chip-soft">{{t "templates.active"}}</span>{{end}}</h1>
+      <p class="text-muted mt-1">{{t "templates.edit.intro"}}</p>
     </div>
     <div class="flex items-center gap-2">
       {{if not .Template.IsActive}}
         <form method="post" action="/templates/{{.Template.ID}}/activate">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input type="hidden" name="next" value="/templates/{{.Template.ID}}">
-          <button class="btn-primary">Attiva</button>
+          <button class="btn-primary">{{t "templates.activate"}}</button>
         </form>
       {{end}}
       <div class="relative">
-        <button type="button" class="btn-secondary btn-icon" data-popover="template-actions" aria-expanded="false" aria-controls="template-actions" aria-label="Altre azioni">{{template "icon" "i-dots"}}</button>
+        <button type="button" class="btn-secondary btn-icon" data-popover="template-actions" aria-expanded="false" aria-controls="template-actions" aria-label="{{t "templates.edit.more_actions"}}">{{template "icon" "i-dots"}}</button>
         <div id="template-actions" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5">
-          <form method="post" action="/templates/{{.Template.ID}}/delete" data-confirm="Eliminare il template «{{.Template.Name}}»? L’operazione non è reversibile.">
+          <form method="post" action="/templates/{{.Template.ID}}/delete" data-confirm="{{t "templates.delete_confirm_irreversible" "Name" .Template.Name}}">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}Elimina template</button>
+            <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}{{t "templates.edit.delete_template"}}</button>
           </form>
         </div>
       </div>
@@ -33,23 +33,23 @@
     <div class="flex flex-col gap-3 min-w-0">
       {{range .SlotGroups}}
         {{- $empty := not .Slots -}}
-        {{/* «Ogni giorno» is always there; the single days only when they
+        {{/* «Every day» is always there; the single days only when they
              have meals or the user opens them from the chips below. */}}
         <section id="day-group-{{.Day}}" class="card{{if and $empty (ge .Day 0)}} hidden{{end}}" data-day-group="{{.Day}}">
           <div class="flex items-baseline gap-2.5 px-4 py-3">
-            <h2 class="h2">{{.Label}}</h2>
-            <span class="text-[12.5px] text-muted">{{if ge .Day 0}}in più rispetto a ogni giorno{{else}}{{len .Slots}} {{if eq (len .Slots) 1}}pasto{{else}}pasti{{end}}{{end}}</span>
+            <h2 class="h2">{{if ge .Day 0}}{{.Label}}{{else}}{{t "templates.edit.every_day"}}{{end}}</h2>
+            <span class="text-[12.5px] text-muted">{{if ge .Day 0}}{{t "templates.edit.extra_over_every_day"}}{{else}}{{t "templates.edit.meals" "Count" (len .Slots)}}{{end}}</span>
           </div>
           {{if .Slots}}
             <div class="border-t border-border divide-y divide-border" data-sortable="slots" data-sortable-handle="[data-grip]"
                  data-sort-url="/templates/{{$.Template.ID}}/days/{{.Day}}/slots/reorder">
               {{range .Slots}}
                 <div class="flex items-center gap-2 min-h-[42px] pl-2.5 pr-2 bg-surface" data-id="{{.ID}}">
-                  <span data-grip class="w-6 h-8 grid place-items-center text-muted cursor-grab touch-none" title="Trascina per riordinare" aria-hidden="true">{{template "icon_sm" "i-grip"}}</span>
+                  <span data-grip class="w-6 h-8 grid place-items-center text-muted cursor-grab touch-none" title="{{t "templates.edit.drag"}}" aria-hidden="true">{{template "icon_sm" "i-grip"}}</span>
                   <span class="grow">{{.Name}}</span>
                   <form method="post" action="/templates/{{$.Template.ID}}/slots/{{.ID}}/delete">
                     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                    <button class="icon-action" aria-label="Rimuovi {{.Name}}" title="Rimuovi">{{template "icon_sm" "i-trash"}}</button>
+                    <button class="icon-action" aria-label="{{t "templates.edit.remove_label" "Name" .Name}}" title="{{t "templates.edit.remove"}}">{{template "icon_sm" "i-trash"}}</button>
                   </form>
                 </div>
               {{end}}
@@ -58,16 +58,16 @@
           <form method="post" action="/templates/{{$.Template.ID}}/slots" class="flex gap-2 px-3 py-2.5 border-t border-border">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <input type="hidden" name="day_of_week" value="{{.Day}}">
-            <input name="slot_name" required maxlength="200" placeholder="Aggiungi un pasto a {{if ge .Day 0}}{{.Label}}{{else}}ogni giorno{{end}}" aria-label="Nome del pasto"
+            <input name="slot_name" required maxlength="200" placeholder="{{if ge .Day 0}}{{t "templates.edit.add_meal_to_day" "Day" .Label}}{{else}}{{t "templates.edit.add_meal_to_every_day"}}{{end}}" aria-label="{{t "templates.edit.meal_name"}}"
                    class="field" data-day-input="{{.Day}}"
                    {{if eq (printf "%d" .Day) $.SlotForm.DayOfWeek}}value="{{$.SlotForm.Name}}"{{end}}>
-            <button class="btn-secondary">{{template "icon_sm" "i-plus"}}Aggiungi</button>
+            <button class="btn-secondary">{{template "icon_sm" "i-plus"}}{{t "templates.edit.add"}}</button>
           </form>
         </section>
       {{end}}
 
       <div class="flex flex-wrap items-center gap-2" data-day-chips>
-        <span class="w-full text-[12.5px] text-muted">Pasti solo per un giorno:</span>
+        <span class="w-full text-[12.5px] text-muted">{{t "templates.edit.single_days"}}</span>
         {{range .SlotGroups}}{{if and (ge .Day 0) (not .Slots)}}
           <button type="button" class="filter" data-day-open="{{.Day}}">{{template "icon_sm" "i-plus"}}{{.Label}}</button>
         {{end}}{{end}}
@@ -79,25 +79,25 @@
       <form method="post" action="/templates/{{.Template.ID}}" class="card p-4 flex flex-col gap-3">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         {{if .NameError}}<p class="rounded-xl bg-danger-soft text-danger px-3 py-2" role="alert">{{.NameError}}</p>{{end}}
-        <label class="lab">Nome del template<input name="name" required maxlength="200" value="{{.NameForm}}" class="field"></label>
-        <button class="btn-secondary self-start">Salva nome</button>
+        <label class="lab">{{t "templates.edit.name"}}<input name="name" required maxlength="200" value="{{.NameForm}}" class="field"></label>
+        <button class="btn-secondary self-start">{{t "templates.edit.save_name"}}</button>
       </form>
       <section class="card">
         <div class="flex items-center gap-2.5 px-4 py-3">
-          <h2 class="h2">I tuoi template</h2>
-          <a href="/templates/new" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2">{{template "icon_sm" "i-plus"}}Nuovo</a>
+          <h2 class="h2">{{t "templates.yours"}}</h2>
+          <a href="/templates/new" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2">{{template "icon_sm" "i-plus"}}{{t "templates.new_short"}}</a>
         </div>
         <div class="divide-y divide-border border-t border-border">
           {{range .Templates}}
             <div class="flex items-center gap-2.5 min-h-[48px] pl-4 pr-3{{if eq .ID $.Template.ID}} bg-surface-2{{end}}">
               <a href="/templates/{{.ID}}" class="grow min-w-0 truncate hover:underline{{if eq .ID $.Template.ID}} font-bold{{end}}"{{if eq .ID $.Template.ID}} aria-current="page"{{end}}>{{.Name}}</a>
               {{if .IsActive}}
-                <span class="chip chip-soft">Attivo</span>
+                <span class="chip chip-soft">{{t "templates.active"}}</span>
               {{else}}
                 <form method="post" action="/templates/{{.ID}}/activate">
                   <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                   <input type="hidden" name="next" value="/templates/{{$.Template.ID}}">
-                  <button class="btn-secondary h-[30px] px-2.5 text-[12.5px]">Attiva</button>
+                  <button class="btn-secondary h-[30px] px-2.5 text-[12.5px]">{{t "templates.activate"}}</button>
                 </form>
               {{end}}
             </div>
@@ -110,7 +110,7 @@
 
 <script>
 (function () {
-  // Chip «+ Lunedì»: mostra il gruppo del giorno e porta il cursore sul campo.
+  // The "+ Monday" chip: show the day's group and put the cursor in its field.
   document.addEventListener('click', function (e) {
     var chip = e.target.closest('[data-day-open]');
     if (!chip) return;
@@ -122,7 +122,7 @@
     var input = group.querySelector('[data-day-input]');
     if (input) { group.scrollIntoView({ behavior: 'smooth', block: 'center' }); input.focus({ preventScroll: true }); }
   });
-  // Dopo un errore il gruppo del giorno appena usato resta visibile.
+  // After an error the group of the day just used stays visible.
   document.querySelectorAll('[data-day-input]').forEach(function (input) {
     if (input.value) {
       var g = input.closest('[data-day-group]');

@@ -14,20 +14,20 @@
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
   {{if .SrcName}}
-    <p class="text-muted">Stai duplicando <strong class="text-text">{{.SrcName}}</strong>: tutti gli ingredienti vengono copiati.</p>
+    <p class="text-muted">{{t "recipes.duplicate.copying"}} <strong class="text-text">{{.SrcName}}</strong>: {{t "recipes.duplicate.copied_note"}}</p>
   {{end}}
 
   {{if .Error}}
     <p class="rounded-xl bg-warn-bg text-warn-fg px-3 py-2">{{.Error}}</p>
   {{end}}
 
-  <label class="lab">Nome della copia
+  <label class="lab">{{t "recipes.duplicate.copy_name"}}
     <input name="new_name" value="{{.NewName}}" autofocus class="field">
   </label>
 
   <div class="flex items-center justify-end gap-2 pt-1">
-    <button type="button" data-modal-close class="btn-secondary">Annulla</button>
-    <button class="btn-primary">{{template "icon_sm" "i-copy"}}Duplica</button>
+    <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+    <button class="btn-primary">{{template "icon_sm" "i-copy"}}{{t "recipes.row.duplicate"}}</button>
   </div>
 </form>
 {{end}}
