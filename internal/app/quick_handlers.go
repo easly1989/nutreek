@@ -9,7 +9,6 @@ import (
 	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/db"
-	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/off"
 )
 
@@ -96,37 +95,9 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
-	if form.Name == "" {
-		a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.error.name_required"))
-		return
-	}
-	if !withinLen(form.Name, MaxNameLen) {
-		a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.error.name_too_long", "Max", MaxNameLen))
-		return
-	}
-	unit := domain.IngredientUnit(form.Unit)
-	if unit != domain.UnitGram && unit != domain.UnitMilliliter {
-		a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.error.unit"))
-		return
-	}
-	kcal, err := parseNonNegFloat(form.Kcal)
-	if err != nil {
-		a.renderQuickIngredientFormOnly(w, r, form, a.numberError(r, "ingredients.error.kcal", err))
-		return
-	}
-	protein, err := parseNonNegFloat(form.Protein)
-	if err != nil {
-		a.renderQuickIngredientFormOnly(w, r, form, a.numberError(r, "ingredients.error.protein", err))
-		return
-	}
-	carbs, err := parseNonNegFloat(form.Carbs)
-	if err != nil {
-		a.renderQuickIngredientFormOnly(w, r, form, a.numberError(r, "ingredients.error.carbs", err))
-		return
-	}
-	fat, err := parseNonNegFloat(form.Fat)
-	if err != nil {
-		a.renderQuickIngredientFormOnly(w, r, form, a.numberError(r, "ingredients.error.fat", err))
+	vals, msg := a.validateIngredient(r, form)
+	if msg != "" {
+		a.renderQuickIngredientFormOnly(w, r, form, msg)
 		return
 	}
 
@@ -145,7 +116,7 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 		unitWeightG = &v
 	}
 	creator := user.ID
-	id, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, unit, kcal, protein, carbs, fat, &creator, unitWeightG, nil, nil, nil, nil, nil)
+	id, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, vals.Unit, vals.Kcal, vals.Protein, vals.Carbs, vals.Fat, &creator, unitWeightG, nil, nil, nil, nil, nil)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
