@@ -22,6 +22,11 @@ jobs:
       - name: Run tests
         run: go test ./... -race -count=1
 
+      # The demo build (#137): its wiring, and an end-to-end test that builds the
+      # binary, starts it on an empty database, enters and adds a food (#188).
+      - name: Run demo build tests
+        run: go test -tags demo ./cmd/nutreek/ -race -count=1
+
       # Italian and English must be complete: TestCatalogs fails otherwise. A
       # community language only warns here, with the keys to translate.
       - name: Check translations
@@ -44,6 +49,13 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.14.0
+
+      # The files behind //go:build demo are only linted (and vetted) with the tag.
+      - name: Run golangci-lint (demo build)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+          args: --build-tags demo
 
   build:
     name: Build
