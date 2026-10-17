@@ -26,6 +26,14 @@ type NutritionistVariation struct {
 	SortOrder  int
 }
 
+// NameOr returns the variation's name, or fallback when it has none.
+func (v NutritionistVariation) NameOr(fallback string) string {
+	if v.Name == nil || *v.Name == "" {
+		return fallback
+	}
+	return *v.Name
+}
+
 type NutritionistItem struct {
 	ID           int64
 	VariationID  int64
