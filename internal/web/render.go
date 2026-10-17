@@ -127,27 +127,7 @@ func funcMap(lang string) template.FuncMap {
 			}
 			return i18n.TOr(lang, "reference."+kind+"."+code, name)
 		},
-		"dayLabel": func(d int) string {
-			switch {
-			case d == -1:
-				return "Ogni giorno"
-			case d == 0:
-				return "Lun"
-			case d == 1:
-				return "Mar"
-			case d == 2:
-				return "Mer"
-			case d == 3:
-				return "Gio"
-			case d == 4:
-				return "Ven"
-			case d == 5:
-				return "Sab"
-			case d == 6:
-				return "Dom"
-			}
-			return "?"
-		},
+		"dayLabel": func(d int) string { return dayLabel(lang, d) },
 		// row passes a row template the row and the page that holds it
 		// (CSRF, week): html/template does not allow struct literals.
 		"row": func(row, page any) RowCtx { return RowCtx{Row: row, Page: page} },
@@ -162,12 +142,12 @@ func funcMap(lang string) template.FuncMap {
 			}
 			return *p
 		},
-		"num": formatNum,
-		"dec": formatDec,
+		"num": func(v float64) string { return formatNum(lang, v) },
+		"dec": func(v float64, digits int) string { return formatDec(lang, v, digits) },
 		// list builds a list of strings to use in a range.
 		"list": func(v ...string) []string { return v },
 		"liters": func(ml int) string {
-			return formatDec(float64(ml)/1000, 2) + " l"
+			return formatDec(lang, float64(ml)/1000, 2) + " l"
 		},
 		"sub": func(a, b float64) float64 { return a - b },
 		"ringDash": func(pct float64) string {
@@ -176,18 +156,16 @@ func funcMap(lang string) template.FuncMap {
 			pct = math.Max(0, math.Min(pct, 100))
 			return fmt.Sprintf("%.1f %.1f", pct/100*c, c)
 		},
-		"weekRange":  weekRange,
-		"weeksRange": weeksRange,
+		"weekRange":  func(start time.Time) string { return weekRange(lang, start) },
+		"weeksRange": func(start time.Time, n int) string { return weeksRange(lang, start, n) },
 		"dayTitle": func(t time.Time) string {
-			return weekdaysIT[(int(t.Weekday())+6)%7] + " " + strconv.Itoa(t.Day())
+			return weekdayName(lang, t) + " " + strconv.Itoa(t.Day())
 		},
 		"dayShort": func(t time.Time) string {
-			return weekdaysIT[(int(t.Weekday())+6)%7][:3] + " " + strconv.Itoa(t.Day())
+			return prefix(weekdayName(lang, t), 3) + " " + strconv.Itoa(t.Day())
 		},
-		"monthName": func(t time.Time) string { return monthsIT[t.Month()-1] },
-		"dayLetter": func(t time.Time) string {
-			return weekdaysIT[(int(t.Weekday())+6)%7][:1]
-		},
+		"monthName": func(t time.Time) string { return monthNameOf(lang, t) },
+		"dayLetter": func(t time.Time) string { return prefix(weekdayName(lang, t), 1) },
 		// mealCtx / itemCtx pass meal_card and meal_item_row the view of the
 		// meal (or of the item) together with the card's context the forms
 		// need: html/template does not allow struct literals.
@@ -282,59 +260,6 @@ type RowCtx struct {
 type NavItem struct {
 	Href, Label, Icon string
 	Active            bool
-}
-
-var (
-	weekdaysIT = [7]string{"Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"}
-	monthsIT   = [12]string{"gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"}
-)
-
-// FormatNum and FormatDec expose the templates' formatting to the HTML
-// fragments the handlers write by hand.
-func FormatNum(v float64) string             { return formatNum(v) }
-func FormatDec(v float64, digits int) string { return formatDec(v, digits) }
-
-// formatNum rounds to the integer and separates thousands with a dot, as
-// Italian writes them: 1636.4 -> "1.636".
-func formatNum(v float64) string {
-	n := int64(math.Round(v))
-	sign := ""
-	if n < 0 {
-		sign, n = "-", -n
-	}
-	s := strconv.FormatInt(n, 10)
-	for i := len(s) - 3; i > 0; i -= 3 {
-		s = s[:i] + "." + s[i:]
-	}
-	return sign + s
-}
-
-// formatDec writes v with at most `digits` decimals, a decimal comma and no
-// trailing zeros: 1.5 -> "1,5", 2.0 -> "2", 1.25 -> "1,25".
-func formatDec(v float64, digits int) string {
-	s := strconv.FormatFloat(v, 'f', digits, 64)
-	if strings.Contains(s, ".") {
-		s = strings.TrimRight(strings.TrimRight(s, "0"), ".")
-	}
-	return strings.Replace(s, ".", ",", 1)
-}
-
-// weekRange describes the week starting on Monday start:
-// "12–18 ottobre", "29 settembre – 5 ottobre", "29 dicembre 2025 – 4 gennaio 2026".
-func weekRange(start time.Time) string { return weeksRange(start, 1) }
-
-// weeksRange describes n consecutive weeks from Monday start to the Sunday
-// of the last one: "12 ottobre – 1 novembre".
-func weeksRange(start time.Time, n int) string {
-	end := start.AddDate(0, 0, 7*max(n, 1)-1)
-	switch {
-	case start.Year() != end.Year():
-		return fmt.Sprintf("%d %s %d – %d %s %d", start.Day(), monthsIT[start.Month()-1], start.Year(), end.Day(), monthsIT[end.Month()-1], end.Year())
-	case start.Month() != end.Month():
-		return fmt.Sprintf("%d %s – %d %s", start.Day(), monthsIT[start.Month()-1], end.Day(), monthsIT[end.Month()-1])
-	default:
-		return fmt.Sprintf("%d–%d %s", start.Day(), end.Day(), monthsIT[end.Month()-1])
-	}
 }
 
 // navActive says whether the link href matches the current page cur: "/"
