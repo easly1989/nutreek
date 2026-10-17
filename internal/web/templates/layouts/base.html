@@ -134,13 +134,14 @@
       {{block "topbar_actions" .}}
       {{if eq .ActiveNav "/login"}}<a href="/register" class="btn-ghost">{{t "layout.register"}}</a>
       {{else if eq .ActiveNav "/register"}}<a href="/login" class="btn-ghost">{{t "layout.login"}}</a>
-      {{else if not .User}}<a href="/login" class="btn-ghost">{{t "layout.login"}}</a><a href="/register" class="btn-primary">{{t "layout.register"}}</a>{{end}}
+      {{else if and (not .User) (not .Demo)}}<a href="/login" class="btn-ghost">{{t "layout.login"}}</a><a href="/register" class="btn-primary">{{t "layout.register"}}</a>{{end}}
       {{end}}
     </div>
   </header>
   {{end}}
 
   <main id="main-content" class="{{if and .User (not .Bare)}}min-h-screen lg:pl-[220px] pb-24 lg:pb-0{{else}}min-h-[calc(100vh-60px)]{{end}}">
+    {{if and .Demo .User}}{{template "demo_band" .}}{{end}}
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 lg:py-6">
       {{if .Flash}}
         <div id="flash-msg" role="status" class="mb-4 rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-center justify-between gap-3">
@@ -172,6 +173,7 @@
   <div id="modal-host" data-modal-host></div>
   <div id="modal-host-2" data-modal-host></div>
   {{if .User}}{{template "scanner_dialog"}}{{end}}
+  {{if and .Demo .User}}{{template "demo_notice" .}}{{end}}
   {{block "scripts" .}}{{end}}
 
   {{/* Toast for HTMX errors (network, server). */}}
@@ -251,6 +253,35 @@
   </div>
 </dialog>{{end}}
 
+{{/* The public demo (#137): a band on every page and the notice it opens;
+     the notice opens by itself on the first page after entering. */}}
+{{define "demo_band"}}<div id="demo-band" class="bg-warn-bg text-warn-fg text-[13px] px-4 py-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
+  <span><span class="inline-block align-[-3px] mr-1.5">{{template "icon_sm" "i-info"}}</span>{{t "demo.band" "Count" .DemoIdleHours}}</span>
+  <button type="button" class="font-semibold underline underline-offset-2" data-demo-open>{{t "demo.band.more"}}</button>
+</div>{{end}}
+
+{{define "demo_notice"}}<dialog id="demo-notice" class="dialog-panel lg:w-[460px]" aria-labelledby="demo-notice-title"{{if .DemoWelcome}} data-demo-welcome{{end}}>
+  <div class="p-5 lg:p-6 flex flex-col gap-3">
+    <h2 id="demo-notice-title" class="text-[17px] font-bold">{{t "demo.notice.title"}}</h2>
+    <p>{{t "demo.notice.account"}}</p>
+    <p class="text-muted">{{t "demo.notice.lifetime" "Count" .DemoIdleHours}}</p>
+    <div class="flex flex-wrap justify-end gap-2 pt-2 pb-[env(safe-area-inset-bottom)]">
+      <form method="post" action="/tour/restart">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button class="btn-secondary">{{t "demo.notice.tour"}}</button>
+      </form>
+      <form method="dialog"><button class="btn-primary" autofocus>{{t "demo.notice.start"}}</button></form>
+    </div>
+  </div>
+</dialog>
+<script>
+(function () {
+  var d = document.getElementById('demo-notice');
+  document.querySelectorAll('[data-demo-open]').forEach(function (b) { b.addEventListener('click', function () { d.showModal(); }); });
+  if (d.hasAttribute('data-demo-welcome')) d.showModal();
+})();
+</script>{{end}}
+
 {{define "nav_link"}}<li><a href="{{.Href}}" class="nav-link{{if .Active}} is-active{{end}}"{{if .Active}} aria-current="page"{{end}}>{{template "icon" .Icon}}{{.Label}}</a></li>{{end}}
 
 {{define "tab_link"}}<a href="{{.Href}}" class="tab-link{{if .Active}} is-active{{end}}"{{if .Active}} aria-current="page"{{end}}>{{template "icon_lg" .Icon}}{{.Label}}</a>{{end}}
@@ -289,6 +320,7 @@
   <symbol id="i-stats" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
   <symbol id="i-weight" viewBox="0 0 24 24"><path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM8.5 10a3.5 3.5 0 0 1 7 0M12 10l1.5-2"/></symbol>
   <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.4M12 17h.01"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/></symbol>
   <symbol id="i-coach" viewBox="0 0 24 24"><path d="M16 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM22 20v-1.5a4 4 0 0 0-3-3.9M15.5 4.1a3.5 3.5 0 0 1 0 6.8"/></symbol>

@@ -149,7 +149,7 @@ type recipeEditData struct {
 func (a *App) handleRecipesList(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	if user == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, a.signInPath(), http.StatusSeeOther)
 		return
 	}
 	all, err := a.Recipes.ListVisible(r.Context(), user.ID)
