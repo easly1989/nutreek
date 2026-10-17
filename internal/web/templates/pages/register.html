@@ -1,33 +1,34 @@
-{{define "title"}}Registrati — Nutreek{{end}}
+{{define "title"}}{{t "auth.register.title"}} — Nutreek{{end}}
 {{define "content"}}
 <div class="auth-box">
   <div class="text-center">
-    <h1 class="h1">Crea il tuo account</h1>
-    <p class="text-muted mt-1">Un minuto, poi ti aiutiamo a impostare i tuoi obiettivi.</p>
+    <h1 class="h1">{{t "auth.register.heading"}}</h1>
+    <p class="text-muted mt-1">{{t "auth.register.subtitle"}}</p>
   </div>
   {{if .Error}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>{{end}}
   <form method="post" action="/register" class="card">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <label class="lab">Nome<input id="display_name" name="display_name" type="text" required autocomplete="given-name" value="{{.Form.DisplayName}}" class="field field-lg"></label>
-    <label class="lab">Email<input id="email" name="email" type="email" required autocomplete="email" value="{{.Form.Email}}" class="field field-lg"></label>
-    <label class="lab">Password
+    <label class="lab">{{t "auth.field.name"}}<input id="display_name" name="display_name" type="text" required autocomplete="given-name" value="{{.Form.DisplayName}}" class="field field-lg"></label>
+    <label class="lab">{{t "auth.field.email"}}<input id="email" name="email" type="email" required autocomplete="email" value="{{.Form.Email}}" class="field field-lg"></label>
+    <label class="lab">{{t "auth.field.password"}}
       <span class="field-pw"><input id="password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" aria-describedby="pwd-strength-label" class="field field-lg">{{template "pw_toggle" "password"}}</span>
       <span class="h-1.5 rounded-full bg-track overflow-hidden" aria-hidden="true"><span id="pwd-strength-fill" class="block h-full rounded-full transition-all duration-300" style="width:0%"></span></span>
-      <span id="pwd-strength-label" class="font-medium" aria-live="polite">Da 8 a 72 caratteri.</span>
+      <span id="pwd-strength-label" class="font-medium" aria-live="polite">{{t "auth.register.password_hint"}}</span>
     </label>
-    <button class="btn-primary btn-block">Registrati</button>
+    <button class="btn-primary btn-block">{{t "auth.register.submit"}}</button>
   </form>
-  <p class="text-center text-muted">Hai già un account? <a href="/login" class="text-accent font-semibold hover:underline">Accedi</a></p>
+  <p class="text-center text-muted">{{t "auth.register.have_account"}} <a href="/login" class="text-accent font-semibold hover:underline">{{t "auth.register.login_link"}}</a></p>
 </div>
 {{end}}
 
 {{define "scripts"}}
 <script>
-// Robustezza della password: indicativa, non blocca l'invio.
+// Password strength: indicative only, it does not block the submit.
 (function () {
   var inp = document.getElementById("password"), fill = document.getElementById("pwd-strength-fill"), lbl = document.getElementById("pwd-strength-label");
   if (!inp) return;
-  var labels = ["", "Debole", "Discreta", "Buona", "Ottima"];
+  var hint = lbl.textContent;
+  var labels = ["", {{t "auth.register.strength.weak"}}, {{t "auth.register.strength.fair"}}, {{t "auth.register.strength.good"}}, {{t "auth.register.strength.strong"}}];
   var colors = ["", "var(--danger)", "var(--carb)", "var(--accent)", "var(--accent)"];
   inp.addEventListener("input", function () {
     var v = inp.value, score = 0;
@@ -37,7 +38,7 @@
     if (/[^A-Za-z0-9]/.test(v)) score++;
     fill.style.width = (score * 25) + "%";
     fill.style.background = colors[score] || "";
-    lbl.textContent = v.length ? labels[score] || "" : "Da 8 a 72 caratteri.";
+    lbl.textContent = v.length ? labels[score] || "" : hint;
   });
 })();
 </script>

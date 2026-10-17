@@ -86,7 +86,7 @@ func TestHandleRegister_DuplicateEmail(t *testing.T) {
 	if w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("email duplicata: want 422, got %d", w.Code)
 	}
-	if !strings.Contains(w.Body.String(), "gia") {
+	if !strings.Contains(w.Body.String(), "già registrata") {
 		t.Errorf("want the duplicate email error message in the body")
 	}
 }

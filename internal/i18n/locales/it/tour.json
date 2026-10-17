@@ -1,0 +1,18 @@
+{
+  "tour.welcome.title": "Benvenuto in Nutreek!",
+  "tour.welcome.text": "Questo breve tour ti mostra le funzioni principali della dashboard. Puoi chiuderlo in qualsiasi momento e riavviarlo da \"Tour guidato\" nel menu laterale.",
+  "tour.week.title": "Navigazione settimana",
+  "tour.week.text": "Usa le frecce per spostarti tra le settimane. \"Oggi\" torna alla settimana corrente.",
+  "tour.days.title": "Giorni della settimana",
+  "tour.days.text": "Scegli un giorno per vederne i pasti, il riepilogo dei macro e l’acqua, e per aggiungere alimenti.",
+  "tour.template.title": "Applica template",
+  "tour.template.text": "Se hai creato un template settimanale (Colazione, Pranzo, Cena…), puoi applicarlo qui per strutturare la settimana in un click.",
+  "tour.sections.title": "Le sezioni",
+  "tour.sections.text": "Da qui raggiungi ricette, ingredienti, piano nutrizionale, lista della spesa e statistiche. «Aspetto», per scegliere modalità chiara o scura e colore, è in fondo al menu (sul telefono sotto «Altro»).",
+  "tour.button.skip": "Salta tour",
+  "tour.button.start": "Inizia →",
+  "tour.button.back": "← Indietro",
+  "tour.button.next": "Avanti →",
+  "tour.button.finish": "Fine ✓",
+  "tour.flash.restarted": "Tour riavviato. Torna alla dashboard per iniziare."
+}

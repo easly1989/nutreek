@@ -1,0 +1,17 @@
+{
+  "public.title": "Nutreek — la settimana a tavola",
+  "public.hero.title": "La settimana a tavola, già fatta i conti.",
+  "public.hero.lead": "Pianifica i pasti, tieni d'occhio calorie e macro giorno per giorno, e porta al supermercato una lista già pronta.",
+  "public.cta.register": "Crea un account",
+  "public.cta.login": "Accedi",
+  "public.hero.note": "Gira sul tuo server: i dati restano a casa tua.",
+  "public.hero.image_alt": "La settimana in Nutreek: i giorni in alto, l'anello delle calorie e i pasti del giorno",
+  "public.feature.day.title": "Un giorno alla volta",
+  "public.feature.day.text": "Pasti, acqua e allenamenti del giorno, con l'anello delle calorie e le barre dei macro.",
+  "public.feature.recipes.title": "Ricette e ingredienti",
+  "public.feature.recipes.text": "Ricerca istantanea sui prodotti italiani di OpenFoodFacts, salvati in locale: niente attese sul loro sito.",
+  "public.feature.shopping.title": "La spesa, già divisa",
+  "public.feature.shopping.text": "Dalla settimana alla lista per reparto, da spuntare in negozio o da stampare.",
+  "public.footer.project": "Progetto self-hosted",
+  "public.manifest.description": "Piani alimentari settimanali, macro e lista della spesa."
+}
