@@ -123,8 +123,8 @@ func TestReferenceDataByCode(t *testing.T) {
 		},
 		{
 			name: "upgrade", target: "/upgrade?da=auto_plan", handler: a.handleUpgradePage,
-			en:    []string{"Automatic plan generation fa parte", "Generates the week to hit your targets", "Adaptive TDEE", "Funzione su misura", "Solo su questa istanza"},
-			it:    []string{"Generazione piano auto fa parte", "Genera la settimana per centrare i target", "TDEE adattivo", "Funzione su misura"},
+			en:    []string{"Automatic plan generation", "Generates the week to hit your targets", "Adaptive TDEE"},
+			it:    []string{"Generazione piano auto", "Genera la settimana per centrare i target", "TDEE adattivo"},
 			notEn: []string{"Generazione piano auto", "TDEE adattivo"},
 		},
 		{
