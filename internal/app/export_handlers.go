@@ -189,7 +189,7 @@ func (a *App) handleWeekImport(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		ings, err := a.Ingredients.SearchActive(r.Context(), nome, 5)
+		ings, err := a.Ingredients.SearchActive(r.Context(), user.ID, nome, 5)
 		if err != nil || len(ings) == 0 {
 			if !containsStr(notFound, nome) {
 				notFound = append(notFound, nome)

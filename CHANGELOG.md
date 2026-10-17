@@ -27,6 +27,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 - The demo build (#182, part of #137): `go build -tags demo` makes a public demo where the home is an entry page with one button. It creates a throwaway account with a complete profile, in the visitor's language, with a band on every page and a notice at first. Sign-in, sign-up, password change and account deletion are not mounted; sessions end after 2 hours without use (`NUTREEK_DEMO_IDLE`). The demo refuses to start on a database with real users. The normal binary does not contain any of it
 
+- The demo's lockdown (#185, part of #137): the admin pages, API tokens and the REST API, recipe import from a URL and the owner's OpenFoodFacts sync are not mounted, and automatic backups are off. Limits, each with a variable: 200 live demo users, then the entry says the demo is full (`NUTREEK_DEMO_MAX_USERS`); 10 demos started per address per hour (`NUTREEK_DEMO_STARTS_PER_HOUR`); 1 MB request bodies (`NUTREEK_DEMO_MAX_BODY`); 300 hand-made ingredients and 100 recipes per user (`NUTREEK_DEMO_MAX_INGREDIENTS`, `NUTREEK_DEMO_MAX_RECIPES`). Hand-made ingredients and public recipes are seen and used only inside the visitor's demo group; OpenFoodFacts products are shared, and read-only. Normal installs keep the shared catalog
+
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)

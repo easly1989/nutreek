@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -156,6 +157,30 @@ func TestLoadConfig(t *testing.T) {
 	}
 	for _, bad := range []string{"soon", "-1h", "0s"} {
 		t.Setenv("NUTREEK_DEMO_IDLE", bad)
+		if _, err := LoadConfig(); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+	t.Setenv("NUTREEK_DEMO_IDLE", "")
+}
+
+func TestLoadConfigLimits(t *testing.T) {
+	vars := []string{"NUTREEK_DEMO_MAX_USERS", "NUTREEK_DEMO_STARTS_PER_HOUR", "NUTREEK_DEMO_MAX_BODY", "NUTREEK_DEMO_MAX_INGREDIENTS", "NUTREEK_DEMO_MAX_RECIPES"}
+	for _, v := range vars {
+		t.Setenv(v, "")
+	}
+	c, err := LoadConfig()
+	if err != nil || c.MaxUsers != 200 || c.StartsPerHour != 10 || c.MaxBody != 1<<20 || c.MaxIngredients != 300 || c.MaxRecipes != 100 {
+		t.Fatalf("defaults: %+v %v", c, err)
+	}
+	for i, v := range vars {
+		t.Setenv(v, strconv.Itoa(i+1))
+	}
+	if c, err = LoadConfig(); err != nil || c.MaxUsers != 1 || c.StartsPerHour != 2 || c.MaxBody != 3 || c.MaxIngredients != 4 || c.MaxRecipes != 5 {
+		t.Fatalf("set: %+v %v", c, err)
+	}
+	for _, bad := range []string{"many", "0", "-5"} {
+		t.Setenv("NUTREEK_DEMO_MAX_RECIPES", bad)
 		if _, err := LoadConfig(); err == nil {
 			t.Errorf("%q accepted", bad)
 		}

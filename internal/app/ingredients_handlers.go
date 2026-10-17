@@ -505,11 +505,12 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 	var (
 		locals []*domain.Ingredient
 		err    error
+		viewer = viewerID(ctx)
 	)
 	if q == "" {
-		locals, err = a.Ingredients.ListActive(ctx, 0, 50)
+		locals, err = a.Ingredients.ListActive(ctx, viewer, 0, 50)
 	} else {
-		locals, err = a.Ingredients.SearchActive(ctx, q, 20)
+		locals, err = a.Ingredients.SearchActive(ctx, viewer, q, 20)
 	}
 	if err != nil {
 		return nil, "", err
@@ -553,6 +554,12 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 func (a *App) searchBarcode(ctx context.Context, code string, live bool) ([]ingredientRow, string, error) {
 	ing, err := a.Ingredients.GetByBarcode(ctx, code)
 	if err == nil {
+		// A code linked to an ingredient outside the viewer's catalog: not found.
+		if err := a.Ingredients.VisibleTo(ctx, ing.ID, viewerID(ctx)); errors.Is(err, db.ErrIngredientNotFound) {
+			return nil, "", nil
+		} else if err != nil {
+			return nil, "", err
+		}
 		rows := []ingredientRow{{Local: ing}}
 		a.attachTags(ctx, rows)
 		return rows, "", nil
@@ -631,6 +638,11 @@ func (a *App) canEditIngredient(u *domain.User, ing *domain.Ingredient) bool {
 	}
 	if a.isOwner(u) {
 		return true
+	}
+	// The demo's OpenFoodFacts products are shared by every group: read-only
+	// (#137), as is anything without an author.
+	if a.Demo != nil && (ing.Source == domain.IngredientSourceOFF || ing.CreatedBy == nil) {
+		return false
 	}
 	if ing.CreatedBy != nil {
 		return *ing.CreatedBy == u.ID
@@ -988,7 +1000,7 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	ing, err := a.Ingredients.GetByID(r.Context(), id)
+	ing, err := a.Ingredients.GetVisible(r.Context(), id, viewerID(r.Context()))
 	if err != nil {
 		a.notFound(w, r)
 		return
@@ -1068,7 +1080,7 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check that it exists.
-	ing, err := a.Ingredients.GetByID(r.Context(), id)
+	ing, err := a.Ingredients.GetVisible(r.Context(), id, viewerID(r.Context()))
 	if err != nil {
 		a.notFound(w, r)
 		return

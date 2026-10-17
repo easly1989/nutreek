@@ -96,6 +96,28 @@ func (r *Ingredients) GetByID(ctx context.Context, id int64) (*domain.Ingredient
 	return scanIngredient(row.Scan)
 }
 
+// VisibleTo returns ErrIngredientNotFound when the ingredient is outside
+// viewerID's catalog (see ScopeCatalog).
+func (r *Ingredients) VisibleTo(ctx context.Context, id, viewerID int64) error {
+	return ingredientVisibleTo(ctx, r.db, id, viewerID)
+}
+
+// GetVisible is GetByID for an ingredient in viewerID's catalog.
+func (r *Ingredients) GetVisible(ctx context.Context, id, viewerID int64) (*domain.Ingredient, error) {
+	if err := r.VisibleTo(ctx, id, viewerID); err != nil {
+		return nil, err
+	}
+	return r.GetByID(ctx, id)
+}
+
+// CountLocalBy returns how many ingredients userID made by hand.
+func (r *Ingredients) CountLocalBy(ctx context.Context, userID int64) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT count(*) FROM ingredients WHERE created_by = ? AND source = 'local'`, userID).Scan(&n)
+	return n, err
+}
+
 // SetLocalBarcode links a barcode to a local ingredient, created by hand
 // because the product is not on OpenFoodFacts (the picker's scanner). The
 // code lives in the same column as OFF imports, so it stays unique:
@@ -168,21 +190,24 @@ func (r *Ingredients) CreateOFF(
 	return id, nil
 }
 
-// SearchActive finds non-superseded ingredients with q as a substring of the
-// name or brand (case-insensitive). Limit hard-coded to 20 for HTMX.
-func (r *Ingredients) SearchActive(ctx context.Context, q string, limit int) ([]*domain.Ingredient, error) {
+// SearchActive finds the non-superseded ingredients in viewerID's catalog
+// with q as a substring of the name or brand (case-insensitive). Limit
+// hard-coded to 20 for HTMX.
+func (r *Ingredients) SearchActive(ctx context.Context, viewerID int64, q string, limit int) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
 	q = strings.TrimSpace(q)
 	pattern := "%" + strings.ToLower(q) + "%"
+	scope, args := inCatalog(r.db, "created_by", viewerID)
 	rows, err := r.db.QueryContext(ctx, selectIngredientCols+`
 		FROM ingredients
 		WHERE superseded_by IS NULL
+		  AND (source = 'openfoodfacts' OR `+scope+`)
 		  AND (lower(name) LIKE ? OR lower(coalesce(brand, '')) LIKE ?)
 		ORDER BY (source = 'openfoodfacts') DESC, name COLLATE NOCASE
 		LIMIT ?`,
-		pattern, pattern, limit,
+		append(args, pattern, pattern, limit)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("search ingredients: %w", err)
@@ -191,21 +216,23 @@ func (r *Ingredients) SearchActive(ctx context.Context, q string, limit int) ([]
 	return collectIngredients(rows)
 }
 
-// ListActive returns the non-superseded ingredients ordered by name, paged.
-// offset/limit are not checked for negatives: the caller clamps them.
-func (r *Ingredients) ListActive(ctx context.Context, offset, limit int) ([]*domain.Ingredient, error) {
+// ListActive returns the non-superseded ingredients in viewerID's catalog
+// ordered by name, paged.
+func (r *Ingredients) ListActive(ctx context.Context, viewerID int64, offset, limit int) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
 	if offset < 0 {
 		offset = 0
 	}
+	scope, args := inCatalog(r.db, "created_by", viewerID)
 	rows, err := r.db.QueryContext(ctx, selectIngredientCols+`
 		FROM ingredients
 		WHERE superseded_by IS NULL
+		  AND (source = 'openfoodfacts' OR `+scope+`)
 		ORDER BY name COLLATE NOCASE
 		LIMIT ? OFFSET ?`,
-		limit, offset,
+		append(args, limit, offset)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list ingredients: %w", err)

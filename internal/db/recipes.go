@@ -70,14 +70,16 @@ func (r *Recipes) Create(
 }
 
 // recipeVisibleTo checks that the user may use the recipe in an item: their
-// own (drafts included) or a confirmed public one. Otherwise ErrRecipeNotFound,
-// without telling a missing recipe from another user's private one.
+// own (drafts included) or a confirmed public one in their catalog. Otherwise
+// ErrRecipeNotFound, without telling a missing recipe from another user's
+// private one.
 func recipeVisibleTo(ctx context.Context, db *sql.DB, recipeID, userID int64) error {
+	scope, args := inCatalog(db, "user_id", userID)
 	var ok int
 	err := db.QueryRowContext(ctx, `
 		SELECT 1 FROM recipes
-		WHERE id = ? AND (user_id = ? OR (is_public = 1 AND is_draft = 0))`,
-		recipeID, userID,
+		WHERE id = ? AND (user_id = ? OR (is_public = 1 AND is_draft = 0 AND `+scope+`))`,
+		append([]any{recipeID, userID}, args...)...,
 	).Scan(&ok)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrRecipeNotFound
@@ -149,21 +151,24 @@ func (r *Recipes) notFoundOrForbidden(ctx context.Context, id, userID int64) err
 
 // GetWithItems loads the recipe + every item joined with its ingredient.
 // For another user's recipe it still returns the data when isPublic;
-// otherwise ErrRecipeForbidden. ErrRecipeNotFound when the id does not exist.
+// otherwise ErrRecipeForbidden. ErrRecipeNotFound when the id does not exist
+// or the recipe is outside the viewer's catalog (see ScopeCatalog).
 func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain.RecipeWithItems, error) {
+	scope, args := inCatalog(r.db, "r.user_id", viewerID)
 	row := r.db.QueryRowContext(ctx, `
 		SELECT r.id, r.user_id, r.name, r.description, r.servings, r.is_public,
-		       r.is_draft, r.created_at, r.updated_at, u.display_name
+		       r.is_draft, r.created_at, r.updated_at, u.display_name, (`+scope+`)
 		FROM recipes r
 		JOIN users u ON u.id = r.user_id
-		WHERE r.id = ?`, id)
+		WHERE r.id = ?`, append(args, id)...)
 	var (
 		out                domain.RecipeWithItems
 		isPubInt, draftInt int
+		inScope            bool
 	)
 	err := row.Scan(
 		&out.ID, &out.UserID, &out.Name, &out.Description, &out.Servings, &isPubInt,
-		&draftInt, &out.CreatedAt, &out.UpdatedAt, &out.AuthorName,
+		&draftInt, &out.CreatedAt, &out.UpdatedAt, &out.AuthorName, &inScope,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrRecipeNotFound
@@ -173,6 +178,9 @@ func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain
 	}
 	out.IsPublic = isPubInt == 1
 	out.IsDraft = draftInt == 1
+	if out.UserID != viewerID && !inScope {
+		return nil, ErrRecipeNotFound
+	}
 	if out.UserID != viewerID && !out.IsPublic {
 		return nil, ErrRecipeForbidden
 	}
@@ -216,15 +224,16 @@ func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain
 	return &out, nil
 }
 
-// ListVisible returns the recipes visible to viewerID: all of theirs + other
-// users' public ones. Drafts (unconfirmed) are excluded. Sorted by name.
+// ListVisible returns the recipes visible to viewerID: all of theirs + the
+// public ones in their catalog. Drafts (unconfirmed) are excluded. Sorted by name.
 func (r *Recipes) ListVisible(ctx context.Context, viewerID int64) ([]*domain.Recipe, error) {
+	scope, args := inCatalog(r.db, "user_id", viewerID)
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, name, description, servings, is_public, is_draft, created_at, updated_at
 		FROM recipes
-		WHERE is_draft = 0 AND (user_id = ? OR is_public = 1)
+		WHERE is_draft = 0 AND (user_id = ? OR (is_public = 1 AND `+scope+`))
 		ORDER BY name COLLATE NOCASE
-	`, viewerID)
+	`, append([]any{viewerID}, args...)...)
 	if err != nil {
 		return nil, fmt.Errorf("list visible recipes: %w", err)
 	}
@@ -256,6 +265,9 @@ func (r *Recipes) AddItem(
 	quantity float64,
 ) (int64, error) {
 	if err := r.assertOwner(ctx, recipeID, userID); err != nil {
+		return 0, err
+	}
+	if err := ingredientVisibleTo(ctx, r.db, ingredientID, userID); err != nil {
 		return 0, err
 	}
 	if quantity <= 0 {
@@ -324,6 +336,13 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+// CountBy returns how many recipes userID has, drafts included.
+func (r *Recipes) CountBy(ctx context.Context, userID int64) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM recipes WHERE user_id = ?`, userID).Scan(&n)
+	return n, err
 }
 
 // NameExists reports whether the user already has a recipe with this name
@@ -554,11 +573,12 @@ func (r *Recipes) UsagesByRecipe(ctx context.Context, userID int64) (map[int64]i
 }
 
 // PerServingByRecipe returns the per-serving macros of every recipe visible
-// to viewerID (theirs + other users' public ones, drafts excluded) with one
+// to viewerID (theirs + the public ones in their catalog, drafts excluded) with one
 // aggregate query. Recipe ingredient quantities are already in g/ml ("pz"
 // is converted on insert). Recipes without ingredients appear with zero
 // macros.
 func (r *Recipes) PerServingByRecipe(ctx context.Context, viewerID int64) (map[int64]macros.Macros, error) {
+	scope, args := inCatalog(r.db, "r.user_id", viewerID)
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT r.id, r.servings,
 		       COALESCE(SUM(ri.quantity * i.kcal_per_100), 0) / 100.0,
@@ -568,9 +588,9 @@ func (r *Recipes) PerServingByRecipe(ctx context.Context, viewerID int64) (map[i
 		FROM recipes r
 		LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
 		LEFT JOIN ingredients i ON i.id = ri.ingredient_id
-		WHERE r.is_draft = 0 AND (r.user_id = ? OR r.is_public = 1)
+		WHERE r.is_draft = 0 AND (r.user_id = ? OR (r.is_public = 1 AND `+scope+`))
 		GROUP BY r.id, r.servings
-	`, viewerID)
+	`, append([]any{viewerID}, args...)...)
 	if err != nil {
 		return nil, fmt.Errorf("per serving by recipe: %w", err)
 	}

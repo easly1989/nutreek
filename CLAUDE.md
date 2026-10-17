@@ -100,6 +100,11 @@ make docker-up        # docker compose up --build
 | `NUTREEK_BACKUP_INTERVAL` | `24h` | automatic backup interval |
 | `NUTREEK_BACKUP_KEEP` | `7` | backups to keep (the oldest are deleted) |
 | `NUTREEK_DEMO_IDLE` | `2h` | demo build only: a demo session ends after this long without use |
+| `NUTREEK_DEMO_MAX_USERS` | `200` | demo build only: live demo users; then the entry says the demo is full |
+| `NUTREEK_DEMO_STARTS_PER_HOUR` | `10` | demo build only: demos started per client address per hour; then 429 |
+| `NUTREEK_DEMO_MAX_BODY` | `1048576` | demo build only: request body in bytes; then 413 |
+| `NUTREEK_DEMO_MAX_INGREDIENTS` | `300` | demo build only: hand-made ingredients per user |
+| `NUTREEK_DEMO_MAX_RECIPES` | `100` | demo build only: recipes per user |
 
 ## OpenFoodFacts (OFF) strategy
 

@@ -75,6 +75,7 @@
   "ingredients.quick.full_form": "Form completo",
   "ingredients.quick.create": "Crea ingrediente",
   "ingredients.quick.barcode_taken": "Il codice {{.Code}} è già collegato a «{{.Name}}».",
+  "ingredients.quick.barcode_taken_other": "Il codice {{.Code}} è già collegato a un altro ingrediente.",
   "ingredients.error.name_required": "Il nome è obbligatorio.",
   "ingredients.error.name_too_long": "Nome troppo lungo (max {{.Max}} caratteri).",
   "ingredients.error.unit": "Unità non valida (usare g o ml).",

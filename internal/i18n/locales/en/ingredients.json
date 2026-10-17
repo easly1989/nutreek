@@ -75,6 +75,7 @@
   "ingredients.quick.full_form": "Full form",
   "ingredients.quick.create": "Create ingredient",
   "ingredients.quick.barcode_taken": "The code {{.Code}} is already linked to “{{.Name}}”.",
+  "ingredients.quick.barcode_taken_other": "The code {{.Code}} is already linked to another ingredient.",
   "ingredients.error.name_required": "The name is required.",
   "ingredients.error.name_too_long": "The name is too long (max {{.Max}} characters).",
   "ingredients.error.unit": "Invalid unit (use g or ml).",

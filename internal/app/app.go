@@ -46,7 +46,8 @@ type App struct {
 	Logger                 *slog.Logger
 
 	// Demo is set only in the demo build (#137, cmd/nutreek/demo_on.go).
-	Demo Demo
+	Demo       Demo
+	DemoLimits DemoLimits
 
 	// loginLimiter limits POST /login attempts per IP (5/minute).
 	// Created once by loginRateLimiter(): App is built as a struct literal,
@@ -70,6 +71,16 @@ type Demo interface {
 	IdleHours() int // how long a demo lasts without use, for the notices
 }
 
+// DemoLimits keep one demo visitor from hurting the server or the others
+// (#185). Zero means no limit.
+type DemoLimits struct {
+	MaxUsers       int   // live demo users; then the entry says the demo is full
+	StartsPerHour  int   // demos started per address per hour; then 429
+	MaxBody        int64 // request body in bytes; then 413
+	MaxIngredients int   // hand-made ingredients per user
+	MaxRecipes     int   // recipes per user
+}
+
 // signInPath is where a signed-out visitor goes: the demo has no sign-in.
 func (a *App) signInPath() string {
 	if a.Demo != nil {
@@ -88,6 +99,14 @@ const (
 func userFromContext(ctx context.Context) *domain.User {
 	u, _ := ctx.Value(ctxKeyUser).(*domain.User)
 	return u
+}
+
+// viewerID is the signed-in user's id, 0 for none.
+func viewerID(ctx context.Context) int64 {
+	if u := userFromContext(ctx); u != nil {
+		return u.ID
+	}
+	return 0
 }
 
 func contextWithUser(ctx context.Context, u *domain.User) context.Context {
