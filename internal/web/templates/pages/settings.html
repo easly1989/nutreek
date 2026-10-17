@@ -24,9 +24,9 @@
           <input type="hidden" name="next" value="/settings">
           <div><h2 class="h2">{{t "layout.language"}}</h2><p class="settings-d">{{t "settings.language.desc"}}</p></div>
           {{$cur := .User.Locale}}
-          <div class="segmented grid-flow-col auto-cols-fr" role="radiogroup" aria-label="{{t "layout.language"}}">
-            <button name="lang" value="" role="radio" aria-checked="{{eq $cur ""}}" class="px-3">{{t "settings.language.browser"}}</button>
-            {{range languages}}<button name="lang" value="{{.Code}}" lang="{{.Code}}" role="radio" aria-checked="{{eq $cur .Code}}" class="px-3">{{.Name}}{{if .Beta}}<span lang="{{lang}}" class="chip chip-warn ml-1.5 h-[18px] px-1.5 text-[10.5px] align-middle" title="{{t "layout.beta_hint"}}">{{t "layout.beta"}}</span>{{end}}</button>{{end}}
+          <div class="segmented flex flex-wrap" role="radiogroup" aria-label="{{t "layout.language"}}">
+            <button name="lang" value="" role="radio" aria-checked="{{eq $cur ""}}" class="flex-1 px-3 whitespace-nowrap">{{t "settings.language.browser"}}</button>
+            {{range languages}}<button name="lang" value="{{.Code}}" lang="{{.Code}}" role="radio" aria-checked="{{eq $cur .Code}}" class="flex-1 px-3 whitespace-nowrap">{{.Name}}{{if .Beta}}<span lang="{{lang}}" class="chip chip-warn ml-1.5 h-[18px] px-1.5 text-[10.5px] align-middle" title="{{t "layout.beta_hint"}}">{{t "layout.beta"}}</span>{{end}}</button>{{end}}
           </div>
         </form>
         <div class="settings-sec">
