@@ -106,9 +106,13 @@ changes the text.
 - A missing key falls back to English, then to the key itself. `TestCatalogs`
   fails when Italian or English lack a key, a value is empty, or the placeholders
   differ from English.
-- The language comes from the `lang` cookie when it names a supported language,
-  otherwise Italian. Nothing sets the cookie yet: until every area is translated
-  (#141) it only serves to test English.
+- The request's language is the first of (#159): the signed-in user's choice
+  (`users.locale`, set in Settings), the `lang` cookie (set by the selector on
+  the signed-out pages, and by Settings), the best match of the browser's
+  `Accept-Language`, English. `languageMiddleware` resolves it after the user is
+  loaded; `<html lang>` and the app manifest follow it. Users who signed up
+  before migration 0030 keep Italian; new ones follow the browser.
+- REST API v1 errors are always in English, whatever the language.
 
 ---
 

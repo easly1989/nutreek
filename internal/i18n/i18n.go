@@ -30,14 +30,44 @@ type Language struct {
 // Languages is the single list of supported languages.
 var Languages = []Language{
 	{Code: "it", Name: "Italiano"},
-	{Code: "en", Name: "English", Beta: true},
+	{Code: "en", Name: "English"},
 }
 
-// Default is the language used when the request asks for none.
+// Default is the language of a context that carries none, such as a handler
+// called outside the router; requests always resolve to one (see Match).
 const Default = "it"
 
 // fallback is the language every other one falls back to.
 const fallback = "en"
+
+// matchCodes lists the codes in the matcher's order: English first, so that
+// it wins when nothing matches.
+var matchCodes, matcher = func() ([]string, language.Matcher) {
+	codes := []string{fallback}
+	for _, l := range Languages {
+		if l.Code != fallback {
+			codes = append(codes, l.Code)
+		}
+	}
+	tags := make([]language.Tag, len(codes))
+	for i, c := range codes {
+		tags[i] = language.Make(c)
+	}
+	return codes, language.NewMatcher(tags)
+}()
+
+// Match returns the supported language that best fits an Accept-Language
+// header, or English when none does.
+func Match(acceptLanguage string) string {
+	tags, _, err := language.ParseAcceptLanguage(acceptLanguage)
+	if err != nil || len(tags) == 0 {
+		return fallback
+	}
+	if _, i, conf := matcher.Match(tags...); conf != language.No {
+		return matchCodes[i]
+	}
+	return fallback
+}
 
 //go:embed locales
 var locales embed.FS

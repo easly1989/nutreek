@@ -54,6 +54,24 @@ func TestTOr(t *testing.T) {
 	}
 }
 
+func TestMatch(t *testing.T) {
+	cases := []struct{ header, want string }{
+		{"", "en"},
+		{"it-IT,it;q=0.9,en-US;q=0.8", "it"},
+		{"it", "it"},
+		{"en-GB,en;q=0.9", "en"},
+		{"de-DE,de;q=0.9", "en"},           // neither: English
+		{"de-DE,it;q=0.5", "it"},           // the first supported one wins
+		{"fr-CH, fr;q=0.9, en;q=0.8", "en"}, // English listed after an unsupported one
+		{"not a header", "en"},
+	}
+	for _, c := range cases {
+		if got := Match(c.header); got != c.want {
+			t.Errorf("Match(%q) = %q, want %q", c.header, got, c.want)
+		}
+	}
+}
+
 func TestContextLanguage(t *testing.T) {
 	if got := FromContext(context.Background()); got != Default {
 		t.Errorf("empty context: got %q, want %q", got, Default)

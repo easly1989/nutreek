@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -79,9 +80,7 @@ func TestReferenceDataByCode(t *testing.T) {
 	render := func(target string, id int64, lang string, handler http.HandlerFunc) string {
 		t.Helper()
 		req := httptest.NewRequest(http.MethodGet, target, nil)
-		if lang != "" {
-			req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})
-		}
+		req.AddCookie(&http.Cookie{Name: langCookie, Value: cmp.Or(lang, "it")}) // "" is the Italian run
 		if id != 0 {
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("id", strconv.FormatInt(id, 10))

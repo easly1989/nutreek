@@ -1,8 +1,10 @@
 {
   "settings.title": "Settings",
-  "settings.subtitle": "Appearance, account and your data.",
+  "settings.subtitle": "Appearance, language, account and your data.",
   "settings.toc_label": "Settings sections",
-  "settings.toc.appearance": "Appearance",
+  "settings.toc.appearance": "Appearance and language",
+  "settings.language.desc": "Usually your browser's. It applies to your account, on every device.",
+  "settings.language.browser": "Like the browser",
   "settings.toc.app": "App on your phone",
   "settings.toc.account": "Account",
   "settings.toc.data": "Your data",

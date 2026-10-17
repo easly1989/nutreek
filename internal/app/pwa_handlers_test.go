@@ -58,7 +58,7 @@ func TestManifestFollowsAccent(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/manifest+json") {
 		t.Errorf("Content-Type = %q", ct)
 	}
-	if m.Name != "Nutreek" || m.ShortName != "Nutreek" || m.Lang != "it" || m.Display != "standalone" ||
+	if m.Name != "Nutreek" || m.ShortName != "Nutreek" || m.Lang != "en" || m.Display != "standalone" ||
 		m.StartURL != "/" || m.Scope != "/" || m.ID != "/" {
 		t.Errorf("manifest base: %+v", m)
 	}

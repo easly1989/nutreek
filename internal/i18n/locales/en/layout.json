@@ -21,6 +21,7 @@
   "layout.register": "Sign up",
   "layout.appearance": "Appearance",
   "layout.appearance.mode": "Mode",
+  "layout.language": "Language",
   "layout.appearance.light": "Light",
   "layout.appearance.dark": "Dark",
   "layout.appearance.system": "System",
