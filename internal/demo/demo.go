@@ -5,16 +5,18 @@ package demo
 
 import (
 	"context"
-	"crypto/rand"
+	crand "crypto/rand"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"math/big"
+	"math/rand/v2"
 	"os"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/profile"
 )
 
@@ -140,12 +142,21 @@ func New(db *sql.DB, cfg Config) *Service {
 // for the notices.
 func (s *Service) IdleHours() int { return int((s.cfg.Idle + time.Hour - 1) / time.Hour) }
 
-// Start creates a group with one user who follows a plan, seeded in lang,
-// and returns that user's id. The user has a complete profile, onboarding and
-// tour done, and no email or password anyone could use.
-func (s *Service) Start(ctx context.Context, lang string) (int64, error) {
+// The ways into the demo (#186): whom the visitor plays.
+const (
+	AsPlan   = "plan"   // someone following their own plan, alone
+	AsCoach  = "coach"  // a coach with clients and a library of plans
+	AsClient = "client" // a coach's client, on the plan the coach assigned
+)
+
+// Start creates a demo group seeded in lang, with the visitor playing as (an
+// unknown one is AsPlan), and returns the visitor's id. The visitor is the
+// group's first member. Everyone has a complete profile, onboarding and tour
+// done, and no email or password anyone could use.
+func (s *Service) Start(ctx context.Context, lang, as string) (int64, error) {
 	lang = pickCode(lang)
 	w := words[lang]
+	now := time.Now()
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -161,19 +172,109 @@ func (s *Service) Start(ctx context.Context, lang string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	foods := map[string]int64{} // the group's, made by its first member
+	names := slices.Clone(w.names)
+	rand.Shuffle(len(names), func(i, j int) { names[i], names[j] = names[j], names[i] })
+	add := func(name string, p person) (int64, []int64, error) {
+		id, err := createUser(ctx, tx, name, p.body, p.role)
+		if err != nil {
+			return 0, nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO demo_members (user_id, group_id) VALUES (?, ?)`, id, groupID); err != nil {
+			return 0, nil, fmt.Errorf("demo member: %w", err)
+		}
+		plans, err := seed(ctx, tx, id, w, p, foods, now)
+		if err != nil {
+			return 0, nil, fmt.Errorf("demo seed: %w", err)
+		}
+		return id, plans, nil
+	}
 
-	userID, err := createUser(ctx, tx, oneOf(w.names), persona)
-	if err != nil {
-		return 0, err
+	if as != AsCoach && as != AsClient {
+		id, _, err := add(names[0], visitor)
+		if err != nil {
+			return 0, err
+		}
+		return id, tx.Commit()
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO demo_members (user_id, group_id) VALUES (?, ?)`, userID, groupID); err != nil {
-		return 0, fmt.Errorf("demo member: %w", err)
+
+	// A coach and three people: the first two the coach's clients, each on a
+	// plan of the coach's library, the third one to add.
+	people := []person{coach, steadyClient, struggling, steadyClient}
+	order := []int{0, 1, 2, 3}
+	if as == AsCoach {
+		people[0].weeks = historyWeeks
+	} else {
+		people[1] = visitor
+		order = []int{1, 0, 2, 3}
 	}
-	if err := seed(ctx, tx, userID, w, time.Now()); err != nil {
-		return 0, fmt.Errorf("demo seed: %w", err)
+	ids := make([]int64, len(people))
+	var library []int64
+	for _, i := range order {
+		var plans []int64
+		if ids[i], plans, err = add(names[i], people[i]); err != nil {
+			return 0, err
+		}
+		if i == 0 {
+			library = plans
+		}
 	}
-	return userID, tx.Commit()
+	for i, client := range ids[1:3] {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO coach_clients (coach_id, client_id, assigned_plan_id) VALUES (?, ?, ?)`,
+			ids[0], client, library[i]); err != nil {
+			return 0, fmt.Errorf("demo client: %w", err)
+		}
+		// Their weeks came from the assigned plan.
+		if _, err := tx.ExecContext(ctx, `UPDATE weekly_plans SET source_plan_id = ? WHERE user_id = ?`, library[i], client); err != nil {
+			return 0, fmt.Errorf("demo client weeks: %w", err)
+		}
+	}
+	return ids[order[0]], tx.Commit()
 }
+
+// Candidates are whom coachID may add as clients: the people of their group
+// with no coach, but the coach.
+func (s *Service) Candidates(ctx context.Context, coachID int64) ([]domain.User, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.display_name FROM demo_members m JOIN users u ON u.id = m.user_id
+		WHERE m.group_id = (SELECT group_id FROM demo_members WHERE user_id = ?) AND u.id <> ?
+		  AND NOT EXISTS (SELECT 1 FROM coach_clients c WHERE c.client_id = u.id)
+		ORDER BY u.display_name, u.id`, coachID, coachID)
+	if err != nil {
+		return nil, fmt.Errorf("demo candidates: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.User
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(&u.ID, &u.DisplayName); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// person is someone of a demo group.
+type person struct {
+	body   body
+	role   string    // users.role
+	weeks  int       // weeks of history before the current one
+	cheats []cheat   // the fewer, the closer to the plan they keep
+	plans  []planDef // their nutrition plans, the first one active
+}
+
+// visitor is whom the visitor plays when not the coach.
+var visitor = person{body: persona, role: domain.RoleUser, weeks: historyWeeks, cheats: cheats, plans: ownPlan}
+
+// The rest of a coach's group, with a short history and their own adherence.
+var (
+	coach = person{body: body{weightKg: 78, heightCm: 181, age: 41, sex: "M", activity: "active", kcal: 2600, protein: 170, carbs: 300, fat: 80},
+		role: domain.RoleCoach, weeks: otherWeeks, cheats: fewCheats, plans: library}
+	steadyClient = person{body: body{weightKg: 64, heightCm: 165, age: 29, sex: "F", activity: "light", kcal: 1800, protein: 115, carbs: 200, fat: 58},
+		role: domain.RoleUser, weeks: otherWeeks, cheats: fewCheats, plans: ownPlan}
+	struggling = person{body: body{weightKg: 88, heightCm: 178, age: 47, sex: "M", activity: "sedentary", kcal: 2000, protein: 150, carbs: 200, fat: 66},
+		role: domain.RoleUser, weeks: otherWeeks, cheats: manyCheats, plans: ownPlan}
+)
 
 // body is a demo person's physical data and daily targets.
 type body struct {
@@ -187,9 +288,9 @@ type body struct {
 // persona is the person the visitor plays: targets close to their energy needs.
 var persona = body{weightKg: 72, heightCm: 172, age: 34, sex: "F", activity: "moderate", kcal: 2100, protein: 140, carbs: 230, fat: 70}
 
-func createUser(ctx context.Context, tx *sql.Tx, name string, b body) (int64, error) {
+func createUser(ctx context.Context, tx *sql.Tx, name string, b body, role string) (int64, error) {
 	tag := make([]byte, 8)
-	if _, err := rand.Read(tag); err != nil {
+	if _, err := crand.Read(tag); err != nil {
 		return 0, err
 	}
 	birthYear := time.Now().Year() - b.age
@@ -197,12 +298,12 @@ func createUser(ctx context.Context, tx *sql.Tx, name string, b body) (int64, er
 	bmr := profile.BMR(b.weightKg, b.heightCm, profile.AgeFromBirthYear(birthYear), b.sex)
 	// "!" is no bcrypt hash: no password ever matches it.
 	res, err := tx.ExecContext(ctx, `
-		INSERT INTO users (email, password_hash, display_name,
+		INSERT INTO users (email, password_hash, display_name, role,
 		                   weight_kg, height_cm, birth_year, sex, activity_level,
 		                   target_kcal, target_protein, target_carbs, target_fat, bmi, bmr,
 		                   onboarding_completed_at, tour_dismissed_at)
-		VALUES (?, '!', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-		"demo-"+hex.EncodeToString(tag)+emailDomain, name,
+		VALUES (?, '!', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+		"demo-"+hex.EncodeToString(tag)+emailDomain, name, role,
 		b.weightKg, b.heightCm, birthYear, b.sex, b.activity,
 		b.kcal, b.protein, b.carbs, b.fat, bmi, bmr)
 	if err != nil {
@@ -231,12 +332,4 @@ func pickCode(lang string) string {
 		return lang
 	}
 	return "en"
-}
-
-func oneOf(xs []string) string {
-	n, err := rand.Int(rand.Reader, big.NewInt(int64(len(xs))))
-	if err != nil {
-		return xs[0]
-	}
-	return xs[n.Int64()]
 }

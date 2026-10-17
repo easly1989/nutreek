@@ -11,6 +11,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Fixed
+- A client whose coach assigned them a plan gets that plan's foods suggested in the picker, and can generate a week from it without a plan of their own; before, both looked at the client's own plan only (#186)
 - Security: an ingredient's data (name, brand, unit, macros, micronutrients, portion, allergens) can be edited only by whoever created it, or by the owner; everyone else sees it read-only, with "by Bob" in the list. An imported OpenFoodFacts product belongs to whoever imported it; ingredients with no author are edited by the owner, or by anyone when the instance has no owner (#143)
 - An ingredient's category is per user: putting a shared ingredient in one of your categories no longer changes it for anyone else, and another user's category is rejected. Existing assignments stay with the category's owner (migration 0028) (#143)
 
@@ -32,6 +33,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 - The demo's lockdown (#185, part of #137): the admin pages, API tokens and the REST API, recipe import from a URL and the owner's OpenFoodFacts sync are not mounted, and automatic backups are off. Limits, each with a variable: 200 live demo users, then the entry says the demo is full (`NUTREEK_DEMO_MAX_USERS`); 10 demos started per address per hour (`NUTREEK_DEMO_STARTS_PER_HOUR`); 1 MB request bodies (`NUTREEK_DEMO_MAX_BODY`); 300 hand-made ingredients and 100 recipes per user (`NUTREEK_DEMO_MAX_INGREDIENTS`, `NUTREEK_DEMO_MAX_RECIPES`). Hand-made ingredients and public recipes are seen and used only inside the visitor's demo group; OpenFoodFacts products are shared, and read-only. Normal installs keep the shared catalog
 
 - The demo account starts lived-in (#183, part of #137): foods, a few OpenFoodFacts demo products with a barcode, recipes, a nutrition plan with variants for each meal, the current week and the 12 before it with cheats, water, workouts and weigh-ins, and this week's shopping list, all dated from today and named in the visitor's language. The same seed dresses a local database for the README screenshots: `go run -tags demo ./cmd/nutreek -demo-seed you@example.com -demo-seed-lang en` fills an account that has no meals yet
+
+- Three ways into the demo (#186, part of #137): "Follow a plan", "You're a coach" and "You're a coach's client". The coach and client entries create a whole group in the visitor's language: a coach with a library of three plans, two clients on plans from it with different adherence, and one more person to add. The visitor gets 12 weeks of history, the others 4, and the group shares one set of hand-made foods. The coach lands on the coach panel, the client on their week, on the plan the coach assigned. In the demo a coach adds clients by choosing among their group, not by email
 
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)

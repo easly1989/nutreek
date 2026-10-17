@@ -3,7 +3,10 @@ package demo
 // textEN and textIT name everything the seed shows (seed.go); TestSeedWords
 // keeps them complete and alike.
 var textEN = map[string]string{
-	"plan": "My plan",
+	"plan":          "My plan",
+	"plan.balanced": "Balanced",
+	"plan.light":    "Light",
+	"plan.training": "Training",
 
 	"category.produce": "Fruit & vegetables",
 	"category.protein": "Meat, fish & eggs",
@@ -64,7 +67,10 @@ var textEN = map[string]string{
 }
 
 var textIT = map[string]string{
-	"plan": "Il mio piano",
+	"plan":          "Il mio piano",
+	"plan.balanced": "Equilibrato",
+	"plan.light":    "Leggero",
+	"plan.training": "Allenamento",
 
 	"category.produce": "Frutta e verdura",
 	"category.protein": "Carne, pesce e uova",

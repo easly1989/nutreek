@@ -350,6 +350,12 @@
   /* A chosen chip inside an accent-soft box: the light green would disappear. */
   .on-soft .filter.is-on { @apply bg-accent text-accent-fg; }
   .btn-block { @apply w-full h-[42px] text-[14px]; }
+  /* A way into the demo (#186): a whole-row button with an icon and a note. */
+  .demo-way {
+    @apply flex items-center gap-3 w-full min-h-[60px] px-3.5 py-2.5 rounded-xl border border-border bg-surface text-left
+      transition-colors hover:border-accent hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent;
+  }
+  .demo-way-ico { @apply w-9 h-9 shrink-0 grid place-items-center rounded-full bg-accent-soft text-accent; }
 
   /* Bottom sheet (phone), built on <dialog>. */
   .sheet {

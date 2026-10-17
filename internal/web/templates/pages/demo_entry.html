@@ -1,6 +1,6 @@
 {{define "title"}}{{t "demo.title"}} — Nutreek{{end}}
 {{define "content"}}
-{{/* The public demo's entry (#137): one button, and the rules said first. */}}
+{{/* The public demo's entry (#137): the rules said first, then the three ways in (#186). */}}
 <div class="auth-box">
   <div class="text-center">
     <h1 class="h1">{{t "demo.title"}}</h1>
@@ -13,7 +13,24 @@
       <li class="flex gap-2.5 items-start"><span class="mt-0.5">{{template "icon_sm" "i-info"}}</span><span>{{t "demo.entry.data"}}</span></li>
       <li class="flex gap-2.5 items-start"><span class="mt-0.5">{{template "icon_sm" "i-info"}}</span><span>{{t "demo.entry.lifetime" "Count" .DemoIdleHours}}</span></li>
     </ul>
-    <button class="btn-primary btn-block">{{t "demo.entry.start"}}</button>
+    <div role="group" aria-labelledby="demo-ways" class="flex flex-col gap-2.5 border-t border-border pt-3.5">
+      <h2 id="demo-ways" class="h2">{{t "demo.entry.choose"}}</h2>
+      <button name="role" value="plan" class="demo-way">
+        <span class="demo-way-ico" aria-hidden="true">{{template "icon" "i-week"}}</span>
+        <span class="grow min-w-0 flex flex-col"><b class="font-semibold">{{t "demo.entry.as_plan"}}</b><span class="text-[12.5px] text-muted">{{t "demo.entry.as_plan_note"}}</span></span>
+        <span class="text-muted shrink-0" aria-hidden="true">{{template "icon_sm" "i-chevron-right"}}</span>
+      </button>
+      <button name="role" value="coach" class="demo-way">
+        <span class="demo-way-ico" aria-hidden="true">{{template "icon" "i-coach"}}</span>
+        <span class="grow min-w-0 flex flex-col"><b class="font-semibold">{{t "demo.entry.as_coach"}}</b><span class="text-[12.5px] text-muted">{{t "demo.entry.as_coach_note"}}</span></span>
+        <span class="text-muted shrink-0" aria-hidden="true">{{template "icon_sm" "i-chevron-right"}}</span>
+      </button>
+      <button name="role" value="client" class="demo-way">
+        <span class="demo-way-ico" aria-hidden="true">{{template "icon" "i-user"}}</span>
+        <span class="grow min-w-0 flex flex-col"><b class="font-semibold">{{t "demo.entry.as_client"}}</b><span class="text-[12.5px] text-muted">{{t "demo.entry.as_client_note"}}</span></span>
+        <span class="text-muted shrink-0" aria-hidden="true">{{template "icon_sm" "i-chevron-right"}}</span>
+      </button>
+    </div>
   </form>
   <p class="text-center text-muted">{{t "demo.entry.own"}} <a href="https://github.com/easly1989/nutreek" class="text-accent font-semibold hover:underline">{{t "demo.entry.code"}}</a></p>
 </div>

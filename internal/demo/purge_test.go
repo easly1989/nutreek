@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"testing"
 	"time"
+
+	"github.com/amon2126/nutreek/internal/domain"
 )
 
 // shared lists the tables that hold no user's data: catalogs, the
@@ -69,7 +71,7 @@ func fill(t *testing.T, d *sql.DB, userID int64) int64 {
 	if err != nil {
 		t.Fatal(err)
 	}
-	coach, err := createUser(ctx, tx, "Coach", persona)
+	coach, err := createUser(ctx, tx, "Coach", persona, domain.RoleCoach)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,14 +136,14 @@ func TestPurgeIdle(t *testing.T) {
 	d := prepared(t)
 	svc := New(d, Config{Idle: 2 * time.Hour})
 
-	live, err := svc.Start(ctx, "en")
+	live, err := svc.Start(ctx, "en", AsPlan)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fill(t, d, live)
 	before := counts(t, d)
 
-	idle, err := svc.Start(ctx, "it")
+	idle, err := svc.Start(ctx, "it", AsPlan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,12 +184,12 @@ func TestPurgeKeepsSharedIngredient(t *testing.T) {
 	ctx := context.Background()
 	d := prepared(t)
 	svc := New(d, Config{Idle: time.Hour})
-	idle, err := svc.Start(ctx, "en")
+	idle, err := svc.Start(ctx, "en", AsPlan)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ing := fill(t, d, idle)
-	other, err := svc.Start(ctx, "en")
+	other, err := svc.Start(ctx, "en", AsPlan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +240,7 @@ func TestPurgeAll(t *testing.T) {
 	before := counts(t, d)
 	svc := New(d, Config{Idle: time.Hour})
 	for _, lang := range []string{"en", "it"} {
-		id, err := svc.Start(ctx, lang)
+		id, err := svc.Start(ctx, lang, AsPlan)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -283,7 +285,7 @@ func TestSeen(t *testing.T) {
 	ctx := context.Background()
 	d := prepared(t)
 	svc := New(d, Config{Idle: time.Hour})
-	id, err := svc.Start(ctx, "en")
+	id, err := svc.Start(ctx, "en", AsPlan)
 	if err != nil {
 		t.Fatal(err)
 	}

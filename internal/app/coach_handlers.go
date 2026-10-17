@@ -32,6 +32,7 @@ type coachDashboardData struct {
 	Clients     []domain.CoachClientInfo
 	Plans       []domain.NutritionistPlan
 	PlanClients map[int64]int // plan -> how many clients have it assigned
+	Candidates  []domain.User // the demo's: whom the coach may add (#186)
 }
 
 // handleCoachDashboard GET /coach — clients, plan library and assignments.
@@ -58,33 +59,55 @@ func (a *App) handleCoachDashboard(w http.ResponseWriter, r *http.Request) {
 			data.PlanClients[*c.AssignedPlanID]++
 		}
 	}
+	if a.Demo != nil {
+		if data.Candidates, err = a.Demo.Candidates(r.Context(), user.ID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
 	if err := a.Render.Render(w, r, http.StatusOK, "coach_dashboard", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
 
-// handleCoachAddClient POST /coach/clients — adds a client by email.
+// handleCoachAddClient POST /coach/clients — adds a client by email, or in
+// the demo by client_id among the coach's group.
 func (a *App) handleCoachAddClient(w http.ResponseWriter, r *http.Request) {
 	coach := userFromContext(r.Context())
-	email := strings.TrimSpace(r.PostFormValue("email"))
-	if email == "" {
-		a.coachFlash(w, r, "coach.flash.email_required")
-		return
+	var clientID int64
+	if a.Demo != nil {
+		id, ok, err := a.demoCandidate(r, coach.ID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		if !ok {
+			a.coachFlash(w, r, "coach.flash.not_in_group")
+			return
+		}
+		clientID = id
+	} else {
+		email := strings.TrimSpace(r.PostFormValue("email"))
+		if email == "" {
+			a.coachFlash(w, r, "coach.flash.email_required")
+			return
+		}
+		client, err := a.Users.GetByEmail(r.Context(), email)
+		if errors.Is(err, db.ErrUserNotFound) {
+			a.coachFlash(w, r, "coach.flash.no_such_user")
+			return
+		}
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		clientID = client.ID
 	}
-	client, err := a.Users.GetByEmail(r.Context(), email)
-	if errors.Is(err, db.ErrUserNotFound) {
-		a.coachFlash(w, r, "coach.flash.no_such_user")
-		return
-	}
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	if client.ID == coach.ID {
+	if clientID == coach.ID {
 		a.coachFlash(w, r, "coach.flash.self")
 		return
 	}
-	if err := a.Coach.AddClient(r.Context(), coach.ID, client.ID); err != nil {
+	if err := a.Coach.AddClient(r.Context(), coach.ID, clientID); err != nil {
 		if errors.Is(err, db.ErrClientHasCoach) {
 			a.coachFlash(w, r, "coach.flash.has_coach")
 			return
