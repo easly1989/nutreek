@@ -22,6 +22,8 @@
   "layout.appearance": "Appearance",
   "layout.appearance.mode": "Mode",
   "layout.language": "Language",
+  "layout.beta": "beta",
+  "layout.beta_hint": "Community translation: some text may still be in English",
   "layout.appearance.light": "Light",
   "layout.appearance.dark": "Dark",
   "layout.appearance.system": "System",
