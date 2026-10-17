@@ -69,6 +69,11 @@ func (a *App) loadUserMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		if a.Demo != nil {
+			if err := a.Demo.Seen(r.Context(), uid); err != nil {
+				a.Logger.Warn("demo: record activity", "err", err, "user_id", uid)
+			}
+		}
 		next.ServeHTTP(w, r.WithContext(contextWithUser(r.Context(), user)))
 	})
 }
