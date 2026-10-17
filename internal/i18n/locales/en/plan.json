@@ -26,6 +26,7 @@
   "plan.delete_variant": "Delete variant",
   "plan.delete_variant_confirm": "Delete the variant “{{.Name}}” and its foods?",
   "plan.servings_short": "serv.",
+  "plan.piece": "pc",
   "plan.remove_item": "Remove {{.Name}}",
   "plan.no_items": "No food yet.",
   "plan.add_food": "Add food",

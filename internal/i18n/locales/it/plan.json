@@ -26,6 +26,7 @@
   "plan.delete_variant": "Elimina variante",
   "plan.delete_variant_confirm": "Eliminare la variante «{{.Name}}» e i suoi alimenti?",
   "plan.servings_short": "porz.",
+  "plan.piece": "pz",
   "plan.remove_item": "Rimuovi {{.Name}}",
   "plan.no_items": "Ancora nessun alimento.",
   "plan.add_food": "Aggiungi alimento",

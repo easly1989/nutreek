@@ -185,7 +185,7 @@
       {{range $v.Items}}
         <div class="group/item grid grid-cols-[minmax(0,1fr)_64px_44px_28px] gap-2 items-center min-h-[34px] pl-4 pr-2">
           <span class="truncate">{{if .Recipe}}{{.Recipe.Name}}{{else if .Ingredient}}{{.Ingredient.Name}}{{end}}</span>
-          <span class="text-right tabular-nums text-muted whitespace-nowrap">{{if .Recipe}}{{dec .Quantity 1}} {{t "plan.servings_short"}}{{else}}{{dec .Quantity 1}} {{.QuantityUnit}}{{end}}</span>
+          <span class="text-right tabular-nums text-muted whitespace-nowrap">{{if .Recipe}}{{dec .Quantity 1}} {{t "plan.servings_short"}}{{else}}{{dec .Quantity 1}} {{if eq .QuantityUnit "pz"}}{{t "plan.piece"}}{{else}}{{.QuantityUnit}}{{end}}{{end}}</span>
           <span class="text-right tabular-nums">{{num (index $d.ItemKcal .ID)}}</span>
           {{if not $d.ReadOnly}}
             <form method="post" action="/nutrizionista/items/{{.ID}}/delete">
