@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/amon2126/nutreek/internal/i18n"
 	"github.com/amon2126/nutreek/internal/web"
 )
 
@@ -38,8 +39,8 @@ func (a *App) handleManifest(w http.ResponseWriter, r *http.Request) {
 		"id":               "/",
 		"name":             "Nutreek",
 		"short_name":       "Nutreek",
-		"description":      "Piani alimentari settimanali, macro e lista della spesa.",
-		"lang":             "it",
+		"description":      a.t(r, "public.manifest.description"),
+		"lang":             i18n.FromContext(r.Context()),
 		"dir":              "ltr",
 		"start_url":        "/",
 		"scope":            "/",

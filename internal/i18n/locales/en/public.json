@@ -1,0 +1,17 @@
+{
+  "public.title": "Nutreek — your week at the table",
+  "public.hero.title": "Your week at the table, with the math already done.",
+  "public.hero.lead": "Plan your meals, keep an eye on calories and macros day by day, and take a ready-made list to the supermarket.",
+  "public.cta.register": "Create an account",
+  "public.cta.login": "Log in",
+  "public.hero.note": "Runs on your own server: your data stays at home.",
+  "public.hero.image_alt": "The week in Nutreek: the days at the top, the calorie ring and the day's meals",
+  "public.feature.day.title": "One day at a time",
+  "public.feature.day.text": "The day's meals, water and workouts, with the calorie ring and the protein, carbs and fat bars.",
+  "public.feature.recipes.title": "Recipes and ingredients",
+  "public.feature.recipes.text": "Instant search over Italian OpenFoodFacts products, saved locally: no waiting on their site.",
+  "public.feature.shopping.title": "Shopping, already sorted",
+  "public.feature.shopping.text": "From the week to a list by aisle, to tick off in the store or print.",
+  "public.footer.project": "Self-hosted project",
+  "public.manifest.description": "Weekly meal plans, macros and a shopping list."
+}

@@ -23,6 +23,7 @@
   <script src="{{asset "js/pwa.js"}}" defer></script>
   {{if .User}}<script src="{{asset "js/scanner.js"}}" defer></script>{{end}}
   {{if .ShowTour}}
+  {{template "tour_data"}}
   <link rel="stylesheet" href="{{asset "css/shepherd.css"}}">
   <script src="{{asset "js/shepherd.min.js"}}" defer></script>
   <script src="{{asset "js/tour.js"}}" defer></script>
