@@ -33,6 +33,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 - The demo account starts lived-in (#183, part of #137): foods, a few OpenFoodFacts demo products with a barcode, recipes, a nutrition plan with variants for each meal, the current week and the 12 before it with cheats, water, workouts and weigh-ins, and this week's shopping list, all dated from today and named in the visitor's language. The same seed dresses a local database for the README screenshots: `go run -tags demo ./cmd/nutreek -demo-seed you@example.com -demo-seed-lang en` fills an account that has no meals yet
 
+- The demo's image and deploy (#188, part of #137): `docker build --build-arg DEMO=1` builds the demo; the Docker demo workflow publishes `ghcr.io/easly1989/nutreek:demo` and `:demo-<version>` (amd64) with every release and by hand, then deploys it on Northflank. CI builds the demo binary and runs an end-to-end test on it. The image's `/data` now belongs to the runtime user, so it runs without a volume. Setup in `docs/demo.md`
+
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)
