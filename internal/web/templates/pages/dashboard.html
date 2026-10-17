@@ -1,46 +1,46 @@
-{{define "title"}}Settimana {{weekRange .WeekStart}} — Nutreek{{end}}
+{{define "title"}}{{t "week.title" "Range" (weekRange .WeekStart)}} — Nutreek{{end}}
 {{define "content"}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
   <header class="flex flex-wrap items-center justify-between gap-3">
     <div class="min-w-0">
-      <h1 class="text-[20px] lg:text-[22px] leading-tight font-bold">Settimana {{weekRange .WeekStart}}</h1>
+      <h1 class="text-[20px] lg:text-[22px] leading-tight font-bold">{{t "week.title" "Range" (weekRange .WeekStart)}}</h1>
       {{template "week_totals" .Week}}
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <div id="week-nav" class="inline-flex rounded-[10px] border border-border bg-surface overflow-hidden">
-        <a href="/?start={{.PrevWeek}}" class="w-9 h-9 grid place-items-center hover:bg-surface-2" aria-label="Settimana precedente" title="Settimana precedente">{{template "icon" "i-chevron-left"}}</a>
-        <a href="/" class="h-9 px-3 grid place-items-center border-x border-border text-[13px] font-semibold hover:bg-surface-2">Oggi</a>
-        <a href="/?start={{.NextWeek}}" class="w-9 h-9 grid place-items-center hover:bg-surface-2" aria-label="Settimana successiva" title="Settimana successiva">{{template "icon" "i-chevron-right"}}</a>
+        <a href="/?start={{.PrevWeek}}" class="w-9 h-9 grid place-items-center hover:bg-surface-2" aria-label="{{t "week.prev"}}" title="{{t "week.prev"}}">{{template "icon" "i-chevron-left"}}</a>
+        <a href="/" class="h-9 px-3 grid place-items-center border-x border-border text-[13px] font-semibold hover:bg-surface-2">{{t "week.today"}}</a>
+        <a href="/?start={{.NextWeek}}" class="w-9 h-9 grid place-items-center hover:bg-surface-2" aria-label="{{t "week.next"}}" title="{{t "week.next"}}">{{template "icon" "i-chevron-right"}}</a>
       </div>
-      <a href="/shopping-list?week={{.NextWeek}}" class="btn-secondary hidden sm:inline-flex">Lista della spesa</a>
+      <a href="/shopping-list?week={{.NextWeek}}" class="btn-secondary hidden sm:inline-flex">{{t "week.shopping_list"}}</a>
       <div class="relative">
-        <button type="button" class="btn-secondary btn-icon" data-popover="week-menu" aria-expanded="false" aria-controls="week-menu" aria-label="Altre azioni sulla settimana" title="Altre azioni sulla settimana">{{template "icon" "i-dots"}}</button>
+        <button type="button" class="btn-secondary btn-icon" data-popover="week-menu" aria-expanded="false" aria-controls="week-menu" aria-label="{{t "week.more_actions"}}" title="{{t "week.more_actions"}}">{{template "icon" "i-dots"}}</button>
         <div id="week-menu" class="menu-panel hidden absolute right-0 top-full mt-2 w-[290px] z-40 p-1.5 flex flex-col">
           {{if not .HasMeals}}
           <form method="post" action="/week/copy-previous">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <input type="hidden" name="start" value="{{.WeekStartStr}}">
-            <button class="nav-link w-full">Copia la settimana precedente</button>
+            <button class="nav-link w-full">{{t "week.copy_previous"}}</button>
           </form>
           {{else}}
-          <form method="post" action="/week/reset" data-confirm="Svuotare la settimana? Pasti, voci e sgarri verranno cancellati.">
+          <form method="post" action="/week/reset" data-confirm="{{t "week.reset_confirm"}}">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <input type="hidden" name="start" value="{{.WeekStartStr}}">
-            <button class="nav-link w-full text-danger">Svuota la settimana</button>
+            <button class="nav-link w-full text-danger">{{t "week.reset"}}</button>
           </form>
           {{end}}
-          <a href="/week/{{.WeekStartStr}}/export" class="nav-link">Esporta in CSV</a>
+          <a href="/week/{{.WeekStartStr}}/export" class="nav-link">{{t "week.export_csv"}}</a>
           <form method="post" action="/week/{{.WeekStartStr}}/import" enctype="multipart/form-data"
                 class="mt-1 pt-2 px-2.5 pb-1 border-t border-border flex flex-col gap-2">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <label for="csv-file" class="font-semibold">Importa da CSV</label>
+            <label for="csv-file" class="font-semibold">{{t "week.import_csv"}}</label>
             <input id="csv-file" type="file" name="csv_file" accept=".csv" required
                    class="text-[12.5px] text-muted file:mr-2 file:h-8 file:px-2.5 file:rounded-lg file:border file:border-border file:bg-surface file:text-text file:font-semibold">
-            <button type="submit" class="btn-secondary self-start">Importa</button>
+            <button type="submit" class="btn-secondary self-start">{{t "week.import"}}</button>
           </form>
         </div>
       </div>
-      <button type="button" class="btn-primary" data-focus="new-meal-name" aria-label="Aggiungi pasto">{{template "icon" "i-plus"}}<span class="hidden sm:inline">Aggiungi pasto</span></button>
+      <button type="button" class="btn-primary" data-focus="new-meal-name" aria-label="{{t "week.add_meal"}}">{{template "icon" "i-plus"}}<span class="hidden sm:inline">{{t "week.add_meal"}}</span></button>
     </div>
   </header>
 
@@ -53,15 +53,15 @@
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <input type="hidden" name="start" value="{{.WeekStartStr}}">
         <div>
-          <h2 class="font-bold text-[15px]">Parti da un template</h2>
-          <p class="text-muted">Crea i pasti di tutta la settimana dal tuo schema.</p>
+          <h2 class="font-bold text-[15px]">{{t "week.template_title"}}</h2>
+          <p class="text-muted">{{t "week.template_desc"}}</p>
         </div>
         <div class="flex items-center gap-2">
-          <select name="template_id" required aria-label="Template" class="field">
-            <option value="">Scegli un template</option>
-            {{range .Templates}}<option value="{{.ID}}" {{if .IsActive}}selected{{end}}>{{.Name}}{{if .IsActive}} (attivo){{end}}</option>{{end}}
+          <select name="template_id" required aria-label="{{t "week.template"}}" class="field">
+            <option value="">{{t "week.template_choose"}}</option>
+            {{range .Templates}}<option value="{{.ID}}" {{if .IsActive}}selected{{end}}>{{.Name}}{{if .IsActive}} {{t "week.template_active"}}{{end}}</option>{{end}}
           </select>
-          <button class="btn-primary shrink-0">Applica</button>
+          <button class="btn-primary shrink-0">{{t "week.apply"}}</button>
         </div>
       </form>
       {{end}}
@@ -70,19 +70,19 @@
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <input type="hidden" name="start" value="{{.WeekStartStr}}">
         <div>
-          <h2 class="font-bold text-[15px] flex items-center gap-2">Genera la settimana
-            {{if not (index .Features "auto_plan")}}<span class="chip bg-warn-bg text-warn-fg">Premium</span>{{end}}
+          <h2 class="font-bold text-[15px] flex items-center gap-2">{{t "week.generate_title"}}
+            {{if not (index .Features "auto_plan")}}<span class="chip bg-warn-bg text-warn-fg">{{t "week.premium"}}</span>{{end}}
           </h2>
-          <p class="text-muted">Sceglie dalle varianti del piano nutrizionale puntando ai tuoi obiettivi.</p>
+          <p class="text-muted">{{t "week.generate_desc"}}</p>
         </div>
-        <button class="btn-primary self-start">Genera<span class="htmx-indicator htmx-spinner" aria-hidden="true"></span></button>
+        <button class="btn-primary self-start">{{t "week.generate"}}<span class="htmx-indicator htmx-spinner" aria-hidden="true"></span></button>
       </form>
       {{end}}
     </div>
     {{end}}
   {{end}}
 
-  <div id="timeline-pills" role="tablist" aria-label="Giorni della settimana" class="grid grid-cols-7 gap-1 sm:gap-1.5">
+  <div id="timeline-pills" role="tablist" aria-label="{{t "week.days"}}" class="grid grid-cols-7 gap-1 sm:gap-1.5">
     {{range .AllCards}}{{template "day_pill" .}}{{end}}
   </div>
 

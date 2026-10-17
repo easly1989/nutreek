@@ -46,8 +46,8 @@
     if (qty) { qty.focus({ preventScroll: true }); qty.select(); }
   }, true);
 
-  // A meal's picker ([data-meal-picker], page or dialog): Ingrediente /
-  // Ricetta switches the live search and reloads the results.
+  // A meal's picker ([data-meal-picker], page or dialog): the Ingredient /
+  // Recipe tabs switch the live search and reloads the results.
   function mealPickerURL(picker, kind, q) {
     return picker.dataset.pickerUrl + "?kind=" + kind + "&" + picker.dataset.pickerExtra + "&q=" + encodeURIComponent(q || "");
   }
@@ -79,13 +79,14 @@
       // Read by ingredient_search.js; no OpenFoodFacts for recipes.
       search.dataset.searchExtra = "kind=" + kind + "&" + picker.dataset.pickerExtra;
       search.dataset.searchNoOff = kind === "recipe" ? "1" : "0";
-      search.placeholder = kind === "recipe" ? "Cerca una ricetta" : "Cerca tra i tuoi ingredienti e su OpenFoodFacts";
+      // The texts come translated from the template (data-placeholder-*).
+      search.placeholder = (kind === "recipe" ? search.dataset.placeholderRecipe : search.dataset.placeholderIngredient) || search.placeholder;
       search.focus();
     }
     refreshMealPicker(picker);
   });
 
-  // After «Nuovo ingrediente/ricetta» the picker reloads the results.
+  // After «New ingredient/recipe» the picker reloads the results.
   ["ingredient-created", "recipe-created"].forEach(function (ev) {
     window.addEventListener(ev, function () {
       document.querySelectorAll("[data-meal-picker]").forEach(refreshMealPicker);

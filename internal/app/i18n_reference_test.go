@@ -117,7 +117,7 @@ func TestReferenceDataByCode(t *testing.T) {
 		},
 		{
 			name: "week workouts", target: "/?start=2026-10-12&day=2026-10-12", handler: a.handleDashboard,
-			en:    []string{"Running <span", "Elimina allenamento Running", "Gym (300 kcal/h)", "Sci <span", "Sci (400 kcal/h)"},
+			en:    []string{"Running <span", "Delete workout Running", "Gym (300 kcal/h)", "Sci <span", "Sci (400 kcal/h)"},
 			it:    []string{"Corsa <span", "Palestra (300 kcal/h)", "Sci <span", "Sci (400 kcal/h)"},
 			notEn: []string{"Corsa", "Palestra"},
 		},

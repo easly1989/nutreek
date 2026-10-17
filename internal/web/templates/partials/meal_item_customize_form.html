@@ -19,9 +19,7 @@
 
   {{if .RecipeName}}
     <p class="text-muted">
-      Variazioni per <strong>{{.RecipeName}}</strong>. Modifica le quantità che hai
-      effettivamente consumato. Lascia 0 per escludere un ingrediente.
-      La ricetta originale rimane invariata.
+      {{t "week.customize_intro"}} <strong>{{.RecipeName}}</strong>. {{t "week.customize_help"}}
     </p>
   {{end}}
 
@@ -41,7 +39,7 @@
       {{end}}
     </ul>
   {{else}}
-    <p class="text-muted">Nessun ingrediente nella ricetta.</p>
+    <p class="text-muted">{{t "week.customize_empty"}}</p>
   {{end}}
 
   <div class="flex items-center justify-between gap-2 pt-2">
@@ -50,10 +48,10 @@
             hx-post="/meal-items/{{.MealItemID}}/customize/reset?start={{.WeekStart}}"
             hx-include="[name=csrf_token]"
             hx-target="#modal-host" hx-swap="innerHTML"
-            class="btn-ghost text-danger hover:bg-danger-soft -ml-3.5">Ripristina ricetta</button>
+            class="btn-ghost text-danger hover:bg-danger-soft -ml-3.5">{{t "week.customize_reset"}}</button>
     <div class="flex items-center gap-2">
-      <button type="button" data-modal-close class="btn-secondary">Annulla</button>
-      <button type="submit" class="btn-primary">Salva</button>
+      <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+      <button type="submit" class="btn-primary">{{t "week.save"}}</button>
     </div>
   </div>
 </form>

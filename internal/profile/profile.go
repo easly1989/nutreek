@@ -88,7 +88,7 @@ func CanComputeIndices(weightKg, heightCm *float64, birthYear *int, sex *string)
 
 // MacroBar holds the precomputed data for a single progress bar.
 type MacroBar struct {
-	Label    string
+	Label    string  // catalog key of the macro's name (common.protein...)
 	Actual   float64 // actual value (kcal or grams)
 	Target   float64 // target value (kcal or grams)
 	Pct      float64 // 0..100, capped at 100 for the bar's width
@@ -146,10 +146,10 @@ func BuildMacroProgress(actual macros.Macros, targetKcal, targetProtein, targetC
 		}
 	}
 
-	kb := bar("Calorie", actual.Kcal, tk)
-	pb := bar("Proteine", actual.Protein, tp)
-	cb := bar("Carboidrati", actual.Carbs, tc)
-	fb := bar("Grassi", actual.Fat, tf)
+	kb := bar("common.calories", actual.Kcal, tk)
+	pb := bar("common.protein", actual.Protein, tp)
+	cb := bar("common.carbs", actual.Carbs, tc)
+	fb := bar("common.fat", actual.Fat, tf)
 
 	return MacroProgress{
 		HasTarget:  true,

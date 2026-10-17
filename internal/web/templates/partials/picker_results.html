@@ -15,31 +15,31 @@
 
 {{define "picker_barcode"}}
 {{- /* Search by barcode (scanner or typed digits): a row already open, or
-       «non trovato» with «Crea l'ingrediente».
+       «not found» with «Create the ingredient».
        View model: web.PickerRowCtx {Row: code, List: the picker's data}. */ -}}
 {{- $code := .Row -}}{{- $d := .List -}}
 {{- $host := "#modal-host" -}}{{- if or (eq $d.PickerKind "meal_item") (eq $d.PickerKind "meal_cheat")}}{{$host = "#modal-host-2"}}{{end -}}
 <div class="flex items-center gap-2 pl-4 lg:pl-5 pr-4 pt-3 pb-1">
-  <p class="grow text-[12.5px] font-bold text-muted">Codice <span class="tabular-nums">{{$code}}</span></p>
-  <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] -mr-2.5 scan-only" data-scan-again>{{template "icon_sm" "i-scan"}}Scansiona un altro</button>
+  <p class="grow text-[12.5px] font-bold text-muted">{{t "picker.code"}} <span class="tabular-nums">{{$code}}</span></p>
+  <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] -mr-2.5 scan-only" data-scan-again>{{template "icon_sm" "i-scan"}}{{t "picker.scan_again"}}</button>
 </div>
 {{if $d.Rows}}
   {{range $d.Rows}}{{template "picker_row" (pickerRow . $d)}}{{end}}
 {{else if not $d.SearchedOFF}}
   {{/* Response of the local search only: ingredient_search.js sees
        data-barcode-pending and starts the one with OpenFoodFacts. */}}
-  <p class="px-5 py-6 text-center text-muted" data-barcode-pending><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>Cerco il codice su OpenFoodFacts…</p>
+  <p class="px-5 py-6 text-center text-muted" data-barcode-pending><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>{{t "picker.looking_up"}}</p>
 {{else}}
   <div class="mx-4 lg:mx-5 mt-2 rounded-xl bg-surface-2 p-3.5 flex gap-3 items-start">
     <span class="thumb bg-surface">{{template "icon_sm" "i-barcode"}}</span>
     <div class="grow flex flex-col gap-1">
-      <b>Prodotto non trovato</b>
-      <span class="text-muted">Il codice non è su OpenFoodFacts, oppure non ha i valori nutrizionali. Crealo tu con quelli dell'etichetta: il codice resta collegato.</span>
+      <b>{{t "picker.not_found"}}</b>
+      <span class="text-muted">{{t "picker.not_found_hint"}}</span>
     </div>
   </div>
   <div class="flex flex-wrap gap-2 px-4 lg:px-5 pt-3 pb-2">
-    <button type="button" class="btn-primary" hx-get="/quick/ingredient?barcode={{$code}}" hx-target="{{$host}}" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}Crea l'ingrediente</button>
-    <button type="button" class="btn-secondary scan-only" data-scan-again>{{template "icon_sm" "i-scan"}}Riprova</button>
+    <button type="button" class="btn-primary" hx-get="/quick/ingredient?barcode={{$code}}" hx-target="{{$host}}" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}{{t "picker.create_ingredient"}}</button>
+    <button type="button" class="btn-secondary scan-only" data-scan-again>{{template "icon_sm" "i-scan"}}{{t "picker.retry"}}</button>
   </div>
 {{end}}
 {{end}}
@@ -48,26 +48,26 @@
 {{- $locals := 0 -}}{{- $offs := 0 -}}
 {{- range .Rows}}{{if .IsOFF}}{{$offs = add $offs 1}}{{else}}{{$locals = add $locals 1}}{{end}}{{end -}}
 {{if .NutritionistItems}}
-  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">Suggeriti dal piano nutrizionale</p>
+  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">{{t "picker.suggested"}}</p>
   <div class="divide-y divide-border">
     {{range .NutritionistItems}}{{template "picker_row" (pickerRow . $)}}{{end}}
   </div>
 {{end}}
 {{if gt $locals 0}}
-  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">I tuoi ingredienti</p>
+  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">{{t "picker.yours"}}</p>
   <div class="divide-y divide-border">
     {{range .Rows}}{{if not .IsOFF}}{{template "picker_row" (pickerRow . $)}}{{end}}{{end}}
   </div>
 {{end}}
 {{if gt $offs 0}}
-  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">Da OpenFoodFacts <span class="font-medium">(importati al primo uso)</span></p>
+  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">{{t "picker.from_off"}} <span class="font-medium">{{t "picker.imported_on_first_use"}}</span></p>
   <div class="divide-y divide-border">
     {{range .Rows}}{{if .IsOFF}}{{template "picker_row" (pickerRow . $)}}{{end}}{{end}}
   </div>
 {{end}}
 {{if and (not .Rows) (not .NutritionistItems)}}
   <p class="px-5 py-8 text-center text-muted">
-    {{if .Query}}Nessun ingrediente trovato per «{{.Query}}».{{else}}Scrivi per cercare tra i tuoi ingredienti e su OpenFoodFacts.{{end}}
+    {{if .Query}}{{t "picker.none_for" "Query" .Query}}{{else}}{{t "picker.type_to_search"}}{{end}}
   </p>
 {{end}}
 {{end}}
@@ -95,14 +95,14 @@
       {{if $r.Allergens}}<span class="flex flex-wrap gap-1 mt-0.5">{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px]">{{ref "allergen" .Code .Name}}</span>{{end}}</span>{{end}}
     </span>
     <span class="text-right leading-tight tabular-nums whitespace-nowrap">
-      {{if $r.HasFullNutrients}}<b>{{num $r.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal / 100 {{$r.Unit}}</span>{{else}}<span class="text-[12.5px] text-muted">macro da OFF</span>{{end}}
+      {{if $r.HasFullNutrients}}<b>{{num $r.Kcal}}</b> <span class="text-[12.5px] text-muted">{{t "picker.kcal_per_100" "Unit" $r.Unit}}</span>{{else}}<span class="text-[12.5px] text-muted">{{t "picker.macros_from_off"}}</span>{{end}}
     </span>
     <span class="w-8 h-8 shrink-0 grid place-items-center rounded-full border border-border bg-surface text-accent group-open:rotate-45 transition-transform" aria-hidden="true">{{template "icon_sm" "i-plus"}}</span>
   </summary>
   {{if and $scanned $r.HasFullNutrients}}
   <p class="flex gap-3.5 pl-4 lg:pl-5 pr-4 pt-1 bg-accent-soft text-[13px] tabular-nums">
-    <span><b class="text-prot font-semibold">P</b> {{dec $r.Protein 1}} g</span><span><b class="text-carb font-semibold">C</b> {{dec $r.Carbs 1}} g</span><span><b class="text-fat font-semibold">G</b> {{dec $r.Fat 1}} g</span>
-    <span class="ml-auto text-muted text-[12.5px]">per 100 {{$r.Unit}}</span>
+    <span><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{dec $r.Protein 1}} g</span><span><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{dec $r.Carbs 1}} g</span><span><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{dec $r.Fat 1}} g</span>
+    <span class="ml-auto text-muted text-[12.5px]">{{t "picker.per_100" "Unit" $r.Unit}}</span>
   </p>
   {{end}}
   {{if or (not $r.IsOFF) $r.Importable}}
@@ -123,24 +123,24 @@
     {{else}}
       <input type="hidden" name="ingredient_id" value="{{$r.LocalID}}">
     {{end}}
-    <input name="quantity" required inputmode="decimal" aria-label="Quantità" class="field w-[76px] text-right tabular-nums"
+    <input name="quantity" required inputmode="decimal" aria-label="{{t "picker.quantity"}}" class="field w-[76px] text-right tabular-nums"
            {{with $r.PickQuantity}}value="{{dec . 2}}"{{else}}placeholder="{{$r.Unit}}"{{end}}>
     {{if gt $r.UnitWeightG 0.0}}
       {{/* Proposed quantity and unit: ingredientRow.PickQuantity/PickUnit.
            For OFF products «pz» is the package: never preselected. */}}
-      <span class="segmented" role="radiogroup" aria-label="Unità">
+      <span class="segmented" role="radiogroup" aria-label="{{t "picker.unit"}}">
         <label><input type="radio" name="qty_unit" value="{{$r.Unit}}"{{if ne $r.PickUnit "pz"}} checked{{end}}>{{$r.Unit}}</label>
-        <label><input type="radio" name="qty_unit" value="pz"{{if eq $r.PickUnit "pz"}} checked{{end}}>pz</label>
+        <label><input type="radio" name="qty_unit" value="pz"{{if eq $r.PickUnit "pz"}} checked{{end}}>{{t "picker.piece"}}</label>
       </span>
-      <span class="hidden sm:inline text-[12.5px] text-muted">{{with $r.ServingG}}porzione {{num .}} {{$r.Unit}} · {{end}}1 pz = {{num $r.UnitWeightG}} {{$r.Unit}}</span>
+      <span class="hidden sm:inline text-[12.5px] text-muted">{{with $r.ServingG}}{{t "picker.serving" "Serving" (num .) "Unit" $r.Unit}} · {{end}}{{t "picker.piece_weight" "Weight" (num $r.UnitWeightG) "Unit" $r.Unit}}</span>
     {{else if gt $r.ServingG 0.0}}
       <input type="hidden" name="qty_unit" value="{{$r.Unit}}"><span class="text-muted">{{$r.Unit}}</span>
-      <span class="hidden sm:inline text-[12.5px] text-muted">porzione {{num $r.ServingG}} {{$r.Unit}}</span>
+      <span class="hidden sm:inline text-[12.5px] text-muted">{{t "picker.serving" "Serving" (num $r.ServingG) "Unit" $r.Unit}}</span>
     {{else}}
       <input type="hidden" name="qty_unit" value="{{$r.Unit}}"><span class="text-muted">{{$r.Unit}}</span>
     {{end}}
     <span class="ml-auto font-bold tabular-nums whitespace-nowrap" data-kcal-preview></span>
-    <button class="btn h-[30px] px-3 text-[12.5px] {{if $cheat}}bg-danger text-surface hover:opacity-90{{else}}btn-primary{{end}}">{{if $cheat}}Registra sgarro{{else}}Aggiungi{{end}}</button>
+    <button class="btn h-[30px] px-3 text-[12.5px] {{if $cheat}}bg-danger text-surface hover:opacity-90{{else}}btn-primary{{end}}">{{if $cheat}}{{t "picker.add_cheat"}}{{else}}{{t "picker.add"}}{{end}}</button>
   </form>
   {{end}}
 </details>
