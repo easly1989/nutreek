@@ -85,6 +85,7 @@ func (a *App) Router() http.Handler {
 			start = newIPRateLimiter(n, time.Hour).Middleware(start)
 		}
 		r.Method(http.MethodPost, "/demo/session", start)
+		r.With(a.requireAuth).Post("/demo/as", a.handleDemoAs)
 	} else {
 		registerLimiter := newIPRateLimiter(5, oneMinute)
 		r.Get("/login", a.handleLoginForm)

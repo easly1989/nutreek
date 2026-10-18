@@ -29,6 +29,11 @@
     "other": "Demo: made-up data, deleted after {{.Count}} hours without use, every night and at every update."
   },
   "demo.band.more": "About the demo",
+  "demo.as": "View as",
+  "demo.as.you": "You",
+  "demo.as.coach": "Coach",
+  "demo.as.client": "Client",
+  "demo.as.free": "No coach yet",
   "demo.notice.title": "Your demo is ready",
   "demo.notice.account": "This account was created just now, only for you, with made-up data.",
   "demo.notice.lifetime": {
