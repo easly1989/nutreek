@@ -9,10 +9,12 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,6 +47,19 @@ CREATE TABLE IF NOT EXISTS demo_members (
 // visitor sees: their own demo group (#185). One ? for the visitor's id; see
 // db.ScopeCatalog.
 const Peers = `SELECT user_id FROM demo_members WHERE group_id = (SELECT group_id FROM demo_members WHERE user_id = ?)`
+
+// HiddenProducts lists the demo's OpenFoodFacts products in a language other
+// than the visitor's group's, kept out of their ingredient lists (#189). One ?
+// for the visitor's id; see db.HideProducts.
+var HiddenProducts = func() string {
+	var prefix strings.Builder
+	for _, lang := range slices.Sorted(maps.Keys(words)) {
+		fmt.Fprintf(&prefix, " WHEN '%s' THEN '%s'", lang, words[lang].ean)
+	}
+	return `SELECT i.id FROM ingredients i WHERE i.source = 'openfoodfacts' AND i.brand = '` + demoBrand + `'
+		AND i.off_barcode NOT LIKE coalesce((SELECT CASE g.lang` + prefix.String() + ` END
+		  FROM demo_members m JOIN demo_groups g ON g.id = m.group_id WHERE m.user_id = ?), '') || '%'`
+}()
 
 // Config holds the demo's settings, read from NUTREEK_DEMO_* variables.
 type Config struct {

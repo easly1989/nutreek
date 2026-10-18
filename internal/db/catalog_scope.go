@@ -18,6 +18,48 @@ var catalogScopes sync.Map // *sql.DB → string
 // ScopeCatalog limits the shared catalog on d to the users peers lists.
 func ScopeCatalog(d *sql.DB, peers string) { catalogScopes.Store(d, peers) }
 
+// hiddenProducts holds, per database, the query listing the ingredients a
+// viewer does not see in the ingredient lists, with one ? for the viewer's id:
+// the demo hides its OpenFoodFacts demo products in another language (#189).
+var hiddenProducts sync.Map // *sql.DB → string
+
+// HideProducts keeps the ingredients hidden lists out of the lists on d.
+func HideProducts(d *sql.DB, hidden string) { hiddenProducts.Store(d, hidden) }
+
+// notHidden returns the SQL condition "the ingredient is not hidden from the
+// viewer" and its arguments: always true without HideProducts.
+func notHidden(d *sql.DB, viewerID int64) (string, []any) {
+	hidden, ok := hiddenProducts.Load(d)
+	if !ok {
+		return "1", nil
+	}
+	return "id NOT IN (" + hidden.(string) + ")", []any{viewerID}
+}
+
+// HiddenBarcodes returns the barcodes of the products hidden from viewerID's
+// lists (see HideProducts), so the OpenFoodFacts search leaves them out too;
+// nil without HideProducts.
+func (r *Ingredients) HiddenBarcodes(ctx context.Context, viewerID int64) (map[string]bool, error) {
+	hidden, ok := hiddenProducts.Load(r.db)
+	if !ok {
+		return nil, nil
+	}
+	rows, err := r.db.QueryContext(ctx, `SELECT off_barcode FROM ingredients WHERE off_barcode IS NOT NULL AND id IN (`+hidden.(string)+`)`, viewerID)
+	if err != nil {
+		return nil, fmt.Errorf("hidden barcodes: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err != nil {
+			return nil, err
+		}
+		out[code] = true
+	}
+	return out, rows.Err()
+}
+
 // inCatalog returns the SQL condition "the user in col shares the catalog
 // with the viewer" and its arguments: always true on an unscoped database.
 func inCatalog(d *sql.DB, col string, viewerID int64) (string, []any) {
