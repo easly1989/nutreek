@@ -6,7 +6,13 @@
     "one": "It is deleted after {{.Count}} hour without use, every night at 3:00 (UTC) and at every update of the demo.",
     "other": "It is deleted after {{.Count}} hours without use, every night at 3:00 (UTC) and at every update of the demo."
   },
-  "demo.entry.start": "Try the demo",
+  "demo.entry.choose": "How do you want to try it?",
+  "demo.entry.as_plan": "Follow a plan",
+  "demo.entry.as_plan_note": "Your week of meals, recipes, shopping and statistics.",
+  "demo.entry.as_coach": "You're a coach",
+  "demo.entry.as_coach_note": "Your clients, the plans you assign them, and your own week.",
+  "demo.entry.as_client": "You're a coach's client",
+  "demo.entry.as_client_note": "Your week, on the plan your coach assigned you.",
   "demo.entry.full": "The demo is full right now. Try again soon.",
   "demo.limit.ingredients": {
     "one": "In the demo you can make at most {{.Count}} ingredient.",

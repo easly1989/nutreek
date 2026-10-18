@@ -3,18 +3,23 @@ package app
 import (
 	"context"
 	"net/http"
+	"slices"
+	"strconv"
 
+	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/i18n"
 )
 
 // sessionKeyDemoWelcome opens the demo's notice on the first page after entering.
 const sessionKeyDemoWelcome = "demo_welcome"
 
-// handleDemoSession POST /demo/session — creates a demo account in the
-// visitor's language and signs them in (#137). Mounted only in the demo build.
+// handleDemoSession POST /demo/session — creates a demo group in the
+// visitor's language, the visitor playing the role posted, and signs them in
+// (#137, #186). Mounted only in the demo build.
 func (a *App) handleDemoSession(w http.ResponseWriter, r *http.Request) {
 	if max := a.DemoLimits.MaxUsers; max > 0 {
 		// Every user of a demo database is a demo one (demo.Prepare).
+		// shortcut: a coach or client group adds 4 users, so the cap may be passed by 3; count per group if that matters.
 		n, err := a.Users.Count(r.Context())
 		if err != nil {
 			a.serverError(w, r, err)
@@ -29,7 +34,8 @@ func (a *App) handleDemoSession(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	id, err := a.Demo.Start(r.Context(), i18n.FromContext(r.Context()))
+	role := r.PostFormValue("role")
+	id, err := a.Demo.Start(r.Context(), i18n.FromContext(r.Context()), role)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -40,7 +46,26 @@ func (a *App) handleDemoSession(w http.ResponseWriter, r *http.Request) {
 	}
 	a.Sessions.Put(r.Context(), sessionKeyUserID, id)
 	a.Sessions.Put(r.Context(), sessionKeyDemoWelcome, true)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	to := "/"
+	if role == "coach" {
+		to = "/coach"
+	}
+	http.Redirect(w, r, to, http.StatusSeeOther)
+}
+
+// demoCandidate returns the client the coach picked by client_id, when it is
+// one they may add: the demo has no emails, only the coach's group (#186).
+func (a *App) demoCandidate(r *http.Request, coachID int64) (int64, bool, error) {
+	id, err := strconv.ParseInt(r.PostFormValue("client_id"), 10, 64)
+	if err != nil {
+		return 0, false, nil
+	}
+	candidates, err := a.Demo.Candidates(r.Context(), coachID)
+	if err != nil {
+		return 0, false, err
+	}
+	ok := slices.ContainsFunc(candidates, func(u domain.User) bool { return u.ID == id })
+	return id, ok, nil
 }
 
 // limitBody answers 413 to a request body over max bytes (#185).

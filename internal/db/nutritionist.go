@@ -361,9 +361,15 @@ func scanNutritionistItem(rows *sql.Rows) (domain.NutritionistItem, error) {
 	return item, nil
 }
 
+// effectivePlans matches the plan np a user draws from, as
+// service.PlannerService.EffectivePlanFull: the one their coach assigned,
+// else their active one (#186). It takes the user's id three times.
+const effectivePlans = `(np.id = (SELECT assigned_plan_id FROM coach_clients WHERE client_id = ?)
+	OR (np.user_id = ? AND np.is_active = 1 AND NOT EXISTS (SELECT 1 FROM coach_clients WHERE client_id = ? AND assigned_plan_id IS NOT NULL)))`
+
 // HasVariations reports whether the user has at least one variant with at
-// least one item in their nutrition plan: the minimum requirement for
-// automatic weekly plan generation.
+// least one item in their active nutrition plan, or the one their coach assigned:
+// the minimum requirement for automatic weekly plan generation.
 func (n *NutritionistPlans) HasVariations(ctx context.Context, userID int64) (bool, error) {
 	var x int
 	err := n.db.QueryRowContext(ctx, `
@@ -372,8 +378,8 @@ func (n *NutritionistPlans) HasVariations(ctx context.Context, userID int64) (bo
 		JOIN nutritionist_meal_variations nv ON nv.id = ni.variation_id
 		JOIN nutritionist_meal_types nmt ON nmt.id = nv.meal_type_id
 		JOIN nutritionist_plans np ON np.id = nmt.plan_id
-		WHERE np.user_id = ?
-		LIMIT 1`, userID).Scan(&x)
+		WHERE `+effectivePlans+`
+		LIMIT 1`, userID, userID, userID).Scan(&x)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -383,8 +389,9 @@ func (n *NutritionistPlans) HasVariations(ctx context.Context, userID int64) (bo
 	return true, nil
 }
 
-// SearchSuggestedIngredients returns the nutrition plan's ingredients that belong
-// to a meal type whose name matches mealTypeName (case-insensitive).
+// SearchSuggestedIngredients returns the ingredients of the user's active
+// nutrition plan, or the one their coach assigned, that belong to a meal type whose name
+// matches mealTypeName (case-insensitive).
 func (n *NutritionistPlans) SearchSuggestedIngredients(ctx context.Context, userID int64, mealTypeName string) ([]*domain.Ingredient, error) {
 	rows, err := n.db.QueryContext(ctx,
 		`SELECT DISTINCT ing.id, ing.name, ing.brand, ing.unit,
@@ -394,9 +401,9 @@ func (n *NutritionistPlans) SearchSuggestedIngredients(ctx context.Context, user
 		 JOIN nutritionist_meal_types nmt ON nmt.id = nv.meal_type_id
 		 JOIN nutritionist_plans np ON np.id = nmt.plan_id
 		 JOIN ingredients ing ON ing.id = ni.ingredient_id
-		 WHERE np.user_id = ? AND lower(nmt.name) = lower(?)
+		 WHERE `+effectivePlans+` AND lower(nmt.name) = lower(?)
 		   AND ni.ingredient_id IS NOT NULL`,
-		userID, mealTypeName,
+		userID, userID, userID, mealTypeName,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("search suggested ingredients: %w", err)
