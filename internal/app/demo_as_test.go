@@ -73,6 +73,19 @@ func TestDemoViewAsGroupOnly(t *testing.T) {
 			t.Errorf("Alice as %q: %d, want 404", id, code)
 		}
 	}
+	// A form from elsewhere, with no CSRF token, switches nobody.
+	clientID := strconv.FormatInt(clientOf(t, a, aliceID), 10)
+	req, _ := http.NewRequest(http.MethodPost, alice.srv.URL+"/demo/as", strings.NewReader("user_id="+clientID))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", alice.srv.URL)
+	resp, err := alice.c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("with no CSRF token: %d", resp.StatusCode)
+	}
 	if got := signedInAs(t, alice); got != aliceID {
 		t.Errorf("Alice is now %d, want %d", got, aliceID)
 	}
@@ -85,6 +98,16 @@ func TestDemoViewAsGroupOnly(t *testing.T) {
 	if code, _, _ := out.get("/coach"); code == http.StatusOK {
 		t.Error("signed out, the switch signed someone in")
 	}
+}
+
+// clientOf returns one of coach's clients.
+func clientOf(t *testing.T, a *App, coach int64) int64 {
+	t.Helper()
+	clients, err := a.Coach.ListClients(context.Background(), coach)
+	if err != nil || len(clients) == 0 {
+		t.Fatalf("clients of %d: %d %v", coach, len(clients), err)
+	}
+	return clients[0].ClientID
 }
 
 // Someone following their own plan is alone in their group: no menu.
