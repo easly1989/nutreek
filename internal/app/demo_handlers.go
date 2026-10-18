@@ -53,6 +53,37 @@ func (a *App) handleDemoSession(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, to, http.StatusSeeOther)
 }
 
+// handleDemoAs POST /demo/as — signs the visitor in as user_id, one of their
+// own demo group, with no password (#187); anyone else is 404. Mounted only in
+// the demo build.
+func (a *App) handleDemoAs(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PostFormValue("user_id"), 10, 64)
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	group, err := a.Demo.Group(r.Context(), viewerID(r.Context()))
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	i := slices.IndexFunc(group, func(m domain.DemoMember) bool { return m.ID == id })
+	if i < 0 {
+		a.notFound(w, r)
+		return
+	}
+	if err := a.Sessions.RenewToken(r.Context()); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.Sessions.Put(r.Context(), sessionKeyUserID, id)
+	to := "/"
+	if group[i].Coach {
+		to = "/coach"
+	}
+	http.Redirect(w, r, to, http.StatusSeeOther)
+}
+
 // demoCandidate returns the client the coach picked by client_id, when it is
 // one they may add: the demo has no emails, only the coach's group (#186).
 func (a *App) demoCandidate(r *http.Request, coachID int64) (int64, bool, error) {
