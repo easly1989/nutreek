@@ -29,6 +29,11 @@
     "other": "Demo: dati di esempio, cancellati dopo {{.Count}} ore senza uso, ogni notte e a ogni aggiornamento."
   },
   "demo.band.more": "Cos'è la demo",
+  "demo.as": "Vedi come",
+  "demo.as.you": "Tu",
+  "demo.as.coach": "Coach",
+  "demo.as.client": "Cliente",
+  "demo.as.free": "Ancora senza coach",
   "demo.notice.title": "La tua demo è pronta",
   "demo.notice.account": "Questo account è stato creato adesso, solo per te, con dati di esempio.",
   "demo.notice.lifetime": {

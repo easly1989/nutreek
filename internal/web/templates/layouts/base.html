@@ -255,9 +255,24 @@
 
 {{/* The public demo (#137): a band on every page and the notice it opens;
      the notice opens by itself on the first page after entering. */}}
-{{define "demo_band"}}<div id="demo-band" class="bg-warn-bg text-warn-fg text-[13px] px-4 py-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
+{{define "demo_band"}}<div id="demo-band" class="relative bg-warn-bg text-warn-fg text-[13px] px-4 py-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
   <span><span class="inline-block align-[-3px] mr-1.5">{{template "icon_sm" "i-info"}}</span>{{t "demo.band" "Count" .DemoIdleHours}}</span>
   <button type="button" class="font-semibold underline underline-offset-2" data-demo-open>{{t "demo.band.more"}}</button>
+  {{if .DemoGroup}}
+  {{/* "View as" (#187): the other accounts of the visitor's group, no password. */}}
+  <div class="sm:relative">
+    <button type="button" class="inline-flex items-center gap-1 font-semibold underline underline-offset-2" data-popover="demo-as" aria-expanded="false" aria-controls="demo-as">{{t "demo.as"}}{{template "icon_sm" "i-chevron-down"}}</button>
+    <form id="demo-as" method="post" action="/demo/as" class="menu-panel hidden absolute right-4 sm:right-0 top-full mt-2 w-[270px] max-w-[calc(100vw-2rem)] z-40 p-1.5 flex flex-col text-[14px]">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      {{range .DemoGroup}}
+      <button name="user_id" value="{{.ID}}" class="nav-link w-full{{if eq .ID $.User.ID}} is-active{{end}}"{{if eq .ID $.User.ID}} aria-current="true"{{end}}>
+        <span class="truncate">{{.Name}}</span>
+        <span class="ml-auto shrink-0 text-[12px] font-normal text-muted">{{if .Visitor}}{{t "demo.as.you"}}{{else if .Coach}}{{t "demo.as.coach"}}{{else if .Client}}{{t "demo.as.client"}}{{else}}{{t "demo.as.free"}}{{end}}</span>
+      </button>
+      {{end}}
+    </form>
+  </div>
+  {{end}}
 </div>{{end}}
 
 {{define "demo_notice"}}<dialog id="demo-notice" class="dialog-panel lg:w-[460px]" aria-labelledby="demo-notice-title"{{if .DemoWelcome}} data-demo-welcome{{end}}>

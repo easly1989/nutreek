@@ -75,6 +75,8 @@ type Demo interface {
 	// Candidates are whom the coach may add as clients: the people of their
 	// group without a coach (#186).
 	Candidates(ctx context.Context, coachID int64) ([]domain.User, error)
+	// Group is userID's demo group, the visitor first (#187).
+	Group(ctx context.Context, userID int64) ([]domain.DemoMember, error)
 }
 
 // DemoLimits keep one demo visitor from hurting the server or the others

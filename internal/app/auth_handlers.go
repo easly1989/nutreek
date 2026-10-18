@@ -10,6 +10,7 @@ import (
 
 	"github.com/amon2126/nutreek/internal/auth"
 	"github.com/amon2126/nutreek/internal/db"
+	"github.com/amon2126/nutreek/internal/domain"
 )
 
 const sessionKeyUserID = "user_id"
@@ -38,6 +39,7 @@ type authPageData struct {
 	Demo          bool
 	DemoWelcome   bool
 	DemoIdleHours int
+	DemoGroup     []domain.DemoMember // whom the band's "View as" switches to; nil when alone (#187)
 }
 
 var premiumFeatureKeys = []string{"auto_plan", "tdee_adaptive", "api_access", "coach_mode"}
@@ -66,6 +68,12 @@ func (a *App) baseData(r *http.Request) authPageData {
 		data.Demo = true
 		data.DemoIdleHours = a.Demo.IdleHours()
 		data.DemoWelcome = user != nil && a.Sessions.PopBool(r.Context(), sessionKeyDemoWelcome)
+		if user != nil {
+			// shortcut: a failed read only hides the menu; the page still works.
+			if group, err := a.Demo.Group(r.Context(), user.ID); err == nil && len(group) > 1 {
+				data.DemoGroup = group
+			}
+		}
 	}
 	return data
 }

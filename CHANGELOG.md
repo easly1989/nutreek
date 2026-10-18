@@ -38,6 +38,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 - The demo's image and deploy (#188, part of #137): `docker build --build-arg DEMO=1` builds the demo; the Docker demo workflow publishes `ghcr.io/easly1989/nutreek:demo` and `:demo-<version>` (amd64) with every release and by hand, then deploys it on Northflank. CI builds the demo binary and runs an end-to-end test on it. The image's `/data` now belongs to the runtime user, so it runs without a volume. Setup in `docs/demo.md`
 
+- "View as" in the demo (#187, part of #137): in a coach or client demo, a menu in the band signs the visitor in as anyone of their group (themselves, the coach, a client, the person still without a coach) with no password, to see both sides. It reaches only the visitor's own group; anyone else is not found
+
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)
