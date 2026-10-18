@@ -60,7 +60,7 @@ L'interfaccia è in **italiano** e in **inglese**. Ogni utente sceglie la lingua
 
 ## Screenshot
 
-Dati demo. Lo stesso aspetto in chiaro e in scuro, su desktop e sul telefono. Il README in inglese mostra l'interfaccia in inglese.
+I dati della demo, in italiano. Lo stesso aspetto in chiaro e in scuro, su desktop e sul telefono. Il README in inglese mostra l'interfaccia in inglese.
 
 ### La settimana
 

@@ -200,10 +200,12 @@ func (r *Ingredients) SearchActive(ctx context.Context, viewerID int64, q string
 	q = strings.TrimSpace(q)
 	pattern := "%" + strings.ToLower(q) + "%"
 	scope, args := inCatalog(r.db, "created_by", viewerID)
+	shown, hideArgs := notHidden(r.db, viewerID)
+	args = append(args, hideArgs...)
 	rows, err := r.db.QueryContext(ctx, selectIngredientCols+`
 		FROM ingredients
 		WHERE superseded_by IS NULL
-		  AND (source = 'openfoodfacts' OR `+scope+`)
+		  AND (source = 'openfoodfacts' OR `+scope+`) AND `+shown+`
 		  AND (lower(name) LIKE ? OR lower(coalesce(brand, '')) LIKE ?)
 		ORDER BY (source = 'openfoodfacts') DESC, name COLLATE NOCASE
 		LIMIT ?`,
@@ -226,10 +228,12 @@ func (r *Ingredients) ListActive(ctx context.Context, viewerID int64, offset, li
 		offset = 0
 	}
 	scope, args := inCatalog(r.db, "created_by", viewerID)
+	shown, hideArgs := notHidden(r.db, viewerID)
+	args = append(args, hideArgs...)
 	rows, err := r.db.QueryContext(ctx, selectIngredientCols+`
 		FROM ingredients
 		WHERE superseded_by IS NULL
-		  AND (source = 'openfoodfacts' OR `+scope+`)
+		  AND (source = 'openfoodfacts' OR `+scope+`) AND `+shown+`
 		ORDER BY name COLLATE NOCASE
 		LIMIT ? OFFSET ?`,
 		append(args, limit, offset)...,

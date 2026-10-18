@@ -43,6 +43,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)
+- The README screenshots and the public home's product image come from the demo seed (#189, part of #137): English food and meal names in the English ones, Italian in the Italian ones. On the way, the demo gives every account an active weekly template, so its nutrition plan is no longer empty, and shows the OpenFoodFacts demo products of the visitor's language only (a barcode typed in still finds the others)
 
 ---
 

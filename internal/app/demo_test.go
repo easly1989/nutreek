@@ -111,6 +111,7 @@ func newDemoApp(t *testing.T, limits DemoLimits) *App {
 		t.Fatal(err)
 	}
 	db.ScopeCatalog(a.Store.DB, demo.Peers)
+	db.HideProducts(a.Store.DB, demo.HiddenProducts)
 	a.Demo = demo.New(a.Store.DB, demo.Config{})
 	a.DemoLimits = limits
 	return a

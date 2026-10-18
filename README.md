@@ -60,7 +60,7 @@ The interface is in **English** and **Italian**. Each user picks the language in
 
 ## Screenshots
 
-Demo data, with the interface in English (the demo foods and meals are Italian). The same look in light and dark, on desktop and on the phone. The Italian README shows the Italian interface.
+The demo's data, in English. The same look in light and dark, on desktop and on the phone. The Italian README shows the Italian interface.
 
 ### The week
 
