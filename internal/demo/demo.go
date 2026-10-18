@@ -254,6 +254,30 @@ func (s *Service) Candidates(ctx context.Context, coachID int64) ([]domain.User,
 	return out, rows.Err()
 }
 
+// Group is userID's demo group, the visitor (its first member) first, then the
+// coach, then the others by name (#187). Empty for a user of no group.
+func (s *Service) Group(ctx context.Context, userID int64) ([]domain.DemoMember, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT u.id, u.display_name, u.role = 'coach',
+		  EXISTS (SELECT 1 FROM coach_clients c WHERE c.client_id = u.id),
+		  u.id = (SELECT min(user_id) FROM demo_members WHERE group_id = m.group_id) AS visitor
+		FROM demo_members m JOIN users u ON u.id = m.user_id
+		WHERE m.group_id = (SELECT group_id FROM demo_members WHERE user_id = ?)
+		ORDER BY visitor DESC, u.role = 'coach' DESC, u.display_name, u.id`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("demo group: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.DemoMember
+	for rows.Next() {
+		var m domain.DemoMember
+		if err := rows.Scan(&m.ID, &m.Name, &m.Coach, &m.Client, &m.Visitor); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 // person is someone of a demo group.
 type person struct {
 	body   body

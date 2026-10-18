@@ -28,3 +28,13 @@ type CoachAssignment struct {
 	CoachName      string
 	AssignedPlanID *int64
 }
+
+// DemoMember is someone of a demo group (#187), for the band's "View as"
+// menu: the visitor, the coach, a coach's client, or someone free to add.
+type DemoMember struct {
+	ID      int64
+	Name    string
+	Visitor bool // the one who entered the demo
+	Coach   bool
+	Client  bool // has a coach
+}
