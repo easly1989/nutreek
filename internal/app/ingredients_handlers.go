@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"html/template"
+	"maps"
 	"math"
 	"net/http"
 	"net/url"
@@ -536,6 +537,12 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 		a.Logger.Warn("OFF search failed", "err", offErr, "q", q)
 		return rows, i18n.T(i18n.FromContext(ctx), "ingredients.off.search_unavailable"), nil
 	}
+	// Products hidden from the viewer's lists stay out of these results too.
+	hidden, err := a.Ingredients.HiddenBarcodes(ctx, viewer)
+	if err != nil {
+		return nil, "", err
+	}
+	maps.Copy(knownBarcodes, hidden)
 	// FTS5 does a native AND across tokens + prefix match: no extra filter needed.
 	for i := range products {
 		p := products[i]
