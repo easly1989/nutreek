@@ -65,12 +65,16 @@ func (a *App) loginRateLimiter() *ipRateLimiter {
 	return a.loginLimiter
 }
 
-// Demo is the public demo: it creates a throwaway account in a language, and
-// deletes it after IdleHours without a request.
+// Demo is the public demo: it creates a throwaway group of accounts in a
+// language, the visitor playing as "plan", "coach" or "client", and deletes it
+// after IdleHours without a request.
 type Demo interface {
-	Start(ctx context.Context, lang string) (userID int64, err error)
+	Start(ctx context.Context, lang, as string) (userID int64, err error)
 	IdleHours() int                               // how long a demo lasts without use, for the notices
 	Seen(ctx context.Context, userID int64) error // a signed-in user made a request
+	// Candidates are whom the coach may add as clients: the people of their
+	// group without a coach (#186).
+	Candidates(ctx context.Context, coachID int64) ([]domain.User, error)
 }
 
 // DemoLimits keep one demo visitor from hurting the server or the others

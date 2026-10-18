@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/amon2126/nutreek/internal/demo"
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
@@ -123,7 +124,7 @@ func TestDemoCaps(t *testing.T) {
 	const ingredients = `SELECT count(*) FROM ingredients WHERE created_by = ? AND source = 'local'`
 	const recipes = `SELECT count(*) FROM recipes WHERE user_id = ?`
 	// The seed already fills the account: the caps leave room for one more each.
-	probe, err := a.Demo.Start(context.Background(), "en")
+	probe, err := a.Demo.Start(context.Background(), "en", demo.AsPlan)
 	if err != nil {
 		t.Fatal(err)
 	}

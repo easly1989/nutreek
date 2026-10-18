@@ -6,6 +6,13 @@
     "one": "Si cancella dopo {{.Count}} ora senza usarlo, ogni notte alle 3:00 (UTC) e a ogni aggiornamento della demo.",
     "other": "Si cancella dopo {{.Count}} ore senza usarlo, ogni notte alle 3:00 (UTC) e a ogni aggiornamento della demo."
   },
+  "demo.entry.choose": "Come vuoi provarla?",
+  "demo.entry.as_plan": "Segui un piano",
+  "demo.entry.as_plan_note": "La tua settimana di pasti, ricette, spesa e statistiche.",
+  "demo.entry.as_coach": "Sei un coach",
+  "demo.entry.as_coach_note": "I tuoi clienti, i piani da assegnare loro e la tua settimana.",
+  "demo.entry.as_client": "Sei cliente di un coach",
+  "demo.entry.as_client_note": "La tua settimana, sul piano che ti ha assegnato il coach.",
   "demo.entry.full": "La demo è piena in questo momento. Riprova tra poco.",
   "demo.limit.ingredients": {
     "one": "Nella demo puoi creare al massimo {{.Count}} ingrediente.",
@@ -15,7 +22,6 @@
     "one": "Nella demo puoi avere al massimo {{.Count}} ricetta.",
     "other": "Nella demo puoi avere al massimo {{.Count}} ricette."
   },
-  "demo.entry.start": "Prova la demo",
   "demo.entry.own": "Vuoi la tua istanza?",
   "demo.entry.code": "Il codice è su GitHub",
   "demo.band": {

@@ -141,6 +141,90 @@ func TestCoachRepository_ClientsAndAssignment(t *testing.T) {
 	}
 }
 
+// A client with a plan assigned by their coach gets that plan's suggestions in
+// the picker, and can generate from it without a plan of their own (#186).
+func TestNutritionistPlans_AssignedPlanSuggestions(t *testing.T) {
+	store := newTestStore(t)
+	np := NewNutritionistPlans(store.DB)
+	ings := NewIngredients(store.DB)
+	coachRepo := NewCoachRepository(store.DB)
+	ctx := context.Background()
+	coach := newTestUser(t, store, "coach@test.example")
+	client := newTestUser(t, store, "client@test.example")
+
+	planWith := func(owner int64, plan, food string) int64 {
+		t.Helper()
+		planID, err := np.CreatePlan(ctx, owner, plan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := np.SetActivePlan(ctx, owner, planID); err != nil {
+			t.Fatal(err)
+		}
+		mt, err := np.CreateMealType(ctx, planID, "Breakfast")
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, err := np.CreateVariation(ctx, planID, mt, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ing, err := ings.CreateLocal(ctx, food, nil, "g", 100, 1, 1, 1, &owner, nil, nil, nil, nil, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := np.AddItem(ctx, planID, v, nil, &ing, 50, "g"); err != nil {
+			t.Fatal(err)
+		}
+		return planID
+	}
+	names := func(user int64) []string {
+		t.Helper()
+		got, err := np.SearchSuggestedIngredients(ctx, user, "breakfast")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, g := range got {
+			out = append(out, g.Name)
+		}
+		return out
+	}
+
+	coachPlan := planWith(coach, "Coach's plan", "Coach oats")
+	if has, err := np.HasVariations(ctx, client); err != nil || has {
+		t.Fatalf("a client without plans has variations: %v %v", has, err)
+	}
+	if err := coachRepo.AddClient(ctx, coach, client); err != nil {
+		t.Fatal(err)
+	}
+	if err := coachRepo.AssignPlan(ctx, coach, client, coachPlan); err != nil {
+		t.Fatal(err)
+	}
+	if has, err := np.HasVariations(ctx, client); err != nil || !has {
+		t.Errorf("the assigned plan has no variations for the client: %v %v", has, err)
+	}
+	if got := names(client); len(got) != 1 || got[0] != "Coach oats" {
+		t.Errorf("suggestions with the assigned plan: %v", got)
+	}
+
+	// The client's own plan does not count while the coach's is assigned...
+	planWith(client, "Own plan", "Own muesli")
+	if got := names(client); len(got) != 1 || got[0] != "Coach oats" {
+		t.Errorf("suggestions with the assigned plan and an own one: %v", got)
+	}
+	// ...and is back once the assignment goes.
+	if err := coachRepo.UnassignPlan(ctx, coach, client); err != nil {
+		t.Fatal(err)
+	}
+	if got := names(client); len(got) != 1 || got[0] != "Own muesli" {
+		t.Errorf("suggestions without the assignment: %v", got)
+	}
+	if got := names(coach); len(got) != 1 || got[0] != "Coach oats" {
+		t.Errorf("the coach's suggestions: %v", got)
+	}
+}
+
 func TestUsers_UpdateRole(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)

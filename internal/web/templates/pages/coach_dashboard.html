@@ -16,7 +16,7 @@
         <li class="grid grid-cols-[minmax(0,1fr)_32px] lg:grid-cols-[minmax(0,1fr)_220px_32px] gap-x-3 gap-y-2 items-center px-4 py-2.5">
           <span class="flex items-center gap-3 min-w-0">
             <span class="w-9 h-9 shrink-0 rounded-full bg-surface-2 grid place-items-center font-bold">{{initial .Client.DisplayName}}</span>
-            <span class="flex flex-col min-w-0"><b class="truncate">{{.Client.DisplayName}}</b><span class="text-[12.5px] text-muted truncate">{{.Client.Email}}</span></span>
+            <span class="flex flex-col min-w-0"><b class="truncate">{{.Client.DisplayName}}</b>{{if not $.Demo}}<span class="text-[12.5px] text-muted truncate">{{.Client.Email}}</span>{{end}}</span>
           </span>
           <form method="post" action="/coach/clients/{{.ClientID}}/assign-plan" class="col-span-2 row-start-2 lg:col-span-1 lg:row-start-auto flex gap-2">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
@@ -40,14 +40,29 @@
         {{end}}
       </ul>
       {{else}}
-      <p class="border-t border-border px-4 py-6 text-center text-muted">{{t "coach.clients.empty"}}</p>
+      <p class="border-t border-border px-4 py-6 text-center text-muted">{{if .Demo}}{{t "coach.clients.empty_demo"}}{{else}}{{t "coach.clients.empty"}}{{end}}</p>
       {{end}}
+      {{if .Demo}}
+      {{/* The demo has no emails: the coach picks among their demo group (#186). */}}
+      {{if .Candidates}}
+      <form method="post" action="/coach/clients" class="flex flex-wrap gap-2 px-4 py-3 border-t border-border">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <select name="client_id" required aria-label="{{t "coach.clients.pick"}}" class="field basis-full sm:basis-0 sm:flex-1 sm:min-w-[200px]">
+          <option value="">{{t "coach.clients.pick"}}</option>
+          {{range .Candidates}}<option value="{{.ID}}">{{.DisplayName}}</option>{{end}}
+        </select>
+        <button class="btn-secondary">{{template "icon_sm" "i-plus"}}{{t "coach.clients.add"}}</button>
+      </form>
+      {{end}}
+      <p class="px-4 py-3 border-t border-border text-[12.5px] text-muted">{{if .Candidates}}{{t "coach.clients.pick_note"}}{{else}}{{t "coach.clients.pick_none"}}{{end}}</p>
+      {{else}}
       <form method="post" action="/coach/clients" class="flex flex-wrap gap-2 px-4 py-3 border-t border-border">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <input type="email" name="email" required placeholder="{{t "coach.clients.email_placeholder"}}" aria-label="{{t "coach.clients.email_placeholder"}}" class="field flex-1 min-w-[200px]">
         <button class="btn-secondary">{{template "icon_sm" "i-plus"}}{{t "coach.clients.add"}}</button>
       </form>
       <p class="px-4 py-3 border-t border-border text-[12.5px] text-muted">{{t "coach.clients.add_note"}}</p>
+      {{end}}
     </section>
 
     <section class="card">

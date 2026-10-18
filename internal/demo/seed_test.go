@@ -16,7 +16,10 @@ import (
 
 // seedKeys lists every text key the seed shows, from its definitions.
 func seedKeys() []string {
-	keys := []string{"plan"}
+	var keys []string
+	for _, p := range slices.Concat(ownPlan, library) {
+		keys = append(keys, p.key)
+	}
 	for _, c := range categories {
 		keys = append(keys, "category."+c)
 	}
@@ -90,7 +93,7 @@ func TestSeedLanguages(t *testing.T) {
 	svc := New(d, Config{})
 	ids := map[string]int64{}
 	for _, lang := range []string{"en", "it", "en"} { // a second English account reuses the shared products
-		id, err := svc.Start(ctx, lang)
+		id, err := svc.Start(ctx, lang, AsPlan)
 		if err != nil {
 			t.Fatalf("%s: start: %v", lang, err)
 		}
@@ -203,7 +206,7 @@ func TestSeedFillsThePages(t *testing.T) {
 	if err := Prepare(ctx, d); err != nil {
 		t.Fatal(err)
 	}
-	id, err := New(d, Config{}).Start(ctx, "en")
+	id, err := New(d, Config{}).Start(ctx, "en", AsPlan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +343,8 @@ func TestSeedFillsThePages(t *testing.T) {
 	}
 }
 
-// Seeding one account stays well under a second.
+// Seeding a group, the visitor's account and the others', stays well under a
+// second (startBudget).
 func TestStartIsFast(t *testing.T) {
 	ctx := context.Background()
 	d := newStore(t)
@@ -348,17 +352,19 @@ func TestStartIsFast(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := New(d, Config{})
-	if _, err := svc.Start(ctx, "en"); err != nil { // the first account warms up the statement cache
+	if _, err := svc.Start(ctx, "en", AsPlan); err != nil { // the first group warms up the statement cache
 		t.Fatal(err)
 	}
-	start := time.Now()
-	if _, err := svc.Start(ctx, "en"); err != nil {
-		t.Fatal(err)
-	}
-	took := time.Since(start)
-	t.Logf("seeding one account took %v", took)
-	if took > time.Second {
-		t.Errorf("seeding one account took %v", took)
+	for _, as := range []string{AsPlan, AsCoach, AsClient} {
+		start := time.Now()
+		if _, err := svc.Start(ctx, "en", as); err != nil {
+			t.Fatal(err)
+		}
+		took := time.Since(start)
+		t.Logf("seeding a %s group took %v", as, took)
+		if took > startBudget {
+			t.Errorf("seeding a %s group took %v", as, took)
+		}
 	}
 }
 
@@ -377,7 +383,7 @@ func BenchmarkStart(b *testing.B) {
 	}
 	svc := New(store.DB, Config{})
 	for b.Loop() {
-		if _, err := svc.Start(ctx, "en"); err != nil {
+		if _, err := svc.Start(ctx, "en", AsPlan); err != nil {
 			b.Fatal(err)
 		}
 	}
