@@ -338,6 +338,19 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, p person,
 	}
 	planID := plans[0]
 
+	// The active weekly template: its meals are the ones the nutrition plan
+	// shows, every day.
+	tplID, err := exec(`INSERT INTO meal_templates (user_id, name, is_active) VALUES (?, ?, 1)`, userID, w.text["template.week"])
+	if err != nil {
+		return nil, fmt.Errorf("template: %w", err)
+	}
+	for i, mt := range mealTypes {
+		if _, err := exec(`INSERT INTO meal_template_slots (template_id, day_of_week, name, sort_order) VALUES (?, -1, ?, ?)`,
+			tplID, w.text["meal."+mt.key], i); err != nil {
+			return nil, fmt.Errorf("template slot: %w", err)
+		}
+	}
+
 	// The weeks, oldest first: the plan's variants in turn, then what was
 	// logged on the days up to today.
 	cheatOn := map[int]cheat{}
@@ -517,8 +530,10 @@ func SeedAccount(ctx context.Context, d *sql.DB, email, lang string) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `UPDATE nutritionist_plans SET is_active = 0 WHERE user_id = ?`, userID); err != nil {
-		return fmt.Errorf("demo seed: %w", err)
+	for _, q := range []string{`UPDATE nutritionist_plans SET is_active = 0 WHERE user_id = ?`, `UPDATE meal_templates SET is_active = 0 WHERE user_id = ?`} {
+		if _, err := tx.ExecContext(ctx, q, userID); err != nil {
+			return fmt.Errorf("demo seed: %w", err)
+		}
 	}
 	if _, err := seed(ctx, tx, userID, words[pickCode(lang)], visitor, map[string]int64{}, time.Now()); err != nil {
 		return fmt.Errorf("demo seed: %w", err)

@@ -50,6 +50,8 @@ var textEN = map[string]string{
 	"meal.snack":     "Snack",
 	"meal.dinner":    "Dinner",
 
+	"template.week": "My week",
+
 	"variant.oats_blueberries": "Oats and blueberries",
 	"variant.yogurt_banana":    "Yogurt and banana",
 	"variant.eggs_toast":       "Eggs on toast",
@@ -113,6 +115,8 @@ var textIT = map[string]string{
 	"meal.lunch":     "Pranzo",
 	"meal.snack":     "Spuntino",
 	"meal.dinner":    "Cena",
+
+	"template.week": "La mia settimana",
 
 	"variant.oats_blueberries": "Avena e mirtilli",
 	"variant.yogurt_banana":    "Yogurt e banana",

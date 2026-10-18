@@ -16,7 +16,7 @@ import (
 
 // seedKeys lists every text key the seed shows, from its definitions.
 func seedKeys() []string {
-	var keys []string
+	keys := []string{"template.week"}
 	for _, p := range slices.Concat(ownPlan, library) {
 		keys = append(keys, p.key)
 	}
@@ -233,6 +233,16 @@ func TestSeedFillsThePages(t *testing.T) {
 	if n := count(`SELECT count(*) FROM recipes WHERE user_id = ? AND servings > 1`, id); n == 0 {
 		t.Error("no recipe with servings")
 	}
+	// The nutrition plan shows the meals of the active weekly template.
+	if n := count(`SELECT count(*) FROM meal_templates WHERE user_id = ? AND is_active = 1`, id); n != 1 {
+		t.Errorf("%d active weekly templates, want 1", n)
+	}
+	if n := count(`SELECT count(*) FROM meal_template_slots s JOIN meal_templates t ON t.id = s.template_id
+		JOIN nutritionist_plans p ON p.user_id = t.user_id AND p.is_active = 1
+		JOIN nutritionist_meal_types mt ON mt.plan_id = p.id AND mt.name = s.name
+		WHERE t.user_id = ? AND t.is_active = 1 AND s.day_of_week = -1`, id); n != len(mealTypes) {
+		t.Errorf("%d template meals match the plan's, want %d", n, len(mealTypes))
+	}
 	for what, q := range map[string]string{
 		"cheats":   `SELECT count(*) FROM meal_cheat_items c JOIN meals m ON m.id = c.meal_id JOIN weekly_plans w ON w.id = m.weekly_plan_id WHERE w.user_id = ?`,
 		"water":    `SELECT count(*) FROM water_logs WHERE user_id = ?`,
@@ -413,6 +423,9 @@ func TestSeedAccount(t *testing.T) {
 	if _, err := db.NewWeightLogs(d).LogWeight(ctx, id, time.Now(), 80, nil); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := d.ExecContext(ctx, `INSERT INTO meal_templates (user_id, name, is_active) VALUES (?, 'Old', 1)`, id); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := SeedAccount(ctx, d, "shots@example.test", "it"); err != nil {
 		t.Fatalf("seed: %v", err)
@@ -420,6 +433,10 @@ func TestSeedAccount(t *testing.T) {
 	var plan string
 	if err := d.QueryRowContext(ctx, `SELECT name FROM nutritionist_plans WHERE user_id = ? AND is_active = 1`, id).Scan(&plan); err != nil || plan != words["it"].text["plan"] {
 		t.Errorf("plan %q (%v)", plan, err)
+	}
+	var tpl string
+	if err := d.QueryRowContext(ctx, `SELECT name FROM meal_templates WHERE user_id = ? AND is_active = 1`, id).Scan(&tpl); err != nil || tpl != words["it"].text["template.week"] {
+		t.Errorf("active template %q (%v), want the seed's alone", tpl, err)
 	}
 	var kg float64
 	if err := d.QueryRowContext(ctx, `SELECT weight_kg FROM weight_logs WHERE user_id = ? AND measured_at = ?`, id, time.Now().Format("2006-01-02")).Scan(&kg); err != nil || kg != persona.weightKg {
