@@ -344,7 +344,7 @@ func TestSeedFillsThePages(t *testing.T) {
 }
 
 // Seeding a group, the visitor's account and the others', stays well under a
-// second.
+// second (startBudget).
 func TestStartIsFast(t *testing.T) {
 	ctx := context.Background()
 	d := newStore(t)
@@ -362,7 +362,7 @@ func TestStartIsFast(t *testing.T) {
 		}
 		took := time.Since(start)
 		t.Logf("seeding a %s group took %v", as, took)
-		if took > time.Second {
+		if took > startBudget {
 			t.Errorf("seeding a %s group took %v", as, took)
 		}
 	}
