@@ -1,0 +1,57 @@
+{{/* How to update (#167): the dialog's body and the /admin/update page.
+     . is the version to update to, "" when none is known. */}}
+{{define "update_howto_body"}}<div class="flex flex-col gap-3 text-[14px]">
+  <p>{{t "updates.howto.intro"}}</p>
+  <div class="flex flex-col gap-1">
+    <h3 class="font-bold">{{t "updates.howto.backup_title"}}</h3>
+    <p class="text-muted">{{t "updates.howto.backup"}}</p>
+  </div>
+  <div class="flex flex-col gap-1.5">
+    <h3 class="font-bold">{{t "updates.howto.compose_title"}}</h3>
+    {{template "update_command" "docker compose pull\ndocker compose up -d"}}
+  </div>
+  <div class="flex flex-col gap-1.5">
+    <h3 class="font-bold">{{t "updates.howto.run_title"}}</h3>
+    {{template "update_command" "docker pull ghcr.io/easly1989/nutreek:latest"}}
+  </div>
+  <p class="text-muted">{{t "updates.howto.recreate"}}</p>
+  <p class="text-muted">{{t "updates.howto.pinned"}}</p>
+</div>{{end}}
+
+{{/* A command with a copy button; the button shows only with JS. */}}
+{{define "update_command"}}<div class="relative rounded-xl bg-surface-2 px-3.5 py-3 pr-20">
+  <pre class="font-mono text-[13px] whitespace-pre overflow-x-auto">{{.}}</pre>
+  <button type="button" class="hidden absolute top-2 right-2 btn-ghost h-8 px-2.5 text-[12.5px]" data-copy data-copied="{{t "updates.howto.copied"}}">{{template "icon_sm" "i-copy"}}<span>{{t "updates.howto.copy"}}</span></button>
+</div>{{end}}
+
+{{define "update_guide_link"}}<a class="text-accent font-semibold underline underline-offset-2" href="https://github.com/easly1989/nutreek/blob/main/{{if eq lang "it"}}README.it.md#aggiornare{{else}}README.md#updating{{end}}" target="_blank" rel="noopener">{{t "updates.howto.guide"}}</a>{{end}}
+
+{{/* The dialog, on every page while a newer release is out for the owner. */}}
+{{define "update_dialog"}}<dialog id="update-howto" class="dialog-panel lg:w-[560px]" aria-labelledby="update-howto-title">
+  <div class="p-5 lg:p-6 flex flex-col gap-4">
+    <div class="flex items-center gap-3">
+      <h2 id="update-howto-title" class="grow text-[17px] font-bold">{{t "updates.howto.title" "Version" .Latest}}</h2>
+      <button type="button" class="btn-secondary btn-icon" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
+    </div>
+    {{template "update_howto_body" .Latest}}
+    <div class="flex items-center justify-between gap-3 pt-1 pb-[env(safe-area-inset-bottom)]">
+      {{template "update_guide_link"}}
+      <form method="dialog"><button class="btn-secondary">{{t "common.close"}}</button></form>
+    </div>
+  </div>
+</dialog>{{end}}
+
+{{/* The owner's card: in the sidebar on desktop, at the top of «Altro» on the
+     phone. Closing it hides it in this browser until the next release. */}}
+{{define "update_card"}}<div class="rounded-xl border border-border bg-surface-2 p-3 flex flex-col gap-2" data-update-card="{{.Latest}}">
+  <div class="flex items-start gap-2">
+    <span class="text-accent mt-px">{{template "icon_sm" "i-arrow-up-circle"}}</span>
+    <div class="grow flex flex-col gap-0.5 min-w-0">
+      <b class="text-[13.5px] leading-snug">{{t "updates.card.available" "Version" .Latest}}</b>
+      <span class="text-[12px] text-muted">{{t "updates.card.current" "Current" .Current "Ago" .PublishedAgo}}</span>
+    </div>
+    <button type="button" class="shrink-0 -mr-1 -mt-1 p-1 rounded-md text-muted hover:text-text" data-update-dismiss aria-label="{{t "updates.dismiss"}}" title="{{t "updates.dismiss"}}">{{template "icon_sm" "i-close"}}</button>
+  </div>
+  <a href="/admin/update" class="btn-primary w-full justify-center" data-update-howto>{{t "updates.how"}}</a>
+  <a href="{{.ReleaseURL}}" class="text-accent font-semibold underline underline-offset-2 text-[12.5px] text-center" target="_blank" rel="noopener">{{t "updates.notes"}}</a>
+</div>{{end}}

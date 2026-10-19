@@ -1,0 +1,45 @@
+{
+  "updates.card.available": "Nutreek {{.Version}} is available",
+  "updates.card.current": "You have {{.Current}} · out {{.Ago}}",
+  "updates.how": "How to update",
+  "updates.notes": "Release notes",
+  "updates.notes_short": "What's new",
+  "updates.dismiss": "Hide until the next release",
+  "updates.ago.minutes": {
+    "one": "{{.Count}} minute ago",
+    "other": "{{.Count}} minutes ago"
+  },
+  "updates.ago.hours": {
+    "one": "{{.Count}} hour ago",
+    "other": "{{.Count}} hours ago"
+  },
+  "updates.ago.days": {
+    "one": "{{.Count}} day ago",
+    "other": "{{.Count}} days ago"
+  },
+  "updates.admin.title": "Updates",
+  "updates.admin.installed": "Installed version: {{.Version}}",
+  "updates.admin.available": "{{.Version}} is available",
+  "updates.admin.published": "Out {{.Ago}}",
+  "updates.admin.up_to_date": "Nutreek is up to date",
+  "updates.admin.never_checked": "Not checked yet: the first check runs a minute after start.",
+  "updates.admin.failed": "The last check got no answer from GitHub. It tries again tomorrow, or now with Check now.",
+  "updates.admin.check_now": "Check now",
+  "updates.admin.daily": "Check every day",
+  "updates.admin.daily_hint": "Reads only the number of the latest version published on GitHub; it sends nothing.",
+  "updates.admin.last_check": "Last check {{.Ago}}.",
+  "updates.admin.off_env": "Turned off for this installation with NUTREEK_UPDATE_CHECK=false.",
+  "updates.admin.not_release": "This build ({{.Version}}) is not a release, so it does not look for updates.",
+  "updates.howto.title": "Update to {{.Version}}",
+  "updates.howto.title_plain": "How to update Nutreek",
+  "updates.howto.intro": "Nutreek does not update itself: replacing its own container would need the Docker socket, that is the whole server. Two commands are enough.",
+  "updates.howto.backup_title": "1. Make a backup",
+  "updates.howto.backup": "Copy the database file, nutreek.db in the data folder, or turn on the automatic backups with NUTREEK_BACKUP_ENABLED=true.",
+  "updates.howto.compose_title": "2. With Docker Compose",
+  "updates.howto.run_title": "With docker run",
+  "updates.howto.recreate": "Then recreate the container with the same volumes. At start Nutreek updates the database by itself.",
+  "updates.howto.pinned": "If your image is pinned to a version tag, like :v2.0, change it to the new one or to :latest.",
+  "updates.howto.guide": "Full guide",
+  "updates.howto.copy": "Copy",
+  "updates.howto.copied": "Copied"
+}

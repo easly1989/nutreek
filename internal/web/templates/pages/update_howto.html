@@ -1,0 +1,15 @@
+{{define "title"}}{{t "updates.howto.title_plain"}} — Nutreek{{end}}
+{{define "content"}}
+<div class="flex flex-col gap-4 lg:gap-[18px] max-w-2xl">
+  <header>
+    <h1 class="h1">{{if .Version}}{{t "updates.howto.title" "Version" .Version}}{{else}}{{t "updates.howto.title_plain"}}{{end}}</h1>
+  </header>
+  <section class="card p-4 lg:p-5 flex flex-col gap-4">
+    {{template "update_howto_body" .Version}}
+    <div class="flex items-center justify-between gap-3">
+      {{template "update_guide_link"}}
+      <a href="/admin/panel#aggiornamenti" class="btn-secondary">{{t "updates.admin.title"}}</a>
+    </div>
+  </section>
+</div>
+{{end}}

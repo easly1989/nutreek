@@ -40,6 +40,9 @@ type authPageData struct {
 	DemoWelcome   bool
 	DemoIdleHours int
 	DemoGroup     []domain.DemoMember // whom the band's "View as" switches to; nil when alone (#187)
+	// Update is the newer release the owner is told about (#167); nil for
+	// everyone else and when there is none.
+	Update *updateView
 }
 
 var premiumFeatureKeys = []string{"auto_plan", "tdee_adaptive", "api_access", "coach_mode"}
@@ -64,6 +67,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 		IsOwner:    a.isOwner(user),
 		Features:   features,
 	}
+	data.Update = a.ownerUpdate(r, data.IsOwner)
 	if a.Demo != nil {
 		data.Demo = true
 		data.DemoIdleHours = a.Demo.IdleHours()

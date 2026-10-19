@@ -311,6 +311,11 @@ func (a *App) mountAdminAndAPI(r chi.Router) {
 		r.Post("/admin/panel/users/{id}/premium", a.handleAdminUserGrantPremium)
 		r.Post("/admin/panel/users/{id}/premium/revoke", a.handleAdminUserRevokePremium)
 		r.Post("/admin/panel/users/{id}/role", a.handleAdminUserRole)
+		if a.Updates != nil { // nil in the demo build (#167)
+			r.Get("/admin/update", a.handleUpdateHowTo)
+			r.Post("/admin/panel/updates/check", a.handleUpdateCheck)
+			r.Post("/admin/panel/updates/toggle", a.handleUpdateToggle)
+		}
 	})
 }
 
