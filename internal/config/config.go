@@ -42,6 +42,10 @@ type Config struct {
 	// PremiumEnabled turns premium gating on. When false HasFeature() always
 	// returns true and the premium features are available to everyone.
 	PremiumEnabled bool
+
+	// UpdateCheck lets the server look for newer Nutreek releases once a day
+	// (#167); false turns it off for the whole installation.
+	UpdateCheck bool
 }
 
 // Load reads the configuration from the env vars. It validates the prod
@@ -92,6 +96,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("NUTREEK_PREMIUM_ENABLED: %w", err)
 	}
 
+	updateCheck, err := strconv.ParseBool(getenv("NUTREEK_UPDATE_CHECK", "true"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_UPDATE_CHECK: %w", err)
+	}
+
 	cfg := &Config{
 		Addr:              getenv("NUTREEK_ADDR", ":8080"),
 		DBPath:            getenv("NUTREEK_DB_PATH", "./data/nutreek.db"),
@@ -109,6 +118,7 @@ func Load() (*Config, error) {
 		BackupInterval:    backupInterval,
 		BackupKeep:        backupKeep,
 		PremiumEnabled:    premiumEnabled,
+		UpdateCheck:       updateCheck,
 	}
 
 	keyHex := os.Getenv("NUTREEK_SESSION_KEY")

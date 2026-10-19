@@ -21,6 +21,7 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/service"
+	"github.com/amon2126/nutreek/internal/updates"
 	"github.com/amon2126/nutreek/internal/web"
 )
 
@@ -181,12 +182,16 @@ func run(logger *slog.Logger) error {
 		Sessions:   sessions,
 		Render:     renderer,
 		Logger:     logger,
+		Updates:    updates.New(db.NewInstanceSettings(store.DB), version, cfg.UpdateCheck),
 	}
 	if err := applyDemo(ctx, store, sessions, a, logger); err != nil {
 		return err
 	}
 	if cfg.BackupEnabled { // after applyDemo, which switches them off
 		go runBackupScheduler(ctx, store, cfg, logger)
+	}
+	if a.Updates != nil { // after applyDemo, which drops it
+		go a.Updates.Run(ctx, logger)
 	}
 
 	srv := &http.Server{
