@@ -10,6 +10,12 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+---
+
+## [2.1.0] — 2026-10-19
+
+The interface in English as well as Italian, a public demo, and an instance that tells its owner when a newer release is out.
+
 ### Fixed
 - A client whose coach assigned them a plan gets that plan's foods suggested in the picker, and can generate a week from it without a plan of their own; before, both looked at the client's own plan only (#186)
 - Security: an ingredient's data (name, brand, unit, macros, micronutrients, portion, allergens) can be edited only by whoever created it, or by the owner; everyone else sees it read-only, with "by Bob" in the list. An imported OpenFoodFacts product belongs to whoever imported it; ingredients with no author are edited by the owner, or by anyone when the instance has no owner (#143)
