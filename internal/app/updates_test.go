@@ -10,6 +10,7 @@ import (
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/updates"
+	"github.com/amon2126/nutreek/internal/web"
 )
 
 // newUpdatesApp is an app built as v2.0.0 whose versions.json says v2.1.0 is
@@ -111,5 +112,22 @@ func TestUpdateAbsentFromDemo(t *testing.T) {
 	enterAs(t, a, b, "plan")
 	if code, _, _ := b.get("/admin/update"); code == http.StatusOK {
 		t.Error("the demo serves /admin/update")
+	}
+}
+
+// Every response names its build, and a signed-in page carries its own and
+// the notice to show when they differ (#167).
+func TestNewBuildNotice(t *testing.T) {
+	a := newTestApp(t)
+	rec := httptest.NewRecorder()
+	a.Router().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/login", nil))
+	if got := rec.Header().Get("X-Nutreek-Build"); got != web.StaticVersion() {
+		t.Errorf("X-Nutreek-Build = %q, want %q", got, web.StaticVersion())
+	}
+	_, _, page := signIn(t, a, "user@example.test").get("/")
+	for _, want := range []string{`data-build="` + web.StaticVersion() + `"`, `id="new-build"`, "A new version of Nutreek is ready"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the page lacks %q", want)
+		}
 	}
 }

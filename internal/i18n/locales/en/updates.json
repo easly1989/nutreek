@@ -41,5 +41,9 @@
   "updates.howto.pinned": "If your image is pinned to a version tag, like :v2.0, change it to the new one or to :latest.",
   "updates.howto.guide": "Full guide",
   "updates.howto.copy": "Copy",
-  "updates.howto.copied": "Copied"
+  "updates.howto.copied": "Copied",
+  "updates.build.title": "A new version of Nutreek is ready",
+  "updates.build.body": "The server was updated. Reload when you like: nothing you are typing is lost.",
+  "updates.build.reload": "Reload",
+  "updates.build.later": "Later"
 }

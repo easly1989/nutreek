@@ -1,4 +1,5 @@
-// Updates (#167): the owner's card and the «How to update» dialog.
+// Updates (#167): the owner's card, the «How to update» dialog, and the
+// notice for a page left open across an update.
 (function () {
   "use strict";
 
@@ -16,6 +17,16 @@
       if ((el.dataset.updateCard || el.dataset.updateDot) === v) el.classList.add("hidden");
     });
   }
+
+  // The server answers with its build; a different one means this page's JS
+  // and CSS are old. Nothing reloads by itself, so nothing typed is lost.
+  var later = false;
+  document.addEventListener("htmx:afterRequest", function (e) {
+    var xhr = e.detail.xhr;
+    var build = xhr && xhr.getResponseHeader("X-Nutreek-Build");
+    var notice = document.getElementById("new-build");
+    if (!later && notice && build && build !== document.body.dataset.build) notice.classList.remove("hidden");
+  });
 
   function init() {
     hideDismissed();
@@ -41,6 +52,16 @@
         var sheet = howto.closest("dialog");
         if (sheet) sheet.close();
         dialog.showModal();
+        return;
+      }
+
+      if (e.target.closest("[data-new-build-reload]")) {
+        location.reload();
+        return;
+      }
+      if (e.target.closest("[data-new-build-later]")) {
+        later = true;
+        document.getElementById("new-build").classList.add("hidden");
         return;
       }
 
