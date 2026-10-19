@@ -48,6 +48,8 @@ func (a *App) Router() http.Handler {
 	}
 	r.Use(middleware.StripSlashes)
 	r.Use(securityHeaders)
+	// A page left open across an update learns of it from its next HTMX request (#167).
+	r.Use(middleware.SetHeader("X-Nutreek-Build", web.StaticVersion()))
 	r.Use(requestIDMiddleware)
 	r.Use(a.requestLogger)
 	r.Use(a.Sessions.LoadAndSave)

@@ -29,7 +29,7 @@
   <script src="{{asset "js/tour.js"}}" defer></script>
   {{end}}
 </head>
-<body class="bg-bg text-text min-h-screen"{{if .ShowTour}} data-show-tour="1"{{end}}
+<body class="bg-bg text-text min-h-screen" data-build="{{build}}"{{if .ShowTour}} data-show-tour="1"{{end}}
       data-confirm-ok="{{t "common.confirm"}}" data-confirm-cancel="{{t "common.cancel"}}">
   {{template "icon_sprite"}}
 
@@ -177,7 +177,22 @@
   <div id="modal-host-2" data-modal-host></div>
   {{if .User}}{{template "scanner_dialog"}}{{end}}
   {{with .Update}}{{template "update_dialog" .}}{{end}}
-  {{if .User}}<script src="{{asset "js/updates.js"}}" defer></script>{{end}}
+  {{if .User}}
+  {{/* Shown by updates.js when an HTMX response comes from another build. */}}
+  <div id="new-build" class="hidden fixed bottom-24 lg:bottom-4 inset-x-3 lg:left-auto lg:right-4 lg:w-[380px] z-40 card p-4 flex gap-3 items-start"
+       style="box-shadow: var(--shadow)" role="status" aria-live="polite">
+    <span class="w-9 h-9 shrink-0 rounded-full bg-accent-soft text-accent grid place-items-center">{{template "icon" "i-refresh"}}</span>
+    <div class="grow flex flex-col gap-1 min-w-0">
+      <b>{{t "updates.build.title"}}</b>
+      <p class="text-[13.5px] text-muted">{{t "updates.build.body"}}</p>
+      <div class="flex flex-wrap gap-2 pt-1.5">
+        <button type="button" class="btn-primary" data-new-build-reload>{{t "updates.build.reload"}}</button>
+        <button type="button" class="btn-secondary" data-new-build-later>{{t "updates.build.later"}}</button>
+      </div>
+    </div>
+  </div>
+  <script src="{{asset "js/updates.js"}}" defer></script>
+  {{end}}
   {{if and .Demo .User}}{{template "demo_notice" .}}{{end}}
   {{block "scripts" .}}{{end}}
 

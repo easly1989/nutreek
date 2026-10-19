@@ -199,6 +199,8 @@ func funcMap(lang string) template.FuncMap {
 		"asset": func(path string) string {
 			return "/static/" + path + "?v=" + StaticVersion()
 		},
+		// build: the page's build, compared with X-Nutreek-Build (#167).
+		"build": StaticVersion,
 		// pickerRow passes picker_row the row together with the list's data
 		// (picker kind, target id, CSRF).
 		"pickerRow": func(row, list any) PickerRowCtx {
