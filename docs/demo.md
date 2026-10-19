@@ -2,7 +2,7 @@
 
 The demo (#137) is a different build of the same app: `go build -tags demo ./cmd/nutreek`, or the Docker image with `--build-arg DEMO=1`. Every visitor gets a throwaway, lived-in account with no sign-up; sign-in, admin, the REST API and recipe import are not mounted, and demo groups are deleted after 2 hours without use and every night at 03:00 UTC. The normal binary and image contain none of it. The `NUTREEK_DEMO_*` limits are in the environment variables table of `CLAUDE.md`.
 
-It runs on [Northflank](https://northflank.com), from the public image `ghcr.io/easly1989/nutreek:demo`.
+It runs on [Northflank](https://northflank.com), from the public image `ghcr.io/easly1989/nutreek:demo`, at <https://p01--nutreek--7dcjw6mlmtky.code.run/>.
 
 ## How it ships
 
@@ -13,6 +13,8 @@ It runs on [Northflank](https://northflank.com), from the public image `ghcr.io/
 3. points the Northflank service at `:demo-<version>` with one API call ([update service deployment](https://northflank.com/docs/v1/api/services/update-service-deployment)), `POST /v1/projects/{project}/services/{service}/deployment`. Northflank does not watch ghcr.io by itself, and a new image path is what makes it roll out.
 
 The deploy step is skipped while the `NORTHFLANK_API_TOKEN` secret is missing, so the workflow stays green before Northflank is set up. The workflow is separate from `release.yml`: a broken demo never fails a release.
+
+A release runs the workflows of its tag's commit, so a release whose tag predates `docker-demo.yml` (v2.0.0) does not trigger it: run it by hand once. Every release tagged from `main` since then does.
 
 The service has no volume, so every deploy starts from an empty database and ends every demo in use.
 

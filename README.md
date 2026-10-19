@@ -14,6 +14,14 @@
 </p>
 
 <p align="center">
+  <a href="https://p01--nutreek--7dcjw6mlmtky.code.run/"><img src="https://img.shields.io/badge/Try_the_live_demo-2F7A55?style=for-the-badge" alt="Try the live demo" height="34" /></a>
+</p>
+
+<p align="center">
+  <sub>Made-up data in a throwaway account, deleted when you stop using it. <a href="docs/demo.md">What the demo is</a>.</sub>
+</p>
+
+<p align="center">
   <a href="https://github.com/easly1989/nutreek/actions/workflows/ci.yml"><img src="https://github.com/easly1989/nutreek/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
   <a href="https://github.com/easly1989/nutreek/pkgs/container/nutreek"><img src="https://img.shields.io/badge/ghcr.io-nutreek-2496ED?logo=docker&logoColor=white" alt="Container image" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="License: AGPL v3" /></a>
@@ -28,6 +36,8 @@
 </p>
 
 Ingredients from a local copy of OpenFoodFacts (search in under 50 ms, even offline) and a barcode scanner, recipes, a nutrition plan with meal variants and automatic week generation, a shopping list, weight tracking with adaptive TDEE, and a coach mode. It installs on your phone like an app.
+
+**Try it first:** the [live demo](https://p01--nutreek--7dcjw6mlmtky.code.run/) is one click, no sign-up, with twelve weeks of made-up meals. Follow a plan, or play a coach or a coach's client. It is deleted after two hours without use, so nothing you put in it stays.
 
 It runs **natively** (one Go binary, no external dependencies) or in **a single Docker container**: SQLite is built in, so there is no separate database to run.
 
