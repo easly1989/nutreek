@@ -24,7 +24,8 @@ type adminPanelPageData struct {
 	ActiveCount    int
 	PremiumFeats   int // active features marked premium
 	PremiumEnabled bool
-	HasOFF         bool // the OpenFoodFacts sync is configured
+	HasOFF         bool        // the OpenFoodFacts sync is configured
+	Updates        *updateView // the update check (#167); nil in the demo build
 }
 
 type featureRow struct {
@@ -68,6 +69,14 @@ func (a *App) handleAdminPanel(w http.ResponseWriter, r *http.Request) {
 		PremiumCount:   premiumCount,
 		PremiumEnabled: a.Cfg.PremiumEnabled,
 		HasOFF:         a.OFFSyncer != nil,
+	}
+	if a.Updates != nil {
+		st, err := a.Updates.Status(r.Context())
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		data.Updates = a.updateView(r, st)
 	}
 	for _, u := range users {
 		if u.Role == "coach" {

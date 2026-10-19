@@ -36,6 +36,7 @@
       </ul>
     </section>
 
+    <div class="flex flex-col gap-4 lg:gap-[18px]">
     {{if .HasOFF}}
     <section id="off-sync-card" class="card overflow-hidden" data-csrf="{{.CSRFToken}}" data-locale="{{lang}}"
       data-msg-never="{{t "admin.off.never"}}" data-msg-never-rel="{{t "admin.off.never_updated"}}"
@@ -65,6 +66,52 @@
       <p id="off-feedback" role="status" class="hidden px-4 pb-3 text-[12.5px]"></p>
     </section>
     {{end}}
+
+    {{/* Updates (#167): absent in the demo build. */}}
+    {{with .Updates}}
+    <section id="aggiornamenti" class="card overflow-hidden scroll-mt-6">
+      <div class="flex items-center gap-3 px-4 pt-3.5 pb-3">
+        <span class="thumb">{{template "icon" "i-refresh"}}</span>
+        <div class="flex flex-col"><h2 class="h2">{{t "updates.admin.title"}}</h2><span class="text-[12.5px] text-muted">{{t "updates.admin.installed" "Version" .Current}}</span></div>
+      </div>
+      {{if not .Release}}
+      <p class="border-t border-border px-4 py-3 text-[13px] text-muted">{{t "updates.admin.not_release" "Version" .Current}}</p>
+      {{else if not .Allowed}}
+      <p class="border-t border-border px-4 py-3 text-[13px] text-muted">{{t "updates.admin.off_env"}}</p>
+      {{else}}
+      {{if .Enabled}}
+      <div class="border-t border-border flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        {{if .Available}}
+        <div class="flex flex-col gap-0.5">
+          <b class="flex items-center gap-1.5"><span class="text-accent">{{template "icon_sm" "i-arrow-up-circle"}}</span>{{t "updates.admin.available" "Version" .Latest}}</b>
+          <span class="text-[12.5px] text-muted">{{t "updates.admin.published" "Ago" .PublishedAgo}} · <a class="text-accent font-semibold underline underline-offset-2" href="{{.ReleaseURL}}" target="_blank" rel="noopener">{{t "updates.notes_short"}}</a></span>
+        </div>
+        <a href="/admin/update" class="btn-primary" data-update-howto>{{t "updates.how"}}</a>
+        {{else}}
+        <div class="flex flex-col gap-0.5">
+          {{if .Err}}<span class="text-[13px] text-danger">{{t "updates.admin.failed"}}</span>
+          {{else if .CheckedAt.IsZero}}<span class="text-[13px] text-muted">{{t "updates.admin.never_checked"}}</span>
+          {{else}}<b class="flex items-center gap-1.5"><span class="text-accent">{{template "icon_sm" "i-check"}}</span>{{t "updates.admin.up_to_date"}}</b>{{end}}
+        </div>
+        <form method="post" action="/admin/panel/updates/check">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button class="btn-secondary">{{template "icon_sm" "i-refresh"}}{{t "updates.admin.check_now"}}</button>
+        </form>
+        {{end}}
+      </div>
+      {{end}}
+      <form method="post" action="/admin/panel/updates/toggle" class="border-t border-border flex items-center justify-between gap-4 px-4 py-3">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <label for="update-daily" class="flex flex-col gap-0.5 cursor-pointer">
+          <b class="text-[13.5px]">{{t "updates.admin.daily"}}</b>
+          <span class="text-[12.5px] text-muted">{{t "updates.admin.daily_hint"}}{{if and .Enabled .CheckedAgo}} {{t "updates.admin.last_check" "Ago" .CheckedAgo}}{{end}}</span>
+        </label>
+        <input id="update-daily" type="checkbox" class="toggle shrink-0" data-autosubmit{{if .Enabled}} checked{{end}}>
+      </form>
+      {{end}}
+    </section>
+    {{end}}
+    </div>
   </div>
 </div>
 {{end}}

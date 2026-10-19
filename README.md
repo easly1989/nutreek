@@ -197,6 +197,28 @@ docker compose pull && docker compose up -d
 
 To cut a release: `gh release create vX.Y.Z --generate-notes` (or from the GitHub UI). The workflow can also be run by hand from *Actions → Release* to republish `:latest`. `nutreek -version` prints the version of the running image.
 
+### Updating
+
+Once a day Nutreek reads the latest published version from GitHub ([`versions.json`](https://raw.githubusercontent.com/easly1989/nutreek/site-data/versions.json); it sends nothing). When a newer release is out, the owner sees a card in the sidebar, and in *Administration → Updates* the installed version, «Check now» and a switch to turn the daily check off. `NUTREEK_UPDATE_CHECK=false` turns it off for the whole install. Only release builds (`vX.Y.Z`) check.
+
+Nutreek does not update itself: replacing its own container would need the Docker socket, that is the whole server. To update:
+
+1. **Back up** the database: copy `nutreek.db` from the data folder, or turn on `NUTREEK_BACKUP_ENABLED` (see [Backup](#backup)).
+2. Pull the new image and recreate the container with the same volumes:
+
+   ```bash
+   docker compose pull
+   docker compose up -d
+   ```
+
+   With `docker run`: `docker pull ghcr.io/easly1989/nutreek:latest`, then remove the container and start it again with the same options.
+
+Database migrations run by themselves at startup. If your image is pinned to a version tag such as `:v2.0`, change it to the new one or to `:latest`. Tools like [Watchtower](https://containrrr.dev/watchtower/) can pull `:latest` for you; back up first all the same.
+
+There is no downgrade: a newer version may change the database in ways an older one cannot read. To go back, restore the backup taken before updating.
+
+A page left open across an update (an installed app stays open for days) shows «A new version of Nutreek is ready» on its next action, with **Reload** and **Later**; nothing reloads by itself.
+
 ---
 
 ## Configuration
@@ -222,6 +244,7 @@ Every environment variable:
 | `NUTREEK_BACKUP_DIR` | `./data/backups` | Where backups are written |
 | `NUTREEK_BACKUP_INTERVAL` | `24h` | How often backups run |
 | `NUTREEK_BACKUP_KEEP` | `7` | How many backups to keep (the oldest are deleted) |
+| `NUTREEK_UPDATE_CHECK` | `true` | Checks once a day for a newer release and tells the owner (see [Updating](#updating)) |
 
 ### OpenFoodFacts
 

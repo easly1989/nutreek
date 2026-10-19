@@ -10,6 +10,11 @@ name: Release
 # Tags published: `:latest` always, plus `:vX.Y.Z` and `:vX.Y` when there is
 # a version. The package inherits the repository's visibility (public)
 # through the `org.opencontainers.image.source` label.
+#
+# A stable release (not a prerelease) is then recorded in versions.json on the
+# `site-data` branch, which instances read to tell their owner a newer Nutreek
+# is out (#167). A manual run records it too: with no version it only moves the
+# sha and date.
 
 on:
   release:
@@ -31,6 +36,8 @@ env:
 jobs:
   build-push:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.vars.outputs.version }}
     steps:
       - uses: actions/checkout@v7
 
@@ -71,6 +78,7 @@ jobs:
           fi
 
           {
+            echo "version=$VERSION"
             echo "tags=$tags"
             echo "build_version=$build_version"
           } >> "$GITHUB_OUTPUT"
@@ -92,3 +100,19 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  publish-version:
+    needs: build-push
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-version
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: Record the release in versions.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: .github/scripts/publish-version.sh "${{ needs.build-push.outputs.version }}"
