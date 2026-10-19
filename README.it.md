@@ -14,6 +14,14 @@
 </p>
 
 <p align="center">
+  <a href="https://p01--nutreek--7dcjw6mlmtky.code.run/"><img src="https://img.shields.io/badge/Prova_la_demo-2F7A55?style=for-the-badge" alt="Prova la demo" height="34" /></a>
+</p>
+
+<p align="center">
+  <sub>Dati inventati in un account usa e getta, cancellato quando smetti di usarlo. <a href="docs/demo.md">Cos'è la demo</a> (in inglese).</sub>
+</p>
+
+<p align="center">
   <a href="https://github.com/easly1989/nutreek/actions/workflows/ci.yml"><img src="https://github.com/easly1989/nutreek/actions/workflows/ci.yml/badge.svg" alt="Stato della CI" /></a>
   <a href="https://github.com/easly1989/nutreek/pkgs/container/nutreek"><img src="https://img.shields.io/badge/ghcr.io-nutreek-2496ED?logo=docker&logoColor=white" alt="Immagine del container" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/Licenza-AGPL%20v3-blue.svg" alt="Licenza: AGPL v3" /></a>
@@ -28,6 +36,8 @@
 </p>
 
 Ingredienti con la copia locale di OpenFoodFacts (ricerca in meno di 50 ms, anche senza rete) e lo scanner del codice a barre, ricette, piano nutrizionale con varianti e generazione della settimana, lista della spesa, peso e TDEE adattivo, modalità coach. Si installa sul telefono come un'app.
+
+**Provala prima:** la [demo dal vivo](https://p01--nutreek--7dcjw6mlmtky.code.run/) è a un clic, senza registrazione, con dodici settimane di pasti inventati. Segui un piano, oppure fai il coach o il cliente di un coach. Viene cancellata dopo due ore senza uso, quindi non resta niente di quello che inserisci.
 
 Gira **nativamente** (un binario Go, nessuna dipendenza esterna) o in **un solo container Docker**: SQLite è incluso, non c'è un database da gestire a parte.
 
