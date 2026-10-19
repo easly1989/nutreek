@@ -33,6 +33,7 @@ func applyDemo(ctx context.Context, store *db.Store, sessions *scs.SessionManage
 	a.Cfg.AdminToken = ""
 	a.Cfg.PremiumEnabled = false
 	a.Cfg.BackupEnabled = false // throwaway data
+	a.Updates = nil             // nobody to tell: the demo has no owner
 	db.ScopeCatalog(store.DB, demo.Peers)
 	db.HideProducts(store.DB, demo.HiddenProducts)
 	svc := demo.New(store.DB, cfg)
