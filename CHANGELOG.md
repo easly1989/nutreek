@@ -40,6 +40,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 - "View as" in the demo (#187, part of #137): in a coach or client demo, a menu in the band signs the visitor in as anyone of their group (themselves, the coach, a client, the person still without a coach) with no password, to see both sides. It reaches only the visitor's own group; anyone else is not found
 
+- The live demo is linked (#189, part of #137): a "Try the live demo" button and a line in both READMEs, at https://p01--nutreek--7dcjw6mlmtky.code.run/. `docs/demo.md` says why v2.0.0, tagged before the demo workflow existed, did not publish the demo image
+
 ### Changed
 - The REST API v1 error messages are in English, whatever the user's language (#159)
 - The code, docs, commits, issues and pull requests are in English, this CHANGELOG included; the app itself is still in Italian (#146)
