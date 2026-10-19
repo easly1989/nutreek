@@ -258,5 +258,11 @@ func newer(a, b string) bool {
 			return x[i] > y[i]
 		}
 	}
-	return false
+	return !prerelease(a) && prerelease(b) // v2.1.0 follows v2.1.0-rc1
+}
+
+// prerelease reports whether v has a prerelease suffix, as in "v2.1.0-rc1".
+func prerelease(v string) bool {
+	v, _, _ = strings.Cut(v, "+")
+	return strings.Contains(v, "-")
 }
