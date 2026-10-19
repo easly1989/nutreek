@@ -13,6 +13,7 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/service"
+	"github.com/amon2126/nutreek/internal/updates"
 	"github.com/amon2126/nutreek/internal/web"
 )
 
@@ -44,6 +45,9 @@ type App struct {
 	Sessions               *scs.SessionManager
 	Render                 *web.Renderer
 	Logger                 *slog.Logger
+	// Updates tells the owner a newer Nutreek is out (#167); nil in tests and
+	// in the demo build.
+	Updates *updates.Service
 
 	// Demo is set only in the demo build (#137, cmd/nutreek/demo_on.go).
 	Demo       Demo

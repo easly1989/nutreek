@@ -29,7 +29,7 @@
   <script src="{{asset "js/tour.js"}}" defer></script>
   {{end}}
 </head>
-<body class="bg-bg text-text min-h-screen"{{if .ShowTour}} data-show-tour="1"{{end}}
+<body class="bg-bg text-text min-h-screen" data-build="{{build}}"{{if .ShowTour}} data-show-tour="1"{{end}}
       data-confirm-ok="{{t "common.confirm"}}" data-confirm-cancel="{{t "common.cancel"}}">
   {{template "icon_sprite"}}
 
@@ -63,6 +63,7 @@
     </ul>
 
     <div class="mt-auto flex flex-col gap-1">
+      {{with .Update}}<div class="mb-2">{{template "update_card" .}}</div>{{end}}
       <div>
         {{/* The panel is fixed next to the sidebar: inside the sidebar
              (overflow-y-auto) it would be cut off. */}}
@@ -93,8 +94,9 @@
     {{template "tab_link" (nav $p "/shopping-list" (t "layout.nav.shopping_short") "i-cart")}}
     {{template "tab_link" (nav $p "/recipes" (t "layout.nav.recipes") "i-recipes")}}
     {{template "tab_link" (nav $p "/stats" (t "layout.nav.stats") "i-stats")}}
-    <button type="button" class="tab-link{{if not $tabOn}} is-active{{end}}" data-sheet="more-sheet" aria-haspopup="dialog">
+    <button type="button" class="tab-link relative{{if not $tabOn}} is-active{{end}}" data-sheet="more-sheet" aria-haspopup="dialog">
       {{template "icon_lg" "i-more"}}{{t "layout.nav.more"}}
+      {{with .Update}}<span class="absolute top-1 left-[calc(50%+6px)] w-2.5 h-2.5 rounded-full bg-accent ring-2 ring-surface" data-update-dot="{{.Latest}}"><span class="sr-only">{{t "updates.card.available" "Version" .Latest}}</span></span>{{end}}
     </button>
   </nav>
 
@@ -103,6 +105,7 @@
       <span class="font-bold text-[15px]">{{.User.DisplayName}}</span>
       <button type="button" class="btn-secondary btn-icon" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
     </div>
+    {{with .Update}}<div class="px-4 pb-2">{{template "update_card" .}}</div>{{end}}
     <ul class="grid grid-cols-2 gap-1 px-3">
       {{template "nav_link" (nav $p "/ingredients" (t "layout.nav.ingredients") "i-ingredients")}}
       {{template "nav_link" (nav $p "/piano-nutrizionale" (t "layout.nav.plan") "i-plan")}}
@@ -173,6 +176,23 @@
   <div id="modal-host" data-modal-host></div>
   <div id="modal-host-2" data-modal-host></div>
   {{if .User}}{{template "scanner_dialog"}}{{end}}
+  {{with .Update}}{{template "update_dialog" .}}{{end}}
+  {{if .User}}
+  {{/* Shown by updates.js when an HTMX response comes from another build. */}}
+  <div id="new-build" class="hidden fixed bottom-24 lg:bottom-4 inset-x-3 lg:left-auto lg:right-4 lg:w-[380px] z-40 card p-4 flex gap-3 items-start"
+       style="box-shadow: var(--shadow)" role="status" aria-live="polite">
+    <span class="w-9 h-9 shrink-0 rounded-full bg-accent-soft text-accent grid place-items-center">{{template "icon" "i-refresh"}}</span>
+    <div class="grow flex flex-col gap-1 min-w-0">
+      <b>{{t "updates.build.title"}}</b>
+      <p class="text-[13.5px] text-muted">{{t "updates.build.body"}}</p>
+      <div class="flex flex-wrap gap-2 pt-1.5">
+        <button type="button" class="btn-primary" data-new-build-reload>{{t "updates.build.reload"}}</button>
+        <button type="button" class="btn-secondary" data-new-build-later>{{t "updates.build.later"}}</button>
+      </div>
+    </div>
+  </div>
+  <script src="{{asset "js/updates.js"}}" defer></script>
+  {{end}}
   {{if and .Demo .User}}{{template "demo_notice" .}}{{end}}
   {{block "scripts" .}}{{end}}
 
@@ -336,6 +356,7 @@
   <symbol id="i-weight" viewBox="0 0 24 24"><path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM8.5 10a3.5 3.5 0 0 1 7 0M12 10l1.5-2"/></symbol>
   <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-arrow-up-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16V8M8.5 11.5 12 8l3.5 3.5"/></symbol>
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.4M12 17h.01"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/></symbol>
   <symbol id="i-coach" viewBox="0 0 24 24"><path d="M16 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM22 20v-1.5a4 4 0 0 0-3-3.9M15.5 4.1a3.5 3.5 0 0 1 0 6.8"/></symbol>

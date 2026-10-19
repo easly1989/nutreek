@@ -202,6 +202,44 @@ Per tagliare una release: `gh release create vX.Y.Z --generate-notes`
 *Actions → Release* per ripubblicare `:latest`. `nutreek -version` stampa
 la versione dell'immagine in uso.
 
+### Aggiornare
+
+Una volta al giorno Nutreek legge da GitHub l'ultima versione pubblicata
+([`versions.json`](https://raw.githubusercontent.com/easly1989/nutreek/site-data/versions.json);
+non invia nulla). Quando esce una release più recente, il proprietario vede
+una card nella barra laterale e, in *Amministrazione → Aggiornamenti*, la
+versione installata, «Controlla ora» e un interruttore per spegnere il
+controllo giornaliero. `NUTREEK_UPDATE_CHECK=false` lo spegne per tutta
+l'installazione. Controllano solo le build di release (`vX.Y.Z`).
+
+Nutreek non si aggiorna da solo: sostituire il proprio container
+richiederebbe il socket di Docker, cioè tutto il server. Per aggiornare:
+
+1. **Fai un backup** del database: copia `nutreek.db` dalla cartella dei
+   dati, o attiva `NUTREEK_BACKUP_ENABLED` (vedi [Backup](#backup)).
+2. Scarica la nuova immagine e ricrea il container con gli stessi volumi:
+
+   ```bash
+   docker compose pull
+   docker compose up -d
+   ```
+
+   Con `docker run`: `docker pull ghcr.io/easly1989/nutreek:latest`, poi
+   rimuovi il container e riavvialo con le stesse opzioni.
+
+Le migrazioni del database partono da sole all'avvio. Se l'immagine è
+fissata a un tag di versione, come `:v2.0`, cambialo con quello nuovo o con
+`:latest`. Strumenti come [Watchtower](https://containrrr.dev/watchtower/)
+possono scaricare `:latest` al posto tuo; il backup resta da fare.
+
+Non si torna indietro: una versione nuova può cambiare il database in modi
+che una più vecchia non sa leggere. Per tornare indietro, ripristina il
+backup fatto prima di aggiornare.
+
+Una pagina rimasta aperta durante un aggiornamento (un'app installata resta
+aperta per giorni) mostra «Nuova versione di Nutreek pronta» alla prima
+azione, con **Ricarica** e **Più tardi**; niente si ricarica da solo.
+
 ---
 
 ## Configurazione
@@ -227,6 +265,7 @@ Tutte le variabili d'ambiente:
 | `NUTREEK_BACKUP_DIR` | `./data/backups` | Directory dove salvare i backup |
 | `NUTREEK_BACKUP_INTERVAL` | `24h` | Frequenza backup automatici |
 | `NUTREEK_BACKUP_KEEP` | `7` | Numero di backup da conservare (i più vecchi vengono eliminati) |
+| `NUTREEK_UPDATE_CHECK` | `true` | Controlla una volta al giorno se c'è una release più recente e lo dice al proprietario (vedi [Aggiornare](#aggiornare)) |
 
 ### OpenFoodFacts
 

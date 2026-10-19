@@ -48,6 +48,8 @@ func (a *App) Router() http.Handler {
 	}
 	r.Use(middleware.StripSlashes)
 	r.Use(securityHeaders)
+	// A page left open across an update learns of it from its next HTMX request (#167).
+	r.Use(middleware.SetHeader("X-Nutreek-Build", web.StaticVersion()))
 	r.Use(requestIDMiddleware)
 	r.Use(a.requestLogger)
 	r.Use(a.Sessions.LoadAndSave)
@@ -311,6 +313,11 @@ func (a *App) mountAdminAndAPI(r chi.Router) {
 		r.Post("/admin/panel/users/{id}/premium", a.handleAdminUserGrantPremium)
 		r.Post("/admin/panel/users/{id}/premium/revoke", a.handleAdminUserRevokePremium)
 		r.Post("/admin/panel/users/{id}/role", a.handleAdminUserRole)
+		if a.Updates != nil { // nil in the demo build (#167)
+			r.Get("/admin/update", a.handleUpdateHowTo)
+			r.Post("/admin/panel/updates/check", a.handleUpdateCheck)
+			r.Post("/admin/panel/updates/toggle", a.handleUpdateToggle)
+		}
 	})
 }
 
