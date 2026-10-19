@@ -99,6 +99,7 @@ make docker-up        # docker compose up --build
 | `NUTREEK_BACKUP_DIR` | `./data/backups` | where backups are written |
 | `NUTREEK_BACKUP_INTERVAL` | `24h` | automatic backup interval |
 | `NUTREEK_BACKUP_KEEP` | `7` | backups to keep (the oldest are deleted) |
+| `NUTREEK_UPDATE_CHECK` | `true` | release builds read `versions.json` (branch `site-data`) once a day and tell the owner of a newer release; the owner's switch lives in `instance_settings` |
 | `NUTREEK_DEMO_IDLE` | `2h` | demo build only: a demo session ends, and its group is deleted, after this long without use; every group is deleted nightly at 03:00 UTC |
 | `NUTREEK_DEMO_MAX_USERS` | `200` | demo build only: live demo users; then the entry says the demo is full |
 | `NUTREEK_DEMO_STARTS_PER_HOUR` | `10` | demo build only: demos started per client address per hour; then 429 |
