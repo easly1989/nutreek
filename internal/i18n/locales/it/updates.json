@@ -1,0 +1,45 @@
+{
+  "updates.card.available": "Nutreek {{.Version}} è disponibile",
+  "updates.card.current": "Hai la {{.Current}} · uscita {{.Ago}}",
+  "updates.how": "Come aggiornare",
+  "updates.notes": "Novità della versione",
+  "updates.notes_short": "Novità",
+  "updates.dismiss": "Nascondi fino alla prossima versione",
+  "updates.ago.minutes": {
+    "one": "{{.Count}} minuto fa",
+    "other": "{{.Count}} minuti fa"
+  },
+  "updates.ago.hours": {
+    "one": "{{.Count}} ora fa",
+    "other": "{{.Count}} ore fa"
+  },
+  "updates.ago.days": {
+    "one": "{{.Count}} giorno fa",
+    "other": "{{.Count}} giorni fa"
+  },
+  "updates.admin.title": "Aggiornamenti",
+  "updates.admin.installed": "Versione installata: {{.Version}}",
+  "updates.admin.available": "{{.Version}} è disponibile",
+  "updates.admin.published": "Uscita {{.Ago}}",
+  "updates.admin.up_to_date": "Nutreek è aggiornato",
+  "updates.admin.never_checked": "Non ancora controllato: il primo controllo parte un minuto dopo l'avvio.",
+  "updates.admin.failed": "L'ultimo controllo non ha avuto risposta da GitHub. Riprova domani, oppure subito con Controlla ora.",
+  "updates.admin.check_now": "Controlla ora",
+  "updates.admin.daily": "Controlla ogni giorno",
+  "updates.admin.daily_hint": "Legge solo il numero dell'ultima versione pubblicata su GitHub; non invia nulla.",
+  "updates.admin.last_check": "Ultimo controllo {{.Ago}}.",
+  "updates.admin.off_env": "Spento per questa installazione con NUTREEK_UPDATE_CHECK=false.",
+  "updates.admin.not_release": "Questa build ({{.Version}}) non è una release, quindi non cerca aggiornamenti.",
+  "updates.howto.title": "Aggiornare a {{.Version}}",
+  "updates.howto.title_plain": "Come aggiornare Nutreek",
+  "updates.howto.intro": "Nutreek non si aggiorna da solo: sostituire il proprio container richiederebbe il socket di Docker, cioè tutto il server. Bastano due comandi.",
+  "updates.howto.backup_title": "1. Fai un backup",
+  "updates.howto.backup": "Copia il file del database, nutreek.db nella cartella dei dati, o attiva i backup automatici con NUTREEK_BACKUP_ENABLED=true.",
+  "updates.howto.compose_title": "2. Con Docker Compose",
+  "updates.howto.run_title": "Con docker run",
+  "updates.howto.recreate": "Poi ricrea il container con gli stessi volumi. All'avvio Nutreek aggiorna il database da solo.",
+  "updates.howto.pinned": "Se l'immagine è fissata a un tag di versione, come :v2.0, cambialo con quello nuovo o con :latest.",
+  "updates.howto.guide": "Guida completa",
+  "updates.howto.copy": "Copia",
+  "updates.howto.copied": "Copiato"
+}
