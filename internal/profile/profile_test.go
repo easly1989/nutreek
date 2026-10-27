@@ -129,4 +129,22 @@ func TestTDEE(t *testing.T) {
 	}
 }
 
+func TestProteinWeight(t *testing.T) {
+	for _, tc := range []struct {
+		w, h float64
+		sex  string
+		want float64
+	}{
+		{120, 194, "M", 95.892},  // BMI 31.9: IBW 87.856, adjusted
+		{100, 165, "F", 67.7245}, // BMI 36.7: IBW 56.966, adjusted
+		{70, 175, "M", 70},       // BMI 22.9: the body weight
+		{120, 194, "", 120},      // no sex, no IBW
+		{120, 0, "M", 120},       // no height
+	} {
+		if got := ProteinWeight(tc.w, tc.h, tc.sex); math.Abs(got-tc.want) > 0.001 {
+			t.Errorf("ProteinWeight(%v, %v, %q) = %.4f, want %.4f", tc.w, tc.h, tc.sex, got, tc.want)
+		}
+	}
+}
+
 func ptr(v float64) *float64 { return &v }

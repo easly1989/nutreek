@@ -68,6 +68,22 @@ func TDEE(bmr, factor float64) float64 {
 	return bmr * factor
 }
 
+// ProteinWeight is the weight protein goals are dosed on: the body weight, or
+// with obesity (BMI >= 30) the adjusted body weight IBW + 0.25 x (weight - IBW),
+// so fat mass does not inflate the need. IBW is Devine's, in metric. It
+// matches effectiveProteinWeight in profile.js.
+func ProteinWeight(weightKg, heightCm float64, sex string) float64 {
+	if heightCm <= 0 || (sex != "M" && sex != "F") || BMI(weightKg, heightCm) < 30 {
+		return weightKg
+	}
+	ibw := 50.0
+	if sex == "F" {
+		ibw = 45.5
+	}
+	ibw += 0.91 * math.Max(0, heightCm-152.4)
+	return ibw + 0.25*(weightKg-ibw)
+}
+
 // CanComputeIndices checks that all the physical data is present and
 // plausible, so BMI and BMR can be computed.
 func CanComputeIndices(weightKg, heightCm *float64, birthYear *int, sex *string) bool {
