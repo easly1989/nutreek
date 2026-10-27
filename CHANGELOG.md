@@ -10,6 +10,12 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+---
+
+## [2.1.1] — 2026-10-27
+
+The onboarding wizard keeps your profile, and offers «Recalculate» like the Profile.
+
 ### Fixed
 - The onboarding wizard keeps the physical data from step 1: step 2 used to clear it when it saved the goals, and accepting the adaptive TDEE in Statistics cleared everything but the calories (#201)
 - The wizard's presets dose protein like the Profile, on the adjusted body weight with a BMI of 30 or more (#201)
