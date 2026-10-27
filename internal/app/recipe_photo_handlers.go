@@ -100,7 +100,7 @@ func (a *App) handleRecipePhotoUpload(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusRequestEntityTooLarge, "recipes.photo.error.too_large")
 		return
 	}
-	big, thumb, err := photo.Process(data)
+	big, thumb, err := photo.Process(r.Context(), data)
 	switch {
 	case errors.Is(err, photo.ErrFormat):
 		fail(http.StatusUnprocessableEntity, "recipes.photo.error.format")
@@ -108,6 +108,8 @@ func (a *App) handleRecipePhotoUpload(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, photo.ErrDimensions):
 		fail(http.StatusUnprocessableEntity, "recipes.photo.error.dimensions")
 		return
+	case err != nil && r.Context().Err() != nil:
+		return // the client left while waiting its turn
 	case err != nil:
 		a.serverError(w, r, err)
 		return

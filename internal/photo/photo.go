@@ -5,6 +5,7 @@ package photo
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"image"
 	"image/jpeg"
@@ -14,9 +15,13 @@ import (
 const (
 	MaxSide   = 1200       // long side of the stored photo
 	ThumbSide = 160        // side of the square thumbnail
-	MaxPixels = 40_000_000 // larger pictures are refused before decoding them
+	MaxPixels = 16_000_000 // larger pictures are refused before decoding them
 	quality   = 82
 )
+
+// slot lets one picture be decoded at a time: a 16 MP decode takes about
+// 64 MB, and a flat-colour PNG that large is a tiny upload.
+var slot = make(chan struct{}, 1)
 
 var (
 	// ErrFormat means the data is not a JPEG or PNG image.
@@ -26,8 +31,9 @@ var (
 )
 
 // Process decodes a JPEG or PNG and returns the photo and its center-cropped
-// square thumbnail, both JPEG. A transparent background turns white.
-func Process(data []byte) (photo, thumb []byte, err error) {
+// square thumbnail, both JPEG. A transparent background turns white. It
+// waits for its turn (see slot), or returns ctx.Err() when ctx ends first.
+func Process(ctx context.Context, data []byte) (photo, thumb []byte, err error) {
 	// The header alone first: a small file can claim a huge picture.
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil || (format != "jpeg" && format != "png") {
@@ -35,6 +41,12 @@ func Process(data []byte) (photo, thumb []byte, err error) {
 	}
 	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width*cfg.Height > MaxPixels {
 		return nil, nil, ErrDimensions
+	}
+	select {
+	case slot <- struct{}{}:
+		defer func() { <-slot }()
+	case <-ctx.Done():
+		return nil, nil, ctx.Err()
 	}
 	src, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
