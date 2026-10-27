@@ -75,16 +75,17 @@ type aggregatedSet struct {
 	} `json:"nutrients"`
 }
 
-// aggregatedPer100g returns the aggregated set when it is per 100 g, nil
-// otherwise (missing, malformed, per 100 ml or per serving).
-func aggregatedPer100g(nutrition json.RawMessage) *aggregatedSet {
+// aggregatedPer100 returns the aggregated set when it is per 100 g or per
+// 100 ml, nil otherwise (missing, malformed or per serving). Drinks come per
+// 100 ml: like the old nutriments' *_100g values, the app reads 1 ml as 1 g.
+func aggregatedPer100(nutrition json.RawMessage) *aggregatedSet {
 	var n struct {
 		AggregatedSet *aggregatedSet `json:"aggregated_set"`
 	}
 	if len(nutrition) == 0 || json.Unmarshal(nutrition, &n) != nil {
 		return nil
 	}
-	if s := n.AggregatedSet; s != nil && s.Per == "100g" && len(s.Nutrients) > 0 {
+	if s := n.AggregatedSet; s != nil && (s.Per == "100g" || s.Per == "100ml") && len(s.Nutrients) > 0 {
 		return s
 	}
 	return nil
@@ -202,8 +203,8 @@ func (r rawProduct) toProduct() Product {
 			kOK = true
 		}
 	}
-	// The dump's current shape wins when it carries values per 100 g.
-	if set := aggregatedPer100g(r.Nutrition); set != nil {
+	// The dump's current shape wins when it carries values per 100 g/ml.
+	if set := aggregatedPer100(r.Nutrition); set != nil {
 		grams = set.grams
 		kcal, kOK = set.kcal()
 	}
