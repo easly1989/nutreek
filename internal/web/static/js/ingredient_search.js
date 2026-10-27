@@ -70,10 +70,12 @@
     function dispatch(q, includeOFF) {
       var mySeq = ++seq;
       if (includeOFF) offInflight = true;
+      var headers = {};
+      headers[seqHeader] = inputId + ':' + mySeq;
       window.htmx.ajax('GET', buildURL(q, includeOFF), {
         target: target,
         swap: 'innerHTML',
-        headers: (function () { var h = {}; h[seqHeader] = inputId + ':' + mySeq; return h; })(),
+        headers: headers,
       }).then(function () {
         if (includeOFF) {
           offInflight = false;
@@ -104,11 +106,23 @@
       dbTimer = setTimeout(function () { dispatch('', false); }, DB_DELAY_MS);
     }
 
-    // Drop the response of a request that is no longer the latest.
+    // Drop the response of a request that is no longer the latest. Requests
+    // made elsewhere (the initial load, a refresh) carry no tag: they are
+    // dropped when their q no longer matches the box.
     document.body.addEventListener('htmx:beforeSwap', function (e) {
-      var h = e.detail.requestConfig && e.detail.requestConfig.headers;
-      var tag = h && h[seqHeader];
-      if (tag && tag.indexOf(inputId + ':') === 0 && tag !== inputId + ':' + seq) {
+      if (!input.isConnected) return;
+      var cfg = e.detail.requestConfig || {};
+      var tag = cfg.headers && cfg.headers[seqHeader];
+      if (tag) {
+        if (tag.indexOf(inputId + ':') === 0 && tag !== inputId + ':' + seq) {
+          e.detail.shouldSwap = false;
+        }
+        return;
+      }
+      if (!e.detail.target || !e.detail.target.matches || !e.detail.target.matches(target)) return;
+      var qs = String(cfg.path || '').split('?')[1];
+      var q = qs && new URLSearchParams(qs).get('q');
+      if (q !== null && q !== undefined && q.trim() !== (input.value || '').trim()) {
         e.detail.shouldSwap = false;
       }
     });
@@ -149,6 +163,7 @@
     // ingrediente», a tab change): the partial flags it, and the full search
     // starts here, unless it is already on its way.
     document.body.addEventListener('htmx:afterSwap', function (e) {
+      if (!input.isConnected) return;
       if (!e.target.matches || !e.target.matches(target)) return;
       if (!e.target.querySelector('[data-barcode-pending]')) return;
       if (offTimer || offInflight || noOFF()) return;
