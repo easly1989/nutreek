@@ -91,15 +91,15 @@
       <span class="thumb">{{template "off_thumb" $r.ImageURL}}</span>
     {{end}}
     <span class="grow min-w-0">
-      <span class="block truncate"><b class="font-semibold">{{$r.Name}}</b>{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
+      <span class="block truncate"><b class="font-semibold">{{$r.Name}}</b>{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}{{with $r.Quantity}} <span class="text-muted">· {{.}}</span>{{end}}</span>
       {{if $r.Allergens}}<span class="flex flex-wrap gap-1 mt-0.5">{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px]">{{ref "allergen" .Code .Name}}</span>{{end}}</span>{{end}}
     </span>
     <span class="text-right leading-tight tabular-nums whitespace-nowrap">
-      {{if $r.HasFullNutrients}}<b>{{num $r.Kcal}}</b> <span class="text-[12.5px] text-muted">{{t "picker.kcal_per_100" "Unit" $r.Unit}}</span>{{else}}<span class="text-[12.5px] text-muted">{{t "picker.macros_from_off"}}</span>{{end}}
+      <b>{{num $r.Kcal}}</b> <span class="text-[12.5px] text-muted">{{t "picker.kcal_per_100" "Unit" $r.Unit}}</span>
     </span>
     <span class="w-8 h-8 shrink-0 grid place-items-center rounded-full border border-border bg-surface text-accent group-open:rotate-45 transition-transform" aria-hidden="true">{{template "icon_sm" "i-plus"}}</span>
   </summary>
-  {{if and $scanned $r.HasFullNutrients}}
+  {{if $scanned}}
   <p class="flex gap-3.5 pl-4 lg:pl-5 pr-4 pt-1 bg-accent-soft text-[13px] tabular-nums">
     <span><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{dec $r.Protein 1}} g</span><span><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{dec $r.Carbs 1}} g</span><span><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{dec $r.Fat 1}} g</span>
     <span class="ml-auto text-muted text-[12.5px]">{{t "picker.per_100" "Unit" $r.Unit}}</span>
@@ -112,7 +112,7 @@
   {{- else if $cheat}}{{$action = printf "/meals/%d/cheat/items?start=%s" $d.MealID $d.WeekStart}}{{end}}
   <form method="post" action="{{$action}}" class="flex flex-wrap items-center gap-2 pl-4 lg:pl-5 pr-4 pt-1 pb-3 bg-accent-soft"
         {{if $d.InDialog}}hx-post="{{$action}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog{{end}}
-        data-kcal100="{{if $r.HasFullNutrients}}{{$r.Kcal}}{{end}}" data-unit-weight="{{$r.UnitWeightG}}">
+        data-kcal100="{{$r.Kcal}}" data-unit-weight="{{$r.UnitWeightG}}">
     <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
     {{if eq $d.PickerKind "nutritionist_item"}}<input type="hidden" name="variation_id" value="{{$d.VariationID}}">{{end}}
     {{if or (eq $d.PickerKind "meal_item") $cheat}}<input type="hidden" name="kind" value="ingredient">{{end}}

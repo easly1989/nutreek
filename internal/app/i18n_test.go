@@ -193,12 +193,6 @@ func TestEnglishLayoutAndIngredients(t *testing.T) {
 		{name: "edit, negative number", method: http.MethodPost, target: "/ingredients/x", id: oats, form: url.Values{"name": {"Oats"}, "unit": {"g"}, "kcal": {"1"}, "protein": {"-1"}}, want: "Invalid protein/100: negative value", handler: a.handleIngredientUpdate},
 		{name: "quick new", target: "/quick/ingredient", handler: a.handleQuickIngredientForm},
 		{name: "quick new, code taken", method: http.MethodPost, target: "/quick/ingredient", form: url.Values{"name": {"Kale"}, "barcode": {"8000000000002"}}, want: "already linked to", handler: a.handleQuickIngredientCreate},
-		{name: "macros of an OFF product", target: "/off/check/8012345678907", italian: ">G</b>", handler: func(w http.ResponseWriter, r *http.Request) {
-			a.writeMacroFragment(w, r, true, 372, 13.5, 58.7, 7)
-		}},
-		{name: "macros missing", target: "/off/check/8015555555556", handler: func(w http.ResponseWriter, r *http.Request) {
-			a.writeMacroFragment(w, r, false, 0, 0, 0, 0)
-		}},
 		{name: "not found", target: "/nowhere", handler: a.notFound},
 		{name: "server error", target: "/", handler: func(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, errors.New("boom"))

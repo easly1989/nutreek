@@ -1,0 +1,201 @@
+package off
+
+import (
+	"context"
+	"encoding/json"
+	"math"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+// A line of the dump in its current shape (#204), trimmed from a real one:
+// nutrients in nutrition.aggregated_set, nutriments empty, no image URL but
+// images.selected.front. Energy only in kJ, sodium in mg.
+const newShapeLine = `{"code":"8001234567895","product_name":"Banana","brands":"Chiquita,Other","quantity":"1 kg",
+"countries_tags":["en:italy"],"nutriments":{},"image_url":null,
+"nutrition":{"aggregated_set":{"per":"100g","preparation":"as_sold","nutrients":{
+  "energy-kj":{"value":372,"unit":"kJ","source_per":"100g"},
+  "energy":{"value":372,"unit":"kJ","source_per":"100g"},
+  "proteins":{"value":1.1,"unit":"g","source_per":"100g"},
+  "carbohydrates":{"value":"20","unit":"g","source_per":"100g"},
+  "fat":{"value":0.3,"unit":"g","source_per":"100g"},
+  "sugars":{"value":17,"unit":"g","source_per":"100g"},
+  "fiber":{"value":2.6,"unit":"g","source_per":"serving"},
+  "sodium":{"value":1,"unit":"mg","source_per":"100g"},
+  "cocoa":{"value":10,"unit":"%","source_per":"100g"}}},
+ "input_sets":[]},
+"images":{"uploaded":{"1":{}},"selected":{"front":{
+  "fr":{"rev":"4","imgid":"1","sizes":{"200":{"w":150,"h":200}}},
+  "it":{"rev":"7","imgid":"2","sizes":{"100":{},"200":{"w":150,"h":200},"full":{}}}}}}}`
+
+// A line in the old shape: nutriments with bare keys and the image URL.
+const oldShapeLine = `{"code":"8000000000017","product_name":"Grana Padano DOP","brands":"Consorzio",
+"countries_tags":["en:italy"],"nutriments":{"energy-kcal":384,"proteins":33,"carbohydrates":0,"fat":28,"sodium":0.6},
+"image_front_small_url":"https://images.openfoodfacts.org/images/products/800/000/000/0017/front_it.3.200.jpg"}`
+
+func parseLine(t *testing.T, line string) Product {
+	t.Helper()
+	var d dumpProduct
+	if err := json.Unmarshal([]byte(line), &d); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	return d.toProduct()
+}
+
+func near(a, b float64) bool { return math.Abs(a-b) < 1e-6 }
+
+func TestToProductDumpShapes(t *testing.T) {
+	p := parseLine(t, newShapeLine)
+	if !p.HasFullNutrients || !near(p.Kcal, 372/4.184) || p.Protein != 1.1 || p.Carbs != 20 || p.Fat != 0.3 {
+		t.Errorf("new shape macros: %+v", p)
+	}
+	if p.Sodium == nil || !near(*p.Sodium, 0.001) || p.Sugars == nil || *p.Sugars != 17 || p.Fiber == nil || *p.Fiber != 2.6 {
+		t.Errorf("new shape micronutrients: sodium %v sugars %v fiber %v", p.Sodium, p.Sugars, p.Fiber)
+	}
+	if p.Brand != "Chiquita" || p.Quantity != "1 kg" {
+		t.Errorf("new shape brand/quantity: %q %q", p.Brand, p.Quantity)
+	}
+	if want := "https://images.openfoodfacts.org/images/products/800/123/456/7895/front_it.7.200.jpg"; p.ImageURL != want {
+		t.Errorf("new shape image: %q, want %q", p.ImageURL, want)
+	}
+
+	p = parseLine(t, oldShapeLine)
+	if !p.HasFullNutrients || p.Kcal != 384 || p.Protein != 33 || p.Carbs != 0 || p.Fat != 28 {
+		t.Errorf("old shape macros: %+v", p)
+	}
+	if want := "https://images.openfoodfacts.org/images/products/800/000/000/0017/front_it.3.200.jpg"; p.ImageURL != want {
+		t.Errorf("old shape image: %q", p.ImageURL)
+	}
+}
+
+// Only values per 100 g count: a set per 100 ml or with a macro missing does
+// not make the product importable, and a malformed nutrition block does not
+// discard the rest of the line.
+func TestToProductIncomplete(t *testing.T) {
+	cases := map[string]string{
+		"per 100 ml":    `{"code":"1","product_name":"Latte","nutrition":{"aggregated_set":{"per":"100ml","nutrients":{"energy-kcal":{"value":46,"unit":"kcal"},"proteins":{"value":3.3,"unit":"g"},"carbohydrates":{"value":4.8,"unit":"g"},"fat":{"value":1.5,"unit":"g"}}}}}`,
+		"fat missing":   `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"}}}}}`,
+		"unknown unit":  `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"},"fat":{"value":1,"unit":"%"}}}}}`,
+		"malformed set": `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":"oops"},"images":[1]}`,
+	}
+	for name, line := range cases {
+		p := parseLine(t, line)
+		if p.HasFullNutrients || p.Name == "" {
+			t.Errorf("%s: %+v", name, p)
+		}
+	}
+}
+
+func TestFrontImageLanguage(t *testing.T) {
+	front := func(langs string) json.RawMessage {
+		return json.RawMessage(`{"selected":{"front":{` + langs + `}}}`)
+	}
+	const s = `{"rev":"2","sizes":{"200":{}}}`
+	cases := []struct {
+		name   string
+		images json.RawMessage
+		want   string // the file name, "" for no image
+	}{
+		{"Italian first", front(`"fr":` + s + `,"en":` + s + `,"it":` + s), "front_it.2.200.jpg"},
+		{"then English", front(`"fr":` + s + `,"en":` + s), "front_en.2.200.jpg"},
+		{"then the first other language", front(`"fr":` + s + `,"de":` + s), "front_de.2.200.jpg"},
+		{"numeric rev", front(`"it":{"rev":5,"sizes":{"200":{}}}`), "front_it.5.200.jpg"},
+		{"no 200 px size", front(`"it":{"rev":"2","sizes":{"full":{}}},"en":` + s), "front_en.2.200.jpg"},
+		{"a language that is not a code", front(`"../x":` + s), ""},
+		{"no front", json.RawMessage(`{"uploaded":{"1":{}}}`), ""},
+		{"no images", nil, ""},
+	}
+	for _, tc := range cases {
+		got := frontImageURL("8001234567895", tc.images)
+		want := ""
+		if tc.want != "" {
+			want = "https://images.openfoodfacts.org/images/products/800/123/456/7895/" + tc.want
+		}
+		if got != want {
+			t.Errorf("%s: %q, want %q", tc.name, got, want)
+		}
+	}
+}
+
+// After a parser upgrade the dump is read again even when its ETag has not
+// changed: no If-None-Match until the new version has imported it (#204).
+func TestSyncerParserVersionForcesReingest(t *testing.T) {
+	sqldb := openTestDB(t)
+	dump := makeDumpGzip(t, []string{strings.ReplaceAll(newShapeLine, "\n", "")})
+	downloads := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("If-None-Match") == `"same"` {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		downloads++
+		w.Header().Set("ETag", `"same"`)
+		_, _ = w.Write(dump)
+	}))
+	t.Cleanup(srv.Close)
+	syncer := NewSyncer(sqldb, srv.URL, nil)
+	ctx := context.Background()
+
+	// An instance synced by the old parser: same ETag, data without macros.
+	if _, err := sqldb.Exec(`UPDATE off_sync_state SET dump_etag = '"same"', last_synced_at = ?, parser_version = 0 WHERE id = 1`, time.Now().Unix()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sqldb.Exec(`INSERT INTO off_products (barcode, product_name, has_full_nutrients, updated_at) VALUES ('8001234567895', 'Banana', 0, 0)`); err != nil {
+		t.Fatal(err)
+	}
+
+	// The scheduler does not wait for the interval: the version is stale.
+	(&SyncScheduler{Syncer: syncer}).checkAndRun(ctx, 7*24*time.Hour, syncer.Logger)
+	if downloads != 1 {
+		t.Fatalf("downloads after the upgrade: %d, want 1", downloads)
+	}
+	var full int
+	var image string
+	if err := sqldb.QueryRow(`SELECT has_full_nutrients, image_url FROM off_products WHERE barcode = '8001234567895'`).Scan(&full, &image); err != nil || full != 1 || image == "" {
+		t.Errorf("re-ingested product: full %d image %q err %v", full, image, err)
+	}
+	if st, err := syncer.LoadState(ctx); err != nil || st.ParserVersion != ParserVersion {
+		t.Errorf("parser version after the sync: %+v, %v", st, err)
+	}
+
+	// From now on the unchanged ETag is a 304 again, and the scheduler waits.
+	stats, err := syncer.SyncDump(ctx)
+	if err != nil || !stats.Skipped || downloads != 1 {
+		t.Errorf("second sync: %+v, %v, %d downloads", stats, err, downloads)
+	}
+	(&SyncScheduler{Syncer: syncer}).checkAndRun(ctx, 7*24*time.Hour, syncer.Logger)
+	if downloads != 1 {
+		t.Errorf("the scheduler synced again before the interval: %d downloads", downloads)
+	}
+}
+
+// Search offers only importable products, and exact duplicates once (#204).
+func TestSearchByNameImportableAndDistinct(t *testing.T) {
+	sqldb := openTestDB(t)
+	seedOFFProducts(t, sqldb, []Product{
+		{Code: "1000000000001", Name: "Banana", Brand: "Chiquita", Kcal: 89, Protein: 1.1, Carbs: 20, Fat: 0.3, HasFullNutrients: true},
+		{Code: "1000000000002", Name: "BANANA", Brand: "Chiquita", Kcal: 89, Protein: 1.1, Carbs: 20, Fat: 0.3, HasFullNutrients: true},
+		{Code: "1000000000003", Name: "Banana", Brand: "Chiquita", Kcal: 95, Protein: 1.2, Carbs: 22, Fat: 0.3, HasFullNutrients: true},
+		{Code: "1000000000004", Name: "Banana", Brand: "Dole", Kcal: 89, Protein: 1.1, Carbs: 20, Fat: 0.3, HasFullNutrients: true},
+		{Code: "1000000000005", Name: "Banana", Brand: "Chiquita", HasFullNutrients: false},
+	})
+	got, err := NewClient(sqldb, "", nil).SearchByName(context.Background(), "banana")
+	if err != nil {
+		t.Fatal(err)
+	}
+	codes := map[string]bool{}
+	for _, p := range got {
+		if !p.HasFullNutrients {
+			t.Errorf("a product without macros is offered: %+v", p)
+		}
+		codes[p.Code] = true
+	}
+	// 0001 and 0002 are the same product: one of them stays.
+	if len(got) != 3 || !codes["1000000000003"] || !codes["1000000000004"] || codes["1000000000005"] ||
+		codes["1000000000001"] == codes["1000000000002"] {
+		t.Errorf("results: %+v", got)
+	}
+}
