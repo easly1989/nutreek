@@ -20,7 +20,7 @@ type onboardingData struct {
 	Form      profileForm
 	Templates []*domain.MealTemplate
 	TDEE      float64 // energy needs from the step 1 data, 0 when it cannot be computed
-	Weight    float64 // for the step 2 presets (g/kg of protein)
+	Weight    float64 // what step 2 doses protein on (g/kg), 0 when unknown
 }
 
 // handleOnboardingPage GET /onboarding — shows the wizard's current step.
@@ -51,6 +51,9 @@ func (a *App) handleOnboardingPage(w http.ResponseWriter, r *http.Request) {
 	data.Bare = true
 	data.TDEE = onboardingTDEE(user)
 	data.Weight = derefFloat(user.WeightKg)
+	if user.WeightKg != nil && user.HeightCm != nil && user.Sex != nil {
+		data.Weight = profile.ProteinWeight(*user.WeightKg, *user.HeightCm, *user.Sex)
+	}
 
 	// Step 4 needs the available templates.
 	if step == 4 {
@@ -80,14 +83,14 @@ func (a *App) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 	switch step {
 	case 1:
 		// Save the physical data — permissive: when parsing fails, skip silently.
-		if inp := parseOnboardingPhysical(r); inp != nil {
+		if inp := parseOnboardingPhysical(r, profileInput(user)); inp != nil {
 			_ = a.Users.UpdateProfile(ctx, user.ID, *inp)
 		}
 		http.Redirect(w, r, "/onboarding?step=2"+restartSuffix, http.StatusSeeOther)
 
 	case 2:
 		// Save the macro goals — permissive.
-		if inp := parseOnboardingMacros(r); inp != nil {
+		if inp := parseOnboardingMacros(r, profileInput(user)); inp != nil {
 			_ = a.Users.UpdateProfile(ctx, user.ID, *inp)
 		}
 		http.Redirect(w, r, "/onboarding?step=3"+restartSuffix, http.StatusSeeOther)
@@ -125,9 +128,9 @@ func (a *App) handleOnboardingStep(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// parseOnboardingPhysical extracts the physical data from the step 1 form.
-// Returns nil when every field is empty (no update needed).
-func parseOnboardingPhysical(r *http.Request) *db.UserProfileInput {
+// parseOnboardingPhysical puts the physical data from the step 1 form on base,
+// the current profile. Returns nil when every field is empty (no update needed).
+func parseOnboardingPhysical(r *http.Request, base db.UserProfileInput) *db.UserProfileInput {
 	weightKg, _ := parseOptionalPositiveFloat(strings.TrimSpace(r.FormValue("weight_kg")))
 	heightCm, _ := parseOptionalPositiveFloat(strings.TrimSpace(r.FormValue("height_cm")))
 	birthYear, _ := parseOptionalInt(strings.TrimSpace(r.FormValue("birth_year")))
@@ -155,19 +158,14 @@ func parseOnboardingPhysical(r *http.Request) *db.UserProfileInput {
 		bmrPtr = &bmr
 	}
 
-	return &db.UserProfileInput{
-		WeightKg:      weightKg,
-		HeightCm:      heightCm,
-		BirthYear:     birthYear,
-		Sex:           sexPtr,
-		ActivityLevel: actPtr,
-		BMI:           bmiPtr,
-		BMR:           bmrPtr,
-	}
+	base.WeightKg, base.HeightCm, base.BirthYear, base.Sex = weightKg, heightCm, birthYear, sexPtr
+	base.ActivityLevel, base.BMI, base.BMR = actPtr, bmiPtr, bmrPtr
+	return &base
 }
 
-// parseOnboardingMacros extracts the macro targets from the step 2 form.
-func parseOnboardingMacros(r *http.Request) *db.UserProfileInput {
+// parseOnboardingMacros puts the macro targets from the step 2 form on base,
+// the current profile.
+func parseOnboardingMacros(r *http.Request, base db.UserProfileInput) *db.UserProfileInput {
 	targetKcal, _ := parseOptionalNonNegFloat(strings.TrimSpace(r.FormValue("target_kcal")))
 	targetProtein, _ := parseOptionalNonNegFloat(strings.TrimSpace(r.FormValue("target_protein")))
 	targetCarbs, _ := parseOptionalNonNegFloat(strings.TrimSpace(r.FormValue("target_carbs")))
@@ -177,12 +175,8 @@ func parseOnboardingMacros(r *http.Request) *db.UserProfileInput {
 		return nil
 	}
 
-	return &db.UserProfileInput{
-		TargetKcal:    targetKcal,
-		TargetProtein: targetProtein,
-		TargetCarbs:   targetCarbs,
-		TargetFat:     targetFat,
-	}
+	base.TargetKcal, base.TargetProtein, base.TargetCarbs, base.TargetFat = targetKcal, targetProtein, targetCarbs, targetFat
+	return &base
 }
 
 // onboardingTDEE estimates the energy needs from the profile's physical data,
