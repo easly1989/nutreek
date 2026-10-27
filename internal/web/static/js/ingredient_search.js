@@ -16,6 +16,7 @@
 (function () {
   var DB_DELAY_MS = 150;
   var OFF_DELAY_MS = 1000;
+  var uid = 0;
 
   function init(input) {
     if (input.__nutreekSearchBound) return;
@@ -34,9 +35,11 @@
     var offTimer = null;
     var offInflight = false;
     var lastDispatchedQ = null;
-    // Incremental token: ignore responses arriving out of order (the user
-    // has already changed the query in the meantime).
+    // Incremental token: a response is swapped in only while it belongs to the
+    // latest dispatch (the user has not changed the query in the meantime).
     var seq = 0;
+    var seqHeader = 'X-Search-Seq';
+    var inputId = ++uid;
 
     function spinner() {
       return spinnerSel ? document.querySelector(spinnerSel) : null;
@@ -68,6 +71,7 @@
       window.htmx.ajax('GET', buildURL(q, includeOFF), {
         target: target,
         swap: 'innerHTML',
+        headers: (function () { var h = {}; h[seqHeader] = inputId + ':' + mySeq; return h; })(),
       }).then(function () {
         if (includeOFF) {
           offInflight = false;
@@ -84,18 +88,35 @@
       });
     }
 
+    // Back to what the picker shows before any search: the target reloads its
+    // own list when it has one (hx-get, the meal picker), else it is empty
+    // (the recipe page). Bumping seq first drops any response still on its way.
+    function reset() {
+      clearTimeout(dbTimer);
+      clearTimeout(offTimer); offTimer = null;
+      ++seq;
+      hideSpinner();
+      offInflight = false;
+      var el = document.querySelector(target);
+      if (el && !el.hasAttribute('hx-get')) { el.innerHTML = ''; return; }
+      dbTimer = setTimeout(function () { dispatch('', false); }, DB_DELAY_MS);
+    }
+
+    // Drop the response of a request that is no longer the latest.
+    document.body.addEventListener('htmx:beforeSwap', function (e) {
+      var h = e.detail.requestConfig && e.detail.requestConfig.headers;
+      var tag = h && h[seqHeader];
+      if (tag && tag.indexOf(inputId + ':') === 0 && tag !== inputId + ':' + seq) {
+        e.detail.shouldSwap = false;
+      }
+    });
+
     function onInput() {
       var q = (input.value || '').trim();
       clearTimeout(dbTimer);
       clearTimeout(offTimer); offTimer = null;
 
-      if (q === '') {
-        // Reset: no OFF search to wait for, no spinner.
-        hideSpinner();
-        offInflight = false;
-        dbTimer = setTimeout(function () { dispatch('', false); }, DB_DELAY_MS);
-        return;
-      }
+      if (q === '') { reset(); return; }
 
       var skipOFF = noOFF();
       if (!skipOFF) {
@@ -137,7 +158,7 @@
       var q = (input.value || '').trim();
       clearTimeout(dbTimer);
       clearTimeout(offTimer); offTimer = null;
-      if (q === '') { hideSpinner(); return; }
+      if (q === '') { reset(); return; }
       if (noOFF()) { dispatch(q, false); return; }
       showSpinner();
       dispatch(q, true);
