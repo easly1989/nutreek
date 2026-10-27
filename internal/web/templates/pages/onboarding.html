@@ -74,12 +74,13 @@
 
 {{/* ===================== STEP 2: goals ===================== */}}
 {{define "onboarding_step2"}}
-<form method="post" action="/onboarding" class="flex flex-col gap-[18px]">
+<form method="post" action="/onboarding" class="flex flex-col gap-[18px]" id="ob-goals" data-tdee="{{printf "%.0f" .TDEE}}" data-weight="{{printf "%.1f" .Weight}}"
+      data-msg-protein="{{t "profile.js.rebalance_protein" "Value" "{value}"}}" data-msg-carbs="{{t "profile.js.rebalance_carbs" "Value" "{value}"}}" data-msg-fat="{{t "profile.js.rebalance_fat" "Value" "{value}"}}">
   {{template "onboarding_hidden" .}}
   <div class="card">
     <div><h1 class="h1">{{t "onboarding.goals.title"}}</h1><p class="text-muted mt-1">{{t "onboarding.goals.lead"}}</p></div>
     {{if gt .TDEE 0.0}}
-    <div class="on-soft rounded-xl bg-accent-soft p-3 flex flex-col gap-2" id="ob-presets" data-tdee="{{printf "%.0f" .TDEE}}" data-weight="{{.Weight}}">
+    <div class="on-soft rounded-xl bg-accent-soft p-3 flex flex-col gap-2">
       <p>{{t "onboarding.goals.needs_before"}} <b>{{num .TDEE}} kcal</b>. {{t "onboarding.goals.needs_after"}}</p>
       <div class="flex flex-wrap gap-2">
         <button type="button" class="filter" data-preset="maintenance" aria-pressed="false">{{t "onboarding.goals.maintenance"}}</button>
@@ -93,6 +94,14 @@
       <label class="lab">{{t "onboarding.goals.protein"}}<span class="field-unit"><input id="ob-protein" name="target_protein" inputmode="decimal" value="{{.Form.TargetProtein}}" placeholder="120" class="field"><em>g</em></span></label>
       <label class="lab">{{t "onboarding.goals.carbs"}}<span class="field-unit"><input id="ob-carbs" name="target_carbs" inputmode="decimal" value="{{.Form.TargetCarbs}}" placeholder="250" class="field"><em>g</em></span></label>
       <label class="lab">{{t "onboarding.goals.fat"}}<span class="field-unit"><input id="ob-fat" name="target_fat" inputmode="decimal" value="{{.Form.TargetFat}}" placeholder="70" class="field"><em>g</em></span></label>
+    </div>
+    {{/* As in the Profile: new calories offer to recalculate the macros. */}}
+    <div id="ob-rebalance" class="hidden on-soft rounded-xl bg-accent-soft p-3 flex flex-col gap-2" role="status">
+      <p><b>{{t "profile.goals.rebalance_question"}}</b> <span id="ob-rebalance-text" class="tabular-nums"></span></p>
+      <div class="flex gap-2">
+        <button type="button" class="btn-primary" data-rebalance-apply>{{t "profile.goals.rebalance_apply"}}</button>
+        <button type="button" class="btn-ghost" data-rebalance-dismiss>{{t "profile.goals.rebalance_dismiss"}}</button>
+      </div>
     </div>
   </div>
   {{template "onboarding_nav" .}}
@@ -148,26 +157,54 @@
 
 {{define "scripts"}}
 <script>
-// Step 2: the presets start from the energy needs, as in the Profile.
+// Step 2: the presets and «Recalculate» work as in the Profile (profile.js):
+// protein on the weight from the server, fat as a share, carbs the rest.
 (function () {
-  var box = document.getElementById("ob-presets");
-  if (!box) return;
-  var tdee = parseFloat(box.dataset.tdee), weight = parseFloat(box.dataset.weight) || 0;
+  var form = document.getElementById("ob-goals");
+  if (!form) return;
+  var tdee = parseFloat(form.dataset.tdee) || 0, weight = parseFloat(form.dataset.weight) || 0;
   var S = { maintenance: [1.0, 1.6, 0.28], cut: [0.8, 2.0, 0.25], bulk: [1.1, 1.8, 0.25] };
-  box.addEventListener("click", function (e) {
+  var strategy = S.maintenance, pending = null;
+  var kcalField = document.getElementById("ob-kcal"), panel = document.getElementById("ob-rebalance");
+  var lang = document.documentElement.lang || "it";
+
+  function split(kcal) {
+    var prot = weight ? Math.round(weight * strategy[1]) : Math.round(kcal * 0.2 / 4);
+    var fat = Math.round(kcal * strategy[2] / 9);
+    return { protein: prot, carbs: Math.max(0, Math.round((kcal - prot * 4 - fat * 9) / 4)), fat: fat };
+  }
+  function fill(m) {
+    ["protein", "carbs", "fat"].forEach(function (k) { document.getElementById("ob-" + k).value = m[k]; });
+    panel.classList.add("hidden");
+  }
+
+  form.addEventListener("click", function (e) {
     var b = e.target.closest("[data-preset]");
-    if (!b) return;
-    var s = S[b.dataset.preset], kcal = Math.round(tdee * s[0]);
-    var prot = weight ? Math.round(weight * s[1]) : Math.round(kcal * 0.2 / 4);
-    var fat = Math.round(kcal * s[2] / 9), carbs = Math.max(0, Math.round((kcal - prot * 4 - fat * 9) / 4));
-    document.getElementById("ob-kcal").value = kcal;
-    document.getElementById("ob-protein").value = prot;
-    document.getElementById("ob-carbs").value = carbs;
-    document.getElementById("ob-fat").value = fat;
-    box.querySelectorAll("[data-preset]").forEach(function (o) {
-      o.classList.toggle("is-on", o === b);
-      o.setAttribute("aria-pressed", String(o === b));
-    });
+    if (b) {
+      strategy = S[b.dataset.preset];
+      var kcal = Math.round(tdee * strategy[0]);
+      kcalField.value = kcal;
+      fill(split(kcal));
+      form.querySelectorAll("[data-preset]").forEach(function (o) {
+        o.classList.toggle("is-on", o === b);
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+    } else if (e.target.closest("[data-rebalance-apply]")) {
+      fill(pending);
+    } else if (e.target.closest("[data-rebalance-dismiss]")) {
+      panel.classList.add("hidden");
+    }
+  });
+
+  kcalField.addEventListener("input", function () {
+    var kcal = parseFloat(kcalField.value.replace(",", "."));
+    if (!(kcal >= 800)) { panel.classList.add("hidden"); return; }
+    pending = split(kcal);
+    document.getElementById("ob-rebalance-text").textContent = ["protein", "carbs", "fat"].map(function (k) {
+      // No break inside one macro, so "56 g" never splits.
+      return form.dataset["msg" + k[0].toUpperCase() + k.slice(1)].replace("{value}", pending[k].toLocaleString(lang)).replace(/ /g, " ");
+    }).join(" · ");
+    panel.classList.remove("hidden");
   });
 })();
 </script>

@@ -4,8 +4,6 @@ import (
 	"math"
 	"net/http"
 	"strconv"
-
-	"github.com/amon2126/nutreek/internal/db"
 )
 
 // handleAcceptTDEESuggestion updates the user's target_kcal with the estimated
@@ -22,7 +20,9 @@ func (a *App) handleAcceptTDEESuggestion(w http.ResponseWriter, r *http.Request)
 	}
 	rounded := math.Round(v)
 
-	if err := a.Users.UpdateProfile(ctx, user.ID, db.UserProfileInput{TargetKcal: &rounded}); err != nil {
+	inp := profileInput(user)
+	inp.TargetKcal = &rounded
+	if err := a.Users.UpdateProfile(ctx, user.ID, inp); err != nil {
 		a.serverError(w, r, err)
 		return
 	}

@@ -81,6 +81,16 @@ func profileFormFromUser(u *domain.User) profileForm {
 	return f
 }
 
+// profileInput is u's profile as it stands. UpdateProfile writes every field,
+// so a change to some of them starts from here to keep the others (#201).
+func profileInput(u *domain.User) db.UserProfileInput {
+	return db.UserProfileInput{
+		WeightKg: u.WeightKg, HeightCm: u.HeightCm, BirthYear: u.BirthYear, Sex: u.Sex,
+		TargetKcal: u.TargetKcal, TargetProtein: u.TargetProtein, TargetCarbs: u.TargetCarbs, TargetFat: u.TargetFat,
+		BMI: u.BMI, BMR: u.BMR, ActivityLevel: u.ActivityLevel,
+	}
+}
+
 func formatOptFloat(v float64) string {
 	if v == float64(int64(v)) {
 		return strconv.FormatInt(int64(v), 10)
