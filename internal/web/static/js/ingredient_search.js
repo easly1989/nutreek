@@ -11,6 +11,8 @@
 //   data-search-target="#results-container"
 //   data-search-spinner="#spinner-container"   (optional)
 //   data-search-extra="kind=ingredient&start=..."  (optional, fixed params)
+//   data-search-reset="empty"   (optional: clearing the box empties the target
+//                                instead of re-requesting q="")
 //
 // The endpoint must accept `q` and `off=1` (see searchMixed on the Go side).
 (function () {
@@ -88,9 +90,9 @@
       });
     }
 
-    // Back to what the picker shows before any search: the target reloads its
-    // own list when it has one (hx-get, the meal picker), else it is empty
-    // (the recipe page). Bumping seq first drops any response still on its way.
+    // Back to what the page shows before any search: empty when the input says
+    // so (the recipe page), else the list for q="". Bumping seq first drops any
+    // response still on its way.
     function reset() {
       clearTimeout(dbTimer);
       clearTimeout(offTimer); offTimer = null;
@@ -98,7 +100,7 @@
       hideSpinner();
       offInflight = false;
       var el = document.querySelector(target);
-      if (el && !el.hasAttribute('hx-get')) { el.innerHTML = ''; return; }
+      if (el && input.dataset.searchReset === 'empty') { el.innerHTML = ''; return; }
       dbTimer = setTimeout(function () { dispatch('', false); }, DB_DELAY_MS);
     }
 
