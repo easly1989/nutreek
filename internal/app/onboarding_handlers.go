@@ -20,7 +20,7 @@ type onboardingData struct {
 	Form      profileForm
 	Templates []*domain.MealTemplate
 	TDEE      float64 // energy needs from the step 1 data, 0 when it cannot be computed
-	Weight    float64 // for the step 2 presets (g/kg of protein)
+	Weight    float64 // what step 2 doses protein on (g/kg), 0 when unknown
 }
 
 // handleOnboardingPage GET /onboarding — shows the wizard's current step.
@@ -51,6 +51,9 @@ func (a *App) handleOnboardingPage(w http.ResponseWriter, r *http.Request) {
 	data.Bare = true
 	data.TDEE = onboardingTDEE(user)
 	data.Weight = derefFloat(user.WeightKg)
+	if user.WeightKg != nil && user.HeightCm != nil && user.Sex != nil {
+		data.Weight = profile.ProteinWeight(*user.WeightKg, *user.HeightCm, *user.Sex)
+	}
 
 	// Step 4 needs the available templates.
 	if step == 4 {
