@@ -86,6 +86,7 @@
           // After "New ingredient" the picker refreshes with the current query.
           window.addEventListener('ingredient-created', function () {
             var search = document.getElementById('recipe-ing-search');
+            if (!search || !search.value.trim()) return;
             htmx.ajax('GET', '/recipes/{{.Recipe.ID}}/picker?q=' + encodeURIComponent((search && search.value) || ''), {
               target: '#picker-results', swap: 'innerHTML'
             });
