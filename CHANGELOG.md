@@ -10,6 +10,9 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Fixed
+- Clearing the ingredient picker's search brings back what the picker showed before any search, and a slow answer for an older query no longer repaints the results (#205)
+
 ---
 
 ## [2.1.1] — 2026-10-27
