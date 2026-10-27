@@ -10,6 +10,9 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Added
+- A photo for every recipe (#207): add, change or remove it at the top of the recipe page; the list shows a thumbnail. The page shrinks the picture before sending it, so phone photos come out upright and WebP works; the server keeps a JPEG of at most 1200 px, without EXIF data such as the position, inside the database, so backups include it. Whoever can see the recipe sees its photo; duplicating a recipe copies it (migration 0033)
+
 ---
 
 ## [2.1.1] — 2026-10-27
