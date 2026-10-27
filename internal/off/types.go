@@ -203,10 +203,19 @@ func (r rawProduct) toProduct() Product {
 			kOK = true
 		}
 	}
-	// The dump's current shape wins when it carries values per 100 g/ml.
+	// The dump's current shape wins when it carries values per 100 g/ml;
+	// a nutrient missing from it still comes from nutriments.
 	if set := aggregatedPer100(r.Nutrition); set != nil {
-		grams = set.grams
-		kcal, kOK = set.kcal()
+		fromNutriments := grams
+		grams = func(name string) (float64, bool) {
+			if v, ok := set.grams(name); ok {
+				return v, true
+			}
+			return fromNutriments(name)
+		}
+		if v, ok := set.kcal(); ok {
+			kcal, kOK = v, true
+		}
 	}
 	prot, pOK := grams("proteins")
 	carbs, cOK := grams("carbohydrates")
@@ -245,9 +254,10 @@ func lookupNutrient(m map[string]json.RawMessage, key string) (float64, bool) {
 	return flexFloat(m[key])
 }
 
-// flexFloat reads a value OFF can write as a number or a string.
+// flexFloat reads a value OFF can write as a number or a string; null is
+// missing, not 0.
 func flexFloat(raw json.RawMessage) (float64, bool) {
-	if len(raw) == 0 {
+	if len(raw) == 0 || string(raw) == "null" {
 		return 0, false
 	}
 	// Try a number (most cases).

@@ -79,15 +79,32 @@ func TestToProductPer100ml(t *testing.T) {
 	}
 }
 
+// A nutrient missing from the aggregated set, or null there, still comes from
+// nutriments; the set wins where it has a value.
+func TestToProductPartialSet(t *testing.T) {
+	p := parseLine(t, `{"code":"1","product_name":"Yogurt",
+"nutriments":{"energy-kcal_100g":61,"proteins_100g":9,"fat_100g":3.1,"sugars_100g":4},
+"nutrition":{"aggregated_set":{"per":"100g","nutrients":{
+  "proteins":{"value":3.5,"unit":"g"},"carbohydrates":{"value":4.7,"unit":"g"},"fat":{"value":null,"unit":"g"}}}}}`)
+	if !p.HasFullNutrients || p.Kcal != 61 || p.Protein != 3.5 || p.Carbs != 4.7 || p.Fat != 3.1 {
+		t.Errorf("partial set: %+v", p)
+	}
+	if p.Sugars == nil || *p.Sugars != 4 {
+		t.Errorf("sugars from nutriments: %v", p.Sugars)
+	}
+}
+
 // Only values per 100 g/ml count: a set per serving or with a macro missing
 // does not make the product importable, and a malformed nutrition block does
 // not discard the rest of the line.
 func TestToProductIncomplete(t *testing.T) {
 	cases := map[string]string{
-		"per serving":   `{"code":"1","product_name":"Latte","nutrition":{"aggregated_set":{"per":"serving","nutrients":{"energy-kcal":{"value":46,"unit":"kcal"},"proteins":{"value":3.3,"unit":"g"},"carbohydrates":{"value":4.8,"unit":"g"},"fat":{"value":1.5,"unit":"g"}}}}}`,
-		"fat missing":   `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"}}}}}`,
-		"unknown unit":  `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"},"fat":{"value":1,"unit":"%"}}}}}`,
-		"malformed set": `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":"oops"},"images":[1]}`,
+		"per serving":        `{"code":"1","product_name":"Latte","nutrition":{"aggregated_set":{"per":"serving","nutrients":{"energy-kcal":{"value":46,"unit":"kcal"},"proteins":{"value":3.3,"unit":"g"},"carbohydrates":{"value":4.8,"unit":"g"},"fat":{"value":1.5,"unit":"g"}}}}}`,
+		"fat missing":        `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"}}}}}`,
+		"unknown unit":       `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"},"fat":{"value":1,"unit":"%"}}}}}`,
+		"null in nutriments": `{"code":"1","product_name":"Pane","nutriments":{"energy-kcal":250,"proteins":null,"carbohydrates":50,"fat":1}}`,
+		"null in the set":    `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":null,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"},"fat":{"value":1,"unit":"g"}}}}}`,
+		"malformed set":      `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":"oops"},"images":[1]}`,
 	}
 	for name, line := range cases {
 		p := parseLine(t, line)
