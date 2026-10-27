@@ -114,6 +114,44 @@
     </div>
 
     <aside class="flex flex-col gap-3 order-first lg:order-none">
+      {{/* The photo (#207). The file pickers are labels around a hidden
+           input; static/js/recipe_photo.js shrinks the picture and uploads
+           it, without it the form posts the file. Viewers see no empty box. */}}
+      {{if or .PhotoETag .CanEdit}}
+      <section class="card p-3 flex flex-col gap-2.5" data-photo>
+        {{if .PhotoETag}}
+          <img src="/recipes/{{.Recipe.ID}}/photo?v={{.PhotoETag}}" alt="{{.Recipe.Name}}" class="w-full aspect-video sm:aspect-[4/3] object-cover rounded-[14px] bg-surface-2">
+        {{end}}
+        {{if .CanEdit}}
+          <form method="post" action="/recipes/{{.Recipe.ID}}/photo" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2 aria-busy:opacity-60 aria-busy:pointer-events-none"
+                data-photo-max="{{.PhotoMax}}" data-msg-too-large="{{t "recipes.photo.error.too_large"}}" data-msg-failed="{{t "recipes.photo.error.failed"}}">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            {{if .PhotoETag}}
+              <label class="btn-secondary file-pick cursor-pointer">{{template "icon" "i-camera"}}{{t "recipes.photo.change"}}<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="sr-only" data-photo-input></label>
+              <button type="submit" form="recipe-photo-delete" class="btn-ghost text-danger ml-auto">{{t "recipes.photo.remove"}}</button>
+            {{else}}
+              <label class="file-pick w-full grid place-items-center aspect-[4/3] rounded-[14px] border-[1.5px] border-dashed border-border text-center cursor-pointer hover:bg-surface-2 transition-colors">
+                <span class="flex flex-col items-center gap-2 px-4 text-muted">
+                  {{template "icon_lg" "i-camera"}}
+                  <span class="font-semibold text-text">{{t "recipes.photo.add"}}</span>
+                  <span class="text-[12.5px]">{{t "recipes.photo.hint"}}</span>
+                </span>
+                <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="sr-only" data-photo-input>
+              </label>
+            {{end}}
+            <noscript><button class="btn-secondary">{{t "recipes.photo.upload"}}</button></noscript>
+          </form>
+          <p class="text-[12.5px] text-muted" role="status" data-photo-status hidden><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>{{t "recipes.photo.uploading"}}</p>
+          <p class="text-[12.5px] text-danger" role="alert" data-photo-error hidden></p>
+          {{if .PhotoETag}}
+          <form id="recipe-photo-delete" method="post" action="/recipes/{{.Recipe.ID}}/photo/delete" class="hidden"
+                data-confirm="{{t "recipes.photo.remove_confirm" "Name" .Recipe.Name}}">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          </form>
+          {{end}}
+        {{end}}
+      </section>
+      {{end}}
       <section class="card p-4 flex flex-col gap-3">
         <div class="flex items-center"><h2 class="h2">{{t "recipes.edit.per_serving"}}</h2><span class="ml-auto text-[12.5px] text-muted">{{t "recipes.edit.one_of" "Servings" .Recipe.Servings}}</span></div>
         <p><span class="text-[28px] font-bold tabular-nums">{{num .PerServing.Kcal}}</span> <span class="text-muted">kcal</span></p>
@@ -138,4 +176,5 @@
     </aside>
   </div>
 </div>
+{{if .CanEdit}}<script src="{{asset "js/recipe_photo.js"}}" defer></script>{{end}}
 {{end}}
