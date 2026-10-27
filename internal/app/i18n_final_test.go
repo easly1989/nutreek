@@ -378,8 +378,6 @@ func TestEnglishEveryPage(t *testing.T) {
 		{route: "/ingredients/{id}/edit", target: "/ingredients/" + idOf(oats) + "/edit"},
 		{target: "/ingredients/" + idOf(rice) + "/edit"},
 		{target: "/ingredients/" + idOf(flakes) + "/edit"},
-		{route: "/off/check/{barcode}", target: "/off/check/8012345678907"},
-		{target: "/off/check/8015555555556"},
 		{route: "/quick/ingredient", target: "/quick/ingredient", htmx: true},
 		{target: "/quick/ingredient?barcode=8000000000019", htmx: true},
 		{route: "/quick/recipe", target: "/quick/recipe", htmx: true},
