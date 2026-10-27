@@ -2,6 +2,7 @@ package photo
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"hash/crc32"
@@ -11,6 +12,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"testing"
+	"time"
 )
 
 // withEXIF puts an APP1 (EXIF) segment holding secret right after the SOI.
@@ -54,7 +56,7 @@ func TestProcessJPEG(t *testing.T) {
 		t.Fatalf("the test JPEG does not decode: %v", err)
 	}
 
-	photo, thumb, err := Process(in)
+	photo, thumb, err := Process(context.Background(), in)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +79,7 @@ func TestProcessPNG(t *testing.T) {
 	if err := png.Encode(&buf, img); err != nil {
 		t.Fatal(err)
 	}
-	photo, thumb, err := Process(buf.Bytes())
+	photo, thumb, err := Process(context.Background(), buf.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,12 +108,44 @@ func TestProcessRefuses(t *testing.T) {
 		{"text", []byte("not a picture"), ErrFormat},
 		{"gif", g.Bytes(), ErrFormat},
 		{"truncated jpeg", []byte{0xFF, 0xD8, 0xFF}, ErrFormat},
-		{"huge png", pngHeader(10000, 10000), ErrDimensions},
+		{"png over 16 MP", pngHeader(4000, 4001), ErrDimensions},
+		// At the limit the header passes; the body is missing.
+		{"png of 16 MP", pngHeader(4000, 4000), ErrFormat},
 	}
 	for _, c := range cases {
-		if _, _, err := Process(c.data); !errors.Is(err, c.want) {
+		if _, _, err := Process(context.Background(), c.data); !errors.Is(err, c.want) {
 			t.Errorf("%s: %v, want %v", c.name, err, c.want)
 		}
+	}
+}
+
+// A call waiting for its turn gives up when its request ends.
+func TestProcessWaitsForItsTurn(t *testing.T) {
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, solid(10, 10, color.Black)); err != nil {
+		t.Fatal(err)
+	}
+	slot <- struct{}{} // another call is decoding
+	defer func() { <-slot }()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := Process(ctx, buf.Bytes())
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		t.Fatalf("Process did not wait for the slot: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("cancelled while waiting: %v, want context.Canceled", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Process kept waiting after its context ended")
 	}
 }
 

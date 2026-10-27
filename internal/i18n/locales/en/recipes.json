@@ -104,7 +104,7 @@
   "recipes.photo.error.missing": "Choose a photo.",
   "recipes.photo.error.too_large": "The photo is too large. Try a smaller one.",
   "recipes.photo.error.format": "This file is not a picture that can be read: use a JPEG or PNG.",
-  "recipes.photo.error.dimensions": "The picture is too big: at most 40 megapixels.",
+  "recipes.photo.error.dimensions": "The picture is too big: at most 16 megapixels.",
   "recipes.photo.error.failed": "The upload did not work. Try again.",
   "recipes.duplicate.title": "Duplicate recipe",
   "recipes.duplicate.copying": "You are duplicating",
