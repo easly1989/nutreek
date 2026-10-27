@@ -71,12 +71,20 @@ func TestToProductDumpShapes(t *testing.T) {
 	}
 }
 
-// Only values per 100 g count: a set per 100 ml or with a macro missing does
-// not make the product importable, and a malformed nutrition block does not
-// discard the rest of the line.
+// Drinks come per 100 ml: read like the old nutriments, 1 ml as 1 g.
+func TestToProductPer100ml(t *testing.T) {
+	p := parseLine(t, `{"code":"1","product_name":"Latte","nutrition":{"aggregated_set":{"per":"100ml","nutrients":{"energy-kcal":{"value":46,"unit":"kcal"},"proteins":{"value":3.3,"unit":"g"},"carbohydrates":{"value":4.8,"unit":"g"},"fat":{"value":1.5,"unit":"g"}}}}}`)
+	if !p.HasFullNutrients || p.Kcal != 46 || p.Protein != 3.3 || p.Carbs != 4.8 || p.Fat != 1.5 {
+		t.Errorf("per 100 ml: %+v", p)
+	}
+}
+
+// Only values per 100 g/ml count: a set per serving or with a macro missing
+// does not make the product importable, and a malformed nutrition block does
+// not discard the rest of the line.
 func TestToProductIncomplete(t *testing.T) {
 	cases := map[string]string{
-		"per 100 ml":    `{"code":"1","product_name":"Latte","nutrition":{"aggregated_set":{"per":"100ml","nutrients":{"energy-kcal":{"value":46,"unit":"kcal"},"proteins":{"value":3.3,"unit":"g"},"carbohydrates":{"value":4.8,"unit":"g"},"fat":{"value":1.5,"unit":"g"}}}}}`,
+		"per serving":   `{"code":"1","product_name":"Latte","nutrition":{"aggregated_set":{"per":"serving","nutrients":{"energy-kcal":{"value":46,"unit":"kcal"},"proteins":{"value":3.3,"unit":"g"},"carbohydrates":{"value":4.8,"unit":"g"},"fat":{"value":1.5,"unit":"g"}}}}}`,
 		"fat missing":   `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"}}}}}`,
 		"unknown unit":  `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"},"fat":{"value":1,"unit":"%"}}}}}`,
 		"malformed set": `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":"oops"},"images":[1]}`,
