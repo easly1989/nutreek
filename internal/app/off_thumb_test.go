@@ -38,12 +38,16 @@ func TestOFFThumbnailInResults(t *testing.T) {
 	if strings.Contains(body, "static.openfoodfacts.org") || strings.Contains(body, "tracker.example.com") {
 		t.Errorf("a host that is not allowed remains in the result:\n%s", body)
 	}
-	// For the spelt the dump's URL cannot be shown: fall back to the one built from the code.
-	if !strings.Contains(body, "/images/products/801/555/555/5556/") {
-		t.Errorf("the thumbnail built from the code is missing for the spelt:\n%s", body)
+	// For the spelt the dump's URL cannot be shown: no photo is guessed (#204).
+	if strings.Contains(body, "/images/products/801/555/555/5556/") {
+		t.Errorf("a thumbnail was guessed for the spelt:\n%s", body)
 	}
-	if n := strings.Count(body, `referrerpolicy="no-referrer"`); n != 2 {
-		t.Errorf("images without no-referrer: %d of 2", n)
+	if n := strings.Count(body, `referrerpolicy="no-referrer"`); n != 1 {
+		t.Errorf("images: %d, want 1, with no-referrer", n)
+	}
+	// The package size tells look-alike products apart (#204).
+	if !strings.Contains(body, "· 500 g") || !strings.Contains(body, "· 375 g") {
+		t.Errorf("the package size is missing:\n%s", body)
 	}
 	if n := strings.Count(body, `href="#i-barcode"`); n < 2 {
 		t.Errorf("the barcode icon must sit under every photo: found %d", n)

@@ -30,7 +30,6 @@
   "picker.type_to_search": "Type to search your ingredients and OpenFoodFacts.",
 
   "picker.kcal_per_100": "kcal / 100 {{.Unit}}",
-  "picker.macros_from_off": "macros from OFF",
   "picker.per_100": "per 100 {{.Unit}}",
   "picker.quantity": "Quantity",
   "picker.unit": "Unit",

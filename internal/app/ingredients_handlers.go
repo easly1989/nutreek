@@ -3,8 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
-	"html"
 	"html/template"
 	"maps"
 	"math"
@@ -13,14 +11,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/i18n"
 	"github.com/amon2126/nutreek/internal/off"
-	"github.com/amon2126/nutreek/internal/web"
 )
 
 // ---- view models -----------------------------------------------------------
@@ -129,39 +125,29 @@ func (r ingredientRow) Barcode() string {
 }
 
 // Importable says whether the OFF row can be offered for import. Always true
-// for OFF rows from the local FTS: OFF's exported dump has incomplete
-// nutrients for nearly every Italian product (volunteers entering only name
-// and barcode), but the actual import goes through GetByBarcode on the live
-// API, which has up-to-date data. The final "are the macros complete?" check
-// therefore happens in the import handler, not here.
+// for OFF rows: the search offers only products with all four macros (#204).
+// The import still goes through GetByBarcode on the live API, and the final
+// "are the macros complete?" check happens in the import handler.
 func (r ingredientRow) Importable() bool {
 	return r.OFF != nil
 }
 
-// HasFullNutrients tells the template whether to show the macros or a
-// placeholder. Local rows always have complete macros (validated on create).
-// OFF rows from the dump often do not (for Italian products the dump is
-// nearly always empty); then the template shows a hint instead of a
-// misleading 0/0/0/0.
-func (r ingredientRow) HasFullNutrients() bool {
-	if r.Local != nil {
-		return true
+// Quantity is the package size of an OFF product ("1 kg"), "" when unknown:
+// it tells look-alike products apart (#204).
+func (r ingredientRow) Quantity() string {
+	if r.OFF != nil {
+		return strings.TrimSpace(r.OFF.Quantity)
 	}
-	return r.OFF != nil && r.OFF.HasFullNutrients
+	return ""
 }
 
 // ImageURL exposes the OFF thumbnail URL, only on the host the CSP allows
-// (off.ThumbURL). When the dump has no image_url (products imported before
-// migration 0012) or one that cannot be shown, it builds a best-effort CDN URL
-// from the barcode: when that does not exist, the template shows the icon.
+// (off.ThumbURL). "" when the product has no photo: the template shows the icon.
 func (r ingredientRow) ImageURL() string {
 	if r.OFF == nil {
 		return ""
 	}
-	if u := off.ThumbURL(r.OFF.ImageURL); u != "" {
-		return u
-	}
-	return off.ThumbURL(off.OFFCDNImageURL(r.OFF.Code))
+	return off.ThumbURL(r.OFF.ImageURL)
 }
 
 // DefaultQuantity returns the default quantity for the picker (0 = not set).
@@ -579,7 +565,9 @@ func (a *App) searchBarcode(ctx context.Context, code string, live bool) ([]ingr
 	}
 	p, err := a.OFF.FindByBarcode(ctx, code, live)
 	switch {
-	case errors.Is(err, off.ErrNotFound):
+	case errors.Is(err, off.ErrNotFound), err == nil && !p.HasFullNutrients:
+		// Without the four macros it cannot be imported (#204): «not found»
+		// offers to create the ingredient instead.
 		return nil, "", nil
 	case errors.Is(err, off.ErrUnavailable):
 		a.Logger.Warn("OFF barcode lookup failed", "err", err, "barcode", code)
@@ -941,49 +929,6 @@ func importerID(ctx context.Context) *int64 {
 		return &id
 	}
 	return nil
-}
-
-// handleOFFMacroCheck checks the macros of a single OFF product through a
-// barcode lookup (FindByBarcode: local off_products, then the network when
-// the local record is missing or incomplete).
-// Returns an HTML fragment with the macro state: green dot + values, or a
-// red dot + "macro non disponibili". Used by ingredient_results.html via an
-// HTMX lazy load (hx-trigger="load delay:500ms").
-func (a *App) handleOFFMacroCheck(w http.ResponseWriter, r *http.Request) {
-	barcode := chi.URLParam(r, "barcode")
-	if barcode == "" {
-		http.Error(w, "", http.StatusBadRequest)
-		return
-	}
-
-	product, err := a.OFF.FindByBarcode(r.Context(), barcode, true)
-	if err != nil || !product.HasFullNutrients {
-		a.writeMacroFragment(w, r, false, 0, 0, 0, 0)
-		return
-	}
-	a.writeMacroFragment(w, r, true, product.Kcal, product.Protein, product.Carbs, product.Fat)
-}
-
-// writeMacroFragment writes the kcal and macros per 100 g of an OFF product
-// in the format of the ingredient_results rows.
-func (a *App) writeMacroFragment(w http.ResponseWriter, r *http.Request, full bool, kcal, protein, carbs, fat float64) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	esc := func(key string) string { return html.EscapeString(a.t(r, key)) }
-	lang := i18n.FromContext(r.Context())
-	if full {
-		fmt.Fprintf(w,
-			`<span class="flex items-center gap-2.5 text-[12.5px] text-muted tabular-nums">`+
-				`<span class="text-[14px] text-text"><b>%s</b> kcal</span>`+
-				`<span><b class="text-prot font-semibold">%s</b> %s g</span>`+
-				`<span><b class="text-carb font-semibold">%s</b> %s g</span>`+
-				`<span><b class="text-fat font-semibold">%s</b> %s g</span></span>`,
-			web.FormatNum(lang, kcal),
-			esc("common.protein_short"), web.FormatDec(lang, protein, 1),
-			esc("common.carbs_short"), web.FormatDec(lang, carbs, 1),
-			esc("common.fat_short"), web.FormatDec(lang, fat, 1))
-	} else {
-		fmt.Fprintf(w, `<span class="text-[12.5px] text-muted">%s</span>`, esc("ingredients.row.no_macros"))
-	}
 }
 
 type ingredientEditData struct {

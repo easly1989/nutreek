@@ -11,6 +11,9 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Fixed
+- OpenFoodFacts products show their photo and macros again: the Syncer reads the dump's new shape (nutrients in `nutrition.aggregated_set`, the front image from `images.selected.front`, Italian first, then English) as well as the old one, and no longer guesses a French photo when there is none. The first sync after upgrading reads the dump again even when it has not changed (migration 0032) (#204)
+- Searching OpenFoodFacts offers only products that can be imported, with all four macros, so picking one no longer fails with «OFF product without complete macros»; a scanned code without macros offers to create the ingredient instead. Exact duplicates (same name, brand and macros) appear once, and every row shows its kcal per 100 g and package size (#204)
+- Upgrading: the first start downloads and re-imports the OpenFoodFacts dump once (about 13 GB today, so it can take an hour or more); OpenFoodFacts search results are limited until it finishes (#204)
 - Clearing the ingredient picker's search brings back what the picker showed before any search, and a slow answer for an older query no longer repaints the results (#205)
 
 ---

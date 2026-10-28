@@ -51,16 +51,17 @@ func (s *SyncScheduler) Run(ctx context.Context) {
 	}
 }
 
-// checkAndRun starts a sync when the last success is older than interval (or
-// when there has never been one). It does not block: when a sync is already
-// running it returns ErrSyncInProgress with no visible error.
+// checkAndRun starts a sync when the last success is older than interval,
+// when there has never been one, or when another parser version imported the
+// data (ParserVersion). It does not block: when a sync is already running it
+// returns ErrSyncInProgress with no visible error.
 func (s *SyncScheduler) checkAndRun(ctx context.Context, interval time.Duration, logger *slog.Logger) {
 	state, err := s.Syncer.LoadState(ctx)
 	if err != nil {
 		logger.Warn("off sync scheduler: load state failed", "err", err)
 		return
 	}
-	if state.LastSyncedAt != nil && time.Since(*state.LastSyncedAt) < interval {
+	if state.LastSyncedAt != nil && time.Since(*state.LastSyncedAt) < interval && state.ParserVersion == ParserVersion {
 		return
 	}
 	logger.Info("off sync scheduler: triggering sync",
