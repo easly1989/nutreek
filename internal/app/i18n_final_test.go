@@ -119,7 +119,7 @@ type finalPage struct {
 func TestEnglishEveryPage(t *testing.T) {
 	a := newTestApp(t)
 	a.OFF = off.NewClient(a.Store.DB, "http://127.0.0.1:1", nil)
-	a.OFFSyncer = off.NewSyncer(a.Store.DB, "http://127.0.0.1:1", nil)
+	a.OFFSyncer = off.NewSyncer(a.Store.DB, "http://127.0.0.1:1", "http://127.0.0.1:1", nil)
 	ctx := context.Background()
 	t.Cleanup(invalidateFeatureCache)
 	must := func(err error) {
