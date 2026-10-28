@@ -214,8 +214,12 @@
 {{define "meal_item_row"}}
 {{- /* An item (or a cheat) of a meal. View model: web.ItemCtx. */ -}}
 {{$v := .View}}{{$it := $v.Item}}{{$nm := ""}}{{if $it.Recipe}}{{$nm = $it.Recipe.Name}}{{else if $it.Ingredient}}{{$nm = $it.Ingredient.Name}}{{end}}
-<li class="group grid grid-cols-[minmax(0,1fr)_auto_3.5rem_auto] gap-x-2.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0" data-id="{{$it.ID}}">
-  <div class="min-w-0 flex items-start gap-1">
+{{- /* The quantity of an item (not of a cheat, nor of a customized recipe)
+       opens an editor in place (#206, picker.js): servings for a recipe,
+       quantity and g / pz for an ingredient. */ -}}
+{{$editable := and (not .Cheat) (or $it.Ingredient (and $it.Recipe (not $it.IsCustomized)))}}
+<li class="group grid grid-cols-[minmax(0,1fr)_auto_3.5rem_auto] gap-x-2.5 gap-y-1.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0 data-[editing]:-mx-4 data-[editing]:px-4 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}>
+  <div class="col-start-1 min-w-0 flex items-start gap-1">
     {{if not .Cheat}}<span data-item-grip class="hidden sm:grid w-4 h-5 -ml-4 place-items-center text-muted cursor-grab touch-none opacity-0 group-hover:opacity-100" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
     <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
       {{if $it.Recipe}}
@@ -229,14 +233,39 @@
       {{end}}
     </div>
   </div>
-  <span class="text-right text-muted tabular-nums whitespace-nowrap {{if .Struck}}line-through{{end}}">
-    {{- if $it.Recipe}}{{t "week.recipe_servings" "Qty" (dec $it.Quantity 1) "Servings" $it.Recipe.Servings}}
-    {{- else if and $it.Ingredient (eq $it.QuantityUnit "pz") $it.Ingredient.UnitWeightG}}<span title="{{num $v.EffectiveGrams}} g">{{dec $it.Quantity 1}} {{t "week.piece"}}</span>
-    {{- else if $it.Ingredient}}{{num $it.Quantity}} {{$it.Ingredient.Unit}}{{end -}}
-  </span>
-  <span class="text-right tabular-nums {{if .Cheat}}text-danger{{end}} {{if .Struck}}line-through text-muted{{end}}"
+  {{- $pz := and $it.Ingredient (eq $it.QuantityUnit "pz") (gt $it.Ingredient.PieceWeight 0.0)}}
+  {{- if $editable}}
+  <button type="button" data-qty-open{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}
+          class="group/q col-start-2 justify-self-end inline-flex items-center gap-1 h-8 px-1.5 -mr-1.5 rounded-lg border border-dashed border-transparent text-muted tabular-nums whitespace-nowrap hover:border-border hover:text-text focus-visible:border-border group-data-[editing]:hidden {{if .Struck}}line-through{{end}}">
+    <span class="sr-only">{{t "picker.qty.change" "Name" $nm}}</span>
+    {{- template "meal_item_qty" .}}
+    <svg class="w-3.5 h-3.5 shrink-0 opacity-0 group-hover/q:opacity-100 group-focus-visible/q:opacity-100 [@media(hover:none)]:hidden" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>
+  </button>
+  <form method="post" action="/meal-items/{{$it.ID}}?start={{.WeekStart}}" hx-post="/meal-items/{{$it.ID}}?start={{.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
+        data-qty-editor{{if $it.Ingredient}} data-unit-weight="{{$it.Ingredient.PieceWeight}}"{{end}}
+        class="hidden group-data-[editing]:flex col-start-2 max-sm:col-start-1 max-sm:col-span-full max-sm:order-last items-center gap-1.5">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label for="qty-{{$it.ID}}" class="sr-only">{{if $it.Recipe}}{{t "picker.qty.servings_label" "Name" $nm}}{{else}}{{t "picker.qty.label" "Name" $nm}}{{end}}</label>
+    <input id="qty-{{$it.ID}}" name="quantity" required inputmode="decimal" autocomplete="off" value="{{dec $it.Quantity 2}}" class="field w-16 h-8 px-2 text-right tabular-nums">
+    {{if $it.Recipe}}
+      <span class="text-muted">{{t "picker.servings_unit"}}</span>
+    {{else if gt $it.Ingredient.PieceWeight 0.0}}
+      <span class="segmented" role="radiogroup" aria-label="{{t "picker.unit"}}">
+        <label><input type="radio" name="qty_unit" value="{{$it.Ingredient.Unit}}"{{if not $pz}} checked{{end}}>{{$it.Ingredient.Unit}}</label>
+        <label><input type="radio" name="qty_unit" value="pz"{{if $pz}} checked{{end}}>{{t "picker.piece"}}</label>
+      </span>
+    {{else}}
+      <input type="hidden" name="qty_unit" value="{{$it.Ingredient.Unit}}"><span class="text-muted">{{$it.Ingredient.Unit}}</span>
+    {{end}}
+    <button class="btn-primary btn-icon w-8 h-8" aria-label="{{t "picker.qty.save"}}" title="{{t "picker.qty.save"}}">{{template "icon_sm" "i-check"}}</button>
+    <button type="button" data-qty-cancel class="icon-action" aria-label="{{t "common.cancel"}}" title="{{t "common.cancel"}}">{{template "icon_sm" "i-close"}}</button>
+  </form>
+  {{- else}}
+  <span class="col-start-2 text-right text-muted tabular-nums whitespace-nowrap {{if .Struck}}line-through{{end}}"{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}>{{template "meal_item_qty" .}}</span>
+  {{- end}}
+  <span class="col-start-3 text-right tabular-nums {{if .Cheat}}text-danger{{end}} {{if .Struck}}line-through text-muted{{end}}"
         title="{{t "week.macros_summary" "Protein" (dec $v.Macros.Protein 1) "Carbs" (dec $v.Macros.Carbs 1) "Fat" (dec $v.Macros.Fat 1)}}">{{num $v.Macros.Kcal}}</span>
-  <span class="flex items-center -mr-2 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+  <span class="col-start-4 flex items-center -mr-2 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity group-data-[editing]:invisible">
     {{if and $it.Recipe (not .Struck) (not .Cheat)}}
     <button type="button" hx-get="/meal-items/{{$it.ID}}/customize?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
             class="icon-action" title="{{t "week.customize"}}" aria-label="{{t "week.customize_named" "Name" $it.Recipe.Name}}">
@@ -251,6 +280,14 @@
     </form>
   </span>
 </li>
+{{end}}
+
+{{define "meal_item_qty"}}
+{{- /* An item's quantity as text. View model: web.ItemCtx. */ -}}
+{{- $it := .View.Item -}}
+{{- if $it.Recipe}}{{t "week.recipe_servings" "Qty" (dec $it.Quantity 2) "Servings" $it.Recipe.Servings}}
+{{- else if and $it.Ingredient (eq $it.QuantityUnit "pz") (gt $it.Ingredient.PieceWeight 0.0)}}{{dec $it.Quantity 2}} {{t "week.piece"}}
+{{- else if $it.Ingredient}}{{num $it.Quantity}} {{$it.Ingredient.Unit}}{{end -}}
 {{end}}
 
 {{define "week_totals"}}

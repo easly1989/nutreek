@@ -36,10 +36,10 @@ func TestMealItemCustomizationsPipeline(t *testing.T) {
 
 	// Recipe: 100g muesli + 300ml milk → 480+144 = 624 kcal (1 serving).
 	recID, _ := recipes.Create(ctx, uid, "Colazione test", nil, 1, false)
-	if _, err := recipes.AddItem(ctx, recID, uid, muesliID, 100); err != nil {
+	if _, err := recipes.AddItem(ctx, recID, uid, muesliID, 100, "g"); err != nil {
 		t.Fatalf("AddItem muesli: %v", err)
 	}
-	if _, err := recipes.AddItem(ctx, recID, uid, latteID, 300); err != nil {
+	if _, err := recipes.AddItem(ctx, recID, uid, latteID, 300, "g"); err != nil {
 		t.Fatalf("AddItem latte: %v", err)
 	}
 

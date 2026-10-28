@@ -15,6 +15,18 @@
     return isFinite(n) && n > 0 ? n : 0;
   }
 
+  // convertQty turns a quantity into the other unit when the g / pz switch
+  // changes (#206): pz -> g is qty x unit weight to a whole gram, g -> pz is
+  // qty / unit weight to two decimals; never 0 (at least 1 g or 0.01 pz).
+  // Without a weight it leaves the number alone.
+  function convertQty(value, toUnit, unitWeight) {
+    var qty = parseQty(value);
+    var w = parseFloat(unitWeight);
+    if (!qty || !(w > 0)) return value;
+    var n = toUnit === "pz" ? Math.max(0.01, Math.round(qty / w * 100) / 100) : Math.max(1, Math.round(qty * w));
+    return n.toLocaleString(LANG, { maximumFractionDigits: 2, useGrouping: false });
+  }
+
   function updatePreview(form) {
     var out = form.querySelector("[data-kcal-preview]");
     if (!out) return;
@@ -93,10 +105,91 @@
     });
   });
 
+  // The g / pz switch of the picker's add form and of the quantity editors
+  // converts the number, before the kcal preview reads it.
+  document.addEventListener("change", function (e) {
+    var radio = e.target;
+    if (!radio.matches || !radio.matches('input[name="qty_unit"]')) return;
+    var form = radio.closest("form[data-unit-weight]");
+    var qty = form && form.elements.quantity;
+    if (qty) qty.value = convertQty(qty.value, radio.value, form.dataset.unitWeight);
+  });
+
   ["input", "change"].forEach(function (type) {
     document.addEventListener(type, function (e) {
       var form = e.target.closest && e.target.closest("form[data-kcal100], form[data-kcal-each]");
       if (form) updatePreview(form);
     });
+  });
+
+  // Quantity editors (#206): a row [data-qty-row] holds the quantity
+  // [data-qty-open] and its editor form [data-qty-editor]; data-editing on
+  // the row shows the editor. One open at a time; Esc or Cancel closes it and
+  // gives the focus back to the quantity.
+  function closeEditor(row, focus) {
+    if (!row || !row.hasAttribute("data-editing")) return;
+    row.removeAttribute("data-editing");
+    var form = row.querySelector("form[data-qty-editor]");
+    if (form) form.reset();
+    var open = row.querySelector("[data-qty-open]");
+    if (focus && open) open.focus();
+  }
+
+  document.addEventListener("click", function (e) {
+    var open = e.target.closest("[data-qty-open]");
+    if (open) {
+      e.preventDefault();
+      var row = open.closest("[data-qty-row]");
+      document.querySelectorAll("[data-qty-row][data-editing]").forEach(function (r) {
+        if (r !== row) closeEditor(r, false);
+      });
+      row.setAttribute("data-editing", "");
+      var qty = row.querySelector("form[data-qty-editor]").elements.quantity;
+      qty.focus();
+      qty.select();
+      return;
+    }
+    var cancel = e.target.closest("[data-qty-cancel]");
+    if (cancel) {
+      e.preventDefault();
+      closeEditor(cancel.closest("[data-qty-row]"), true);
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    var form = e.target.closest && e.target.closest("form[data-qty-editor]");
+    if (!form) return;
+    e.preventDefault();
+    closeEditor(form.closest("[data-qty-row]"), true);
+  });
+
+  // The page back from a save (or an editor left open by an error) marks the
+  // row's control with autofocus, which browsers skip in an unfocused
+  // window: focus it here too.
+  var auto = document.querySelector("[data-qty-row] [autofocus]");
+  if (auto) auto.focus();
+
+  // After an editor's HTMX save the day is swapped: the focus goes back to
+  // the saved item's quantity.
+  // A save that swapped nothing (an error, or a redirect with a flash)
+  // forgets the row, so a later unrelated swap does not take the focus.
+  var savedRow = "", savedForm = null;
+  document.addEventListener("submit", function (e) {
+    var form = e.target.closest && e.target.closest("form[data-qty-editor]");
+    if (!form) return;
+    savedForm = form;
+    savedRow = form.closest("[data-qty-row]").dataset.qtyRow;
+  });
+  document.addEventListener("htmx:afterRequest", function (e) {
+    if (e.detail.elt !== savedForm) return;
+    if (!e.detail.successful || e.detail.xhr.status === 204) savedRow = "";
+    savedForm = null;
+  });
+  document.addEventListener("htmx:afterSettle", function () {
+    if (!savedRow) return;
+    var open = document.querySelector('[data-qty-row="' + savedRow + '"] [data-qty-open]');
+    savedRow = "";
+    if (open) open.focus();
   });
 })();

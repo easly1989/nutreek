@@ -119,15 +119,7 @@ func ForMealItem(item domain.MealItemFull) Macros {
 			}
 			return out
 		}
-		ingredients := make([]IngredientItem, 0, len(item.RecipeItems))
-		for _, ri := range item.RecipeItems {
-			ingredients = append(ingredients, IngredientItem{
-				Ingredient: ri.Ingredient,
-				Quantity:   ri.Quantity,
-			})
-		}
-		total := ForRecipe(ingredients)
-		per := PerServing(total, item.Recipe.Servings)
+		per := PerServing(ForRecipeItems(item.RecipeItems), item.Recipe.Servings)
 		return per.Scale(item.Quantity) // quantity = porzioni
 	}
 	return Macros{}
@@ -137,10 +129,25 @@ func ForMealItem(item domain.MealItemFull) Macros {
 // count quantity × the ingredient's unit weight. Without a known unit weight
 // the quantity stays as entered.
 func Grams(quantity float64, unit string, ing *domain.Ingredient) float64 {
-	if unit == "pz" && ing != nil && ing.UnitWeightG != nil && *ing.UnitWeightG > 0 {
-		return quantity * *ing.UnitWeightG
+	if unit == "pz" && ing != nil && ing.PieceWeight() > 0 {
+		return quantity * ing.PieceWeight()
 	}
 	return quantity
+}
+
+// RecipeItemGrams is a recipe row's quantity in grams/ml (see Grams).
+func RecipeItemGrams(ri domain.RecipeItemFull) float64 {
+	return Grams(ri.Quantity, ri.QuantityUnit, &ri.Ingredient)
+}
+
+// ForRecipeItems sums the macros of a recipe's rows, rows in pieces counted
+// through the unit weight. It returns the recipe's total (see PerServing).
+func ForRecipeItems(items []domain.RecipeItemFull) Macros {
+	var total Macros
+	for _, ri := range items {
+		total = total.Add(FromIngredient(ri.Ingredient, RecipeItemGrams(ri)))
+	}
+	return total
 }
 
 // ForNutritionistVariation computes the total macros of the items of a

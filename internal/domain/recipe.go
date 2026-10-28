@@ -24,8 +24,11 @@ type RecipeItem struct {
 	ID           int64
 	RecipeID     int64
 	IngredientID int64
-	Quantity     float64 // in g or ml depending on the ingredient's unit
+	Quantity     float64 // in QuantityUnit
 	SortOrder    int
+	// QuantityUnit is the unit the quantity was entered in: 'g', 'ml' or
+	// 'pz' (pieces, counted with ingredient.UnitWeightG, see macros.Grams).
+	QuantityUnit string
 }
 
 // RecipeItemFull joins RecipeItem + Ingredient for macro calculations / rendering.

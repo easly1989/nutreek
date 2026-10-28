@@ -763,14 +763,6 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// optional unit_weight_g: weight per unit (e.g. 150 for a 150g banana).
-	var unitWeightG *float64
-	if s := strings.TrimSpace(r.PostFormValue("unit_weight_g")); s != "" {
-		if v, err2 := parseNonNegFloat(s); err2 == nil && v > 0 {
-			unitWeightG = &v
-		}
-	}
-
 	// optional default_quantity: the default quantity in the picker.
 	var defaultQuantity *float64
 	if s := strings.TrimSpace(r.PostFormValue("default_quantity")); s != "" {
@@ -779,7 +771,7 @@ func (a *App) handleIngredientCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ingID, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, vals.Unit, vals.Kcal, vals.Protein, vals.Carbs, vals.Fat, creatorID, unitWeightG, defaultQuantity,
+	ingID, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, vals.Unit, vals.Kcal, vals.Protein, vals.Carbs, vals.Fat, creatorID, vals.UnitWeightG, defaultQuantity,
 		parseOptionalFloat(form.Fiber), parseOptionalFloat(form.Sugars),
 		parseOptionalFloat(form.SaturatedFat), parseOptionalFloat(form.Sodium))
 	if err != nil {
@@ -1094,12 +1086,6 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		brandPtr = &form.Brand
 	}
 
-	var unitWeightG *float64
-	if s := form.UnitWeightG; s != "" {
-		if v, err2 := parseNonNegFloat(s); err2 == nil && v > 0 {
-			unitWeightG = &v
-		}
-	}
 	var defaultQuantity *float64
 	if s := form.DefaultQuantity; s != "" {
 		if v, err2 := parseNonNegFloat(s); err2 == nil && v > 0 {
@@ -1112,7 +1098,7 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := a.Ingredients.Update(r.Context(), id, form.Name, brandPtr, vals.Unit, vals.Kcal, vals.Protein, vals.Carbs, vals.Fat, unitWeightG, defaultQuantity,
+	if err := a.Ingredients.Update(r.Context(), id, form.Name, brandPtr, vals.Unit, vals.Kcal, vals.Protein, vals.Carbs, vals.Fat, vals.UnitWeightG, defaultQuantity,
 		parseOptionalFloat(form.Fiber), parseOptionalFloat(form.Sugars),
 		parseOptionalFloat(form.SaturatedFat), parseOptionalFloat(form.Sodium)); err != nil {
 		a.serverError(w, r, err)
@@ -1186,6 +1172,7 @@ func (a *App) renderIngredientError(w http.ResponseWriter, r *http.Request, form
 type ingredientValues struct {
 	Unit                      domain.IngredientUnit
 	Kcal, Protein, Carbs, Fat float64
+	UnitWeightG               *float64 // nil = no weight of one piece
 }
 
 // validateIngredient checks the name, the unit and the four macros shared by
@@ -1217,6 +1204,15 @@ func (a *App) validateIngredient(r *http.Request, form ingredientForm) (ingredie
 			return v, a.numberError(r, f.key, err)
 		}
 		*f.dst = x
+	}
+	// The weight of one piece is optional, but text that is not a weight is
+	// an error: read as «none», it would turn the rows in pieces into grams.
+	if form.UnitWeightG != "" {
+		x, err := parseNonNegFloat(form.UnitWeightG)
+		if err != nil || x == 0 {
+			return v, a.t(r, "ingredients.error.piece_weight")
+		}
+		v.UnitWeightG = &x
 	}
 	return v, ""
 }

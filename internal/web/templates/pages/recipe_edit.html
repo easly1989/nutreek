@@ -39,21 +39,57 @@
       <section class="card">
         <div class="flex items-center gap-2.5 px-4 py-3 border-b border-border">
           <h2 class="h2">{{t "recipes.edit.ingredients"}}</h2>
-          <span class="ml-auto text-[12.5px] text-muted">{{t "recipes.edit.quantities_note"}}</span>
+          <span class="ml-auto text-right text-[12.5px] text-muted">{{if .CanEdit}}{{t "recipes.edit.quantities_note_edit"}}{{else}}{{t "recipes.edit.quantities_note"}}{{end}}</span>
         </div>
         {{if .Recipe.Items}}
+          {{/* The quantity is a link to the row's editor (#206): picker.js opens
+               it in place, without script ?edit= renders it open. Below sm the
+               editor wraps under the name, across the row. */}}
           <div class="divide-y divide-border">
             {{range .Recipe.Items}}
-              <div class="grid grid-cols-[minmax(0,1fr)_64px_56px_32px] gap-2.5 items-center min-h-[40px] pl-4 pr-2">
-                <span class="min-w-0 truncate">{{.Ingredient.Name}}{{with .Ingredient.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
-                <span class="text-right tabular-nums text-muted whitespace-nowrap">{{num .Quantity}} {{.Ingredient.Unit}}</span>
-                <span class="text-right tabular-nums">{{num (index $.ItemKcal .ID)}}</span>
+              {{- $editing := eq $.Edit.ItemID .ID -}}
+              {{- $pz := eq .QuantityUnit "pz" -}}
+              <div class="group grid grid-cols-[minmax(0,1fr)_auto_56px_32px] gap-x-2.5 gap-y-1.5 items-center min-h-[40px] pl-4 pr-2 data-[editing]:py-1.5 data-[editing]:bg-accent-soft"
+                   data-qty-row="{{.ID}}"{{if $editing}} data-editing{{end}}>
+                <span class="col-start-1 min-w-0 truncate group-data-[editing]:font-semibold">{{.Ingredient.Name}}{{with .Ingredient.Brand}} <span class="font-normal text-muted">{{.}}</span>{{end}}</span>
+                {{- if $.CanEdit}}
+                <a href="/recipes/{{$.Recipe.ID}}?edit={{.ID}}" data-qty-open{{if eq $.Focus .ID}} autofocus{{end}}
+                   class="group/q col-start-2 justify-self-end inline-flex items-center gap-1 h-8 px-1.5 -mr-1.5 rounded-lg border border-dashed border-transparent text-muted tabular-nums whitespace-nowrap hover:border-border hover:text-text focus-visible:border-border group-data-[editing]:hidden"
+                   {{- if $pz}} title="{{num (index $.ItemGrams .ID)}} {{.Ingredient.Unit}}"{{end}}>
+                  <span class="sr-only">{{t "picker.qty.change" "Name" .Ingredient.Name}}</span>
+                  {{- if $pz}}{{dec .Quantity 2}} {{t "picker.piece"}}{{else}}{{num .Quantity}} {{.Ingredient.Unit}}{{end -}}
+                  <svg class="w-3.5 h-3.5 shrink-0 opacity-0 group-hover/q:opacity-100 group-focus-visible/q:opacity-100 [@media(hover:none)]:hidden" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>
+                </a>
+                {{- $unit := .QuantityUnit}}{{if and $editing $.Edit.Unit}}{{$unit = $.Edit.Unit}}{{end}}
+                <form method="post" action="/recipes/{{$.Recipe.ID}}/items/{{.ID}}" data-qty-editor data-unit-weight="{{.Ingredient.PieceWeight}}"
+                      class="hidden group-data-[editing]:flex col-start-2 max-sm:col-start-1 max-sm:col-span-full max-sm:order-last items-center gap-1.5">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                  <label for="qty-{{.ID}}" class="sr-only">{{t "picker.qty.label" "Name" .Ingredient.Name}}</label>
+                  <input id="qty-{{.ID}}" name="quantity" required inputmode="decimal" autocomplete="off" class="field w-16 h-8 px-2 text-right tabular-nums"
+                         value="{{if and $editing $.Edit.Qty}}{{$.Edit.Qty}}{{else}}{{dec .Quantity 2}}{{end}}"{{if $editing}} autofocus{{end}}>
+                  {{if gt .Ingredient.PieceWeight 0.0}}
+                  <span class="segmented" role="radiogroup" aria-label="{{t "picker.unit"}}">
+                    <label><input type="radio" name="qty_unit" value="{{.Ingredient.Unit}}"{{if ne $unit "pz"}} checked{{end}}>{{.Ingredient.Unit}}</label>
+                    <label><input type="radio" name="qty_unit" value="pz"{{if eq $unit "pz"}} checked{{end}}>{{t "picker.piece"}}</label>
+                  </span>
+                  {{else}}
+                  <input type="hidden" name="qty_unit" value="{{.Ingredient.Unit}}"><span class="text-muted">{{.Ingredient.Unit}}</span>
+                  {{end}}
+                  <button class="btn-primary btn-icon w-8 h-8" aria-label="{{t "picker.qty.save"}}" title="{{t "picker.qty.save"}}">{{template "icon_sm" "i-check"}}</button>
+                  <a href="/recipes/{{$.Recipe.ID}}?saved={{.ID}}" data-qty-cancel class="icon-action" aria-label="{{t "common.cancel"}}" title="{{t "common.cancel"}}">{{template "icon_sm" "i-close"}}</a>
+                </form>
+                {{- else}}
+                <span class="col-start-2 text-right tabular-nums text-muted whitespace-nowrap"{{if $pz}} title="{{num (index $.ItemGrams .ID)}} {{.Ingredient.Unit}}"{{end}}>
+                  {{- if $pz}}{{dec .Quantity 2}} {{t "picker.piece"}}{{else}}{{num .Quantity}} {{.Ingredient.Unit}}{{end -}}
+                </span>
+                {{- end}}
+                <span class="col-start-3 text-right tabular-nums">{{num (index $.ItemKcal .ID)}}</span>
                 {{if $.CanEdit}}
-                  <form method="post" action="/recipes/{{$.Recipe.ID}}/items/{{.ID}}/delete">
+                  <form method="post" action="/recipes/{{$.Recipe.ID}}/items/{{.ID}}/delete" class="col-start-4 group-data-[editing]:invisible">
                     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                     <button class="icon-action" aria-label="{{t "recipes.edit.remove_item" "Name" .Ingredient.Name}}" title="{{t "recipes.edit.remove"}}">{{template "icon_sm" "i-trash"}}</button>
                   </form>
-                {{else}}<span></span>{{end}}
+                {{else}}<span class="col-start-4"></span>{{end}}
               </div>
             {{end}}
           </div>

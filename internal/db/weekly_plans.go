@@ -18,6 +18,9 @@ var ErrPlanNotFound = errors.New("piano settimanale non trovato")
 var (
 	ErrMealNotFound     = errors.New("pasto non trovato")
 	ErrMealItemNotFound = errors.New("voce di pasto non trovata")
+	// ErrMealItemCustomized: a recipe item with variations counts their
+	// quantities, not its servings, so UpdateItem does not change it.
+	ErrMealItemCustomized = errors.New("meal item has customizations")
 )
 
 // ErrPlanNotEmpty / ErrSourcePlanEmpty for CopyFrom: respectively, the
@@ -508,7 +511,8 @@ func (r *WeeklyPlans) RemoveMeal(ctx context.Context, mealID, userID int64) erro
 
 // AddItem adds an item to a meal. Exactly one of recipeID and ingredientID
 // must be != 0 (= nil pointer). Quantity > 0.
-// quantityUnit: 'g', 'ml' or 'pz' (ignored for recipes, which always use servings).
+// quantityUnit: 'g', 'ml' or 'pz', kept as storedUnit says (ignored for
+// recipes, which always use servings).
 func (r *WeeklyPlans) AddItem(
 	ctx context.Context,
 	mealID, userID int64,
@@ -552,9 +556,11 @@ func (r *WeeklyPlans) AddItem(
 	).Scan(&nextOrder); err != nil {
 		return 0, fmt.Errorf("compute item sort_order: %w", err)
 	}
-	unit := quantityUnit
-	if unit == "" || recipeID != nil {
-		unit = "g" // recipes always use servings (not pz), g is the default for ingredients
+	unit := "g" // recipes always use servings (not pz)
+	if ingredientID != nil {
+		if unit, err = storedUnit(ctx, r.db, quantityUnit, *ingredientID); err != nil {
+			return 0, err
+		}
 	}
 	res, err := r.db.ExecContext(ctx,
 		`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -659,6 +665,47 @@ func (r *WeeklyPlans) RemoveItem(ctx context.Context, itemID, userID int64) erro
 	n, _ := res.RowsAffected()
 	if n == 0 {
 		return ErrMealItemNotFound
+	}
+	return nil
+}
+
+// UpdateItem changes a meal_item's quantity: servings for a recipe, grams/ml
+// or pieces for an ingredient (unit, see storedUnit). Checks ownership
+// through the plan: ErrMealItemNotFound otherwise. ErrMealItemCustomized for
+// a recipe item with variations.
+func (r *WeeklyPlans) UpdateItem(ctx context.Context, itemID, userID int64, quantity float64, unit string) error {
+	if quantity <= 0 {
+		return fmt.Errorf("quantita' deve essere > 0")
+	}
+	var ingredientID sql.NullInt64
+	var customized bool
+	err := r.db.QueryRowContext(ctx, `
+		SELECT mi.ingredient_id,
+		       EXISTS (SELECT 1 FROM meal_item_customizations c WHERE c.meal_item_id = mi.id)
+		FROM meal_items mi
+		JOIN meals m ON m.id = mi.meal_id
+		JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
+		WHERE mi.id = ? AND wp.user_id = ?`, itemID, userID,
+	).Scan(&ingredientID, &customized)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrMealItemNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("load meal_item: %w", err)
+	}
+	if customized {
+		return ErrMealItemCustomized
+	}
+	stored := "g" // recipes always use servings
+	if ingredientID.Valid {
+		if stored, err = storedUnit(ctx, r.db, unit, ingredientID.Int64); err != nil {
+			return err
+		}
+	}
+	if _, err := r.db.ExecContext(ctx,
+		`UPDATE meal_items SET quantity = ?, quantity_unit = ? WHERE id = ?`,
+		quantity, stored, itemID); err != nil {
+		return fmt.Errorf("update meal_item: %w", err)
 	}
 	return nil
 }
@@ -878,10 +925,10 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 			ra2[i] = id
 		}
 		riRows, err := r.db.QueryContext(ctx, `
-			SELECT ri.id, ri.recipe_id, ri.ingredient_id, ri.quantity, ri.sort_order,
+			SELECT ri.id, ri.recipe_id, ri.ingredient_id, ri.quantity, ri.sort_order, ri.quantity_unit,
 			       i.id, i.source, i.off_barcode, i.name, i.brand, i.unit,
 			       i.kcal_per_100, i.protein_per_100, i.carbs_per_100, i.fat_per_100,
-			       i.created_by, i.created_at, i.last_verified_at, i.superseded_by
+			       i.created_by, i.created_at, i.last_verified_at, i.superseded_by, i.unit_weight_g
 			FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id
 			WHERE ri.recipe_id IN (`+ph2+`)
 			ORDER BY ri.recipe_id, ri.sort_order, ri.id
@@ -893,13 +940,13 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 			var it domain.RecipeItemFull
 			var src, unit string
 			err := riRows.Scan(
-				&it.ID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder,
+				&it.ID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder, &it.QuantityUnit,
 				&it.Ingredient.ID, &src, &it.Ingredient.OFFBarcode, &it.Ingredient.Name,
 				&it.Ingredient.Brand, &unit,
 				&it.Ingredient.KcalPer100, &it.Ingredient.ProteinPer100,
 				&it.Ingredient.CarbsPer100, &it.Ingredient.FatPer100,
 				&it.Ingredient.CreatedBy, &it.Ingredient.CreatedAt,
-				&it.Ingredient.LastVerifiedAt, &it.Ingredient.SupersededBy,
+				&it.Ingredient.LastVerifiedAt, &it.Ingredient.SupersededBy, &it.Ingredient.UnitWeightG,
 			)
 			if err != nil {
 				riRows.Close()

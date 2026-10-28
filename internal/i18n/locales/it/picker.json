@@ -38,6 +38,10 @@
   "picker.piece_weight": "1 pz = {{.Weight}} {{.Unit}}",
   "picker.add": "Aggiungi",
   "picker.add_cheat": "Registra sgarro",
+  "picker.qty.change": "Cambia la quantità di {{.Name}}:",
+  "picker.qty.label": "Quantità di {{.Name}}",
+  "picker.qty.servings_label": "Porzioni di {{.Name}}",
+  "picker.qty.save": "Salva la quantità",
 
   "picker.servings": {
     "one": "{{.Count}} porzione",

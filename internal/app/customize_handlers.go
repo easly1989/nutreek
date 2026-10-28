@@ -10,6 +10,7 @@ import (
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/macros"
 )
 
 // customizeFormData is the view model of the dialog that customizes a recipe
@@ -199,7 +200,7 @@ func (a *App) buildCustomizeForm(r *http.Request, item *domain.MealItemFull, wee
 				IngredientID: ri.IngredientID,
 				Name:         ri.Ingredient.Name,
 				Unit:         string(ri.Ingredient.Unit),
-				Quantity:     ri.Quantity * scale,
+				Quantity:     macros.RecipeItemGrams(ri) * scale,
 			})
 		}
 	}
