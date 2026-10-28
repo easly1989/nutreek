@@ -234,8 +234,9 @@ Every environment variable:
 | `NUTREEK_OWNER_EMAIL` | *(empty)* | Email of the owner: sole access to the admin panel |
 | `NUTREEK_PREMIUM_ENABLED` | `false` | If `true`, gates the features marked as premium |
 | `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | OpenFoodFacts API host (live barcode lookup) |
-| `NUTREEK_OFF_DUMP_URL` | `https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz` | OFF dump URL for the local sync |
-| `NUTREEK_OFF_SYNC_INTERVAL` | `168h` | How often the OFF dump is synced (default 7 days) |
+| `NUTREEK_OFF_CSV_URL` | `https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz` | OFF CSV export the local copy starts from |
+| `NUTREEK_OFF_DELTA_URL` | `https://static.openfoodfacts.org/data/delta/` | Folder of OFF's daily changes |
+| `NUTREEK_OFF_SYNC_INTERVAL` | `24h` | How often the OFF sync runs (default daily) |
 | `NUTREEK_OFF_SYNC_ENABLED` | `true` | Turns the OFF sync scheduler on |
 | `NUTREEK_RECONCILE_INTERVAL` | `24h` | How often local ingredients are reconciled with OFF |
 | `NUTREEK_RECONCILE_ENABLED` | `true` | Turns the reconciliation job on or off |
@@ -248,7 +249,7 @@ Every environment variable:
 
 ### OpenFoodFacts
 
-All OpenFoodFacts text search is **local**. Once a week the sync downloads the public OFF dump (~0.9 GB compressed), keeps the Italian products (~250k) and indexes them with SQLite FTS5: searches take under 50 ms and never call the network. On first start the table is empty and the first sync runs in the background (about 10 minutes); searches stay empty until it finishes. Only a barcode lookup for a product not yet imported calls the live OFF API.
+All OpenFoodFacts text search is **local**. The sync downloads OFF's CSV export once (~0.8 GB compressed), keeps the Italian products (~250k) and indexes them with SQLite FTS5: searches take under 50 ms and never call the network. Then it applies, once a day, only the changes OFF publishes; it downloads the CSV again after more than ~13 days offline and every 30 days. Searches keep answering with the previous products while a download runs. On first start the table is empty and the first sync runs in the background (about 10 minutes); searches stay empty until it finishes. Only a barcode lookup for a product not yet imported calls the live OFF API.
 
 ---
 
@@ -382,7 +383,7 @@ internal/
     migrations/       versioned goose SQL (embedded in the binary)
   domain/             plain domain structs
   macros/             macro calculations (pure, tested)
-  off/                OpenFoodFacts client + local dump sync + reconciler
+  off/                OpenFoodFacts client + local CSV/delta sync + reconciler
   planner/            greedy weekly plan generator
   profile/            profile logic (BMI, BMR, macro targets)
   recipeimport/       recipe import from a URL (schema.org/Recipe)
