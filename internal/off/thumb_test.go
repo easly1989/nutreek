@@ -23,10 +23,22 @@ func TestThumbURL(t *testing.T) {
 	}
 }
 
-// The fallback built from the code goes through the same normalization.
-func TestOFFCDNImageURLIsThumb(t *testing.T) {
-	u := OFFCDNImageURL("8012345678907")
-	if ThumbURL(u) != u {
-		t.Errorf("OFFCDNImageURL produces %q, which ThumbURL discards", u)
+// The URL built from the code follows OFF's folder rule and passes ThumbURL.
+func TestFrontImageURL(t *testing.T) {
+	cases := map[string]string{
+		"8012345678907":  "https://images.openfoodfacts.org/images/products/801/234/567/8907/front_it.3.200.jpg",
+		"96385074":       "https://images.openfoodfacts.org/images/products/000/009/638/5074/front_it.3.200.jpg", // padded to 13
+		"08012345678907": "https://images.openfoodfacts.org/images/products/080/123/456/78907/front_it.3.200.jpg",
+		"ABC/123":        "",
+		"":               "",
+	}
+	for code, want := range cases {
+		u := FrontImageURL(code, "it", "3")
+		if u != want {
+			t.Errorf("FrontImageURL(%q) = %q, want %q", code, u, want)
+		}
+		if ThumbURL(u) != u {
+			t.Errorf("FrontImageURL(%q) produces %q, which ThumbURL discards", code, u)
+		}
 	}
 }

@@ -86,14 +86,27 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 		limit = 20
 	}
 
+	// Only importable products (all four macros), and exact duplicates (same
+	// name ignoring case, brand and macros) once: SQLite takes the bare
+	// columns from the row with the best rank, min(rank). bm25 cannot run in
+	// an aggregate, hence the materialized CTE.
 	rows, err := c.DB.QueryContext(ctx, `
-		SELECT p.barcode, p.product_name, p.brands, p.quantity,
-		       p.kcal_per_100, p.protein_per_100, p.carbs_per_100, p.fat_per_100,
-		       p.has_full_nutrients, p.image_url, p.serving_g
-		FROM off_products p
-		JOIN off_products_fts fts ON fts.rowid = p.rowid
-		WHERE off_products_fts MATCH ?
-		ORDER BY bm25(off_products_fts)
+		WITH hits AS MATERIALIZED (
+			SELECT p.barcode, p.product_name, p.brands, p.quantity,
+			       p.kcal_per_100, p.protein_per_100, p.carbs_per_100, p.fat_per_100,
+			       p.has_full_nutrients, p.image_url, p.serving_g,
+			       bm25(off_products_fts) AS rank
+			FROM off_products p
+			JOIN off_products_fts fts ON fts.rowid = p.rowid
+			WHERE off_products_fts MATCH ? AND p.has_full_nutrients = 1
+		)
+		SELECT barcode, product_name, brands, quantity,
+		       kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
+		       has_full_nutrients, image_url, serving_g, min(rank) AS rank
+		FROM hits
+		GROUP BY lower(product_name), brands,
+		         kcal_per_100, protein_per_100, carbs_per_100, fat_per_100
+		ORDER BY rank
 		LIMIT ?`, match, limit)
 	if err != nil {
 		return nil, fmt.Errorf("fts query: %w", err)
@@ -104,10 +117,11 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 	for rows.Next() {
 		var p Product
 		var hasFull int
+		var rank float64
 		if err := rows.Scan(
 			&p.Code, &p.Name, &p.Brand, &p.Quantity,
 			&p.Kcal, &p.Protein, &p.Carbs, &p.Fat,
-			&hasFull, &p.ImageURL, &p.ServingG,
+			&hasFull, &p.ImageURL, &p.ServingG, &rank,
 		); err != nil {
 			return nil, fmt.Errorf("fts scan: %w", err)
 		}

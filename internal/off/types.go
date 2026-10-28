@@ -2,8 +2,10 @@ package off
 
 import (
 	"encoding/json"
+	"maps"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -23,7 +25,8 @@ type Product struct {
 	// We use it to decide whether to allow the import or suggest a local one.
 	HasFullNutrients bool
 	// ImageURL is the URL of the product's front thumbnail (OFF's
-	// image_front_small_url). It can be empty for products without a photo.
+	// image_front_small_url, or built from images.selected.front in the
+	// current dump). It can be empty for products without a photo.
 	ImageURL string
 	// UnitWeightG is the weight in grams per single unit, extracted from
 	// product_quantity (e.g. "150 g" → 150). nil when it cannot be parsed.
@@ -55,7 +58,117 @@ type rawProduct struct {
 	ServingQuantity     json.RawMessage `json:"serving_quantity"`
 	ServingQuantityUnit string          `json:"serving_quantity_unit"`
 	ServingSize         string          `json:"serving_size"`
+	// NutritionDataPer says what the bare nutriments are per: "100g", "100ml" or "serving".
+	NutritionDataPer string `json:"nutrition_data_per"`
+	// The dump's current shape (#204): nutrients in nutrition.aggregated_set,
+	// no image URLs but images.selected.front. Kept raw and parsed leniently,
+	// so an unexpected shape there does not discard the whole product.
+	Nutrition json.RawMessage `json:"nutrition"`
+	Images    json.RawMessage `json:"images"`
 }
+
+// aggregatedSet is nutrition.aggregated_set of the dump's current shape:
+// every nutrient with its value and unit, per the quantity in Per.
+type aggregatedSet struct {
+	Per       string `json:"per"`
+	Nutrients map[string]struct {
+		Value json.RawMessage `json:"value"`
+		Unit  string          `json:"unit"`
+	} `json:"nutrients"`
+}
+
+// aggregatedPer100 returns the aggregated set when it is per 100 g or per
+// 100 ml, nil otherwise (missing, malformed or per serving). Drinks come per
+// 100 ml: like the old nutriments' *_100g values, the app reads 1 ml as 1 g.
+func aggregatedPer100(nutrition json.RawMessage) *aggregatedSet {
+	var n struct {
+		AggregatedSet *aggregatedSet `json:"aggregated_set"`
+	}
+	if len(nutrition) == 0 || json.Unmarshal(nutrition, &n) != nil {
+		return nil
+	}
+	if s := n.AggregatedSet; s != nil && (s.Per == "100g" || s.Per == "100ml") && len(s.Nutrients) > 0 {
+		return s
+	}
+	return nil
+}
+
+// grams reads a nutrient of the set in grams.
+func (s *aggregatedSet) grams(name string) (float64, bool) {
+	n, ok := s.Nutrients[name]
+	if !ok {
+		return 0, false
+	}
+	v, ok := flexFloat(n.Value)
+	if !ok {
+		return 0, false
+	}
+	switch strings.ToLower(n.Unit) {
+	case "g":
+		return v, true
+	case "mg":
+		return v / 1000, true
+	case "µg", "mcg":
+		return v / 1e6, true
+	}
+	return 0, false
+}
+
+// kcal reads the energy in kcal: energy-kcal when there, else kJ converted.
+func (s *aggregatedSet) kcal() (float64, bool) {
+	for _, name := range []string{"energy-kcal", "energy-kj", "energy"} {
+		n, ok := s.Nutrients[name]
+		if !ok {
+			continue
+		}
+		v, ok := flexFloat(n.Value)
+		if !ok {
+			continue
+		}
+		switch strings.ToLower(n.Unit) {
+		case "kcal":
+			return v, true
+		case "kj":
+			return v / 4.184, true
+		}
+	}
+	return 0, false
+}
+
+// frontImageURL builds the 200 px front thumbnail from images.selected.front
+// of the dump's current shape: Italian first, then English, then the first
+// other language in alphabetical order. "" when there is no front image.
+func frontImageURL(code string, images json.RawMessage) string {
+	var im struct {
+		Selected struct {
+			Front map[string]struct {
+				Rev   json.Number                `json:"rev"` // "4" or 4
+				Sizes map[string]json.RawMessage `json:"sizes"`
+			} `json:"front"`
+		} `json:"selected"`
+	}
+	if len(images) == 0 || json.Unmarshal(images, &im) != nil {
+		return ""
+	}
+	front := im.Selected.Front
+	for _, lang := range append([]string{"it", "en"}, slices.Sorted(maps.Keys(front))...) {
+		f, ok := front[lang]
+		if !ok || !reImageLang.MatchString(lang) {
+			continue
+		}
+		if _, ok := f.Sizes["200"]; !ok {
+			continue
+		}
+		if rev, err := strconv.Atoi(f.Rev.String()); err == nil && rev > 0 {
+			return FrontImageURL(code, lang, strconv.Itoa(rev))
+		}
+	}
+	return ""
+}
+
+// reImageLang keeps the language of an image to a plain code ("it", "en"):
+// it ends up in the URL path.
+var reImageLang = regexp.MustCompile(`^[a-z]{2,3}$`)
 
 type productResponse struct {
 	Status  int        `json:"status"` // 1 ok, 0 not found
@@ -68,6 +181,9 @@ func (r rawProduct) toProduct() Product {
 	if imgURL == "" {
 		imgURL = r.ImageURL
 	}
+	if imgURL == "" {
+		imgURL = frontImageURL(r.Code, r.Images)
+	}
 	p := Product{
 		Code:        r.Code,
 		Name:        r.ProductName,
@@ -78,50 +194,75 @@ func (r rawProduct) toProduct() Product {
 		ServingG:    ParseServingG(r.ServingQuantity, r.ServingQuantityUnit, r.ServingSize),
 	}
 	// The JSONL dump uses bare keys ("proteins") while the API uses "_100g"
-	// ("proteins_100g"). Try both to support the two sources.
-	kcal, kOK := lookupNutrientAny(r.Nutriments, "energy-kcal_100g", "energy-kcal")
+	// ("proteins_100g"). Try both to support the two sources; the bare keys
+	// hold the values as entered, so only when they were entered per 100 g.
+	bare := r.NutritionDataPer == "" || r.NutritionDataPer == "100g" || r.NutritionDataPer == "100ml"
+	grams := func(name string) (float64, bool) {
+		if v, ok := lookupNutrient(r.Nutriments, name+"_100g"); ok || !bare {
+			return v, ok
+		}
+		return lookupNutrient(r.Nutriments, name)
+	}
+	kcal, kOK := grams("energy-kcal")
 	if !kOK {
-		if kj, ok := lookupNutrientAny(r.Nutriments, "energy_100g", "energy"); ok {
+		if kj, ok := grams("energy"); ok {
 			kcal = kj / 4.184
 			kOK = true
 		}
 	}
-	prot, pOK := lookupNutrientAny(r.Nutriments, "proteins_100g", "proteins")
-	carbs, cOK := lookupNutrientAny(r.Nutriments, "carbohydrates_100g", "carbohydrates")
-	fat, fOK := lookupNutrientAny(r.Nutriments, "fat_100g", "fat")
+	// The dump's current shape wins when it carries values per 100 g/ml;
+	// a nutrient missing from it still comes from nutriments.
+	if set := aggregatedPer100(r.Nutrition); set != nil {
+		fromNutriments := grams
+		grams = func(name string) (float64, bool) {
+			if v, ok := set.grams(name); ok {
+				return v, true
+			}
+			return fromNutriments(name)
+		}
+		if v, ok := set.kcal(); ok {
+			kcal, kOK = v, true
+		}
+	}
+	prot, pOK := grams("proteins")
+	carbs, cOK := grams("carbohydrates")
+	fat, fOK := grams("fat")
 	p.Kcal, p.Protein, p.Carbs, p.Fat = kcal, prot, carbs, fat
-	p.HasFullNutrients = kOK && pOK && cOK && fOK
+	// Implausible values (kJ entered as kcal, grams per serving) are not importable.
+	plausible := kcal <= maxKcalPer100 && prot+carbs+fat <= maxMacrosPer100
+	p.HasFullNutrients = kOK && pOK && cOK && fOK && plausible
 
-	if v, ok := lookupNutrientAny(r.Nutriments, "fiber_100g", "fiber"); ok {
+	if v, ok := grams("fiber"); ok {
 		p.Fiber = &v
 	}
-	if v, ok := lookupNutrientAny(r.Nutriments, "sugars_100g", "sugars"); ok {
+	if v, ok := grams("sugars"); ok {
 		p.Sugars = &v
 	}
-	if v, ok := lookupNutrientAny(r.Nutriments, "saturated-fat_100g", "saturated-fat"); ok {
+	if v, ok := grams("saturated-fat"); ok {
 		p.SaturatedFat = &v
 	}
-	if v, ok := lookupNutrientAny(r.Nutriments, "sodium_100g", "sodium"); ok {
+	if v, ok := grams("sodium"); ok {
 		p.Sodium = &v
 	}
 	return p
 }
 
-// lookupNutrientAny tries the keys in order and returns the first match.
-// Used to handle both the API format (_100g) and the JSONL dump (bare).
-func lookupNutrientAny(m map[string]json.RawMessage, keys ...string) (float64, bool) {
-	for _, k := range keys {
-		if v, ok := lookupNutrient(m, k); ok {
-			return v, ok
-		}
-	}
-	return 0, false
-}
+// Upper bounds of plausible values per 100 g: pure fat is ~900 kcal, and the
+// macros cannot weigh much more than the 100 g they are in (5 g of rounding).
+const (
+	maxKcalPer100   = 900
+	maxMacrosPer100 = 105
+)
 
 // lookupNutrient reads a field OFF can return as a number or a string.
 func lookupNutrient(m map[string]json.RawMessage, key string) (float64, bool) {
-	raw, ok := m[key]
-	if !ok || len(raw) == 0 {
+	return flexFloat(m[key])
+}
+
+// flexFloat reads a value OFF can write as a number or a string; null is
+// missing, not 0.
+func flexFloat(raw json.RawMessage) (float64, bool) {
+	if len(raw) == 0 || string(raw) == "null" {
 		return 0, false
 	}
 	// Try a number (most cases).
@@ -200,23 +341,23 @@ func ParseServingG(quantity json.RawMessage, unit, size string) *float64 {
 	return nil
 }
 
-// OFFCDNImageURL builds the best-effort URL of an OFF product's front
-// thumbnail from its barcode. Used as a fallback when image_url is empty in
-// the local dump (products imported before migration 0012). It does not
-// guarantee the image exists: handle it with onerror in the HTML template.
+// FrontImageURL builds the URL of the 200 px front image of a product in the
+// given language and revision, following OFF's rule: a numeric barcode
+// shorter than 13 digits is left-padded with zeros, then split as
+// NNN/NNN/NNN/rest. "" for a barcode that is not numeric.
 //
-// OFF CDN pattern (EAN-13):  NNN/NNN/NNN/NNNN/front_fr.200.jpg
-// OFF CDN pattern (others):  {barcode}/front_fr.200.jpg
-func OFFCDNImageURL(barcode string) string {
+//	https://images.openfoodfacts.org/images/products/343/566/076/8163/front_it.4.200.jpg
+func FrontImageURL(barcode, lang, rev string) string {
 	barcode = strings.TrimSpace(barcode)
-	if barcode == "" {
+	if barcode == "" || strings.Trim(barcode, "0123456789") != "" {
 		return ""
 	}
-	base := "https://images.openfoodfacts.org/images/products/"
-	if len(barcode) == 13 {
-		return base + barcode[:3] + "/" + barcode[3:6] + "/" + barcode[6:9] + "/" + barcode[9:] + "/front_fr.200.jpg"
+	if len(barcode) < 13 {
+		barcode = strings.Repeat("0", 13-len(barcode)) + barcode
 	}
-	return base + barcode + "/front_fr.200.jpg"
+	return "https://" + ThumbHost + "/images/products/" +
+		barcode[:3] + "/" + barcode[3:6] + "/" + barcode[6:9] + "/" + barcode[9:] +
+		"/front_" + lang + "." + rev + ".200.jpg"
 }
 
 // ThumbHost is the only host the page loads OFF thumbnails from: the same

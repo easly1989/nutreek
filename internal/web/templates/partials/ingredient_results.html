@@ -43,7 +43,14 @@
     {{if $r.IsOFF}}{{template "off_thumb" $r.ImageURL}}{{else}}{{template "icon_sm" "i-ingredients"}}{{end}}
   </span>
   <div class="flex flex-col gap-1 min-w-0">
-    <span class="truncate"><b class="font-semibold">{{$r.Name}}</b>{{if and (not $r.IsOFF) (not $r.CanEdit) $r.Author}} <span class="text-muted text-[12.5px]">{{t "ingredients.row.by" "Author" $r.Author}}</span>{{end}}{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
+    {{if $r.IsOFF}}
+    <span class="min-w-0">
+      <b class="font-semibold line-clamp-2">{{$r.Name}}</b>
+      {{if or $r.Brand $r.Quantity}}<span class="block truncate text-[12.5px] text-muted">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}</span>{{end}}
+    </span>
+    {{else}}
+    <span class="truncate"><b class="font-semibold">{{$r.Name}}</b>{{if and (not $r.CanEdit) $r.Author}} <span class="text-muted text-[12.5px]">{{t "ingredients.row.by" "Author" $r.Author}}</span>{{end}}{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
+    {{end}}
     {{if or $r.Category $r.Allergens $r.IsOFF}}
     <span class="flex flex-wrap gap-1">
       {{if $r.IsOFF}}<span class="chip chip-soft">OpenFoodFacts</span>{{end}}
@@ -52,21 +59,14 @@
     </span>
     {{end}}
   </div>
-  {{if $r.HasFullNutrients}}
-    <span class="hidden lg:block text-right tabular-nums"><b>{{num $r.Kcal}}</b></span>
-    <span class="col-span-3 lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums pl-[48px] lg:pl-0">
-      <span class="lg:hidden text-text"><b>{{num $r.Kcal}}</b> kcal</span>
-      <span><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{dec $r.Protein 1}} g</span>
-      <span><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{dec $r.Carbs 1}} g</span>
-      <span><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{dec $r.Fat 1}} g</span>
-    </span>
-  {{else}}
-    {{/* The OFF dump often lacks the macros: we ask the product for them. */}}
-    <span class="col-span-3 lg:col-span-2 row-start-2 lg:row-start-auto pl-[48px] lg:pl-0"
-          hx-get="/off/check/{{$r.Barcode}}" hx-trigger="load delay:600ms" hx-swap="innerHTML">
-      <span class="text-[12.5px] text-muted animate-pulse">{{t "ingredients.row.checking"}}</span>
-    </span>
-  {{end}}
+  {{/* Every row has the four macros: OFF search offers only importable products (#204). */}}
+  <span class="hidden lg:block text-right tabular-nums"><b>{{num $r.Kcal}}</b></span>
+  <span class="col-span-3 lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums pl-[48px] lg:pl-0">
+    <span class="lg:hidden text-text"><b>{{num $r.Kcal}}</b> kcal</span>
+    <span><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{dec $r.Protein 1}} g</span>
+    <span><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{dec $r.Carbs 1}} g</span>
+    <span><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{dec $r.Fat 1}} g</span>
+  </span>
   <span class="row-start-1 col-start-3 lg:row-start-auto lg:col-start-auto text-right">
     {{if $r.IsOFF}}
       <form method="post" action="/ingredients/off-import">
