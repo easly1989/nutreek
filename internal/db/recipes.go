@@ -186,10 +186,10 @@ func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT ri.id, ri.recipe_id, ri.ingredient_id, ri.quantity, ri.sort_order,
+		SELECT ri.id, ri.recipe_id, ri.ingredient_id, ri.quantity, ri.sort_order, ri.quantity_unit,
 		       i.id, i.source, i.off_barcode, i.name, i.brand, i.unit,
 		       i.kcal_per_100, i.protein_per_100, i.carbs_per_100, i.fat_per_100,
-		       i.created_by, i.created_at, i.last_verified_at, i.superseded_by
+		       i.created_by, i.created_at, i.last_verified_at, i.superseded_by, i.unit_weight_g
 		FROM recipe_ingredients ri
 		JOIN ingredients i ON i.id = ri.ingredient_id
 		WHERE ri.recipe_id = ?
@@ -203,13 +203,13 @@ func (r *Recipes) GetWithItems(ctx context.Context, id, viewerID int64) (*domain
 		var it domain.RecipeItemFull
 		var srcStr, unitStr string
 		err := rows.Scan(
-			&it.ID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder,
+			&it.ID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder, &it.QuantityUnit,
 			&it.Ingredient.ID, &srcStr, &it.Ingredient.OFFBarcode, &it.Ingredient.Name,
 			&it.Ingredient.Brand, &unitStr,
 			&it.Ingredient.KcalPer100, &it.Ingredient.ProteinPer100,
 			&it.Ingredient.CarbsPer100, &it.Ingredient.FatPer100,
 			&it.Ingredient.CreatedBy, &it.Ingredient.CreatedAt,
-			&it.Ingredient.LastVerifiedAt, &it.Ingredient.SupersededBy,
+			&it.Ingredient.LastVerifiedAt, &it.Ingredient.SupersededBy, &it.Ingredient.UnitWeightG,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan item: %w", err)
@@ -257,12 +257,12 @@ func (r *Recipes) ListVisible(ctx context.Context, viewerID int64) ([]*domain.Re
 	return out, nil
 }
 
-// AddItem inserts a new ingredient into the recipe. sortOrder defaults to
-// max(sort_order)+1. Checks the owner.
+// AddItem inserts a new ingredient into the recipe, its quantity in unit
+// (see storedUnit). sortOrder defaults to max(sort_order)+1. Checks the owner.
 func (r *Recipes) AddItem(
 	ctx context.Context,
 	recipeID, userID, ingredientID int64,
-	quantity float64,
+	quantity float64, unit string,
 ) (int64, error) {
 	if err := r.assertOwner(ctx, recipeID, userID); err != nil {
 		return 0, err
@@ -273,6 +273,10 @@ func (r *Recipes) AddItem(
 	if quantity <= 0 {
 		return 0, fmt.Errorf("quantita' deve essere > 0")
 	}
+	unit, err := storedUnit(ctx, r.db, unit, ingredientID)
+	if err != nil {
+		return 0, err
+	}
 	var nextOrder int
 	if err := r.db.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(sort_order)+1, 0) FROM recipe_ingredients WHERE recipe_id = ?`,
@@ -281,9 +285,9 @@ func (r *Recipes) AddItem(
 		return 0, fmt.Errorf("compute sort_order: %w", err)
 	}
 	res, err := r.db.ExecContext(ctx, `
-		INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, sort_order)
-		VALUES (?, ?, ?, ?)
-	`, recipeID, ingredientID, quantity, nextOrder)
+		INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, sort_order, quantity_unit)
+		VALUES (?, ?, ?, ?, ?)
+	`, recipeID, ingredientID, quantity, nextOrder, unit)
 	if err != nil {
 		return 0, fmt.Errorf("insert item: %w", err)
 	}
@@ -291,12 +295,71 @@ func (r *Recipes) AddItem(
 	if err != nil {
 		return 0, err
 	}
-	// touch updated_at
+	return id, r.touch(ctx, recipeID)
+}
+
+// UpdateItem changes the quantity and unit of a row of recipeID (see
+// storedUnit). ErrRecipeItemNotFound when the row is not in a recipe of userID.
+func (r *Recipes) UpdateItem(ctx context.Context, recipeID, itemID, userID int64, quantity float64, unit string) error {
+	if quantity <= 0 {
+		return fmt.Errorf("quantita' deve essere > 0")
+	}
+	var ingredientID int64
+	err := r.db.QueryRowContext(ctx, `
+		SELECT ri.ingredient_id FROM recipe_ingredients ri
+		JOIN recipes r ON r.id = ri.recipe_id
+		WHERE ri.id = ? AND ri.recipe_id = ? AND r.user_id = ?
+	`, itemID, recipeID, userID).Scan(&ingredientID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrRecipeItemNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("load item: %w", err)
+	}
+	if unit, err = storedUnit(ctx, r.db, unit, ingredientID); err != nil {
+		return err
+	}
+	if _, err := r.db.ExecContext(ctx,
+		`UPDATE recipe_ingredients SET quantity = ?, quantity_unit = ? WHERE id = ?`,
+		quantity, unit, itemID); err != nil {
+		return fmt.Errorf("update item: %w", err)
+	}
+	return r.touch(ctx, recipeID)
+}
+
+// touch moves the recipe's updated_at to now.
+func (r *Recipes) touch(ctx context.Context, recipeID int64) error {
 	if _, err := r.db.ExecContext(ctx,
 		`UPDATE recipes SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`, recipeID); err != nil {
-		return 0, fmt.Errorf("touch recipe: %w", err)
+		return fmt.Errorf("touch recipe: %w", err)
 	}
-	return id, nil
+	return nil
+}
+
+// storedUnit is the unit a quantity is kept in: «pz» only when the
+// ingredient has a unit weight to count the pieces with, «ml» as given,
+// anything else grams.
+func storedUnit(ctx context.Context, db *sql.DB, unit string, ingredientID int64) (string, error) {
+	switch unit {
+	case "ml":
+		return unit, nil
+	case "pz":
+		var w sql.NullFloat64
+		if err := db.QueryRowContext(ctx,
+			`SELECT unit_weight_g FROM ingredients WHERE id = ?`, ingredientID).Scan(&w); err != nil {
+			return "", fmt.Errorf("unit weight: %w", err)
+		}
+		if w.Valid && w.Float64 > 0 {
+			return unit, nil
+		}
+	}
+	return "g", nil
+}
+
+// gramsSQL is macros.Grams in SQL: qty × unit weight for rows in pieces with
+// a known unit weight, otherwise qty as entered.
+func gramsSQL(qty, unit, unitWeight string) string {
+	return "(CASE WHEN " + unit + " = 'pz' AND " + unitWeight + " > 0 THEN " + qty + " * " + unitWeight + " ELSE " + qty + " END)"
 }
 
 // RemoveItem deletes an item; checks that the item belongs to a recipe
@@ -427,7 +490,7 @@ func (r *Recipes) IdenticalContentRecipe(
 // signatureForRecipe reads the recipe's items and returns the normalized signature.
 func (r *Recipes) signatureForRecipe(ctx context.Context, recipeID int64) (string, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT ingredient_id, quantity FROM recipe_ingredients WHERE recipe_id = ?
+		SELECT ingredient_id, quantity, quantity_unit FROM recipe_ingredients WHERE recipe_id = ?
 	`, recipeID)
 	if err != nil {
 		return "", fmt.Errorf("load items for signature: %w", err)
@@ -436,7 +499,7 @@ func (r *Recipes) signatureForRecipe(ctx context.Context, recipeID int64) (strin
 	var items []domain.RecipeItem
 	for rows.Next() {
 		var it domain.RecipeItem
-		if err := rows.Scan(&it.IngredientID, &it.Quantity); err != nil {
+		if err := rows.Scan(&it.IngredientID, &it.Quantity, &it.QuantityUnit); err != nil {
 			return "", fmt.Errorf("scan item: %w", err)
 		}
 		items = append(items, it)
@@ -448,15 +511,20 @@ func (r *Recipes) signatureForRecipe(ctx context.Context, recipeID int64) (strin
 }
 
 // contentSignature builds a normalized signature of a list of items:
-// sorted, concatenated (ingredient_id, quantity rounded to 3 decimals) tuples.
-// Two lists with the same set of tuples → same signature (whatever the sort_order).
+// sorted, concatenated (ingredient_id, quantity rounded to 3 decimals, unit)
+// tuples. Two lists with the same set of tuples → same signature (whatever
+// the sort_order). Units other than «pz» all mean the ingredient's own g/ml.
 func contentSignature(items []domain.RecipeItem) string {
 	if len(items) == 0 {
 		return ""
 	}
 	pairs := make([]string, 0, len(items))
 	for _, it := range items {
-		pairs = append(pairs, fmt.Sprintf("%d:%.3f", it.IngredientID, it.Quantity))
+		unit := "g"
+		if it.QuantityUnit == "pz" {
+			unit = "pz"
+		}
+		pairs = append(pairs, fmt.Sprintf("%d:%.3f%s", it.IngredientID, it.Quantity, unit))
 	}
 	sort.Strings(pairs)
 	return strings.Join(pairs, ";")
@@ -507,9 +575,9 @@ func (r *Recipes) Duplicate(ctx context.Context, srcID, userID int64, newName st
 	}
 	for _, it := range src.Items {
 		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, sort_order)
-			VALUES (?, ?, ?, ?)
-		`, newID, it.IngredientID, it.Quantity, it.SortOrder); err != nil {
+			INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, sort_order, quantity_unit)
+			VALUES (?, ?, ?, ?, ?)
+		`, newID, it.IngredientID, it.Quantity, it.SortOrder, it.QuantityUnit); err != nil {
 			return 0, fmt.Errorf("copy item: %w", err)
 		}
 	}
@@ -580,17 +648,17 @@ func (r *Recipes) UsagesByRecipe(ctx context.Context, userID int64) (map[int64]i
 
 // PerServingByRecipe returns the per-serving macros of every recipe visible
 // to viewerID (theirs + the public ones in their catalog, drafts excluded) with one
-// aggregate query. Recipe ingredient quantities are already in g/ml ("pz"
-// is converted on insert). Recipes without ingredients appear with zero
-// macros.
+// aggregate query. Rows in pieces count through the unit weight (gramsSQL).
+// Recipes without ingredients appear with zero macros.
 func (r *Recipes) PerServingByRecipe(ctx context.Context, viewerID int64) (map[int64]macros.Macros, error) {
 	scope, args := inCatalog(r.db, "r.user_id", viewerID)
+	g := gramsSQL("ri.quantity", "ri.quantity_unit", "i.unit_weight_g")
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT r.id, r.servings,
-		       COALESCE(SUM(ri.quantity * i.kcal_per_100), 0) / 100.0,
-		       COALESCE(SUM(ri.quantity * i.protein_per_100), 0) / 100.0,
-		       COALESCE(SUM(ri.quantity * i.carbs_per_100), 0) / 100.0,
-		       COALESCE(SUM(ri.quantity * i.fat_per_100), 0) / 100.0
+		       COALESCE(SUM(`+g+` * i.kcal_per_100), 0) / 100.0,
+		       COALESCE(SUM(`+g+` * i.protein_per_100), 0) / 100.0,
+		       COALESCE(SUM(`+g+` * i.carbs_per_100), 0) / 100.0,
+		       COALESCE(SUM(`+g+` * i.fat_per_100), 0) / 100.0
 		FROM recipes r
 		LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
 		LEFT JOIN ingredients i ON i.id = ri.ingredient_id

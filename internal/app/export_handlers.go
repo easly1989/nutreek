@@ -210,7 +210,12 @@ func (a *App) handleWeekImport(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		if _, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, nil, &ing.ID, qty, "g"); err != nil {
+		// The export writes the unit: pieces come back as pieces.
+		unit := strings.TrimSpace(rec[5])
+		if unit != "pz" && unit != "ml" {
+			unit = "g"
+		}
+		if _, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, nil, &ing.ID, qty, unit); err != nil {
 			continue
 		}
 		imported++

@@ -162,14 +162,7 @@ func (s *PlannerService) recipePerServing(ctx context.Context, userID int64, ful
 					out[*it.RecipeID] = macros.Macros{}
 					continue
 				}
-				ingredients := make([]macros.IngredientItem, 0, len(rec.Items))
-				for _, ri := range rec.Items {
-					ingredients = append(ingredients, macros.IngredientItem{
-						Ingredient: ri.Ingredient,
-						Quantity:   ri.Quantity,
-					})
-				}
-				out[*it.RecipeID] = macros.PerServing(macros.ForRecipe(ingredients), rec.Servings)
+				out[*it.RecipeID] = macros.PerServing(macros.ForRecipeItems(rec.Items), rec.Servings)
 			}
 		}
 	}

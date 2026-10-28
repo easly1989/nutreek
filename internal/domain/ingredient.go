@@ -50,3 +50,12 @@ type Ingredient struct {
 	SaturatedFatPer100 *float64
 	SodiumPer100       *float64
 }
+
+// PieceWeight is UnitWeightG, 0 when unknown: above 0 the ingredient can be
+// counted in pieces.
+func (i Ingredient) PieceWeight() float64 {
+	if i.UnitWeightG == nil || *i.UnitWeightG <= 0 {
+		return 0
+	}
+	return *i.UnitWeightG
+}

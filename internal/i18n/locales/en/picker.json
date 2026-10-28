@@ -38,6 +38,10 @@
   "picker.piece_weight": "1 pc = {{.Weight}} {{.Unit}}",
   "picker.add": "Add",
   "picker.add_cheat": "Log cheat",
+  "picker.qty.change": "Change the quantity of {{.Name}}:",
+  "picker.qty.label": "Quantity of {{.Name}}",
+  "picker.qty.servings_label": "Servings of {{.Name}}",
+  "picker.qty.save": "Save the quantity",
 
   "picker.servings": {
     "one": "{{.Count}} serving",

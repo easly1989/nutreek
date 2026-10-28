@@ -25,10 +25,10 @@ func TestShoppingGenerateAndAggregation(t *testing.T) {
 	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 360, 12, 75, 1, &alice, nil, nil, nil, nil, nil, nil)
 	pom, _ := ings.CreateLocal(ctx, "Pomodoro", nil, "g", 18, 1, 4, 0, &alice, nil, nil, nil, nil, nil, nil)
 	rid, _ := recipes.Create(ctx, alice, "Pasta al pomodoro", nil, 4, false)
-	if _, err := recipes.AddItem(ctx, rid, alice, pasta, 200); err != nil {
+	if _, err := recipes.AddItem(ctx, rid, alice, pasta, 200, "g"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := recipes.AddItem(ctx, rid, alice, pom, 100); err != nil {
+	if _, err := recipes.AddItem(ctx, rid, alice, pom, 100, "g"); err != nil {
 		t.Fatal(err)
 	}
 
