@@ -69,7 +69,7 @@ Every `NUTREEK_*` variable is documented in the table in
 ## Operational notes
 
 - **First OFF start**: the `off_products` table starts empty; the scheduler runs
-  an initial sync in the background (~0.9 GB download, ~10 min). Ingredient
+  an initial sync in the background (~0.8 GB download, ~10 min). Ingredient
   searches return nothing until the sync completes. It can be turned off with
   `NUTREEK_OFF_SYNC_ENABLED=false`.
 - **Backup**: the DB is a single file. Automatic backups with

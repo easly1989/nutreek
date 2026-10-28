@@ -7,15 +7,15 @@ import (
 	"time"
 )
 
-// SyncScheduler periodically checks whether the OFF dump is "old" and, if
-// so, starts a SyncDump. The loop runs often (1h) but a sync starts only
-// when last_synced_at is older than Interval — weekly by default
+// SyncScheduler periodically checks whether the OFF data is "old" and, if
+// so, starts a Sync. The loop runs often (1h) but a sync starts only when
+// last_synced_at is older than Interval — daily by default, like the deltas
 // (configurable via NUTREEK_OFF_SYNC_INTERVAL).
 //
 // Meant to run in a goroutine from main; it reacts to ctx.Done.
 type SyncScheduler struct {
 	Syncer   *Syncer
-	Interval time.Duration // default 7 days
+	Interval time.Duration // default 24 hours
 	Logger   *slog.Logger
 }
 
@@ -28,7 +28,7 @@ type SyncScheduler struct {
 func (s *SyncScheduler) Run(ctx context.Context) {
 	interval := s.Interval
 	if interval <= 0 {
-		interval = 7 * 24 * time.Hour
+		interval = 24 * time.Hour
 	}
 	logger := s.Logger
 	if logger == nil {
@@ -53,8 +53,9 @@ func (s *SyncScheduler) Run(ctx context.Context) {
 
 // checkAndRun starts a sync when the last success is older than interval,
 // when there has never been one, or when another parser version imported the
-// data (ParserVersion). It does not block: when a sync is already running it
-// returns ErrSyncInProgress with no visible error.
+// data (ParserVersion). Sync itself decides between a bootstrap and deltas.
+// It does not block: when a sync is already running it returns
+// ErrSyncInProgress with no visible error.
 func (s *SyncScheduler) checkAndRun(ctx context.Context, interval time.Duration, logger *slog.Logger) {
 	state, err := s.Syncer.LoadState(ctx)
 	if err != nil {
@@ -67,7 +68,7 @@ func (s *SyncScheduler) checkAndRun(ctx context.Context, interval time.Duration,
 	logger.Info("off sync scheduler: triggering sync",
 		"last_synced", state.LastSyncedAt, "products_count", state.ProductsCount)
 
-	stats, err := s.Syncer.SyncDump(ctx)
+	stats, err := s.Syncer.Sync(ctx)
 	if err != nil {
 		if errors.Is(err, ErrSyncInProgress) {
 			return // an admin trigger already started it
@@ -76,6 +77,6 @@ func (s *SyncScheduler) checkAndRun(ctx context.Context, interval time.Duration,
 		return
 	}
 	logger.Info("off sync scheduler: sync done",
-		"imported", stats.Imported, "skipped", stats.Skipped,
+		"bootstrap", stats.Bootstrap, "deltas", stats.Deltas, "imported", stats.Imported,
 		"duration_ms", stats.DurationMs)
 }

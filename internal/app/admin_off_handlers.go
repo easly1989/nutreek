@@ -11,7 +11,7 @@ import (
 )
 
 // handleAdminOFFStatus GET /admin/off-status — returns the current state of
-// the local OFF dump (last_synced_at, products_count, any error).
+// the local OFF copy (last sync, bootstrap and delta, products_count, any error).
 // Useful for the admin panel and for operational checks with curl.
 func (a *App) handleAdminOFFStatus(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
@@ -27,11 +27,11 @@ func (a *App) handleAdminOFFStatus(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(offStatusJSON(state))
 }
 
-// handleAdminOFFRefresh POST /admin/refresh-off-dump — starts a manual sync
-// of the OFF dump in a separate goroutine (it does not block the response).
+// handleAdminOFFRefresh POST /admin/refresh-off-dump — starts a CSV bootstrap
+// of the OFF data in a separate goroutine (it does not block the response).
 // Returns 202 + the current state, or 409 when a sync is already running.
 //
-// The real sync takes ~10 minutes (download + parse + insert): running it
+// A bootstrap takes ~10 minutes (download + parse + insert): running it
 // synchronously would keep the connection open too long. The caller can then
 // poll /admin/off-status to see progress (products_count updates at the end
 // of the sync, not while streaming — acceptable for an admin use case).
@@ -53,13 +53,13 @@ func (a *App) handleAdminOFFRefresh(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Hour)
 		defer cancel()
-		stats, err := a.OFFSyncer.SyncDump(ctx)
+		stats, err := a.OFFSyncer.Bootstrap(ctx)
 		if err != nil && !errors.Is(err, off.ErrSyncInProgress) {
 			a.Logger.Warn("admin OFF sync failed", "err", err)
 			return
 		}
 		a.Logger.Info("admin OFF sync done",
-			"imported", stats.Imported, "skipped", stats.Skipped,
+			"imported", stats.Imported, "deltas", stats.Deltas,
 			"duration_ms", stats.DurationMs)
 	}()
 
@@ -78,13 +78,17 @@ func offStatusJSON(s *off.State) map[string]any {
 		"products_count": s.ProductsCount,
 		"syncing":        s.Syncing,
 		"last_error":     s.LastError,
-		"dump_etag":      s.DumpETag,
 	}
-	if s.LastSyncedAt != nil {
-		out["last_synced_at"] = s.LastSyncedAt.UTC().Format(time.RFC3339)
-	}
-	if s.LastAttemptAt != nil {
-		out["last_attempt_at"] = s.LastAttemptAt.UTC().Format(time.RFC3339)
+	for key, t := range map[string]*time.Time{
+		"last_synced_at":    s.LastSyncedAt,
+		"last_attempt_at":   s.LastAttemptAt,
+		"last_bootstrap_at": s.LastBootstrapAt,
+		"last_delta_at":     s.LastDeltaAt,
+		"high_water_at":     s.HighWater,
+	} {
+		if t != nil {
+			out[key] = t.UTC().Format(time.RFC3339)
+		}
 	}
 	return out
 }
