@@ -53,8 +53,9 @@ func (s *SyncScheduler) Run(ctx context.Context) {
 
 // checkAndRun starts a sync when the last success is older than interval,
 // when there has never been one, or when another parser version imported the
-// data (ParserVersion). Sync itself decides between a bootstrap and deltas. It does not block: when a sync is already running it
-// returns ErrSyncInProgress with no visible error.
+// data (ParserVersion). Sync itself decides between a bootstrap and deltas.
+// It does not block: when a sync is already running it returns
+// ErrSyncInProgress with no visible error.
 func (s *SyncScheduler) checkAndRun(ctx context.Context, interval time.Duration, logger *slog.Logger) {
 	state, err := s.Syncer.LoadState(ctx)
 	if err != nil {

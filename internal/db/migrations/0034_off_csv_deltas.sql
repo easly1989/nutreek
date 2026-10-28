@@ -7,8 +7,8 @@ ALTER TABLE off_sync_state ADD COLUMN last_bootstrap_at INTEGER;
 ALTER TABLE off_sync_state ADD COLUMN last_delta_at INTEGER;
 ALTER TABLE off_sync_state DROP COLUMN dump_etag;
 
--- A bootstrap fills this table first and swaps it into off_products in one
--- transaction, so searches keep the old products until the new set is whole.
+-- A bootstrap fills this table first and swaps it into off_products only
+-- once it is whole, so searches keep the old products while it downloads.
 CREATE TABLE off_products_staging (
     barcode             TEXT PRIMARY KEY,
     product_name        TEXT NOT NULL,
