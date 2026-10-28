@@ -123,16 +123,16 @@ func TestEnglishRecipesPlanAndTemplates(t *testing.T) {
 
 	desc := "Soak the oats."
 	porridge := must(a.Recipes.Create(ctx, ada.ID, "Porridge", &desc, 2, true))
-	_ = must(a.Recipes.AddItem(ctx, porridge, ada.ID, oats, 100))
+	_ = must(a.Recipes.AddItem(ctx, porridge, ada.ID, oats, 100, "g"))
 	duo := must(a.Recipes.Create(ctx, ada.ID, "Duo", nil, 1, false))
-	_ = must(a.Recipes.AddItem(ctx, duo, ada.ID, oats, 100))
-	duoRice := must(a.Recipes.AddItem(ctx, duo, ada.ID, rice, 50))
+	_ = must(a.Recipes.AddItem(ctx, duo, ada.ID, oats, 100, "g"))
+	duoRice := must(a.Recipes.AddItem(ctx, duo, ada.ID, rice, 50, "g"))
 	bowl := must(a.Recipes.Create(ctx, ada.ID, "Bowl", nil, 1, false))
 	theirs := must(a.Recipes.Create(ctx, bob.ID, "Pasta", &desc, 4, true))
 	// A draft copy of "Duo" is identical to it; a draft whose source is gone is not.
 	draftSame := must(a.Recipes.Duplicate(ctx, duo, ada.ID, "Duo copy"))
 	lone := must(a.Recipes.Create(ctx, ada.ID, "Lone", nil, 1, false))
-	_ = must(a.Recipes.AddItem(ctx, lone, ada.ID, rice, 10))
+	_ = must(a.Recipes.AddItem(ctx, lone, ada.ID, rice, 10, "g"))
 	draftLone := must(a.Recipes.Duplicate(ctx, lone, ada.ID, "Lone copy"))
 	ok(a.Recipes.Delete(ctx, lone, ada.ID))
 

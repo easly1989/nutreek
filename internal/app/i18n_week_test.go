@@ -83,7 +83,7 @@ func TestEnglishWeekAndPicker(t *testing.T) {
 	egg := id(a.Ingredients.CreateLocal(ctx, "Egg", nil, domain.UnitGram, 143, 12.6, 0.7, 9.5, &ada.ID, &weight, &serving, nil, nil, nil, nil))
 	rice := id(a.Ingredients.CreateLocal(ctx, "Rice", nil, domain.UnitGram, 360, 7, 79, 0.6, &ada.ID, nil, nil, nil, nil, nil, nil))
 	soup := id(a.Recipes.Create(ctx, ada.ID, "Oat soup", nil, 4, false))
-	id(a.Recipes.AddItem(ctx, soup, ada.ID, oats, 200))
+	id(a.Recipes.AddItem(ctx, soup, ada.ID, oats, 200, "g"))
 	shell := id(a.Recipes.Create(ctx, ada.ID, "Empty shell", nil, 1, false))
 	id(a.Recipes.Create(ctx, bob.ID, "Public pie", nil, 1, true))
 	if _, err := a.Store.DB.Exec(`INSERT INTO off_products (barcode, product_name, brands, quantity,

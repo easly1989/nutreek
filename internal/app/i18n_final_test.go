@@ -190,10 +190,10 @@ func TestEnglishEveryPage(t *testing.T) {
 	// ---- recipes
 	desc := "Soak the oats."
 	porridge := id(a.Recipes.Create(ctx, ada.ID, "Porridge", &desc, 2, true))
-	id(a.Recipes.AddItem(ctx, porridge, ada.ID, oats, 100))
+	id(a.Recipes.AddItem(ctx, porridge, ada.ID, oats, 100, "g"))
 	duo := id(a.Recipes.Create(ctx, ada.ID, "Duo", nil, 1, false))
-	id(a.Recipes.AddItem(ctx, duo, ada.ID, oats, 100))
-	id(a.Recipes.AddItem(ctx, duo, ada.ID, rice, 50))
+	id(a.Recipes.AddItem(ctx, duo, ada.ID, oats, 100, "g"))
+	id(a.Recipes.AddItem(ctx, duo, ada.ID, rice, 50, "g"))
 	bowl := id(a.Recipes.Create(ctx, ada.ID, "Bowl", nil, 1, false))
 	draft := id(a.Recipes.Duplicate(ctx, duo, ada.ID, "Duo copy"))
 	theirs := id(a.Recipes.Create(ctx, bob.ID, "Pasta", &desc, 4, true))

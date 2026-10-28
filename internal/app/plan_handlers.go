@@ -237,7 +237,7 @@ func scaleRecipeItems(it domain.MealItemFull) []scaledIngredient {
 	for _, ri := range it.RecipeItems {
 		out = append(out, scaledIngredient{
 			Name:     ri.Ingredient.Name,
-			Quantity: ri.Quantity * scale,
+			Quantity: macros.RecipeItemGrams(ri) * scale,
 			Unit:     string(ri.Ingredient.Unit),
 		})
 	}
@@ -778,9 +778,8 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	kind := r.PostFormValue("kind") // "recipe" | "ingredient"
-	qtyStr := r.PostFormValue("quantity")
-	qty, err := parseNonNegFloat(qtyStr)
-	if err != nil || qty <= 0 {
+	qty, ok := parseItemQuantity(r.PostFormValue("quantity"))
+	if !ok {
 		a.flashAndBack(w, r, weekStart, "week.flash.invalid_quantity")
 		return
 	}
@@ -955,6 +954,49 @@ func (a *App) handleRemoveMealItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if dayErr != nil {
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	a.respondMutationOrRedirect(w, r, weekStart, day)
+}
+
+// handleUpdateMealItem POST /meal-items/{itemID}?start=YYYY-MM-DD: the
+// quantity editor of an item (#206), servings for a recipe, quantity and
+// unit for an ingredient. Same rules as adding; it answers like the other
+// item actions (the day card and its pill).
+func (a *App) handleUpdateMealItem(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	weekStart := parseWeekStart(r)
+	itemID, err := parseID(r, "itemID")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	qty, ok := parseItemQuantity(r.PostFormValue("quantity"))
+	if !ok {
+		a.flashAndBack(w, r, weekStart, "week.flash.invalid_quantity")
+		return
+	}
+	// The editor never sends another unit: no flash for a forged one.
+	unit := strings.TrimSpace(r.PostFormValue("qty_unit"))
+	if !validQtyUnit(unit) {
+		http.Error(w, a.t(r, "week.flash.invalid_quantity"), http.StatusUnprocessableEntity)
+		return
+	}
+	if err := a.WeeklyPlans.UpdateItem(r.Context(), itemID, user.ID, qty, unit); err != nil {
+		if errors.Is(err, db.ErrMealItemNotFound) {
+			http.Error(w, a.t(r, "week.error.item_not_found"), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, db.ErrMealItemCustomized) {
+			http.Error(w, a.t(r, "week.error.item_customized"), http.StatusConflict)
+			return
+		}
+		a.serverError(w, r, err)
+		return
+	}
+	day, err := a.dayIndexFromItemID(r, itemID)
+	if err != nil {
 		a.redirectToWeek(w, r, weekStart)
 		return
 	}

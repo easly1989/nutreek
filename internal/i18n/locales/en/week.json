@@ -137,5 +137,6 @@
   "week.error.missing_day": "day_of_week missing or invalid",
   "week.error.meal_not_found": "meal not found",
   "week.error.item_not_found": "item not found",
+  "week.error.item_customized": "this item has variations: change them from “Customize ingredients”",
   "week.error.cheat_not_found": "cheat not found"
 }
