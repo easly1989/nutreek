@@ -50,8 +50,8 @@ The interface is in **English** and **Italian**. Each user picks the language in
 | Area | What it does |
 |------|-------------|
 | **Weekly plans** | One day at a time with a calorie ring and macros, meals, water and workouts; macros per meal, day and week, cheat meals, copy from the previous week |
-| **Ingredients** | Local FTS5 search (<50 ms, offline) with product photos, a barcode scanner in every food picker, OpenFoodFacts reconciliation |
-| **Recipes** | Built from ingredients, imported automatically from a URL (schema.org/Recipe) |
+| **Ingredients** | Local FTS5 search (<50 ms, offline) with product photos, a barcode scanner in every food picker, a local OpenFoodFacts copy that updates daily, OpenFoodFacts reconciliation |
+| **Recipes** | Built from ingredients, imported automatically from a URL (schema.org/Recipe), with a photo; quantities edited in place, in grams or pieces |
 | **Templates** | Reusable weekly templates, applied in one click |
 | **Nutrition plan** | Meal variants, automatic week generation with a greedy algorithm that aims at your macro targets |
 | **Shopping list** | Generated from the selected week, grouped by aisle |
