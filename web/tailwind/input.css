@@ -222,8 +222,9 @@
   .filter .cnt { @apply font-medium text-muted; }
   .filter.is-on, .filter:has(input:checked) { @apply bg-accent-soft border-transparent text-accent; }
   .filter.is-on .cnt { color: inherit; opacity: .75; }
-  /* The chips' selects and checkboxes are invisible: the focus shows on the chip. */
-  .filter:has(:focus-visible), .segmented > label:has(:focus-visible) {
+  /* The chips' selects and checkboxes are invisible: the focus shows on the
+     chip. So for a file picker, a label around a hidden input (#207). */
+  .filter:has(:focus-visible), .segmented > label:has(:focus-visible), .file-pick:has(:focus-visible) {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
