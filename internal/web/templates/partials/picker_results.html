@@ -96,7 +96,8 @@
       {{if $r.Allergens}}<span class="flex flex-wrap gap-1 mt-0.5">{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px]">{{ref "allergen" .Code .Name}}</span>{{end}}</span>{{end}}
     </span>
     <span class="text-right leading-tight tabular-nums whitespace-nowrap">
-      <b>{{num $r.Kcal}}</b> <span class="text-[12.5px] text-muted">{{t "picker.kcal_per_100" "Unit" $r.Unit}}</span>
+      {{- /* Below sm the unit goes under the number: the name keeps the width. */}}
+      <b class="block sm:inline">{{num $r.Kcal}}</b> <span class="block sm:inline text-[11.5px] sm:text-[12.5px] text-muted">{{t "picker.kcal_per_100" "Unit" $r.Unit}}</span>
     </span>
     <span class="w-8 h-8 shrink-0 grid place-items-center rounded-full border border-border bg-surface text-accent group-open:rotate-45 transition-transform" aria-hidden="true">{{template "icon_sm" "i-plus"}}</span>
   </summary>
