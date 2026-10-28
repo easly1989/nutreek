@@ -79,6 +79,14 @@ func TestToProductPer100ml(t *testing.T) {
 	}
 }
 
+// Entered per serving, the *_100g keys still count; the bare ones do not.
+func TestToProductPerServing100gKeys(t *testing.T) {
+	p := parseLine(t, `{"code":"1","product_name":"Crackers","nutrition_data_per":"serving","nutriments":{"energy-kcal":120,"energy-kcal_100g":430,"proteins_100g":10,"carbohydrates_100g":70,"fat_100g":11,"proteins":3}}`)
+	if !p.HasFullNutrients || p.Kcal != 430 || p.Protein != 10 {
+		t.Errorf("per serving with *_100g keys: %+v", p)
+	}
+}
+
 // The plausibility bounds are inclusive: pure oil is still importable.
 func TestToProductPlausibleEdge(t *testing.T) {
 	p := parseLine(t, `{"code":"1","product_name":"Olio","nutriments":{"energy-kcal_100g":900,"proteins_100g":0,"carbohydrates_100g":5,"fat_100g":100}}`)
@@ -107,9 +115,11 @@ func TestToProductPartialSet(t *testing.T) {
 // not discard the rest of the line.
 func TestToProductIncomplete(t *testing.T) {
 	cases := map[string]string{
-		"per serving":        `{"code":"1","product_name":"Latte","nutrition":{"aggregated_set":{"per":"serving","nutrients":{"energy-kcal":{"value":46,"unit":"kcal"},"proteins":{"value":3.3,"unit":"g"},"carbohydrates":{"value":4.8,"unit":"g"},"fat":{"value":1.5,"unit":"g"}}}}}`,
-		"fat missing":        `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"}}}}}`,
-		"unknown unit":       `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"},"fat":{"value":1,"unit":"%"}}}}}`,
+		"per serving":  `{"code":"1","product_name":"Latte","nutrition":{"aggregated_set":{"per":"serving","nutrients":{"energy-kcal":{"value":46,"unit":"kcal"},"proteins":{"value":3.3,"unit":"g"},"carbohydrates":{"value":4.8,"unit":"g"},"fat":{"value":1.5,"unit":"g"}}}}}`,
+		"fat missing":  `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"}}}}}`,
+		"unknown unit": `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"},"fat":{"value":1,"unit":"%"}}}}}`,
+		// 0000105000196: bare values per a 1.5 g serving, no *_100g keys.
+		"bare per serving":   `{"code":"0000105000196","product_name":"Apple & Cinnamon Tea","nutrition_data_per":"serving","serving_size":"1.5 g","nutriments":{"energy-kcal":240,"energy-kcal_serving":3.6,"proteins":1,"carbohydrates":55,"fat":0.5}}`,
 		"kJ entered as kcal": `{"code":"1","product_name":"Biscotti","nutriments":{"energy-kcal_100g":1320,"proteins_100g":7,"carbohydrates_100g":70,"fat_100g":15}}`,
 		"macros above 100 g": `{"code":"1","product_name":"Biscotti","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":450,"unit":"kcal"},"proteins":{"value":20,"unit":"g"},"carbohydrates":{"value":70,"unit":"g"},"fat":{"value":16,"unit":"g"}}}}}`,
 		"null in nutriments": `{"code":"1","product_name":"Pane","nutriments":{"energy-kcal":250,"proteins":null,"carbohydrates":50,"fat":1}}`,

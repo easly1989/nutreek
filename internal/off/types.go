@@ -58,6 +58,8 @@ type rawProduct struct {
 	ServingQuantity     json.RawMessage `json:"serving_quantity"`
 	ServingQuantityUnit string          `json:"serving_quantity_unit"`
 	ServingSize         string          `json:"serving_size"`
+	// NutritionDataPer says what the bare nutriments are per: "100g" or "serving".
+	NutritionDataPer string `json:"nutrition_data_per"`
 	// The dump's current shape (#204): nutrients in nutrition.aggregated_set,
 	// no image URLs but images.selected.front. Kept raw and parsed leniently,
 	// so an unexpected shape there does not discard the whole product.
@@ -192,13 +194,18 @@ func (r rawProduct) toProduct() Product {
 		ServingG:    ParseServingG(r.ServingQuantity, r.ServingQuantityUnit, r.ServingSize),
 	}
 	// The JSONL dump uses bare keys ("proteins") while the API uses "_100g"
-	// ("proteins_100g"). Try both to support the two sources.
+	// ("proteins_100g"). Try both to support the two sources; the bare keys
+	// hold the values as entered, so only when they were entered per 100 g.
+	bare := r.NutritionDataPer == "" || r.NutritionDataPer == "100g"
 	grams := func(name string) (float64, bool) {
-		return lookupNutrientAny(r.Nutriments, name+"_100g", name)
+		if v, ok := lookupNutrient(r.Nutriments, name+"_100g"); ok || !bare {
+			return v, ok
+		}
+		return lookupNutrient(r.Nutriments, name)
 	}
-	kcal, kOK := lookupNutrientAny(r.Nutriments, "energy-kcal_100g", "energy-kcal")
+	kcal, kOK := grams("energy-kcal")
 	if !kOK {
-		if kj, ok := lookupNutrientAny(r.Nutriments, "energy_100g", "energy"); ok {
+		if kj, ok := grams("energy"); ok {
 			kcal = kj / 4.184
 			kOK = true
 		}
@@ -246,17 +253,6 @@ const (
 	maxKcalPer100   = 900
 	maxMacrosPer100 = 105
 )
-
-// lookupNutrientAny tries the keys in order and returns the first match.
-// Used to handle both the API format (_100g) and the JSONL dump (bare).
-func lookupNutrientAny(m map[string]json.RawMessage, keys ...string) (float64, bool) {
-	for _, k := range keys {
-		if v, ok := lookupNutrient(m, k); ok {
-			return v, ok
-		}
-	}
-	return 0, false
-}
 
 // lookupNutrient reads a field OFF can return as a number or a string.
 func lookupNutrient(m map[string]json.RawMessage, key string) (float64, bool) {

@@ -319,6 +319,7 @@ type dumpProduct struct {
 	ServingQuantity     json.RawMessage            `json:"serving_quantity"`
 	ServingQuantityUnit string                     `json:"serving_quantity_unit"`
 	ServingSize         string                     `json:"serving_size"`
+	NutritionDataPer    string                     `json:"nutrition_data_per"`
 	Nutrition           json.RawMessage            `json:"nutrition"`
 	Images              json.RawMessage            `json:"images"`
 }
@@ -338,6 +339,7 @@ func (d dumpProduct) toProduct() Product {
 		ServingQuantity:     d.ServingQuantity,
 		ServingQuantityUnit: d.ServingQuantityUnit,
 		ServingSize:         d.ServingSize,
+		NutritionDataPer:    d.NutritionDataPer,
 		Nutrition:           d.Nutrition,
 		Images:              d.Images,
 	}
