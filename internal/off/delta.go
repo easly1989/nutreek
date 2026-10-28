@@ -74,6 +74,17 @@ func pendingDeltas(index []delta, highWater int64) ([]delta, bool) {
 	return out, true
 }
 
+// oldestFrom is the start of the oldest delta in the index.
+func oldestFrom(index []delta) int64 {
+	var oldest int64
+	for i, d := range index {
+		if i == 0 || d.from < oldest {
+			oldest = d.from
+		}
+	}
+	return oldest
+}
+
 // applyDelta upserts the Italian products of a delta file and deletes the
 // local copies of the ones that are no longer Italian, then advances the
 // high-water mark to the file's end. Applying a file twice changes nothing,

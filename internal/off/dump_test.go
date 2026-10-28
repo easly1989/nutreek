@@ -176,13 +176,13 @@ func TestBootstrapFromCSV(t *testing.T) {
 	f.csv = makeCSVGzip(t, []csvRow{
 		grana, partial, kJ, heavy, energy, foreignImg, oldHost, noName, quoted,
 		{"code": "3000000000001", "product_name": "Camembert", "last_modified_t": "5000", "countries_tags": "en:france"},
-	}, "8000000000109\ttoo few columns\ten:italy")
+	})
 
 	stats, err := syncer.Sync(context.Background())
 	if err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	if !stats.Bootstrap || stats.ScannedTotal != 11 || stats.Imported != 8 || stats.Deltas != 0 {
+	if !stats.Bootstrap || stats.ScannedTotal != 10 || stats.Imported != 8 || stats.Deltas != 0 {
 		t.Errorf("stats: %+v", stats)
 	}
 	type row struct {
@@ -367,13 +367,152 @@ func TestRebootstrapTriggers(t *testing.T) {
 	}
 }
 
-// bigCSV is an export of n Italian biscuits, enough for several batches.
-func bigCSV(t *testing.T, n int) []byte {
+// bigCSV is an export of n Italian biscuits, enough for several batches,
+// then the raw lines.
+func bigCSV(t *testing.T, n int, raw ...string) []byte {
 	rows := make([]csvRow, n)
 	for i := range rows {
 		rows[i] = italian(fmt.Sprintf("900%010d", i), fmt.Sprintf("Biscotto %d", i), 5000)
 	}
-	return makeCSVGzip(t, rows)
+	return makeCSVGzip(t, rows, raw...)
+}
+
+func setCSV(f *fakeOFF, csv []byte) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.csv = csv
+}
+
+func countProducts(t *testing.T, sqldb *sql.DB) int {
+	t.Helper()
+	var n int
+	if err := sqldb.QueryRow(`SELECT COUNT(*) FROM off_products`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+// Up to 1% of malformed rows is noise; more means a broken export.
+func TestBootstrapMalformedRows(t *testing.T) {
+	f, syncer, sqldb := newFakeOFF(t)
+	bad := []string{"1\ttoo few", "2\ttoo few", "3\ttoo few", "4\ttoo few"}
+	setCSV(f, bigCSV(t, 300, bad[:3]...)) // 3 of 303
+	if _, err := syncer.Sync(context.Background()); err != nil {
+		t.Fatalf("1%% of malformed rows: %v", err)
+	}
+	setCSV(f, makeCSVGzip(t, []csvRow{italian("8000000000017", "Grana Padano", 1000)}, bad...)) // 4 of 5
+	if _, err := syncer.Bootstrap(context.Background()); err == nil || !strings.Contains(err.Error(), "malformed") {
+		t.Errorf("want a malformed-rows error, got %v", err)
+	}
+	if n := countProducts(t, sqldb); n != 300 {
+		t.Errorf("products after a malformed export: %d, want 300", n)
+	}
+}
+
+// An export that shrank below 80% of the products in use is not swapped in.
+func TestBootstrapRefusesShrunkExport(t *testing.T) {
+	f, syncer, sqldb := newFakeOFF(t)
+	setCSV(f, bigCSV(t, 2000))
+	if _, err := syncer.Sync(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := syncer.LoadState(context.Background())
+	setCSV(f, bigCSV(t, 1500))
+	if _, err := syncer.Bootstrap(context.Background()); err == nil {
+		t.Fatal("a 75% export must be refused")
+	}
+	if n := countProducts(t, sqldb); n != 2000 {
+		t.Errorf("products after a refused swap: %d, want 2000", n)
+	}
+	if st, _ := syncer.LoadState(context.Background()); !st.LastBootstrapAt.Equal(*before.LastBootstrapAt) || st.LastError == "" {
+		t.Errorf("state after a refused swap: %+v", st)
+	}
+	setCSV(f, bigCSV(t, 1700))
+	if _, err := syncer.Bootstrap(context.Background()); err != nil {
+		t.Fatalf("an 85%% export: %v", err)
+	}
+	if n := countProducts(t, sqldb); n != 1700 {
+		t.Errorf("products after an 85%% export: %d, want 1700", n)
+	}
+}
+
+// A swap that fails midway leaves the state as it was: the next sync
+// bootstraps again and completes it.
+func TestSwapFailureMidway(t *testing.T) {
+	f, syncer, sqldb := newFakeOFF(t)
+	bootstrapGrana(t, f, syncer)
+	if _, err := sqldb.Exec(fmt.Sprintf(`UPDATE off_sync_state SET parser_version = %d`, ParserVersion-1)); err != nil {
+		t.Fatal(err)
+	}
+	// Biscuit 5500 is in the second chunk of the swap.
+	if _, err := sqldb.Exec(`CREATE TRIGGER fail_swap BEFORE INSERT ON off_products
+		WHEN new.barcode = '9000000005500' BEGIN SELECT RAISE(ABORT, 'boom'); END`); err != nil {
+		t.Fatal(err)
+	}
+	setCSV(f, bigCSV(t, 6000))
+	if _, err := syncer.Sync(context.Background()); err == nil {
+		t.Fatal("the swap must fail")
+	}
+	st, _ := syncer.LoadState(context.Background())
+	if st.ParserVersion != ParserVersion-1 || st.HighWater.Unix() != 1000 {
+		t.Errorf("state after a failed swap: %+v", st)
+	}
+	if n := countProducts(t, sqldb); n != swapChunk {
+		t.Errorf("products after a failed swap: %d, want the first chunk", n)
+	}
+	if _, err := sqldb.Exec(`DROP TRIGGER fail_swap`); err != nil {
+		t.Fatal(err)
+	}
+	stats, err := syncer.Sync(context.Background())
+	if err != nil || !stats.Bootstrap {
+		t.Fatalf("next sync: %+v, %v", stats, err)
+	}
+	if n := countProducts(t, sqldb); n != 6000 {
+		t.Errorf("products after the retry: %d, want 6000", n)
+	}
+}
+
+// A product dated in the future does not push the high-water mark past now.
+func TestHighWaterClampedToNow(t *testing.T) {
+	f, syncer, _ := newFakeOFF(t)
+	setCSV(f, makeCSVGzip(t, []csvRow{italian("8000000000017", "Grana Padano", time.Now().Add(10*24*time.Hour).Unix())}))
+	if _, err := syncer.Sync(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	st, _ := syncer.LoadState(context.Background())
+	if st.HighWater.After(time.Now()) {
+		t.Errorf("high water in the future: %v", st.HighWater)
+	}
+}
+
+// An export older than every delta: they all apply, oldest first, and the
+// next day reads only the new delta instead of the CSV again.
+func TestExportOlderThanDeltas(t *testing.T) {
+	f, syncer, sqldb := newFakeOFF(t)
+	ctx := context.Background()
+	setCSV(f, makeCSVGzip(t, []csvRow{italian("8000000000017", "Grana Padano", 1000)}))
+	d1 := f.addDelta(t, 2000, 3000, deltaLine("8000000000017", "Grana Second", "en:italy"))
+	d2 := f.addDelta(t, 3000, 4000, deltaLine("8000000000017", "Grana Third", "en:italy"))
+	stats, err := syncer.Sync(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"/products.csv.gz", "/delta/index.txt", "/delta/" + d1, "/delta/" + d2}
+	if hits := f.takeHits(); strings.Join(hits, " ") != strings.Join(want, " ") || stats.Deltas != 2 {
+		t.Errorf("downloads: %v, want %v; %+v", hits, want, stats)
+	}
+	var name string
+	_ = sqldb.QueryRow(`SELECT product_name FROM off_products`).Scan(&name)
+	if st, _ := syncer.LoadState(ctx); st.HighWater.Unix() != 4000 || name != "Grana Third" {
+		t.Errorf("high water %v, name %q", st.HighWater, name)
+	}
+	d3 := f.addDelta(t, 4000, 5000, deltaLine("8000000000017", "Grana Fourth", "en:italy"))
+	if _, err := syncer.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if hits := f.takeHits(); len(hits) != 2 || hits[1] != "/delta/"+d3 {
+		t.Errorf("next day: %v", hits)
+	}
 }
 
 func bootstrapGrana(t *testing.T, f *fakeOFF, syncer *Syncer) {

@@ -173,7 +173,10 @@ func (s *Syncer) doSync(ctx context.Context, force bool) (SyncStats, error) {
 		}
 		var ok bool
 		if pending, ok = pendingDeltas(index, highWater); !ok {
-			s.Logger.Warn("off sync: the CSV export is older than every delta", "high_water", highWater)
+			// Bootstrapping again would not help: move the high-water mark on.
+			s.Logger.Warn("off sync: the CSV export is older than every delta; the changes in between "+
+				"are missing until the next bootstrap", "high_water", highWater)
+			pending, _ = pendingDeltas(index, oldestFrom(index))
 		}
 	}
 	for _, d := range pending {
