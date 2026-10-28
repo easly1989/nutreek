@@ -131,7 +131,7 @@ func run(logger *slog.Logger) error {
 
 	ingredientsRepo := db.NewIngredients(store.DB)
 	offClient := off.NewClient(store.DB, cfg.OFFBaseURL, logger)
-	offSyncer := off.NewSyncer(store.DB, cfg.OFFDumpURL, logger)
+	offSyncer := off.NewSyncer(store.DB, cfg.OFFCSVURL, cfg.OFFDeltaURL, logger)
 	reconciler := &off.Reconciler{
 		Ingredients: ingredientsRepo,
 		Client:      offClient,

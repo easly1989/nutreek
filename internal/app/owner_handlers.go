@@ -98,8 +98,8 @@ func (a *App) handleOwnerOFFStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleOwnerOFFRefresh POST /profile/off-sync — triggers an OFF sync in the
-// background. Accepts `force=true` (form or query) to invalidate the saved
-// ETag and force a full re-download (useful after parser changes).
+// background. Accepts `force=true` (form or query) to bootstrap from the CSV
+// export even when the daily deltas would do.
 func (a *App) handleOwnerOFFRefresh(w http.ResponseWriter, r *http.Request) {
 	if a.OFFSyncer == nil {
 		http.Error(w, "OFF syncer not configured", http.StatusServiceUnavailable)
@@ -114,27 +114,21 @@ func (a *App) handleOwnerOFFRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	force := r.URL.Query().Get("force") == "true" || r.PostFormValue("force") == "true"
+	run := a.OFFSyncer.Sync
 	if force {
-		// With dump_etag cleared the next doSync sends no If-None-Match,
-		// so OFF answers 200 + the full dump instead of 304.
-		if _, err := a.Store.DB.ExecContext(r.Context(),
-			`UPDATE off_sync_state SET dump_etag = NULL WHERE id = 1`); err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-		a.Logger.Info("owner OFF sync: forced (etag cleared)")
+		run = a.OFFSyncer.Bootstrap
 	}
 
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Hour)
 		defer cancel()
-		stats, err := a.OFFSyncer.SyncDump(ctx)
+		stats, err := run(ctx)
 		if err != nil && !errors.Is(err, off.ErrSyncInProgress) {
 			a.Logger.Warn("owner OFF sync failed", "err", err)
 			return
 		}
 		a.Logger.Info("owner OFF sync done",
-			"imported", stats.Imported, "skipped", stats.Skipped,
+			"imported", stats.Imported, "deltas", stats.Deltas,
 			"duration_ms", stats.DurationMs, "force", force)
 	}()
 
