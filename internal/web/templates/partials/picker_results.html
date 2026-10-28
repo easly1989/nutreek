@@ -91,7 +91,8 @@
       <span class="thumb">{{template "off_thumb" $r.ImageURL}}</span>
     {{end}}
     <span class="grow min-w-0">
-      <span class="block truncate"><b class="font-semibold">{{$r.Name}}</b>{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}{{with $r.Quantity}} <span class="text-muted">· {{.}}</span>{{end}}</span>
+      <b class="font-semibold line-clamp-2">{{$r.Name}}</b>
+      {{if or $r.Brand $r.Quantity}}<span class="block truncate text-[12.5px] text-muted">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}</span>{{end}}
       {{if $r.Allergens}}<span class="flex flex-wrap gap-1 mt-0.5">{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px]">{{ref "allergen" .Code .Name}}</span>{{end}}</span>{{end}}
     </span>
     <span class="text-right leading-tight tabular-nums whitespace-nowrap">

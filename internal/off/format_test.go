@@ -79,6 +79,14 @@ func TestToProductPer100ml(t *testing.T) {
 	}
 }
 
+// The plausibility bounds are inclusive: pure oil is still importable.
+func TestToProductPlausibleEdge(t *testing.T) {
+	p := parseLine(t, `{"code":"1","product_name":"Olio","nutriments":{"energy-kcal_100g":900,"proteins_100g":0,"carbohydrates_100g":5,"fat_100g":100}}`)
+	if !p.HasFullNutrients {
+		t.Errorf("900 kcal and 105 g of macros per 100 g must be importable: %+v", p)
+	}
+}
+
 // A nutrient missing from the aggregated set, or null there, still comes from
 // nutriments; the set wins where it has a value.
 func TestToProductPartialSet(t *testing.T) {
@@ -102,6 +110,8 @@ func TestToProductIncomplete(t *testing.T) {
 		"per serving":        `{"code":"1","product_name":"Latte","nutrition":{"aggregated_set":{"per":"serving","nutrients":{"energy-kcal":{"value":46,"unit":"kcal"},"proteins":{"value":3.3,"unit":"g"},"carbohydrates":{"value":4.8,"unit":"g"},"fat":{"value":1.5,"unit":"g"}}}}}`,
 		"fat missing":        `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"}}}}}`,
 		"unknown unit":       `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":250,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"},"fat":{"value":1,"unit":"%"}}}}}`,
+		"kJ entered as kcal": `{"code":"1","product_name":"Biscotti","nutriments":{"energy-kcal_100g":1320,"proteins_100g":7,"carbohydrates_100g":70,"fat_100g":15}}`,
+		"macros above 100 g": `{"code":"1","product_name":"Biscotti","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":450,"unit":"kcal"},"proteins":{"value":20,"unit":"g"},"carbohydrates":{"value":70,"unit":"g"},"fat":{"value":16,"unit":"g"}}}}}`,
 		"null in nutriments": `{"code":"1","product_name":"Pane","nutriments":{"energy-kcal":250,"proteins":null,"carbohydrates":50,"fat":1}}`,
 		"null in the set":    `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":{"per":"100g","nutrients":{"energy-kcal":{"value":null,"unit":"kcal"},"proteins":{"value":8,"unit":"g"},"carbohydrates":{"value":50,"unit":"g"},"fat":{"value":1,"unit":"g"}}}}}`,
 		"malformed set":      `{"code":"1","product_name":"Pane","nutrition":{"aggregated_set":"oops"},"images":[1]}`,
