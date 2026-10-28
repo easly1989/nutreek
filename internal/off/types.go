@@ -221,7 +221,9 @@ func (r rawProduct) toProduct() Product {
 	carbs, cOK := grams("carbohydrates")
 	fat, fOK := grams("fat")
 	p.Kcal, p.Protein, p.Carbs, p.Fat = kcal, prot, carbs, fat
-	p.HasFullNutrients = kOK && pOK && cOK && fOK
+	// Implausible values (kJ entered as kcal, grams per serving) are not importable.
+	plausible := kcal <= maxKcalPer100 && prot+carbs+fat <= maxMacrosPer100
+	p.HasFullNutrients = kOK && pOK && cOK && fOK && plausible
 
 	if v, ok := grams("fiber"); ok {
 		p.Fiber = &v
@@ -237,6 +239,13 @@ func (r rawProduct) toProduct() Product {
 	}
 	return p
 }
+
+// Upper bounds of plausible values per 100 g: pure fat is ~900 kcal, and the
+// macros cannot weigh much more than the 100 g they are in (5 g of rounding).
+const (
+	maxKcalPer100   = 900
+	maxMacrosPer100 = 105
+)
 
 // lookupNutrientAny tries the keys in order and returns the first match.
 // Used to handle both the API format (_100g) and the JSONL dump (bare).

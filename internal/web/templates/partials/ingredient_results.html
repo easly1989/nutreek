@@ -43,7 +43,14 @@
     {{if $r.IsOFF}}{{template "off_thumb" $r.ImageURL}}{{else}}{{template "icon_sm" "i-ingredients"}}{{end}}
   </span>
   <div class="flex flex-col gap-1 min-w-0">
-    <span class="truncate"><b class="font-semibold">{{$r.Name}}</b>{{if and (not $r.IsOFF) (not $r.CanEdit) $r.Author}} <span class="text-muted text-[12.5px]">{{t "ingredients.row.by" "Author" $r.Author}}</span>{{end}}{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}{{with $r.Quantity}} <span class="text-muted">· {{.}}</span>{{end}}</span>
+    {{if $r.IsOFF}}
+    <span class="min-w-0">
+      <b class="font-semibold line-clamp-2">{{$r.Name}}</b>
+      {{if or $r.Brand $r.Quantity}}<span class="block truncate text-[12.5px] text-muted">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}</span>{{end}}
+    </span>
+    {{else}}
+    <span class="truncate"><b class="font-semibold">{{$r.Name}}</b>{{if and (not $r.CanEdit) $r.Author}} <span class="text-muted text-[12.5px]">{{t "ingredients.row.by" "Author" $r.Author}}</span>{{end}}{{with $r.Brand}} <span class="text-muted">{{.}}</span>{{end}}</span>
+    {{end}}
     {{if or $r.Category $r.Allergens $r.IsOFF}}
     <span class="flex flex-wrap gap-1">
       {{if $r.IsOFF}}<span class="chip chip-soft">OpenFoodFacts</span>{{end}}
