@@ -14,13 +14,13 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 - A photo for every recipe (#207): add, change or remove it at the top of the recipe page; the list shows a thumbnail. The page shrinks the picture before sending it, so phone photos come out upright and WebP works; the server keeps a JPEG of at most 1200 px, without EXIF data such as the position, inside the database, so backups include it. Whoever can see the recipe sees its photo; duplicating a recipe copies it (migration 0033)
 
 ### Changed
-- The OpenFoodFacts sync no longer downloads the 13 GB dump every week: it bootstraps from the 0.8 GB CSV export, then applies only the daily changes OpenFoodFacts publishes. It downloads the CSV again when the instance missed more than ~13 days of changes, when the parser changes, or every 30 days, to drop the products OpenFoodFacts deleted. Searches keep answering with the previous products while a download runs, and a failed one leaves them in place (migration 0034) (#211)
+- The OpenFoodFacts sync no longer downloads the 13 GB dump every week: it bootstraps from the 0.8 GB CSV export, then applies only the daily changes OpenFoodFacts publishes. It downloads the CSV again when the instance missed more than ~13 days of changes, when the parser changes, or every 30 days, to drop the products OpenFoodFacts deleted. Searches keep answering with the previous products while a download runs, and a failed or suspiciously small one leaves them in place (migration 0034) (#211)
 - `NUTREEK_OFF_DUMP_URL` is replaced by `NUTREEK_OFF_CSV_URL` and `NUTREEK_OFF_DELTA_URL`; `NUTREEK_OFF_SYNC_INTERVAL` defaults to `24h`. `POST /admin/refresh-off-dump` forces a CSV download, and the OpenFoodFacts card in Administration shows the last full download, the last daily changes and the date the data reaches (#211)
 
 ### Fixed
 - OpenFoodFacts products show their photo and macros again: the Syncer reads the dump's new shape (nutrients in `nutrition.aggregated_set`, the front image from `images.selected.front`, Italian first, then English) as well as the old one, and no longer guesses a French photo when there is none. The first sync after upgrading reads the dump again even when it has not changed (migration 0032) (#204)
 - Searching OpenFoodFacts offers only products that can be imported, with all four macros, so picking one no longer fails with «OFF product without complete macros»; a scanned code without macros offers to create the ingredient instead. Exact duplicates (same name, brand and macros) appear once, and every row shows its kcal per 100 g and package size (#204)
-- Upgrading: the first start downloads and re-imports the OpenFoodFacts data once (about 0.8 GB, once); OpenFoodFacts search results are limited until it finishes (#204, #211)
+- Upgrading: the first start downloads and re-imports the OpenFoodFacts data once (about 0.8 GB); OpenFoodFacts search results are limited until it finishes (#204, #211)
 - Clearing the ingredient picker's search brings back what the picker showed before any search, and a slow answer for an older query no longer repaints the results (#205)
 
 ---
