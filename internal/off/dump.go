@@ -167,6 +167,7 @@ func (s *Syncer) doSync(ctx context.Context, force bool) (SyncStats, error) {
 		if err != nil {
 			return stats, err
 		}
+		s.vacuum(ctx)
 		index, err := s.fetchIndex(ctx)
 		if err != nil {
 			return stats, err

@@ -180,6 +180,19 @@ func csvNumber(s string) json.RawMessage {
 	return json.RawMessage(strconv.FormatFloat(v, 'g', -1, 64))
 }
 
+// vacuum gives the disk back the pages a bootstrap freed, the emptied
+// staging table's above all: SQLite keeps them in the file otherwise. Other
+// writers wait while it runs (373 ms for 250k test products, #214). A failure,
+// such as too little disk for its temporary copy, costs only the space.
+func (s *Syncer) vacuum(ctx context.Context) {
+	start := time.Now()
+	if _, err := s.DB.ExecContext(ctx, `VACUUM`); err != nil {
+		s.Logger.Warn("off sync: vacuum failed, the freed space stays in the database file", "err", err)
+		return
+	}
+	s.Logger.Info("off sync: vacuum done", "duration_ms", time.Since(start).Milliseconds())
+}
+
 func pause(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
