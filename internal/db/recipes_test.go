@@ -85,7 +85,7 @@ func TestRecipesVisibilityAndCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ingredient: %v", err)
 	}
-	itemID, err := recipes.AddItem(ctx, pub, alice, ingID, 200)
+	itemID, err := recipes.AddItem(ctx, pub, alice, ingID, 200, "g")
 	if err != nil {
 		t.Fatalf("AddItem: %v", err)
 	}
@@ -193,10 +193,10 @@ func TestRecipesDuplicate(t *testing.T) {
 	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 350, 12, 70, 1.5, &alice, nil, nil, nil, nil, nil, nil)
 
 	src, _ := recipes.Create(ctx, alice, "Origine", nil, 2, false)
-	if _, err := recipes.AddItem(ctx, src, alice, pane, 100); err != nil {
+	if _, err := recipes.AddItem(ctx, src, alice, pane, 100, "g"); err != nil {
 		t.Fatalf("AddItem pane: %v", err)
 	}
-	if _, err := recipes.AddItem(ctx, src, alice, pasta, 80); err != nil {
+	if _, err := recipes.AddItem(ctx, src, alice, pasta, 80, "g"); err != nil {
 		t.Fatalf("AddItem pasta: %v", err)
 	}
 
@@ -238,8 +238,8 @@ func TestRecipesIdenticalContent(t *testing.T) {
 	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 350, 12, 70, 1.5, &alice, nil, nil, nil, nil, nil, nil)
 
 	r1, _ := recipes.Create(ctx, alice, "Ricetta A", nil, 2, false)
-	_, _ = recipes.AddItem(ctx, r1, alice, pane, 100)
-	_, _ = recipes.AddItem(ctx, r1, alice, pasta, 80)
+	_, _ = recipes.AddItem(ctx, r1, alice, pane, 100, "g")
+	_, _ = recipes.AddItem(ctx, r1, alice, pasta, 80, "g")
 
 	// items = the same set → match
 	sameItems := []domain.RecipeItem{

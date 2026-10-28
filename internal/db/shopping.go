@@ -134,7 +134,7 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 					if it.Recipe != nil && it.Recipe.Servings > 0 {
 						scale := it.Quantity / float64(it.Recipe.Servings)
 						for _, ri := range it.RecipeItems {
-							totals[ri.IngredientID] += ri.Quantity * scale
+							totals[ri.IngredientID] += macros.RecipeItemGrams(ri) * scale
 						}
 					}
 				}

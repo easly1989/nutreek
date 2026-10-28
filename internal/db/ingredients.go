@@ -59,8 +59,14 @@ func (r *Ingredients) CreateLocal(
 	return id, nil
 }
 
+// piecesTables hold quantities in pieces («pz»), counted with the
+// ingredient's unit weight.
+var piecesTables = []string{"recipe_ingredients", "meal_items", "nutritionist_meal_items"}
+
 // Update updates every editable field of an ingredient.
 // Valid for local ingredients and for imported OFF ingredients alike.
+// When the unit weight goes away, the rows in pieces of that ingredient are
+// turned into grams with the old weight first, so they keep their amount.
 func (r *Ingredients) Update(
 	ctx context.Context,
 	id int64,
@@ -71,7 +77,24 @@ func (r *Ingredients) Update(
 	unitWeightG, defaultQuantity *float64,
 	fiber, sugars, saturatedFat, sodium *float64,
 ) error {
-	_, err := r.db.ExecContext(ctx, `
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if unitWeightG == nil || *unitWeightG <= 0 {
+		for _, table := range piecesTables {
+			if _, err := tx.ExecContext(ctx, `
+				UPDATE `+table+` SET quantity_unit = ?,
+					quantity = quantity * (SELECT unit_weight_g FROM ingredients WHERE id = ?)
+				WHERE ingredient_id = ? AND quantity_unit = 'pz'
+				  AND (SELECT unit_weight_g FROM ingredients WHERE id = ?) > 0`,
+				string(unit), id, id, id); err != nil {
+				return fmt.Errorf("pieces to grams in %s: %w", table, err)
+			}
+		}
+	}
+	_, err = tx.ExecContext(ctx, `
 		UPDATE ingredients SET
 			name=?, brand=?, unit=?,
 			kcal_per_100=?, protein_per_100=?, carbs_per_100=?, fat_per_100=?,
@@ -87,7 +110,7 @@ func (r *Ingredients) Update(
 	if err != nil {
 		return fmt.Errorf("update ingredient: %w", err)
 	}
-	return nil
+	return tx.Commit()
 }
 
 // GetByID returns an ingredient or ErrIngredientNotFound.

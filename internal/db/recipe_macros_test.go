@@ -21,19 +21,19 @@ func TestPerServingByRecipe(t *testing.T) {
 
 	// 2 servings: 200 g pasta + 20 ml oil = 700+180 kcal → 440 per serving.
 	mia, _ := recs.Create(ctx, alice, "Pasta all'olio", nil, 2, false)
-	if _, err := recs.AddItem(ctx, mia, alice, pasta, 200); err != nil {
+	if _, err := recs.AddItem(ctx, mia, alice, pasta, 200, "g"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := recs.AddItem(ctx, mia, alice, olio, 20); err != nil {
+	if _, err := recs.AddItem(ctx, mia, alice, olio, 20, "g"); err != nil {
 		t.Fatal(err)
 	}
 	vuota, _ := recs.Create(ctx, alice, "Vuota", nil, 1, false)
 	pubblica, _ := recs.Create(ctx, bob, "Pasta di Bob", nil, 1, true)
-	if _, err := recs.AddItem(ctx, pubblica, bob, pasta, 100); err != nil {
+	if _, err := recs.AddItem(ctx, pubblica, bob, pasta, 100, "g"); err != nil {
 		t.Fatal(err)
 	}
 	privata, _ := recs.Create(ctx, bob, "Segreta", nil, 1, false)
-	if _, err := recs.AddItem(ctx, privata, bob, pasta, 100); err != nil {
+	if _, err := recs.AddItem(ctx, privata, bob, pasta, 100, "g"); err != nil {
 		t.Fatal(err)
 	}
 

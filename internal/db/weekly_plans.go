@@ -663,6 +663,41 @@ func (r *WeeklyPlans) RemoveItem(ctx context.Context, itemID, userID int64) erro
 	return nil
 }
 
+// UpdateItem changes a meal_item's quantity: servings for a recipe, grams/ml
+// or pieces for an ingredient (unit, see storedUnit). Checks ownership
+// through the plan: ErrMealItemNotFound otherwise.
+func (r *WeeklyPlans) UpdateItem(ctx context.Context, itemID, userID int64, quantity float64, unit string) error {
+	if quantity <= 0 {
+		return fmt.Errorf("quantita' deve essere > 0")
+	}
+	var ingredientID sql.NullInt64
+	err := r.db.QueryRowContext(ctx, `
+		SELECT mi.ingredient_id
+		FROM meal_items mi
+		JOIN meals m ON m.id = mi.meal_id
+		JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
+		WHERE mi.id = ? AND wp.user_id = ?`, itemID, userID,
+	).Scan(&ingredientID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrMealItemNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("load meal_item: %w", err)
+	}
+	stored := "g" // recipes always use servings
+	if ingredientID.Valid {
+		if stored, err = storedUnit(ctx, r.db, unit, ingredientID.Int64); err != nil {
+			return err
+		}
+	}
+	if _, err := r.db.ExecContext(ctx,
+		`UPDATE meal_items SET quantity = ?, quantity_unit = ? WHERE id = ?`,
+		quantity, stored, itemID); err != nil {
+		return fmt.Errorf("update meal_item: %w", err)
+	}
+	return nil
+}
+
 // LoadFull loads plan + meals + items + (recipes + ingredients) in 4 queries
 // and puts everything under WeeklyPlanFull.Days[0..6]. Recipes and
 // ingredients are loaded in batches (one query per type) and then mapped.
@@ -878,10 +913,10 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 			ra2[i] = id
 		}
 		riRows, err := r.db.QueryContext(ctx, `
-			SELECT ri.id, ri.recipe_id, ri.ingredient_id, ri.quantity, ri.sort_order,
+			SELECT ri.id, ri.recipe_id, ri.ingredient_id, ri.quantity, ri.sort_order, ri.quantity_unit,
 			       i.id, i.source, i.off_barcode, i.name, i.brand, i.unit,
 			       i.kcal_per_100, i.protein_per_100, i.carbs_per_100, i.fat_per_100,
-			       i.created_by, i.created_at, i.last_verified_at, i.superseded_by
+			       i.created_by, i.created_at, i.last_verified_at, i.superseded_by, i.unit_weight_g
 			FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id
 			WHERE ri.recipe_id IN (`+ph2+`)
 			ORDER BY ri.recipe_id, ri.sort_order, ri.id
@@ -893,13 +928,13 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 			var it domain.RecipeItemFull
 			var src, unit string
 			err := riRows.Scan(
-				&it.ID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder,
+				&it.ID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder, &it.QuantityUnit,
 				&it.Ingredient.ID, &src, &it.Ingredient.OFFBarcode, &it.Ingredient.Name,
 				&it.Ingredient.Brand, &unit,
 				&it.Ingredient.KcalPer100, &it.Ingredient.ProteinPer100,
 				&it.Ingredient.CarbsPer100, &it.Ingredient.FatPer100,
 				&it.Ingredient.CreatedBy, &it.Ingredient.CreatedAt,
-				&it.Ingredient.LastVerifiedAt, &it.Ingredient.SupersededBy,
+				&it.Ingredient.LastVerifiedAt, &it.Ingredient.SupersededBy, &it.Ingredient.UnitWeightG,
 			)
 			if err != nil {
 				riRows.Close()
