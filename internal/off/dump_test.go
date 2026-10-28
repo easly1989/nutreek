@@ -469,6 +469,52 @@ func TestSwapFailureMidway(t *testing.T) {
 	}
 }
 
+// A bootstrap gives the pages it freed back to the disk, step by step; a sync
+// with deltas only does not vacuum (#214).
+func TestBootstrapVacuums(t *testing.T) {
+	f, syncer, sqldb := newFakeOFF(t)
+	ctx := context.Background()
+	setCSV(f, bigCSV(t, 6000))
+	f.addDelta(t, 5000, 6000, deltaLine("8000000000017", "Grana Padano", "en:italy"))
+	if _, err := syncer.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var mode int
+	if err := sqldb.QueryRow(`PRAGMA auto_vacuum`).Scan(&mode); err != nil || mode != 2 {
+		t.Fatalf("auto_vacuum %d, want 2 (INCREMENTAL, migration 0036): %v", mode, err)
+	}
+	if n := freePages(t, sqldb); n != 0 {
+		t.Errorf("free pages after a bootstrap: %d, want 0", n)
+	}
+	// Moving pages keeps the rowids the FTS5 index is keyed on.
+	if codes := searchCodes(t, sqldb, "grana padano"); len(codes) != 1 || codes[0] != "8000000000017" {
+		t.Errorf("search after the vacuum: %v", codes)
+	}
+	if codes := searchCodes(t, sqldb, "biscotto 5999"); len(codes) != 1 {
+		t.Errorf("search after the vacuum: %v", codes)
+	}
+	if _, err := sqldb.Exec(`CREATE TABLE junk AS SELECT * FROM off_products; DROP TABLE junk`); err != nil {
+		t.Fatal(err)
+	}
+	f.addDelta(t, 6000, 7000, deltaLine("8000000000024", "Pesto", "en:italy"))
+	stats, err := syncer.Sync(ctx)
+	if err != nil || stats.Bootstrap || stats.Deltas != 1 {
+		t.Fatalf("delta sync: %+v, %v", stats, err)
+	}
+	if freePages(t, sqldb) == 0 {
+		t.Error("a sync with deltas only vacuumed")
+	}
+}
+
+func freePages(t *testing.T, sqldb *sql.DB) int {
+	t.Helper()
+	var n int
+	if err := sqldb.QueryRow(`PRAGMA freelist_count`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
 // A product dated in the future does not push the high-water mark past now.
 func TestHighWaterClampedToNow(t *testing.T) {
 	f, syncer, _ := newFakeOFF(t)

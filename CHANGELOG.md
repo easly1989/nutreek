@@ -21,6 +21,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 - The ingredient forms refuse a weight of one piece that is not a number, instead of dropping it silently; an empty field still means no weight (#206)
 - The OpenFoodFacts sync no longer downloads the 13 GB dump every week: it bootstraps from the 0.8 GB CSV export, then applies only the daily changes OpenFoodFacts publishes. It downloads the CSV again when the instance missed more than ~13 days of changes, when the parser changes, or every 30 days, to drop the products OpenFoodFacts deleted. Searches keep answering with the previous products while a download runs, and a failed or suspiciously small one leaves them in place (migration 0034) (#211)
 - `NUTREEK_OFF_DUMP_URL` is replaced by `NUTREEK_OFF_CSV_URL` and `NUTREEK_OFF_DELTA_URL`; `NUTREEK_OFF_SYNC_INTERVAL` defaults to `24h`. `POST /admin/refresh-off-dump` forces a CSV download, and the OpenFoodFacts card in Administration shows the last full download, the last daily changes and the date the data reaches (#211)
+- After a full OpenFoodFacts download the database file gives back the space the import freed, instead of keeping it as empty pages. It does so in short steps, so other writes wait no longer than during the import. The first start after upgrading compacts the whole file once, before accepting requests (migration 0036) (#214)
 
 ### Fixed
 - The week import keeps the pieces of a CSV exported in pieces, instead of reading them as grams (#206)
