@@ -17,13 +17,14 @@
 
   // convertQty turns a quantity into the other unit when the g / pz switch
   // changes (#206): pz -> g is qty x unit weight to a whole gram, g -> pz is
-  // qty / unit weight to one decimal. Without a weight it leaves it alone.
+  // qty / unit weight to two decimals; never 0 (at least 1 g or 0.01 pz).
+  // Without a weight it leaves the number alone.
   function convertQty(value, toUnit, unitWeight) {
     var qty = parseQty(value);
     var w = parseFloat(unitWeight);
     if (!qty || !(w > 0)) return value;
-    var n = toUnit === "pz" ? Math.round(qty / w * 10) / 10 : Math.round(qty * w);
-    return n.toLocaleString(LANG, { maximumFractionDigits: 1, useGrouping: false });
+    var n = toUnit === "pz" ? Math.max(0.01, Math.round(qty / w * 100) / 100) : Math.max(1, Math.round(qty * w));
+    return n.toLocaleString(LANG, { maximumFractionDigits: 2, useGrouping: false });
   }
 
   function updatePreview(form) {
@@ -171,10 +172,19 @@
 
   // After an editor's HTMX save the day is swapped: the focus goes back to
   // the saved item's quantity.
-  var savedRow = "";
+  // A save that swapped nothing (an error, or a redirect with a flash)
+  // forgets the row, so a later unrelated swap does not take the focus.
+  var savedRow = "", savedForm = null;
   document.addEventListener("submit", function (e) {
     var form = e.target.closest && e.target.closest("form[data-qty-editor]");
-    if (form) savedRow = form.closest("[data-qty-row]").dataset.qtyRow;
+    if (!form) return;
+    savedForm = form;
+    savedRow = form.closest("[data-qty-row]").dataset.qtyRow;
+  });
+  document.addEventListener("htmx:afterRequest", function (e) {
+    if (e.detail.elt !== savedForm) return;
+    if (!e.detail.successful || e.detail.xhr.status === 204) savedRow = "";
+    savedForm = null;
   });
   document.addEventListener("htmx:afterSettle", function () {
     if (!savedRow) return;

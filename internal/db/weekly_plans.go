@@ -18,6 +18,9 @@ var ErrPlanNotFound = errors.New("piano settimanale non trovato")
 var (
 	ErrMealNotFound     = errors.New("pasto non trovato")
 	ErrMealItemNotFound = errors.New("voce di pasto non trovata")
+	// ErrMealItemCustomized: a recipe item with variations counts their
+	// quantities, not its servings, so UpdateItem does not change it.
+	ErrMealItemCustomized = errors.New("meal item has customizations")
 )
 
 // ErrPlanNotEmpty / ErrSourcePlanEmpty for CopyFrom: respectively, the
@@ -508,7 +511,8 @@ func (r *WeeklyPlans) RemoveMeal(ctx context.Context, mealID, userID int64) erro
 
 // AddItem adds an item to a meal. Exactly one of recipeID and ingredientID
 // must be != 0 (= nil pointer). Quantity > 0.
-// quantityUnit: 'g', 'ml' or 'pz' (ignored for recipes, which always use servings).
+// quantityUnit: 'g', 'ml' or 'pz', kept as storedUnit says (ignored for
+// recipes, which always use servings).
 func (r *WeeklyPlans) AddItem(
 	ctx context.Context,
 	mealID, userID int64,
@@ -552,9 +556,11 @@ func (r *WeeklyPlans) AddItem(
 	).Scan(&nextOrder); err != nil {
 		return 0, fmt.Errorf("compute item sort_order: %w", err)
 	}
-	unit := quantityUnit
-	if unit == "" || recipeID != nil {
-		unit = "g" // recipes always use servings (not pz), g is the default for ingredients
+	unit := "g" // recipes always use servings (not pz)
+	if ingredientID != nil {
+		if unit, err = storedUnit(ctx, r.db, quantityUnit, *ingredientID); err != nil {
+			return 0, err
+		}
 	}
 	res, err := r.db.ExecContext(ctx,
 		`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -665,24 +671,30 @@ func (r *WeeklyPlans) RemoveItem(ctx context.Context, itemID, userID int64) erro
 
 // UpdateItem changes a meal_item's quantity: servings for a recipe, grams/ml
 // or pieces for an ingredient (unit, see storedUnit). Checks ownership
-// through the plan: ErrMealItemNotFound otherwise.
+// through the plan: ErrMealItemNotFound otherwise. ErrMealItemCustomized for
+// a recipe item with variations.
 func (r *WeeklyPlans) UpdateItem(ctx context.Context, itemID, userID int64, quantity float64, unit string) error {
 	if quantity <= 0 {
 		return fmt.Errorf("quantita' deve essere > 0")
 	}
 	var ingredientID sql.NullInt64
+	var customized bool
 	err := r.db.QueryRowContext(ctx, `
-		SELECT mi.ingredient_id
+		SELECT mi.ingredient_id,
+		       EXISTS (SELECT 1 FROM meal_item_customizations c WHERE c.meal_item_id = mi.id)
 		FROM meal_items mi
 		JOIN meals m ON m.id = mi.meal_id
 		JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
 		WHERE mi.id = ? AND wp.user_id = ?`, itemID, userID,
-	).Scan(&ingredientID)
+	).Scan(&ingredientID, &customized)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrMealItemNotFound
 	}
 	if err != nil {
 		return fmt.Errorf("load meal_item: %w", err)
+	}
+	if customized {
+		return ErrMealItemCustomized
 	}
 	stored := "g" // recipes always use servings
 	if ingredientID.Valid {

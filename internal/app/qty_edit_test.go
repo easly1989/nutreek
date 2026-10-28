@@ -99,6 +99,16 @@ func TestRecipeQuantityEditor(t *testing.T) {
 		}
 	}
 
+	// A unit the forms do not offer: refused on edit and on add.
+	if code, _, _ := alice.submit(page, itemPath, url.Values{"quantity": {"1"}, "qty_unit": {"kg"}}); code != http.StatusUnprocessableEntity {
+		t.Errorf("edit with qty_unit=kg: %d, want 422", code)
+	}
+	if code, _, _ := alice.submit(page, page+"/items", url.Values{
+		"ingredient_id": {strconv.FormatInt(egg, 10)}, "quantity": {"1"}, "qty_unit": {"kg"},
+	}); code != http.StatusUnprocessableEntity {
+		t.Errorf("add with qty_unit=kg: %d, want 422", code)
+	}
+
 	// Without script, ?edit= renders the editor open; a viewer gets none.
 	if _, _, body := alice.get(page + "?edit=" + strconv.FormatInt(item, 10)); !strings.Contains(body, "data-editing") {
 		t.Error("?edit= does not open the editor")
@@ -119,8 +129,62 @@ func TestRecipeQuantityEditor(t *testing.T) {
 		t.Errorf("no CSRF token: %d, want 403", code)
 	}
 	full, _ = a.Recipes.GetWithItems(ctx, rec, aliceID)
-	if it := full.Items[0]; it.Quantity != 180 || it.QuantityUnit != "g" {
-		t.Errorf("the refused edits changed the row: %v %s", it.Quantity, it.QuantityUnit)
+	if it := full.Items[0]; it.Quantity != 180 || it.QuantityUnit != "g" || len(full.Items) != 1 {
+		t.Errorf("the refused edits changed the rows: %v %s, %d rows", it.Quantity, it.QuantityUnit, len(full.Items))
+	}
+
+	// Saving a copy's row unchanged writes nothing: the copy stays a draft.
+	dup, err := a.Recipes.Duplicate(ctx, rec, aliceID, "Eggs again")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dupFull, _ := a.Recipes.GetWithItems(ctx, dup, aliceID)
+	dupPage := "/recipes/" + strconv.FormatInt(dup, 10)
+	dupItem := dupPage + "/items/" + strconv.FormatInt(dupFull.Items[0].ID, 10)
+	if code, _ := alice.post(dupPage, dupItem, url.Values{"quantity": {"180"}, "qty_unit": {"g"}}); code != http.StatusSeeOther {
+		t.Errorf("unchanged save: %d, want 303", code)
+	}
+	if dupFull, _ = a.Recipes.GetWithItems(ctx, dup, aliceID); !dupFull.IsDraft {
+		t.Error("an unchanged save promoted the draft")
+	}
+}
+
+// A weight of one piece that is not a number is refused, not read as «none»
+// (which would turn the rows in pieces into grams); an empty field removes it.
+func TestIngredientPieceWeightValidation(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	alice, aliceID := photoUser(t, a, "alice@example.test")
+	weight := 60.0
+	egg, _ := a.Ingredients.CreateLocal(ctx, "Egg", nil, "g", 143, 12.6, 0.7, 9.5, &aliceID, &weight, nil, nil, nil, nil, nil)
+	page := "/ingredients/" + strconv.FormatInt(egg, 10)
+	form := func(w string) url.Values {
+		return url.Values{"name": {"Egg"}, "unit": {"g"}, "kcal": {"143"}, "protein": {"12.6"}, "carbs": {"0.7"}, "fat": {"9.5"}, "unit_weight_g": {w}}
+	}
+	weightOf := func() *float64 {
+		ing, _ := a.Ingredients.GetByID(ctx, egg)
+		return ing.UnitWeightG
+	}
+	for _, bad := range []string{"abc", "1,5kg", "0", "-3"} {
+		code, _, body := alice.submit("/recipes", page, form(bad))
+		if code != http.StatusUnprocessableEntity || !strings.Contains(body, "Invalid weight of one piece.") {
+			t.Errorf("edit with weight %q: %d, want 422 with the error", bad, code)
+		}
+		if w := weightOf(); w == nil || *w != 60 {
+			t.Fatalf("weight %q changed the weight to %v", bad, w)
+		}
+	}
+	if code, _, body := alice.submit("/recipes", "/ingredients", url.Values{"name": {"Kiwi"}, "unit": {"g"}, "kcal": {"61"}, "protein": {"1"}, "carbs": {"15"}, "fat": {"0.5"}, "unit_weight_g": {"abc"}}); code != http.StatusUnprocessableEntity || !strings.Contains(body, "Invalid weight of one piece.") {
+		t.Errorf("new ingredient with weight abc: %d, want 422", code)
+	}
+	if code, _ := alice.post("/recipes", page, form("1,5")); code != http.StatusSeeOther {
+		t.Errorf("weight 1,5: %d, want 303", code)
+	}
+	if w := weightOf(); w == nil || *w != 1.5 {
+		t.Errorf("weight 1,5 stored as %v", w)
+	}
+	if code, _ := alice.post("/recipes", page, form("")); code != http.StatusSeeOther || weightOf() != nil {
+		t.Errorf("empty weight: %d, weight %v, want none", code, weightOf())
 	}
 }
 
@@ -133,6 +197,9 @@ func TestMealItemQuantityEditor(t *testing.T) {
 	bob, _ := photoUser(t, a, "bob@example.test")
 	weight := 60.0
 	egg, _ := a.Ingredients.CreateLocal(ctx, "Egg", nil, "g", 143, 12.6, 0.7, 9.5, &aliceID, &weight, nil, nil, nil, nil, nil)
+	if _, err := a.Ingredients.CreateLocal(ctx, "Oats", nil, "g", 380, 13, 60, 7, &aliceID, nil, nil, nil, nil, nil, nil); err != nil {
+		t.Fatal(err)
+	}
 	rec, _ := a.Recipes.Create(ctx, aliceID, "Eggs", nil, 2, false)
 	if _, err := a.Recipes.AddItem(ctx, rec, aliceID, egg, 4, "pz"); err != nil { // 240 g, 120 g a serving
 		t.Fatal(err)
@@ -172,7 +239,7 @@ func TestMealItemQuantityEditor(t *testing.T) {
 
 	// The CSV export counts the pieces of the recipe; the import keeps pieces.
 	_, _, csv := alice.get("/week/" + start + "/export")
-	for _, want := range []string{"ricetta,Eggs,2.5,porzioni,429.0", "ingrediente,Egg,2.0,pz,171.6"} {
+	for _, want := range []string{"ricetta,Eggs,2.5,porzioni,429.0", "ingrediente,Egg,2,pz,171.6"} {
 		if !strings.Contains(csv, want) {
 			t.Errorf("export lacks %q:\n%s", want, csv)
 		}
@@ -182,7 +249,8 @@ func TestMealItemQuantityEditor(t *testing.T) {
 	_, _, dash := alice.get(week)
 	_ = mw.WriteField("csrf_token", html.UnescapeString(csrfField.FindStringSubmatch(dash)[1]))
 	fw, _ := mw.CreateFormFile("csv_file", "week.csv")
-	_, _ = fw.Write([]byte("giorno,pasto,tipo,nome,quantita,unita\nLunedi,Lunch,ingrediente,Egg,3,pz\n"))
+	// Pieces of an ingredient without a weight per piece cannot be counted: grams.
+	_, _ = fw.Write([]byte("giorno,pasto,tipo,nome,quantita,unita\nLunedi,Lunch,ingrediente,Egg,3,pz\nLunedi,Lunch,ingrediente,Oats,4,pz\n"))
 	_ = mw.Close()
 	req, _ := http.NewRequest(http.MethodPost, alice.srv.URL+"/week/"+start+"/import", &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
@@ -192,7 +260,30 @@ func TestMealItemQuantityEditor(t *testing.T) {
 	}
 	full, _ = a.WeeklyPlans.LoadFull(ctx, plan)
 	if it := full.Days[0][0].Items[2]; it.Quantity != 3 || it.QuantityUnit != "pz" {
-		t.Errorf("imported row: %v %s, want 3 pz", it.Quantity, it.QuantityUnit)
+		t.Errorf("imported egg: %v %s, want 3 pz", it.Quantity, it.QuantityUnit)
+	}
+	if it := full.Days[0][0].Items[3]; it.Quantity != 4 || it.QuantityUnit != "g" {
+		t.Errorf("imported oats: %v %s, want 4 g", it.Quantity, it.QuantityUnit)
+	}
+
+	// A unit the editor does not offer: 422, nothing written.
+	if code, _ := alice.post(week, path(eggItem), url.Values{"quantity": {"5"}, "qty_unit": {"kg"}}); code != http.StatusUnprocessableEntity {
+		t.Errorf("qty_unit=kg: %d, want 422", code)
+	}
+
+	// A recipe item with variations has no editor, and the route refuses it.
+	if err := a.MealItemCustomizations.Replace(ctx, recItem, aliceID, []db.CustomizationInput{{IngredientID: egg, Quantity: 50}}); err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := alice.post(week, path(recItem), url.Values{"quantity": {"4"}}); code != http.StatusConflict {
+		t.Errorf("customized item: %d, want 409", code)
+	}
+	full, _ = a.WeeklyPlans.LoadFull(ctx, plan)
+	if it := full.Days[0][0].Items[0]; it.Quantity != 2.5 {
+		t.Errorf("customized item changed to %v servings", it.Quantity)
+	}
+	if _, _, body := alice.get(week + "&day=" + start); strings.Contains(body, `data-qty-row="`+strconv.FormatInt(recItem, 10)+`"`) {
+		t.Error("the customized item still has an editor")
 	}
 
 	// Refused: invalid quantities, another user's item, no CSRF token.

@@ -18,6 +18,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ### Changed
 - Quantities above 100,000 are refused when adding or editing a recipe ingredient or a weekly plan item (#206)
+- The ingredient forms refuse a weight of one piece that is not a number, instead of dropping it silently; an empty field still means no weight (#206)
 
 ### Changed
 - The OpenFoodFacts sync no longer downloads the 13 GB dump every week: it bootstraps from the 0.8 GB CSV export, then applies only the daily changes OpenFoodFacts publishes. It downloads the CSV again when the instance missed more than ~13 days of changes, when the parser changes, or every 30 days, to drop the products OpenFoodFacts deleted. Searches keep answering with the previous products while a download runs, and a failed or suspiciously small one leaves them in place (migration 0034) (#211)

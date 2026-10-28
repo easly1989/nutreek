@@ -137,5 +137,6 @@
   "week.error.missing_day": "day_of_week mancante o non valido",
   "week.error.meal_not_found": "pasto non trovato",
   "week.error.item_not_found": "voce non trovata",
+  "week.error.item_customized": "questa voce ha delle variazioni: cambiale da «Personalizza ingredienti»",
   "week.error.cheat_not_found": "sgarro non trovato"
 }

@@ -24,6 +24,16 @@ func parseItemQuantity(s string) (float64, bool) {
 	return v, err == nil && v > 0 && v <= MaxItemQuantity
 }
 
+// validQtyUnit says whether unit is one the quantity forms send: g, ml or
+// pz, or none (a recipe's servings).
+func validQtyUnit(unit string) bool {
+	switch unit {
+	case "", "g", "ml", "pz":
+		return true
+	}
+	return false
+}
+
 // withinLen returns true when the string s has at most max RUNES (not bytes:
 // Italian UTF-8 can have 2-byte characters and counting them as 2 would be
 // wrong). An empty string is always fine as far as the limit goes.
