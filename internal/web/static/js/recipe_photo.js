@@ -11,7 +11,13 @@
   // shrink draws file at most MAX_SIDE px wide or tall and returns a JPEG of
   // at most max bytes, lowering the quality when needed, or null.
   async function shrink(file, max) {
-    var bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    var bmp;
+    try {
+      bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch (_) {
+      // Older Safari takes no options; browsers apply EXIF orientation anyway.
+      bmp = await createImageBitmap(file);
+    }
     var scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
     var canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(bmp.width * scale));
@@ -34,6 +40,10 @@
     var file = input.files && input.files[0];
     if (!file) return;
     var form = input.form;
+    if (form.hasAttribute('aria-busy')) { // one upload at a time, keyboard included
+      input.value = '';
+      return;
+    }
     var box = form.closest('[data-photo]');
     var status = box.querySelector('[data-photo-status]');
     var error = box.querySelector('[data-photo-error]');

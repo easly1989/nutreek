@@ -19,8 +19,9 @@ const (
 	quality   = 82
 )
 
-// slot lets one picture be decoded at a time: a 16 MP decode takes about
-// 64 MB, and a flat-colour PNG that large is a tiny upload.
+// slot lets one picture be decoded at a time: a 16 MP decode takes 100–200 MB
+// (progressive JPEG, 16-bit PNG), and a flat-colour PNG that large is a tiny
+// upload.
 var slot = make(chan struct{}, 1)
 
 var (
