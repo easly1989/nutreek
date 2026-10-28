@@ -41,6 +41,7 @@ type recipeListRow struct {
 	Mine       bool
 	Usages     int
 	PerServing macros.Macros
+	PhotoETag  string // "" without a photo
 }
 
 // recipeFilters lists the filters of the recipe list, in chip order. Label is
@@ -142,6 +143,8 @@ type recipeEditData struct {
 	Ingredients []*domain.Ingredient // pool for the new item's select
 	NewItemQty  string               // value in the item form after an error
 	NewItemIng  string               // selected ingredient_id
+	PhotoETag   string               // "" without a photo
+	PhotoMax    int64                // largest upload the page's script sends
 }
 
 // ---- list ------------------------------------------------------------------
@@ -167,6 +170,11 @@ func (a *App) handleRecipesList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	photos, err := a.Recipes.PhotoETagsByRecipe(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	rows := make([]recipeListRow, 0, len(all))
 	for _, rec := range all {
 		rows = append(rows, recipeListRow{
@@ -174,6 +182,7 @@ func (a *App) handleRecipesList(w http.ResponseWriter, r *http.Request) {
 			Mine:       rec.UserID == user.ID,
 			Usages:     usages[rec.ID],
 			PerServing: perServing[rec.ID],
+			PhotoETag:  photos[rec.ID],
 		})
 	}
 	q := r.URL.Query()
@@ -379,7 +388,14 @@ func (a *App) renderRecipeEdit(
 		ItemKcal:   itemKcal,
 		NewItemQty: newItemQty,
 		NewItemIng: newItemIng,
+		PhotoMax:   a.photoUploadMaxBytes(),
 	}
+	etag, err := a.Recipes.PhotoETag(r.Context(), rec.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	data.PhotoETag = etag
 	if canEdit {
 		usages, err := a.Recipes.CountMealUsages(r.Context(), rec.ID)
 		if err != nil {

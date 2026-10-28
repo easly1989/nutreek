@@ -10,6 +10,9 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Added
+- A photo for every recipe (#207): add, change or remove it at the top of the recipe page; the list shows a thumbnail. The page shrinks the picture before sending it, so phone photos come out upright and WebP works; the server keeps a JPEG of at most 1200 px, without EXIF data such as the position, inside the database, so backups include it. Whoever can see the recipe sees its photo; duplicating a recipe copies it (migration 0033)
+
 ### Fixed
 - OpenFoodFacts products show their photo and macros again: the Syncer reads the dump's new shape (nutrients in `nutrition.aggregated_set`, the front image from `images.selected.front`, Italian first, then English) as well as the old one, and no longer guesses a French photo when there is none. The first sync after upgrading reads the dump again even when it has not changed (migration 0032) (#204)
 - Searching OpenFoodFacts offers only products that can be imported, with all four macros, so picking one no longer fails with «OFF product without complete macros»; a scanned code without macros offers to create the ingredient instead. Exact duplicates (same name, brand and macros) appear once, and every row shows its kcal per 100 g and package size (#204)
