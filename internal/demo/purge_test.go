@@ -16,7 +16,7 @@ var shared = map[string]bool{
 	"sqlite_sequence": true, "workout_activities": true, "demo_meta": true,
 	"off_products": true, "off_products_fts": true, "off_products_fts_config": true,
 	"off_products_fts_data": true, "off_products_fts_docsize": true, "off_products_fts_idx": true,
-	"off_sync_state": true, "instance_settings": true,
+	"off_sync_state": true, "off_products_staging": true, "instance_settings": true,
 }
 
 // counts returns the rows in every table.

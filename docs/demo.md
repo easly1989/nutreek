@@ -36,7 +36,7 @@ The GHCR package must be public, so Northflank pulls the image without credentia
 |---|---|
 | `NUTREEK_ENV` | `prod` (secure cookies; Northflank terminates TLS) |
 | `NUTREEK_SESSION_KEY` | a Northflank **secret**, made with `openssl rand -hex 32`. It guards nothing worth keeping, but it must not be in the repo |
-| `NUTREEK_OFF_SYNC_ENABLED` | `false` (the ~0.9 GB OpenFoodFacts dump; search uses the seeded products) |
+| `NUTREEK_OFF_SYNC_ENABLED` | `false` (the ~0.8 GB OpenFoodFacts CSV export; search uses the seeded products) |
 | `NUTREEK_RECONCILE_ENABLED` | `false` |
 | `NUTREEK_BACKUP_ENABLED` | `false` (the demo build switches backups off anyway) |
 
