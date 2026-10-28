@@ -336,6 +336,12 @@ func (r *Recipes) touch(ctx context.Context, recipeID int64) error {
 	return nil
 }
 
+// StoredUnit is the unit a quantity of ingredientID is kept in (storedUnit):
+// the handlers compare contents in it.
+func (r *Recipes) StoredUnit(ctx context.Context, unit string, ingredientID int64) (string, error) {
+	return storedUnit(ctx, r.db, unit, ingredientID)
+}
+
 // storedUnit is the unit a quantity is kept in: «pz» only when the
 // ingredient has a unit weight to count the pieces with, «ml» as given,
 // anything else grams.
@@ -345,8 +351,9 @@ func storedUnit(ctx context.Context, db *sql.DB, unit string, ingredientID int64
 		return unit, nil
 	case "pz":
 		var w sql.NullFloat64
-		if err := db.QueryRowContext(ctx,
-			`SELECT unit_weight_g FROM ingredients WHERE id = ?`, ingredientID).Scan(&w); err != nil {
+		err := db.QueryRowContext(ctx,
+			`SELECT unit_weight_g FROM ingredients WHERE id = ?`, ingredientID).Scan(&w)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) { // a missing one is refused by the caller
 			return "", fmt.Errorf("unit weight: %w", err)
 		}
 		if w.Valid && w.Float64 > 0 {

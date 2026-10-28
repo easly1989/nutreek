@@ -110,18 +110,10 @@ func (a *App) handleQuickIngredientCreate(w http.ResponseWriter, r *http.Request
 	if form.Brand != "" {
 		brandPtr = &form.Brand
 	}
-	// Optional weight of one piece: lets it be added right away in «pz».
-	var unitWeightG *float64
-	if form.UnitWeightG != "" {
-		v, err := parseNonNegFloat(form.UnitWeightG)
-		if err != nil || v == 0 {
-			a.renderQuickIngredientFormOnly(w, r, form, a.t(r, "ingredients.error.piece_weight"))
-			return
-		}
-		unitWeightG = &v
-	}
+	// The optional weight of one piece (vals.UnitWeightG) lets it be added
+	// right away in «pz».
 	creator := user.ID
-	id, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, vals.Unit, vals.Kcal, vals.Protein, vals.Carbs, vals.Fat, &creator, unitWeightG, nil, nil, nil, nil, nil)
+	id, err := a.Ingredients.CreateLocal(r.Context(), form.Name, brandPtr, vals.Unit, vals.Kcal, vals.Protein, vals.Carbs, vals.Fat, &creator, vals.UnitWeightG, nil, nil, nil, nil, nil)
 	if err != nil {
 		a.serverError(w, r, err)
 		return

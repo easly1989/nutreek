@@ -536,14 +536,22 @@ func (a *App) handleRecipeAddItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The row keeps the unit it was entered in: «pz» counts through the unit
-	// weight (#206).
+	// weight (#206). A unit the form does not offer is refused.
 	unit := strings.TrimSpace(r.PostFormValue("qty_unit"))
+	if !validQtyUnit(unit) {
+		a.reRenderEditItem(w, r, id, a.t(r, "recipes.error.quantity"), qtyStr, strconv.FormatInt(ingID, 10))
+		return
+	}
 
 	// Identity check: make sure the resulting state is not identical to
 	// another recipe of the user. Load the current items + simulate the add.
 	rec, err := a.Recipes.GetWithItems(r.Context(), id, user.ID)
 	if err != nil {
 		a.handleRecipeError(w, r, err)
+		return
+	}
+	if unit, err = a.Recipes.StoredUnit(r.Context(), unit, ingID); err != nil {
+		a.serverError(w, r, err)
 		return
 	}
 	simulated := make([]domain.RecipeItem, 0, len(rec.Items)+1)
@@ -700,25 +708,39 @@ func (a *App) handleRecipeUpdateItem(w http.ResponseWriter, r *http.Request) {
 	fail := func(msg string) {
 		a.renderRecipeEdit(w, r, rec, "", msg, "", "", qtyEdit{ItemID: itemID, Qty: qtyStr, Unit: unit}, 0)
 	}
+	var item *domain.RecipeItemFull
+	for i := range rec.Items {
+		if rec.Items[i].ID == itemID {
+			item = &rec.Items[i]
+		}
+	}
+	if item == nil {
+		http.Error(w, a.t(r, "recipes.error.item_not_found"), http.StatusNotFound)
+		return
+	}
 	qty, ok := parseItemQuantity(qtyStr)
-	if !ok {
+	if !ok || !validQtyUnit(unit) {
 		fail(a.t(r, "recipes.error.quantity"))
+		return
+	}
+	if unit, err = a.Recipes.StoredUnit(r.Context(), unit, item.IngredientID); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	saved := "/recipes/" + strconv.FormatInt(id, 10) + "?saved=" + strconv.FormatInt(itemID, 10)
+	if qty == item.Quantity && unit == item.QuantityUnit {
+		// Nothing changed: no write, and a draft stays a draft.
+		http.Redirect(w, r, saved, http.StatusSeeOther)
 		return
 	}
 
 	// Identity check on the edited content, as for add and remove.
 	simulated := make([]domain.RecipeItem, 0, len(rec.Items))
-	found := false
 	for _, it := range rec.Items {
 		if it.ID == itemID {
-			found = true
 			it.Quantity, it.QuantityUnit = qty, unit
 		}
 		simulated = append(simulated, it.RecipeItem)
-	}
-	if !found {
-		http.Error(w, a.t(r, "recipes.error.item_not_found"), http.StatusNotFound)
-		return
 	}
 	if other, err := a.Recipes.IdenticalContentRecipe(r.Context(), user.ID, simulated, id); err != nil {
 		a.serverError(w, r, err)
@@ -742,7 +764,7 @@ func (a *App) handleRecipeUpdateItem(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	http.Redirect(w, r, "/recipes/"+strconv.FormatInt(id, 10)+"?saved="+strconv.FormatInt(itemID, 10), http.StatusSeeOther)
+	http.Redirect(w, r, saved, http.StatusSeeOther)
 }
 
 // handleRecipeDelete POST /recipes/{id}/delete. Counts the occurrences in the

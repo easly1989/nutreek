@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/csv"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -81,7 +82,7 @@ func exportRow(dayName, mealName string, it domain.MealItemFull) []string {
 		mealName,
 		tipo,
 		nome,
-		strconv.FormatFloat(qty, 'f', 1, 64),
+		strconv.FormatFloat(math.Round(qty*100)/100, 'f', -1, 64), // up to 2 decimals, as the editors
 		unit,
 		strconv.FormatFloat(m.Kcal, 'f', 1, 64),
 		strconv.FormatFloat(m.Protein, 'f', 1, 64),

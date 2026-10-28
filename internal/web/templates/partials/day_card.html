@@ -285,8 +285,8 @@
 {{define "meal_item_qty"}}
 {{- /* An item's quantity as text. View model: web.ItemCtx. */ -}}
 {{- $it := .View.Item -}}
-{{- if $it.Recipe}}{{t "week.recipe_servings" "Qty" (dec $it.Quantity 1) "Servings" $it.Recipe.Servings}}
-{{- else if and $it.Ingredient (eq $it.QuantityUnit "pz") (gt $it.Ingredient.PieceWeight 0.0)}}{{dec $it.Quantity 1}} {{t "week.piece"}}
+{{- if $it.Recipe}}{{t "week.recipe_servings" "Qty" (dec $it.Quantity 2) "Servings" $it.Recipe.Servings}}
+{{- else if and $it.Ingredient (eq $it.QuantityUnit "pz") (gt $it.Ingredient.PieceWeight 0.0)}}{{dec $it.Quantity 2}} {{t "week.piece"}}
 {{- else if $it.Ingredient}}{{num $it.Quantity}} {{$it.Ingredient.Unit}}{{end -}}
 {{end}}
 

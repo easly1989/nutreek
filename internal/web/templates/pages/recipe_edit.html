@@ -57,7 +57,7 @@
                    class="group/q col-start-2 justify-self-end inline-flex items-center gap-1 h-8 px-1.5 -mr-1.5 rounded-lg border border-dashed border-transparent text-muted tabular-nums whitespace-nowrap hover:border-border hover:text-text focus-visible:border-border group-data-[editing]:hidden"
                    {{- if $pz}} title="{{num (index $.ItemGrams .ID)}} {{.Ingredient.Unit}}"{{end}}>
                   <span class="sr-only">{{t "picker.qty.change" "Name" .Ingredient.Name}}</span>
-                  {{- if $pz}}{{dec .Quantity 1}} {{t "picker.piece"}}{{else}}{{num .Quantity}} {{.Ingredient.Unit}}{{end -}}
+                  {{- if $pz}}{{dec .Quantity 2}} {{t "picker.piece"}}{{else}}{{num .Quantity}} {{.Ingredient.Unit}}{{end -}}
                   <svg class="w-3.5 h-3.5 shrink-0 opacity-0 group-hover/q:opacity-100 group-focus-visible/q:opacity-100 [@media(hover:none)]:hidden" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>
                 </a>
                 {{- $unit := .QuantityUnit}}{{if and $editing $.Edit.Unit}}{{$unit = $.Edit.Unit}}{{end}}
@@ -80,7 +80,7 @@
                 </form>
                 {{- else}}
                 <span class="col-start-2 text-right tabular-nums text-muted whitespace-nowrap"{{if $pz}} title="{{num (index $.ItemGrams .ID)}} {{.Ingredient.Unit}}"{{end}}>
-                  {{- if $pz}}{{dec .Quantity 1}} {{t "picker.piece"}}{{else}}{{num .Quantity}} {{.Ingredient.Unit}}{{end -}}
+                  {{- if $pz}}{{dec .Quantity 2}} {{t "picker.piece"}}{{else}}{{num .Quantity}} {{.Ingredient.Unit}}{{end -}}
                 </span>
                 {{- end}}
                 <span class="col-start-3 text-right tabular-nums">{{num (index $.ItemKcal .ID)}}</span>

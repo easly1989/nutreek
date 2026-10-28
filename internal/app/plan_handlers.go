@@ -977,9 +977,19 @@ func (a *App) handleUpdateMealItem(w http.ResponseWriter, r *http.Request) {
 		a.flashAndBack(w, r, weekStart, "week.flash.invalid_quantity")
 		return
 	}
-	if err := a.WeeklyPlans.UpdateItem(r.Context(), itemID, user.ID, qty, strings.TrimSpace(r.PostFormValue("qty_unit"))); err != nil {
+	// The editor never sends another unit: no flash for a forged one.
+	unit := strings.TrimSpace(r.PostFormValue("qty_unit"))
+	if !validQtyUnit(unit) {
+		http.Error(w, a.t(r, "week.flash.invalid_quantity"), http.StatusUnprocessableEntity)
+		return
+	}
+	if err := a.WeeklyPlans.UpdateItem(r.Context(), itemID, user.ID, qty, unit); err != nil {
 		if errors.Is(err, db.ErrMealItemNotFound) {
 			http.Error(w, a.t(r, "week.error.item_not_found"), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, db.ErrMealItemCustomized) {
+			http.Error(w, a.t(r, "week.error.item_customized"), http.StatusConflict)
 			return
 		}
 		a.serverError(w, r, err)
