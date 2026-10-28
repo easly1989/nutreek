@@ -249,7 +249,7 @@ Every environment variable:
 
 ### OpenFoodFacts
 
-All OpenFoodFacts text search is **local**. The sync downloads OFF's CSV export once (~0.8 GB compressed), keeps the Italian products (~250k) and indexes them with SQLite FTS5: searches take under 50 ms and never call the network. Then it applies, once a day, only the changes OFF publishes; it downloads the CSV again after more than ~13 days offline and every 30 days. Searches keep answering with the previous products while a download runs. On first start the table is empty and the first sync runs in the background (about 10 minutes); searches stay empty until it finishes. Only a barcode lookup for a product not yet imported calls the live OFF API.
+All OpenFoodFacts text search is **local**. The sync downloads OFF's CSV export once (~0.8 GB compressed), keeps the Italian products (~250k) and indexes them with SQLite FTS5: searches take under 50 ms and never call the network. Then it applies, once a day, only the changes OFF publishes; it downloads the CSV again after more than ~13 days offline and every 30 days. Searches keep answering with the previous products while a download runs, and after a full download the database file gives the space it freed back to the disk (`VACUUM`). On first start the table is empty and the first sync runs in the background (about 10 minutes); searches stay empty until it finishes. Only a barcode lookup for a product not yet imported calls the live OFF API.
 
 ---
 

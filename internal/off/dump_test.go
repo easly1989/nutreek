@@ -469,6 +469,41 @@ func TestSwapFailureMidway(t *testing.T) {
 	}
 }
 
+// A bootstrap gives the pages it freed back to the disk; a sync with deltas
+// only does not vacuum (#214).
+func TestBootstrapVacuums(t *testing.T) {
+	f, syncer, sqldb := newFakeOFF(t)
+	ctx := context.Background()
+	setCSV(f, bigCSV(t, 6000))
+	f.addDelta(t, 5000, 6000, deltaLine("8000000000017", "Grana Padano", "en:italy"))
+	if _, err := syncer.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := freePages(t, sqldb); n != 0 {
+		t.Errorf("free pages after a bootstrap: %d, want 0", n)
+	}
+	if _, err := sqldb.Exec(`CREATE TABLE junk AS SELECT * FROM off_products; DROP TABLE junk`); err != nil {
+		t.Fatal(err)
+	}
+	f.addDelta(t, 6000, 7000, deltaLine("8000000000024", "Pesto", "en:italy"))
+	stats, err := syncer.Sync(ctx)
+	if err != nil || stats.Bootstrap || stats.Deltas != 1 {
+		t.Fatalf("delta sync: %+v, %v", stats, err)
+	}
+	if freePages(t, sqldb) == 0 {
+		t.Error("a sync with deltas only vacuumed")
+	}
+}
+
+func freePages(t *testing.T, sqldb *sql.DB) int {
+	t.Helper()
+	var n int
+	if err := sqldb.QueryRow(`PRAGMA freelist_count`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
 // A product dated in the future does not push the high-water mark past now.
 func TestHighWaterClampedToNow(t *testing.T) {
 	f, syncer, _ := newFakeOFF(t)
