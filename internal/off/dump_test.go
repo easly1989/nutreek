@@ -441,21 +441,18 @@ func TestBootstrapRefusesShrunkExport(t *testing.T) {
 func TestSwapFailureMidway(t *testing.T) {
 	f, syncer, sqldb := newFakeOFF(t)
 	bootstrapGrana(t, f, syncer)
-	if _, err := sqldb.Exec(fmt.Sprintf(`UPDATE off_sync_state SET parser_version = %d`, ParserVersion-1)); err != nil {
-		t.Fatal(err)
-	}
 	// Biscuit 5500 is in the second chunk of the swap.
 	if _, err := sqldb.Exec(`CREATE TRIGGER fail_swap BEFORE INSERT ON off_products
 		WHEN new.barcode = '9000000005500' BEGIN SELECT RAISE(ABORT, 'boom'); END`); err != nil {
 		t.Fatal(err)
 	}
 	setCSV(f, bigCSV(t, 6000))
-	if _, err := syncer.Sync(context.Background()); err == nil {
+	// Forced: the next, plain sync has no reason of its own to bootstrap.
+	if _, err := syncer.Bootstrap(context.Background()); err == nil {
 		t.Fatal("the swap must fail")
 	}
-	st, _ := syncer.LoadState(context.Background())
-	if st.ParserVersion != ParserVersion-1 || st.HighWater.Unix() != 1000 {
-		t.Errorf("state after a failed swap: %+v", st)
+	if st, _ := syncer.LoadState(context.Background()); st.HighWater != nil {
+		t.Errorf("high water after a failed swap: %v, want none", st.HighWater)
 	}
 	if n := countProducts(t, sqldb); n != swapChunk {
 		t.Errorf("products after a failed swap: %d, want the first chunk", n)

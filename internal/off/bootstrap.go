@@ -231,9 +231,9 @@ func (s *Syncer) deleteRowids(ctx context.Context, ids []int64) error {
 // swap moves the staging table into off_products, swapChunk rows per
 // transaction: first the products gone from the export are deleted, then the
 // new and changed ones written (the FTS5 triggers follow), the unchanged ones
-// left alone. Searches may see a mix of old and new rows meanwhile. The state
-// is written last: a failure midway leaves it as it was, so the reason for
-// this bootstrap still holds and the next sync bootstraps again.
+// left alone. Searches may see a mix of old and new rows meanwhile. The
+// high-water mark is cleared first and the state written last: a failure
+// midway makes the next sync bootstrap again.
 func (s *Syncer) swap(ctx context.Context, highWater int64) error {
 	start := time.Now()
 	var staged, current int
@@ -246,6 +246,12 @@ func (s *Syncer) swap(ctx context.Context, highWater int64) error {
 		s.Logger.Warn("off sync: the export holds far fewer products, keeping the current ones",
 			"staged", staged, "current", current)
 		return fmt.Errorf("CSV export: %d products, fewer than %d%% of the %d in use", staged, minStagedPct, current)
+	}
+
+	// A swap stopped midway leaves a mix of old and new rows: without a
+	// high-water mark the next sync bootstraps again, forced or not.
+	if _, err := s.DB.ExecContext(ctx, `UPDATE off_sync_state SET high_water = NULL WHERE id = 1`); err != nil {
+		return fmt.Errorf("swap: state: %w", err)
 	}
 
 	// The products gone from the export, found by a read: scanning them inside
