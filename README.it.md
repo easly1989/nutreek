@@ -50,8 +50,8 @@ L'interfaccia è in **italiano** e in **inglese**. Ogni utente sceglie la lingua
 | Area | Funzionalità |
 |------|-------------|
 | **Piani settimanali** | Un giorno alla volta con anello kcal e macro, pasti, acqua e allenamenti; macro per pasto/giorno/settimana, sgarri, copia da settimana precedente |
-| **Ingredienti** | Ricerca locale FTS5 (<50 ms, offline) con foto dei prodotti, scanner del codice a barre nei picker, riconciliazione OFF |
-| **Ricette** | Creazione con ingredienti, import automatico da URL (schema.org/Recipe) |
+| **Ingredienti** | Ricerca locale FTS5 (<50 ms, offline) con foto dei prodotti, scanner del codice a barre nei picker, copia locale di OpenFoodFacts aggiornata ogni giorno, riconciliazione OFF |
+| **Ricette** | Creazione con ingredienti, import automatico da URL (schema.org/Recipe), con foto; quantità modificabili sul posto, in grammi o pezzi |
 | **Template** | Template settimanali riutilizzabili, applicazione one-click |
 | **Piano nutrizionista** | Varianti pasto, generazione automatica settimana con algoritmo greedy (target macro) |
 | **Lista spesa** | Generazione automatica dalla settimana selezionata |
