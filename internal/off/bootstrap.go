@@ -180,17 +180,47 @@ func csvNumber(s string) json.RawMessage {
 	return json.RawMessage(strconv.FormatFloat(v, 'g', -1, 64))
 }
 
+// vacuumChunk is the pages one incremental_vacuum step gives back: 8 MB of
+// 4 KB pages, a short write lock like a swap chunk.
+const vacuumChunk = 2000
+
 // vacuum gives the disk back the pages a bootstrap freed, the emptied
-// staging table's above all: SQLite keeps them in the file otherwise. Other
-// writers wait while it runs (373 ms for 250k test products, #214). A failure,
-// such as too little disk for its temporary copy, costs only the space.
+// staging table's above all: SQLite keeps them in the file otherwise (#214).
+// It frees vacuumChunk pages per step with a pause in between, so other
+// writers wait as little as during the swap; a full VACUUM would hold the
+// write lock for the whole file. Needs auto_vacuum = INCREMENTAL (migration
+// 0036). A failure costs only the space.
 func (s *Syncer) vacuum(ctx context.Context) {
 	start := time.Now()
-	if _, err := s.DB.ExecContext(ctx, `VACUUM`); err != nil {
-		s.Logger.Warn("off sync: vacuum failed, the freed space stays in the database file", "err", err)
-		return
+	for last := -1; ; {
+		var free int
+		if err := s.DB.QueryRowContext(ctx, `PRAGMA freelist_count`).Scan(&free); err != nil {
+			s.vacuumFailed(ctx, err)
+			return
+		}
+		if free == 0 {
+			break
+		}
+		if free == last { // auto_vacuum is not INCREMENTAL: nothing to give back this way
+			s.Logger.Warn("off sync: incremental vacuum frees nothing, the free pages stay in the database file", "free_pages", free)
+			return
+		}
+		last = free
+		if _, err := s.DB.ExecContext(ctx, fmt.Sprintf(`PRAGMA incremental_vacuum(%d)`, vacuumChunk)); err != nil {
+			s.vacuumFailed(ctx, err)
+			return
+		}
+		if err := pause(ctx); err != nil {
+			return
+		}
 	}
 	s.Logger.Info("off sync: vacuum done", "duration_ms", time.Since(start).Milliseconds())
+}
+
+func (s *Syncer) vacuumFailed(ctx context.Context, err error) {
+	if ctx.Err() == nil {
+		s.Logger.Warn("off sync: vacuum failed, the free pages stay in the database file", "err", err)
+	}
 }
 
 func pause(ctx context.Context) error {

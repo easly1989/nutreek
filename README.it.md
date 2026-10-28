@@ -270,7 +270,7 @@ Tutte le variabili d'ambiente:
 
 ### OpenFoodFacts
 
-Tutta la ricerca testuale su OpenFoodFacts è **locale**. Il sync scarica una volta l'export CSV di OFF (~0,8 GB compressi), tiene i prodotti italiani (~250k) e li indicizza con SQLite FTS5: le ricerche durano meno di 50 ms e non usano la rete. Poi, una volta al giorno, applica solo le modifiche che OFF pubblica; riscarica il CSV dopo più di ~13 giorni offline e ogni 30 giorni. Mentre un download è in corso le ricerche rispondono con i prodotti di prima, e dopo un download completo il file del database restituisce al disco lo spazio liberato (`VACUUM`). Al primo avvio la tabella è vuota e il primo sync parte in background (una decina di minuti); finché non finisce le ricerche restano vuote. Solo la lettura per codice di un prodotto non ancora importato chiama l'API live di OFF.
+Tutta la ricerca testuale su OpenFoodFacts è **locale**. Il sync scarica una volta l'export CSV di OFF (~0,8 GB compressi), tiene i prodotti italiani (~250k) e li indicizza con SQLite FTS5: le ricerche durano meno di 50 ms e non usano la rete. Poi, una volta al giorno, applica solo le modifiche che OFF pubblica; riscarica il CSV dopo più di ~13 giorni offline e ogni 30 giorni. Mentre un download è in corso le ricerche rispondono con i prodotti di prima, e dopo un download completo il file del database restituisce al disco lo spazio liberato, a piccoli passi (`incremental_vacuum`). Al primo avvio la tabella è vuota e il primo sync parte in background (una decina di minuti); finché non finisce le ricerche restano vuote. Solo la lettura per codice di un prodotto non ancora importato chiama l'API live di OFF.
 
 ---
 
