@@ -4,11 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"math"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
-	"time"
 )
 
 // A line of the dump in its current shape (#204), trimmed from a real one:
@@ -162,58 +158,6 @@ func TestFrontImageLanguage(t *testing.T) {
 		if got != want {
 			t.Errorf("%s: %q, want %q", tc.name, got, want)
 		}
-	}
-}
-
-// After a parser upgrade the dump is read again even when its ETag has not
-// changed: no If-None-Match until the new version has imported it (#204).
-func TestSyncerParserVersionForcesReingest(t *testing.T) {
-	sqldb := openTestDB(t)
-	dump := makeDumpGzip(t, []string{strings.ReplaceAll(newShapeLine, "\n", "")})
-	downloads := 0
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("If-None-Match") == `"same"` {
-			w.WriteHeader(http.StatusNotModified)
-			return
-		}
-		downloads++
-		w.Header().Set("ETag", `"same"`)
-		_, _ = w.Write(dump)
-	}))
-	t.Cleanup(srv.Close)
-	syncer := NewSyncer(sqldb, srv.URL, nil)
-	ctx := context.Background()
-
-	// An instance synced by the old parser: same ETag, data without macros.
-	if _, err := sqldb.Exec(`UPDATE off_sync_state SET dump_etag = '"same"', last_synced_at = ?, parser_version = 0 WHERE id = 1`, time.Now().Unix()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := sqldb.Exec(`INSERT INTO off_products (barcode, product_name, has_full_nutrients, updated_at) VALUES ('8001234567895', 'Banana', 0, 0)`); err != nil {
-		t.Fatal(err)
-	}
-
-	// The scheduler does not wait for the interval: the version is stale.
-	(&SyncScheduler{Syncer: syncer}).checkAndRun(ctx, 7*24*time.Hour, syncer.Logger)
-	if downloads != 1 {
-		t.Fatalf("downloads after the upgrade: %d, want 1", downloads)
-	}
-	var full int
-	var image string
-	if err := sqldb.QueryRow(`SELECT has_full_nutrients, image_url FROM off_products WHERE barcode = '8001234567895'`).Scan(&full, &image); err != nil || full != 1 || image == "" {
-		t.Errorf("re-ingested product: full %d image %q err %v", full, image, err)
-	}
-	if st, err := syncer.LoadState(ctx); err != nil || st.ParserVersion != ParserVersion {
-		t.Errorf("parser version after the sync: %+v, %v", st, err)
-	}
-
-	// From now on the unchanged ETag is a 304 again, and the scheduler waits.
-	stats, err := syncer.SyncDump(ctx)
-	if err != nil || !stats.Skipped || downloads != 1 {
-		t.Errorf("second sync: %+v, %v, %d downloads", stats, err, downloads)
-	}
-	(&SyncScheduler{Syncer: syncer}).checkAndRun(ctx, 7*24*time.Hour, syncer.Logger)
-	if downloads != 1 {
-		t.Errorf("the scheduler synced again before the interval: %d downloads", downloads)
 	}
 }
 

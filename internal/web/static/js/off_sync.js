@@ -56,6 +56,9 @@
     set('count', fmt(count));
     set('synced', fmtDate(s.last_synced_at));
     set('synced-rel', relDate(s.last_synced_at));
+    set('bootstrap', fmtDate(s.last_bootstrap_at));
+    set('delta', fmtDate(s.last_delta_at));
+    set('high-water', fmtDate(s.high_water_at));
     if (typeof s.diag_full_nutrients === 'number') {
       set('full', fmt(s.diag_full_nutrients) + (count ? ' (' + Math.round(s.diag_full_nutrients / count * 100) + '%)' : ''));
     }

@@ -255,8 +255,9 @@ Tutte le variabili d'ambiente:
 | `NUTREEK_OWNER_EMAIL` | *(vuoto)* | Email dell'utente owner: accesso esclusivo all'admin panel |
 | `NUTREEK_PREMIUM_ENABLED` | `false` | Se `true`, abilita il gating premium sulle funzionalità a pagamento |
 | `NUTREEK_OFF_BASE_URL` | `https://world.openfoodfacts.org` | Override host API OpenFoodFacts (barcode live) |
-| `NUTREEK_OFF_DUMP_URL` | `https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz` | URL dump OFF per sync locale |
-| `NUTREEK_OFF_SYNC_INTERVAL` | `168h` | Frequenza sync dump OFF (default 7 giorni) |
+| `NUTREEK_OFF_CSV_URL` | `https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz` | Export CSV di OFF da cui parte la copia locale |
+| `NUTREEK_OFF_DELTA_URL` | `https://static.openfoodfacts.org/data/delta/` | Cartella delle modifiche giornaliere di OFF |
+| `NUTREEK_OFF_SYNC_INTERVAL` | `24h` | Frequenza del sync OFF (default una volta al giorno) |
 | `NUTREEK_OFF_SYNC_ENABLED` | `true` | Abilita lo scheduler sync OFF |
 | `NUTREEK_RECONCILE_INTERVAL` | `24h` | Frequenza job riconciliazione ingredienti locali vs OFF |
 | `NUTREEK_RECONCILE_ENABLED` | `true` | Abilita/disabilita il job di riconciliazione |
@@ -269,7 +270,7 @@ Tutte le variabili d'ambiente:
 
 ### OpenFoodFacts
 
-Tutta la ricerca testuale su OpenFoodFacts è **locale**. Una volta alla settimana il sync scarica il dump pubblico di OFF (~0,9 GB compressi), tiene i prodotti italiani (~250k) e li indicizza con SQLite FTS5: le ricerche durano meno di 50 ms e non usano la rete. Al primo avvio la tabella è vuota e il primo sync parte in background (una decina di minuti); finché non finisce le ricerche restano vuote. Solo la lettura per codice di un prodotto non ancora importato chiama l'API live di OFF.
+Tutta la ricerca testuale su OpenFoodFacts è **locale**. Il sync scarica una volta l'export CSV di OFF (~0,8 GB compressi), tiene i prodotti italiani (~250k) e li indicizza con SQLite FTS5: le ricerche durano meno di 50 ms e non usano la rete. Poi, una volta al giorno, applica solo le modifiche che OFF pubblica; riscarica il CSV dopo più di ~13 giorni offline e ogni 30 giorni. Mentre un download è in corso le ricerche rispondono con i prodotti di prima. Al primo avvio la tabella è vuota e il primo sync parte in background (una decina di minuti); finché non finisce le ricerche restano vuote. Solo la lettura per codice di un prodotto non ancora importato chiama l'API live di OFF.
 
 ---
 
@@ -403,7 +404,7 @@ internal/
     migrations/       SQL goose versionate (embedded nel binary)
   domain/             struct di dominio pure
   macros/             calcoli macro (puri, testati)
-  off/                client OpenFoodFacts + sync dump locale + reconciler
+  off/                client OpenFoodFacts + sync locale CSV/delta + reconciler
   planner/            algoritmo greedy generazione piano settimanale
   profile/            logica salvataggio profilo (BMI, BMR, target macro)
   recipeimport/       import ricetta da URL (schema.org/Recipe)

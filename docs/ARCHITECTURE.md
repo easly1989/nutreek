@@ -73,7 +73,7 @@ repositories.
 | `domain/` | Plain domain structs (no business logic) |
 | `i18n/` | The supported languages and the translation catalogs (`locales/<lang>/<area>.json`), loaded with go-i18n |
 | `macros/` | Pure, tested macro calculations (kcal/protein/carbs/fat) |
-| `off/` | OpenFoodFacts client, local dump sync, periodic reconciler |
+| `off/` | OpenFoodFacts client, local CSV/delta sync, periodic reconciler |
 | `planner/` | Greedy weekly plan generation |
 | `profile/` | User profile calculations (BMI, BMR, macro targets) |
 | `recipeimport/` | Recipe import from a URL (`schema.org/Recipe`, JSON-LD/microdata) |
@@ -162,8 +162,8 @@ weekly weight-vs-intake trend (data from `weight_logs` and the meal history).
 target update.
 
 ### OpenFoodFacts (local search)
-`internal/off/dump.go` downloads the public OFF dump weekly, stream-parses it
-keeping Italian products, and fills `off_products` and the
+`internal/off/` bootstraps from OFF's CSV export, stream-parsing it keeping
+Italian products, then applies OFF's daily deltas to `off_products` and the
 `off_products_fts` FTS5 index. Searches are fully local (<50 ms), with no HTTP
 calls on the search path. Barcode lookup stays live against the OFF API
 (`internal/off/client.go`), used only the first time a new product is imported.
