@@ -58,7 +58,7 @@ type rawProduct struct {
 	ServingQuantity     json.RawMessage `json:"serving_quantity"`
 	ServingQuantityUnit string          `json:"serving_quantity_unit"`
 	ServingSize         string          `json:"serving_size"`
-	// NutritionDataPer says what the bare nutriments are per: "100g" or "serving".
+	// NutritionDataPer says what the bare nutriments are per: "100g", "100ml" or "serving".
 	NutritionDataPer string `json:"nutrition_data_per"`
 	// The dump's current shape (#204): nutrients in nutrition.aggregated_set,
 	// no image URLs but images.selected.front. Kept raw and parsed leniently,
@@ -196,7 +196,7 @@ func (r rawProduct) toProduct() Product {
 	// The JSONL dump uses bare keys ("proteins") while the API uses "_100g"
 	// ("proteins_100g"). Try both to support the two sources; the bare keys
 	// hold the values as entered, so only when they were entered per 100 g.
-	bare := r.NutritionDataPer == "" || r.NutritionDataPer == "100g"
+	bare := r.NutritionDataPer == "" || r.NutritionDataPer == "100g" || r.NutritionDataPer == "100ml"
 	grams := func(name string) (float64, bool) {
 		if v, ok := lookupNutrient(r.Nutriments, name+"_100g"); ok || !bare {
 			return v, ok
