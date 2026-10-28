@@ -29,13 +29,15 @@ import (
 //
 // The REST API (/api/v1/*) is JSON in English by design and skipped as a whole.
 var notHTML = map[string]string{
-	"/static/*":            "static files",
-	"/sw.js":               "the service worker script",
-	"/healthz":             "plain \"ok\" for the health check",
-	"/week/{start}/export": "CSV file; its Italian day names are a file format, see the week import",
-	"/settings/export":     "JSON file of the user's data",
-	"/profile/off-status":  "JSON for the sync card script",
-	"/admin/off-status":    "JSON for scripts, behind X-Admin-Token",
+	"/static/*":                 "static files",
+	"/sw.js":                    "the service worker script",
+	"/healthz":                  "plain \"ok\" for the health check",
+	"/week/{start}/export":      "CSV file; its Italian day names are a file format, see the week import",
+	"/settings/export":          "JSON file of the user's data",
+	"/recipes/{id}/photo":       "the recipe's JPEG photo",
+	"/recipes/{id}/photo/thumb": "the recipe's JPEG thumbnail",
+	"/profile/off-status":       "JSON for the sync card script",
+	"/admin/off-status":         "JSON for scripts, behind X-Admin-Token",
 }
 
 var reJSBlockComment = regexp.MustCompile(`(?s)/\*.*?\*/`)

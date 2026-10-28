@@ -10,6 +10,9 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Added
+- A photo for every recipe (#207): add, change or remove it at the top of the recipe page; the list shows a thumbnail. The page shrinks the picture before sending it, so phone photos come out upright and WebP works; the server keeps a JPEG of at most 1200 px, without EXIF data such as the position, inside the database, so backups include it. Whoever can see the recipe sees its photo; duplicating a recipe copies it (migration 0033)
+
 ### Changed
 - The OpenFoodFacts sync no longer downloads the 13 GB dump every week: it bootstraps from the 0.8 GB CSV export, then applies only the daily changes OpenFoodFacts publishes. It downloads the CSV again when the instance missed more than ~13 days of changes, when the parser changes, or every 30 days, to drop the products OpenFoodFacts deleted. Searches keep answering with the previous products while a download runs, and a failed one leaves them in place (migration 0034) (#211)
 - `NUTREEK_OFF_DUMP_URL` is replaced by `NUTREEK_OFF_CSV_URL` and `NUTREEK_OFF_DELTA_URL`; `NUTREEK_OFF_SYNC_INTERVAL` defaults to `24h`. `POST /admin/refresh-off-dump` forces a CSV download, and the OpenFoodFacts card in Administration shows the last full download, the last daily changes and the date the data reaches (#211)

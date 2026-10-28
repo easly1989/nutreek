@@ -119,7 +119,7 @@ func (r *Recipes) Update(
 	return nil
 }
 
-// Delete deletes the recipe (its items go through ON DELETE CASCADE).
+// Delete deletes the recipe (its items and photo go through ON DELETE CASCADE).
 func (r *Recipes) Delete(ctx context.Context, id, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `DELETE FROM recipes WHERE id = ? AND user_id = ?`, id, userID)
 	if err != nil {
@@ -462,8 +462,8 @@ func contentSignature(items []domain.RecipeItem) string {
 	return strings.Join(pairs, ";")
 }
 
-// Duplicate deep-copies a recipe (metadata + every recipe_ingredients row)
-// under the given new name. Transactional.
+// Duplicate deep-copies a recipe (metadata + every recipe_ingredients row +
+// its photo) under the given new name. Transactional.
 //
 // Errors:
 //   - ErrRecipeNotFound: the source does not exist
@@ -512,6 +512,12 @@ func (r *Recipes) Duplicate(ctx context.Context, srcID, userID int64, newName st
 		`, newID, it.IngredientID, it.Quantity, it.SortOrder); err != nil {
 			return 0, fmt.Errorf("copy item: %w", err)
 		}
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO recipe_photos (recipe_id, photo, thumb, etag)
+		SELECT ?, photo, thumb, etag FROM recipe_photos WHERE recipe_id = ?
+	`, newID, srcID); err != nil {
+		return 0, fmt.Errorf("copy photo: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("commit duplicate: %w", err)

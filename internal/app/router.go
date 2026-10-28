@@ -47,6 +47,7 @@ func (a *App) Router() http.Handler {
 		r.Use(limitBody(a.DemoLimits.MaxBody))
 	}
 	r.Use(middleware.StripSlashes)
+	r.Use(limitPhotoBody)
 	r.Use(securityHeaders)
 	// A page left open across an update learns of it from its next HTMX request (#167).
 	r.Use(middleware.SetHeader("X-Nutreek-Build", web.StaticVersion()))
@@ -136,6 +137,10 @@ func (a *App) Router() http.Handler {
 		r.Post("/recipes/{id}/delete", a.handleRecipeDelete)
 		r.Post("/recipes/{id}/items", a.handleRecipeAddItem)
 		r.Post("/recipes/{id}/items/{itemID}/delete", a.handleRecipeRemoveItem)
+		r.Get("/recipes/{id}/photo", a.handleRecipePhoto)
+		r.Get("/recipes/{id}/photo/thumb", a.handleRecipePhotoThumb)
+		r.Post("/recipes/{id}/photo", a.handleRecipePhotoUpload)
+		r.Post("/recipes/{id}/photo/delete", a.handleRecipePhotoDelete)
 
 		// Onboarding wizard (after sign-up and "Guida rapida" from the sidebar).
 		r.Get("/onboarding", a.handleOnboardingPage)

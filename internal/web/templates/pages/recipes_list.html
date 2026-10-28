@@ -128,13 +128,20 @@
               <input type="checkbox" class="check hidden lg:block" name="recipe_id" value="{{.Recipe.ID}}"
                      data-recipes-checkbox data-usages="{{.Usages}}" aria-label="{{t "recipes.row.select" "Name" .Recipe.Name}}">
             {{else}}<span class="hidden lg:block"></span>{{end}}
-            <div class="flex flex-col gap-1 min-w-0">
-              <a href="/recipes/{{.Recipe.ID}}" class="font-semibold hover:underline truncate">{{.Recipe.Name}}</a>
-              <span class="flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
-                {{t "recipes.servings" "Count" .Recipe.Servings}}
-                {{if and .Mine (gt .Usages 0)}}<span class="chip chip-n">{{t "recipes.in_use" "Count" .Usages}}</span>{{end}}
-                {{if and .Mine .Recipe.IsPublic}}<span class="chip chip-soft">{{t "recipes.public"}}</span>{{end}}
-              </span>
+            <div class="flex items-center gap-3 min-w-0">
+              {{if .PhotoETag}}
+                <img src="/recipes/{{.Recipe.ID}}/photo/thumb?v={{.PhotoETag}}" alt="" width="44" height="44" loading="lazy" class="w-11 h-11 shrink-0 rounded-[10px] object-cover bg-surface-2">
+              {{else}}
+                <span class="w-11 h-11 shrink-0 rounded-[10px] bg-surface-2 grid place-items-center text-muted" aria-hidden="true">{{template "icon_sm" "i-camera"}}</span>
+              {{end}}
+              <div class="flex flex-col gap-1 min-w-0">
+                <a href="/recipes/{{.Recipe.ID}}" class="font-semibold hover:underline truncate">{{.Recipe.Name}}</a>
+                <span class="flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
+                  {{t "recipes.servings" "Count" .Recipe.Servings}}
+                  {{if and .Mine (gt .Usages 0)}}<span class="chip chip-n">{{t "recipes.in_use" "Count" .Usages}}</span>{{end}}
+                  {{if and .Mine .Recipe.IsPublic}}<span class="chip chip-soft">{{t "recipes.public"}}</span>{{end}}
+                </span>
+              </div>
             </div>
             <span class="text-right tabular-nums whitespace-nowrap"><b>{{num .PerServing.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal</span></span>
             <span class="col-span-3 lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums">
