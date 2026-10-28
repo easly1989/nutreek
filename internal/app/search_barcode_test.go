@@ -30,7 +30,8 @@ func TestSearchMixedBarcode(t *testing.T) {
 	}
 	if _, err := a.Store.DB.Exec(`INSERT INTO off_products (barcode, product_name, brands, quantity,
 		kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, has_full_nutrients, updated_at)
-		VALUES ('96385074', 'Fiocchi d''avena', 'Molino', '500 g', 372, 13.5, 58.7, 7, 1, 0)`); err != nil {
+		VALUES ('96385074', 'Fiocchi d''avena', 'Molino', '500 g', 372, 13.5, 58.7, 7, 1, 0),
+		       ('8015555555556', 'Crusca', 'Molino', '500 g', 0, 0, 0, 0, 0, 0)`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -42,6 +43,12 @@ func TestSearchMixedBarcode(t *testing.T) {
 	rows, _, err = a.searchMixed(ctx, "96385074", false)
 	if err != nil || len(rows) != 1 || !rows[0].IsOFF() || rows[0].Barcode() != "96385074" {
 		t.Errorf("local OFF copy: %+v, %v", rows, err)
+	}
+
+	// A local copy without the four macros cannot be imported: not offered (#204).
+	rows, warn, err = a.searchMixed(ctx, "8015555555556", false)
+	if err != nil || len(rows) != 0 || warn != "" || liveCalls != 0 {
+		t.Errorf("incomplete local OFF copy: %+v, %q, %v, %d calls", rows, warn, err, liveCalls)
 	}
 
 	rows, warn, err = a.searchMixed(ctx, "036000291452", false)

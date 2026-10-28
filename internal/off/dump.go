@@ -34,6 +34,12 @@ const dumpBatchSize = 1000
 // 4MB is wide enough not to discard anything.
 const scannerBufferMax = 4 * 1024 * 1024
 
+// ParserVersion is the version of the dump parser, stored in off_sync_state
+// after every import. Bump it whenever a change to the parser must reach the
+// data already imported: the next sync downloads the dump again even when its
+// ETag is unchanged. 1 = the dump's nutrition/images shape (#204).
+const ParserVersion = 1
+
 // ErrSyncInProgress is returned by SyncDump when another sync is already
 // running (the mutex prevents concurrency, from the admin endpoint too).
 var ErrSyncInProgress = errors.New("sync OFF gia' in corso")
@@ -120,14 +126,15 @@ func (s *Syncer) SyncDump(ctx context.Context) (SyncStats, error) {
 }
 
 func (s *Syncer) doSync(ctx context.Context) (SyncStats, error) {
-	previousETag, _ := s.readLastETag(ctx)
+	previousETag, version, _ := s.readLastETag(ctx)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.URL, nil)
 	if err != nil {
 		return SyncStats{}, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("User-Agent", DefaultUserAgent)
-	if previousETag != "" {
+	// Data imported by another parser version is read again from scratch.
+	if previousETag != "" && version == ParserVersion {
 		req.Header.Set("If-None-Match", previousETag)
 	}
 
@@ -312,6 +319,9 @@ type dumpProduct struct {
 	ServingQuantity     json.RawMessage            `json:"serving_quantity"`
 	ServingQuantityUnit string                     `json:"serving_quantity_unit"`
 	ServingSize         string                     `json:"serving_size"`
+	NutritionDataPer    string                     `json:"nutrition_data_per"`
+	Nutrition           json.RawMessage            `json:"nutrition"`
+	Images              json.RawMessage            `json:"images"`
 }
 
 // toProduct reuses the logic of rawProduct.toProduct() by building an
@@ -329,6 +339,9 @@ func (d dumpProduct) toProduct() Product {
 		ServingQuantity:     d.ServingQuantity,
 		ServingQuantityUnit: d.ServingQuantityUnit,
 		ServingSize:         d.ServingSize,
+		NutritionDataPer:    d.NutritionDataPer,
+		Nutrition:           d.Nutrition,
+		Images:              d.Images,
 	}
 	return raw.toProduct()
 }
@@ -380,13 +393,16 @@ func (p *progressReader) Read(buf []byte) (int, error) {
 
 // ---- stato sync persistito --------------------------------------------------
 
-func (s *Syncer) readLastETag(ctx context.Context) (string, error) {
+// readLastETag returns the ETag of the last imported dump and the parser
+// version that imported it.
+func (s *Syncer) readLastETag(ctx context.Context) (string, int, error) {
 	var etag sql.NullString
-	err := s.DB.QueryRowContext(ctx, `SELECT dump_etag FROM off_sync_state WHERE id = 1`).Scan(&etag)
+	var version int
+	err := s.DB.QueryRowContext(ctx, `SELECT dump_etag, parser_version FROM off_sync_state WHERE id = 1`).Scan(&etag, &version)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return etag.String, nil
+	return etag.String, version, nil
 }
 
 func (s *Syncer) markAttempt(ctx context.Context) {
@@ -405,9 +421,9 @@ func (s *Syncer) markSuccess(ctx context.Context, stats SyncStats) {
 	}
 	_, err := s.DB.ExecContext(ctx, `
 		UPDATE off_sync_state
-		SET last_synced_at = ?, last_error = NULL, products_count = ?, dump_etag = ?
+		SET last_synced_at = ?, last_error = NULL, products_count = ?, dump_etag = ?, parser_version = ?
 		WHERE id = 1`,
-		time.Now().Unix(), count, stats.ETag,
+		time.Now().Unix(), count, stats.ETag, ParserVersion,
 	)
 	if err != nil {
 		s.Logger.Warn("off sync: markSuccess failed", "err", err)
@@ -428,6 +444,7 @@ type State struct {
 	LastError     string
 	ProductsCount int
 	DumpETag      string
+	ParserVersion int // the parser version of the last import
 	Syncing       bool
 }
 
@@ -435,20 +452,21 @@ type State struct {
 // problems (the singleton row is created by the migration).
 func (s *Syncer) LoadState(ctx context.Context) (*State, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT last_synced_at, last_attempt_at, last_error, products_count, dump_etag
+		SELECT last_synced_at, last_attempt_at, last_error, products_count, dump_etag, parser_version
 		FROM off_sync_state WHERE id = 1`)
 	var (
 		synced, attempt sql.NullInt64
 		errMsg, etag    sql.NullString
-		count           int
+		count, version  int
 	)
-	if err := row.Scan(&synced, &attempt, &errMsg, &count, &etag); err != nil {
+	if err := row.Scan(&synced, &attempt, &errMsg, &count, &etag, &version); err != nil {
 		return nil, err
 	}
 	st := &State{
 		LastError:     errMsg.String,
 		ProductsCount: count,
 		DumpETag:      etag.String,
+		ParserVersion: version,
 		Syncing:       s.IsSyncing(),
 	}
 	if synced.Valid {

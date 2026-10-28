@@ -113,7 +113,6 @@ func (a *App) Router() http.Handler {
 		r.Get("/ingredients/{id}/edit", a.handleIngredientEditForm)
 		r.Post("/ingredients/{id}", a.handleIngredientUpdate)
 		r.Post("/ingredients/off-import", a.handleIngredientOFFImport)
-		r.Get("/off/check/{barcode}", a.handleOFFMacroCheck)
 		r.Post("/ingredients/categories", a.handleCategoryCreate)
 		r.Post("/ingredients/categories/{id}/delete", a.handleCategoryDelete)
 

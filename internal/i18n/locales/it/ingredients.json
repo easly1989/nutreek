@@ -26,8 +26,6 @@
   "ingredients.results.none_filtered": "Nessun ingrediente con questi filtri.",
   "ingredients.results.empty": "Non hai ancora nessun ingrediente. Cercalo su OpenFoodFacts qui sopra o crealo tu.",
   "ingredients.row.by": "di {{.Author}}",
-  "ingredients.row.checking": "Verifico i macro…",
-  "ingredients.row.no_macros": "Macro non disponibili su OpenFoodFacts",
   "ingredients.row.import": "Importa",
   "ingredients.row.edit": "Modifica",
   "ingredients.row.category": "Categoria",
