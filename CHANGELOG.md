@@ -10,6 +10,12 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+---
+
+## [2.2.0] — 2026-10-28
+
+OpenFoodFacts works again and costs far less to keep current: products show their photos and macros, and the local copy updates daily from a 0.8 GB CSV instead of a weekly 13 GB dump. Recipes get a photo, and quantities can be changed in place, in grams or pieces.
+
 ### Added
 - A photo for every recipe (#207): add, change or remove it at the top of the recipe page; the list shows a thumbnail. The page shrinks the picture before sending it, so phone photos come out upright and WebP works; the server keeps a JPEG of at most 1200 px, without EXIF data such as the position, inside the database, so backups include it. Whoever can see the recipe sees its photo; duplicating a recipe copies it (migration 0033)
 - Quantities can be changed in place (#206): tap the quantity of a recipe ingredient, or of a food or recipe in the weekly plan, to edit it with Save and Cancel (Enter and Esc work too); the kcal and the totals follow. On a phone the editor wraps under the name; without JavaScript the recipe page opens it as a page
