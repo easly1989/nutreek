@@ -19,6 +19,8 @@ make build            # static binary (CGO_ENABLED=0)
 make docker-up        # docker compose up --build
 ```
 
+CI runs (no Makefile target for these): `go test ./... -race -count=1`; `go test -tags demo ./cmd/nutreek/ -race -count=1`; `go run ./cmd/i18ncheck`; golangci-lint v2.14.0 twice, plain and with `--build-tags demo` (via `golangci/golangci-lint-action`).
+
 Templates and CSS are embedded in the binary: rebuild to see them in tests. Migrations are embedded and applied by goose at startup.
 
 ## Rules
@@ -27,6 +29,7 @@ Templates and CSS are embedded in the binary: rebuild to see them in tests. Migr
 - Conventional Commits with a scope (`feat(shopping): add past weeks dropdown`).
 - Handlers `handle{Section}{Action}`; aggregates `{Entity}Full`; sentinel errors per domain wrapped with `%w`; `withinLen(s, max)` for lengths.
 - One issue → one branch (`feat/ fix/ chore/ ci/ refactor/ test/ docs/`) → one PR to `main` with `Closes #N`; CI green; **never push to `main`**. UI issues and PRs carry images.
+- CSRF on every form (nosurf token in every template).
 - Every resource is scoped to the authenticated user; `NUTREEK_SESSION_KEY` is required in prod.
 
 ## Read when the task touches it

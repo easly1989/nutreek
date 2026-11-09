@@ -8,8 +8,7 @@ Moved from CLAUDE.md. Read before writing user-facing text, naming things, or to
 - **The text users see lives in translation catalogs** (#141): `internal/i18n/locales/<lang>/<area>.json`, Italian and English written together, `{{t "key"}}` in templates and `a.t(r, "key")` in handlers (see `docs/ARCHITECTURE.md`, Translations). New text goes into both catalogs, never straight into a template or handler.
 - **The language** is the user's choice in Settings, else the `lang` cookie (the signed-out pages' selector), else the browser's `Accept-Language`, else English (#159). REST API errors are always English.
 - History stays as written: commits, issues and pull requests before #146 are in Italian, and the CHANGELOG entries up to 2.0.0 link to them.
-- `README.it.md` is the Italian README and stays Italian.
-- The README is in English (`README.md`) with an Italian version in `README.it.md`: keep the two aligned.
+- `README.md` is English and `README.it.md` is its Italian version (it stays Italian): keep the two aligned.
 
 ## Code conventions
 
@@ -21,8 +20,8 @@ Moved from CLAUDE.md. Read before writing user-facing text, naming things, or to
 
 ## Build rules
 
-- The `db/migrations/*.sql` migrations are embedded and applied by goose at startup: nothing to generate
-- After changing `web/tailwind/input.css` or `tailwind.config.js` → `make tailwind`
+- The `internal/db/migrations/*.sql` migrations are embedded and applied by goose at startup: nothing to generate
+- After changing `web/tailwind/input.css` or `web/tailwind/tailwind.config.js` → `make tailwind`
 - HTML templates and CSS are embedded in the binary → rebuild to see them in tests
 - **Tailwind is pinned to v3.4.17** — do NOT upgrade to v4 without a dedicated task
 
