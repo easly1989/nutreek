@@ -130,24 +130,23 @@ type recipeDuplicateData struct {
 
 type recipeEditData struct {
 	authPageData
-	Recipe      *domain.RecipeWithItems
-	Form        recipeForm
-	Error       string
-	ItemError   string
-	CanEdit     bool                 // true when the logged-in user is the author
-	Total       macros.Macros        // recipe total
-	PerServing  macros.Macros        // per serving
-	Shares      macros.Shares        // energy split per serving
-	ItemKcal    map[int64]float64    // kcal of every item (by item id)
-	ItemGrams   map[int64]float64    // grams of every item (the «pz» tooltip)
-	Edit        qtyEdit              // the quantity editor open without script
-	Focus       int64                // item whose quantity takes the focus (?saved=)
-	Usages      int                  // weekly plan items that use it
-	Ingredients []*domain.Ingredient // pool for the new item's select
-	NewItemQty  string               // value in the item form after an error
-	NewItemIng  string               // selected ingredient_id
-	PhotoETag   string               // "" without a photo
-	PhotoMax    int64                // largest upload the page's script sends
+	Recipe     *domain.RecipeWithItems
+	Form       recipeForm
+	Error      string
+	ItemError  string
+	CanEdit    bool              // true when the logged-in user is the author
+	Total      macros.Macros     // recipe total
+	PerServing macros.Macros     // per serving
+	Shares     macros.Shares     // energy split per serving
+	ItemKcal   map[int64]float64 // kcal of every item (by item id)
+	ItemGrams  map[int64]float64 // grams of every item (the «pz» tooltip)
+	Edit       qtyEdit           // the quantity editor open without script
+	Focus      int64             // item whose quantity takes the focus (?saved=)
+	Usages     int               // weekly plan items that use it
+	NewItemQty string            // value in the item form after an error
+	NewItemIng string            // selected ingredient_id
+	PhotoETag  string            // "" without a photo
+	PhotoMax   int64             // largest upload the page's script sends
 }
 
 // qtyEdit is a recipe row whose quantity editor the page renders open: the
@@ -423,13 +422,6 @@ func (a *App) renderRecipeEdit(
 			return
 		}
 		data.Usages = usages
-		// Load the ingredients for the select only when the user may edit.
-		ings, err := a.Ingredients.ListActive(r.Context(), user.ID, 0, 200)
-		if err != nil {
-			a.serverError(w, r, err)
-			return
-		}
-		data.Ingredients = ings
 	}
 	status := http.StatusOK
 	if formError != "" || itemError != "" {
