@@ -15,6 +15,10 @@
   "ingredients.filter.contains": "Contains {{.Name}}",
   "ingredients.filter.reset": "Clear filters",
   "ingredients.filter.apply": "Apply",
+  "ingredients.pagination.label": "Ingredient pages",
+  "ingredients.pagination.prev": "← Previous",
+  "ingredients.pagination.next": "Next →",
+  "ingredients.pagination.page": "Page {{.Page}} of {{.Pages}}",
   "ingredients.results.count": {
     "one": "{{.Count}} result",
     "other": "{{.Count}} results"

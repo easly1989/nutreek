@@ -46,3 +46,18 @@ Manual trigger: `POST /admin/refresh-off-dump` (needs
 **First start**: `off_products` is empty; the scheduler starts the
 bootstrap in the background. Searches return nothing until it
 completes (~10 min, ~0.8 GB of bandwidth).
+
+## Imported names
+
+An OFF product is saved as a local ingredient (`source='openfoodfacts'`,
+the barcode kept) the first time it is picked or imported, so it is reusable
+from then on without OFF. `Ingredients.CreateOFF` normalises the text with
+`NormalizeOFFName` / `NormalizeOFFBrand` (`internal/db/ingredient_normalize.go`):
+
+1. whitespace runs collapse into one space, ends trimmed;
+2. trailing `, ; : - .` are stripped;
+3. a name in all capitals (4+ letters) is lowercased;
+4. the first letter is uppercased, the rest is kept as OFF has it;
+5. names are cut to 200 runes; a brand list keeps its first brand.
+
+Nutrients and the barcode are never altered.

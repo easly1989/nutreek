@@ -9,7 +9,7 @@
 {{if .Rows}}
   <div class="card overflow-hidden">
     <div class="hidden lg:grid grid-cols-[36px_minmax(0,1fr)_84px_190px_96px] gap-3.5 items-center min-h-[38px] pl-4 pr-3 text-[12.5px] font-semibold text-muted">
-      <span class="col-span-2">{{t "ingredients.results.count" "Count" (len .Rows)}}</span>
+      <span class="col-span-2">{{t "ingredients.results.count" "Count" (or .Paging.Total (len .Rows))}}</span>
       <span class="text-right">kcal / 100 g</span>
       <span>{{t "ingredients.results.macros_header"}}</span>
       <span></span>
@@ -23,6 +23,13 @@
       {{range .Rows}}{{if .IsOFF}}{{template "ingredient_row" (pickerRow . $)}}{{end}}{{end}}
     {{end}}
   </div>
+  {{if gt .Paging.Pages 1}}
+  <nav class="flex items-center justify-between gap-3" aria-label="{{t "ingredients.pagination.label"}}">
+    {{if .Paging.PrevHref}}<a href="{{.Paging.PrevHref}}" class="btn-secondary h-8">{{t "ingredients.pagination.prev"}}</a>{{else}}<span></span>{{end}}
+    <span class="text-[12.5px] text-muted">{{t "ingredients.pagination.page" "Page" .Paging.Page "Pages" .Paging.Pages}}</span>
+    {{if .Paging.NextHref}}<a href="{{.Paging.NextHref}}" class="btn-secondary h-8">{{t "ingredients.pagination.next"}}</a>{{else}}<span></span>{{end}}
+  </nav>
+  {{end}}
 {{else if .Query}}
   <p class="card px-6 py-10 text-center text-muted">{{t "ingredients.results.none_for" "Query" .Query}}</p>
 {{else if or .Filter.Src .Filter.CategoryID .Filter.AllergenID}}

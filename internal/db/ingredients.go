@@ -172,7 +172,9 @@ func (r *Ingredients) GetByBarcode(ctx context.Context, barcode string) (*domain
 	return scanIngredient(row.Scan)
 }
 
-// CreateOFF inserts an ingredient imported from OpenFoodFacts. It sets
+// CreateOFF inserts an ingredient imported from OpenFoodFacts, saving it
+// locally so it is reusable without OFF. name and brand are normalised with
+// NormalizeOFFName / NormalizeOFFBrand first. It sets
 // `last_verified_at = CURRENT_TIMESTAMP` because the data was just taken
 // from OFF. When the barcode already exists it returns ErrBarcodeAlreadyUsed.
 // servingG (the OFF serving in g/ml, nil when unknown) becomes the quantity
@@ -188,6 +190,8 @@ func (r *Ingredients) CreateOFF(
 	unitWeightG, servingG *float64,
 	fiber, sugars, saturatedFat, sodium *float64,
 ) (int64, error) {
+	name = NormalizeOFFName(name)
+	brand = NormalizeOFFBrand(brand)
 	res, err := r.db.ExecContext(ctx, `
 		INSERT INTO ingredients (
 			source, off_barcode, name, brand, unit,
@@ -196,7 +200,7 @@ func (r *Ingredients) CreateOFF(
 			fiber_per_100, sugars_per_100, saturated_fat_per_100, sodium_per_100
 		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
 	`,
-		strings.TrimSpace(barcode), strings.TrimSpace(name), brand, string(unit),
+		strings.TrimSpace(barcode), name, brand, string(unit),
 		kcal, protein, carbs, fat, createdBy, unitWeightG, servingG,
 		fiber, sugars, saturatedFat, sodium,
 	)
@@ -266,6 +270,24 @@ func (r *Ingredients) ListActive(ctx context.Context, viewerID int64, offset, li
 	}
 	defer rows.Close()
 	return collectIngredients(rows)
+}
+
+// ListAllActive returns every non-superseded ingredient in viewerID's catalog
+// ordered by name, reading ListActive pages until the catalog is exhausted.
+// The ingredients page uses it so that no row is cut off by a page size.
+func (r *Ingredients) ListAllActive(ctx context.Context, viewerID int64) ([]*domain.Ingredient, error) {
+	const page = 200
+	var all []*domain.Ingredient
+	for offset := 0; ; offset += page {
+		got, err := r.ListActive(ctx, viewerID, offset, page)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, got...)
+		if len(got) < page {
+			return all, nil
+		}
+	}
 }
 
 // LocalsToReconcile returns up to `limit` non-superseded `source='local'`
