@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,8 +15,9 @@ import (
 
 // Errors of the shopping repository.
 var (
-	ErrShoppingListNotFound = errors.New("lista della spesa non trovata")
-	ErrShoppingItemNotFound = errors.New("voce della lista non trovata")
+	ErrShoppingListNotFound    = errors.New("lista della spesa non trovata")
+	ErrShoppingItemNotFound    = errors.New("voce della lista non trovata")
+	ErrShoppingQuantityInvalid = errors.New("quantità non valida")
 )
 
 // ShoppingLists is the shopping lists repository.
@@ -412,4 +414,83 @@ func (r *ShoppingLists) ReorderUserItems(ctx context.Context, listID, userID int
 	return runReorderTx(ctx, r.db,
 		`UPDATE shopping_user_items SET sort_order = ? WHERE id = ? AND shopping_list_id = ?`,
 		ids, listID)
+}
+
+// UpdateItemQuantity sets the total quantity (grams/ml) of an auto item, so
+// the user can correct what the meals computed. Regenerating the list
+// recomputes it from the meals.
+func (r *ShoppingLists) UpdateItemQuantity(ctx context.Context, itemID, userID int64, quantity float64) error {
+	if quantity <= 0 {
+		return ErrShoppingQuantityInvalid
+	}
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE shopping_list_items SET total_quantity = ?
+		WHERE id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+	`, quantity, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("update item quantity: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrShoppingItemNotFound
+	}
+	return nil
+}
+
+// AddManualItem adds a manual item with a numeric quantity in g, ml or pz.
+// When the description matches (case-insensitive) an ingredient already in
+// the list, and the quantity can be expressed in that ingredient's unit
+// (pieces need a unit weight), it is added to that row and merged is true;
+// otherwise it becomes a manual item with the quantity formatted as text.
+func (r *ShoppingLists) AddManualItem(ctx context.Context, listID, userID int64, description string, quantity float64, unit string) (merged bool, err error) {
+	description = strings.TrimSpace(description)
+	if description == "" {
+		return false, fmt.Errorf("descrizione obbligatoria")
+	}
+	if quantity < 0 || (unit != "g" && unit != "ml" && unit != "pz") {
+		return false, ErrShoppingQuantityInvalid
+	}
+	full, err := r.LoadFull(ctx, listID, userID)
+	if err != nil {
+		return false, err
+	}
+	if quantity > 0 {
+		for _, it := range full.Items {
+			ing := it.Ingredient
+			if ing == nil || !strings.EqualFold(strings.TrimSpace(ing.Name), description) {
+				continue
+			}
+			if unit == "pz" && ing.PieceWeight() <= 0 {
+				break
+			}
+			if unit != "pz" && unit != string(ing.Unit) {
+				break
+			}
+			add := macros.Grams(quantity, unit, ing)
+			if _, err := r.db.ExecContext(ctx,
+				`UPDATE shopping_list_items SET total_quantity = total_quantity + ? WHERE id = ?`, add, it.ID); err != nil {
+				return false, fmt.Errorf("merge manual item: %w", err)
+			}
+			return true, nil
+		}
+	}
+	id, err := r.AddUserItem(ctx, listID, userID, description, formatManualQuantity(quantity, unit))
+	if err != nil {
+		return false, err
+	}
+	if quantity > 0 {
+		if _, err := r.db.ExecContext(ctx,
+			`UPDATE shopping_user_items SET quantity = ?, unit = ? WHERE id = ?`, quantity, unit, id); err != nil {
+			return false, fmt.Errorf("store manual quantity: %w", err)
+		}
+	}
+	return false, nil
+}
+
+// formatManualQuantity renders «200 g» / «3 pz»; empty when there is no quantity.
+func formatManualQuantity(q float64, unit string) string {
+	if q <= 0 {
+		return ""
+	}
+	return strconv.FormatFloat(q, 'f', -1, 64) + " " + unit
 }

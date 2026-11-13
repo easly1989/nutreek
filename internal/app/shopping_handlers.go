@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -118,7 +119,7 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 	data := shoppingListData{
 		authPageData:  a.baseData(r),
 		List:          full,
-		View:          buildShoppingView(full.Items, cats),
+		View:          buildShoppingView(full.Items, cats).withUserItems(full.UserItems),
 		UserItemViews: userViews,
 		WeekStart:     weekStart.Format("2006-01-02"),
 		WeekCount:     weeks,
@@ -141,8 +142,17 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	desc := strings.TrimSpace(r.PostFormValue("description"))
-	qty := strings.TrimSpace(r.PostFormValue("quantity_text"))
+	qty, ok := parseShoppingQuantity(r.PostFormValue("quantity"))
+	unit := r.PostFormValue("unit")
+	if unit != "pz" && unit != "ml" {
+		unit = "g"
+	}
 	back := shoppingListURL(r)
+	if !ok {
+		a.Sessions.Put(r.Context(), "flash", "shopping.flash.quantity_invalid")
+		http.Redirect(w, r, back, http.StatusSeeOther)
+		return
+	}
 	if desc == "" {
 		a.Sessions.Put(r.Context(), "flash", "shopping.flash.description_required")
 		http.Redirect(w, r, back, http.StatusSeeOther)
@@ -153,7 +163,7 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 		http.Redirect(w, r, back, http.StatusSeeOther)
 		return
 	}
-	if _, err := a.ShoppingLists.AddUserItem(r.Context(), listID, user.ID, desc, qty); err != nil {
+	if _, err := a.ShoppingLists.AddManualItem(r.Context(), listID, user.ID, desc, qty, unit); err != nil {
 		if errors.Is(err, db.ErrShoppingListNotFound) {
 			a.notFound(w, r)
 			return
@@ -162,6 +172,46 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+// parseShoppingQuantity reads an optional positive number (comma or dot).
+// Empty is valid and means 0 (no quantity).
+func parseShoppingQuantity(raw string) (float64, bool) {
+	raw = strings.ReplaceAll(strings.TrimSpace(raw), ",", ".")
+	if raw == "" {
+		return 0, true
+	}
+	q, err := strconv.ParseFloat(raw, 64)
+	if err != nil || math.IsNaN(q) || math.IsInf(q, 0) || q <= 0 || q > 100000 {
+		return 0, false
+	}
+	return q, true
+}
+
+// handleShoppingItemQuantity POST /shopping-list/items/{id}/quantity
+// Body: quantity (grams/ml). Corrects the quantity computed from the meals.
+func (a *App) handleShoppingItemQuantity(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	itemID, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	qty, ok := parseShoppingQuantity(r.PostFormValue("quantity"))
+	if !ok || qty == 0 {
+		a.Sessions.Put(r.Context(), "flash", "shopping.flash.quantity_invalid")
+		http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+		return
+	}
+	if err := a.ShoppingLists.UpdateItemQuantity(r.Context(), itemID, user.ID, qty); err != nil {
+		if errors.Is(err, db.ErrShoppingItemNotFound) {
+			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
+			return
+		}
+		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 }
 
 // handleToggleShoppingUserItem POST /shopping-list/user-items/{id}/toggle

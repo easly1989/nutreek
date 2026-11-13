@@ -100,3 +100,18 @@ func shoppingPieces(it domain.ShoppingListItem) int {
 	}
 	return int(math.Ceil(it.TotalQuantity / *it.Ingredient.UnitWeightG - 0.05))
 }
+
+// withUserItems counts the manual items in the progress: they sit in the
+// same list as the items from the meals.
+func (v shoppingView) withUserItems(items []domain.ShoppingUserItem) shoppingView {
+	v.Total += len(items)
+	for _, it := range items {
+		if it.Checked {
+			v.Done++
+		}
+	}
+	if v.Total > 0 {
+		v.Percent = v.Done * 100 / v.Total
+	}
+	return v
+}

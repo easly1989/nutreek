@@ -185,3 +185,80 @@ func TestShoppingOwnership(t *testing.T) {
 func approxEqual(a, b float64) bool {
 	return math.Abs(a-b) < 0.01
 }
+
+func TestShoppingEditQuantityAndManualMerge(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	plans := NewWeeklyPlans(store.DB)
+	ings := NewIngredients(store.DB)
+	shop := NewShoppingLists(store.DB, plans)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
+	monday, _ := time.Parse("2006-01-02", "2026-04-27")
+	plan, _ := plans.GetOrCreateForWeek(ctx, alice, monday)
+	peso := 150.0
+	mela, _ := ings.CreateLocal(ctx, "Mela", nil, "g", 52, 0.3, 13.8, 0.2, &alice, &peso, nil, nil, nil, nil, nil)
+	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 360, 12, 75, 1, &alice, nil, nil, nil, nil, nil, nil)
+	meal, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "Pranzo")
+	if _, err := plans.AddItem(ctx, meal, alice, nil, &mela, 100, "g"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plans.AddItem(ctx, meal, alice, nil, &pasta, 100, "g"); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := shop.GetOrCreateList(ctx, alice, monday, 1)
+	if err := shop.Generate(ctx, list.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	qty := func(name string) float64 {
+		full, _ := shop.LoadFull(ctx, list.ID, alice)
+		for _, it := range full.Items {
+			if it.Ingredient.Name == name {
+				return it.TotalQuantity
+			}
+		}
+		return -1
+	}
+
+	// Manual «mela» in pieces merges: 2 pz × 150 g onto the 100 g.
+	if merged, err := shop.AddManualItem(ctx, list.ID, alice, "mela", 2, "pz"); err != nil || !merged {
+		t.Fatalf("pz merge: merged=%v err=%v", merged, err)
+	}
+	if got := qty("Mela"); !approxEqual(got, 400) {
+		t.Errorf("Mela = %v, want 400", got)
+	}
+	// Grams merge too; pieces of an ingredient without unit weight do not.
+	if merged, _ := shop.AddManualItem(ctx, list.ID, alice, "Pasta", 50, "g"); !merged {
+		t.Error("grams of a listed ingredient should merge")
+	}
+	if merged, _ := shop.AddManualItem(ctx, list.ID, alice, "Pasta", 1, "pz"); merged {
+		t.Error("pieces without a unit weight must not merge")
+	}
+	// An unknown item stays a manual row, with its quantity text.
+	if merged, _ := shop.AddManualItem(ctx, list.ID, alice, "Candele", 3, "pz"); merged {
+		t.Error("unknown item must not merge")
+	}
+	full, _ := shop.LoadFull(ctx, list.ID, alice)
+	if len(full.UserItems) != 2 || full.UserItems[1].QuantityText != "3 pz" {
+		t.Errorf("manual items = %+v", full.UserItems)
+	}
+
+	// Edit the quantity of an auto item; ownership and bounds are enforced.
+	var melaID int64
+	for _, it := range full.Items {
+		if it.Ingredient.Name == "Mela" {
+			melaID = it.ID
+		}
+	}
+	if err := shop.UpdateItemQuantity(ctx, melaID, alice, 300); err != nil || !approxEqual(qty("Mela"), 300) {
+		t.Errorf("edit: err=%v qty=%v", err, qty("Mela"))
+	}
+	if err := shop.UpdateItemQuantity(ctx, melaID, bob, 10); !errors.Is(err, ErrShoppingItemNotFound) {
+		t.Errorf("Bob edit: %v", err)
+	}
+	if err := shop.UpdateItemQuantity(ctx, melaID, alice, 0); !errors.Is(err, ErrShoppingQuantityInvalid) {
+		t.Errorf("zero qty: %v", err)
+	}
+}

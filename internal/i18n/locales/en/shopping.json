@@ -40,5 +40,12 @@
   "shopping.item_not_found": "item not found",
   "shopping.flash.description_required": "Description required.",
   "shopping.flash.description_too_long": "Description too long.",
+  "shopping.unit": "Unit",
+  "shopping.unit_pieces": "pcs",
+  "shopping.edit_qty": "Edit the quantity of {{.Name}}",
+  "shopping.edit_qty_title": "Edit the quantity",
+  "shopping.edit_qty_label": "Quantity in {{.Unit}}",
+  "shopping.save": "Save",
+  "shopping.flash.quantity_invalid": "Enter a quantity greater than zero.",
   "shopping.flash.regenerated": "List regenerated."
 }

@@ -107,3 +107,12 @@ func TestShoppingPieces(t *testing.T) {
 		t.Errorf("pieces count in ml too: %d", got)
 	}
 }
+
+// Manual items sit in the same list, so they count in the progress.
+func TestShoppingViewCountsUserItems(t *testing.T) {
+	v := buildShoppingView([]domain.ShoppingListItem{shopItem(1, 1, "a", 10, true, 0)}, nil).
+		withUserItems([]domain.ShoppingUserItem{{ID: 1, Checked: true}, {ID: 2}})
+	if v.Total != 3 || v.Done != 2 || v.Percent != 66 {
+		t.Errorf("view = %+v", v)
+	}
+}

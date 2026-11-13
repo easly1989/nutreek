@@ -40,5 +40,12 @@
   "shopping.item_not_found": "voce non trovata",
   "shopping.flash.description_required": "Descrizione obbligatoria.",
   "shopping.flash.description_too_long": "Descrizione troppo lunga.",
+  "shopping.unit": "Unità",
+  "shopping.unit_pieces": "pz",
+  "shopping.edit_qty": "Modifica la quantità di {{.Name}}",
+  "shopping.edit_qty_title": "Modifica la quantità",
+  "shopping.edit_qty_label": "Quantità in {{.Unit}}",
+  "shopping.save": "Salva",
+  "shopping.flash.quantity_invalid": "Inserisci una quantità maggiore di zero.",
   "shopping.flash.regenerated": "Lista rigenerata."
 }
