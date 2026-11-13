@@ -269,6 +269,7 @@ func (r ingredientRow) SodiumPer100Val() float64 {
 type ingredientsListData struct {
 	authPageData
 	Rows       []ingredientRow
+	Paging     ingredientPaging
 	Query      string
 	OFFWarning string // filled when the local OFF search failed (rare)
 
@@ -336,12 +337,18 @@ func (a *App) handleIngredientsList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	rows, pg, err := a.pageBrowse(r, q, f, rows)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	user := userFromContext(r.Context())
 	allergens, _ := a.Categories.ListAllergens(r.Context())
 	categories, _ := a.Categories.ListCategories(r.Context(), user.ID)
 	data := ingredientsListData{
 		authPageData:  a.baseData(r),
-		Rows:          f.apply(rows),
+		Rows:          rows,
+		Paging:        pg,
 		Query:         q,
 		OFFWarning:    warn,
 		Filter:        f,
@@ -364,10 +371,16 @@ func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Requ
 		a.serverError(w, r, err)
 		return
 	}
+	rows, pg, err := a.pageBrowse(r, q, f, rows)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	// The partial needs the CSRF token for the Import form.
 	data := ingredientsListData{
 		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
-		Rows:         f.apply(rows),
+		Rows:         rows,
+		Paging:       pg,
 		Query:        q,
 		OFFWarning:   warn,
 		Filter:       f,
@@ -375,6 +388,67 @@ func (a *App) handleIngredientsSearchPartial(w http.ResponseWriter, r *http.Requ
 	if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "ingredient_results", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+// ingredientsPageSize is how many ingredients the /ingredients page shows at
+// once when browsing (no search text).
+const ingredientsPageSize = 50
+
+// ingredientPaging describes the page of the browse view. Pages is 0 when the
+// result is not paged (a search).
+type ingredientPaging struct {
+	Page, Pages, Total int
+	PrevHref, NextHref template.URL
+}
+
+// pageBrowse turns the result of searchMixed into what the page shows. With
+// no search text the first 50 rows were all searchMixed returned, so the whole
+// catalog is read, filtered and cut into pages of ingredientsPageSize (query
+// param `page`, 1-based). With a search text the rows are only filtered.
+func (a *App) pageBrowse(r *http.Request, q string, f ingredientFilter, rows []ingredientRow) ([]ingredientRow, ingredientPaging, error) {
+	if q != "" {
+		return f.apply(rows), ingredientPaging{}, nil
+	}
+	all, err := a.Ingredients.ListAllActive(r.Context(), viewerID(r.Context()))
+	if err != nil {
+		return nil, ingredientPaging{}, err
+	}
+	rows = make([]ingredientRow, 0, len(all))
+	for _, l := range all {
+		rows = append(rows, ingredientRow{Local: l})
+	}
+	a.attachTags(r.Context(), rows)
+	rows = f.apply(rows)
+	rows, pg := paginateRows(rows, r.URL.Query().Get("page"), f)
+	return rows, pg, nil
+}
+
+// paginateRows cuts rows into the requested page (out of range clamps to the
+// nearest page) and builds the previous/next links, which keep the filters.
+func paginateRows(rows []ingredientRow, pageParam string, f ingredientFilter) ([]ingredientRow, ingredientPaging) {
+	pg := ingredientPaging{Total: len(rows)}
+	pg.Pages = (len(rows) + ingredientsPageSize - 1) / ingredientsPageSize
+	pg.Page, _ = strconv.Atoi(pageParam)
+	pg.Page = max(1, min(pg.Page, max(pg.Pages, 1)))
+	start := (pg.Page - 1) * ingredientsPageSize
+	end := min(start+ingredientsPageSize, len(rows))
+	link := func(p int) template.URL {
+		v := f.values()
+		if p > 1 {
+			v.Set("page", strconv.Itoa(p))
+		}
+		if len(v) == 0 {
+			return "/ingredients"
+		}
+		return template.URL("/ingredients?" + v.Encode())
+	}
+	if pg.Page > 1 {
+		pg.PrevHref = link(pg.Page - 1)
+	}
+	if pg.Page < pg.Pages {
+		pg.NextHref = link(pg.Page + 1)
+	}
+	return rows[start:end], pg
 }
 
 // ingredientFilter holds the filters of the /ingredients page: source

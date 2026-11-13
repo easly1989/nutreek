@@ -10,6 +10,14 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Fixed
+
+- The ingredients page lists the whole catalog in pages of 50 instead of stopping at the first 50.
+
+### Changed
+
+- OpenFoodFacts ingredients are saved locally with a normalised name and brand (documented in `docs/off-strategy.md`).
+
 ---
 
 ## [2.2.0] — 2026-10-28
