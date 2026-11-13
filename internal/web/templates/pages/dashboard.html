@@ -12,7 +12,7 @@
         <a href="/" class="h-9 px-3 grid place-items-center border-x border-border text-[13px] font-semibold hover:bg-surface-2">{{t "week.today"}}</a>
         <a href="/?start={{.NextWeek}}" class="w-9 h-9 grid place-items-center hover:bg-surface-2" aria-label="{{t "week.next"}}" title="{{t "week.next"}}">{{template "icon" "i-chevron-right"}}</a>
       </div>
-      <a href="/shopping-list?week={{.NextWeek}}" class="btn-secondary hidden sm:inline-flex">{{t "week.shopping_list"}}</a>
+      <a href="/shopping-list?week={{.WeekStartStr}}" class="btn-secondary hidden sm:inline-flex">{{t "week.shopping_list"}}</a>
       <div class="relative">
         <button type="button" class="btn-secondary btn-icon" data-popover="week-menu" aria-expanded="false" aria-controls="week-menu" aria-label="{{t "week.more_actions"}}" title="{{t "week.more_actions"}}">{{template "icon" "i-dots"}}</button>
         <div id="week-menu" class="menu-panel hidden absolute right-0 top-full mt-2 w-[290px] z-40 p-1.5 flex flex-col">

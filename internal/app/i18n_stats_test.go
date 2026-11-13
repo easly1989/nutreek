@@ -301,7 +301,7 @@ func TestEnglishShoppingStatsWeightProfile(t *testing.T) {
 	// The fixtures reach the branches of the templates that hold text.
 	t.Run("coverage", func(t *testing.T) {
 		for target, words := range map[string][]string{
-			"/shopping-list?week=" + week: {"also in the list", "pcs", "Other", "Added by hand", "Hide", "Print", "Remove Candles"},
+			"/shopping-list?week=" + week: {"also in the list", "pcs", "Other", "Added by hand", "Hide", "Print", "Remove Candles", "Go to the week", "Edit the quantity"},
 			"/stats": {"Estimated needs", "Set the goal to", "Adherence by meal", "Workouts", "Cheats", "Water",
 				"Show all 12", "You need about", "From the formula", "Current goal", "weigh-ins"},
 			"/profile/peso": {"Show all", "Delete the weigh-in of", "in total", "Chart range"},
