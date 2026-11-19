@@ -10,13 +10,21 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
-### Fixed
+---
 
-- The ingredients page lists the whole catalog in pages of 50 instead of stopping at the first 50.
+## [2.3.0] — 2026-11-19
+
+The ingredients page lists the whole catalog, OpenFoodFacts ingredients are saved with a clean name, and the shopping list opens on the right week.
+
+### Fixed
+- The ingredients page lists the whole catalog in pages of 50 instead of stopping at the first 50 (#220)
+- The shopping list link on the weekly plan opens the list of the week shown, not the next one; «Go to week» sits in the header, so a filled list has it too (#221)
+- A computed shopping item's quantity can be edited with the pencil on its row (#221, migration 0037)
+- Quantities have one format: pieces first, the weight in brackets, as in «5 pcs (1000 g)» (#221)
 
 ### Changed
-
-- OpenFoodFacts ingredients are saved locally with a normalised name and brand (documented in `docs/off-strategy.md`).
+- OpenFoodFacts ingredients are saved locally with a normalised name and brand (documented in `docs/off-strategy.md`) (#220)
+- Items added by hand take a quantity in g, ml or pcs, and merge into the matching ingredient row (#221)
 
 ---
 
