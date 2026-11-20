@@ -121,8 +121,8 @@
      «5 pcs  1000 g» for one counted in pieces. A manual item in pieces has no
      amount. . is the shoppingRow. */}}
 {{define "shop_grams"}}{{if lt .Item.TotalQuantity 10.0}}{{dec .Item.TotalQuantity 1}}{{else}}{{num .Item.TotalQuantity}}{{end}} {{.Item.Ingredient.Unit}}{{end}}
-{{define "shop_cols"}}<span class="shop-qty"><span class="shop-pc">{{if .Pieces}}<b>{{t "shopping.pieces" "Pieces" .Pieces}}</b>{{end}}</span><span class="shop-gr">{{if .Auto}}{{template "shop_grams" .Auto}}{{else}}{{.Amount}}{{end}}</span></span>{{end}}
-{{define "shop_qty"}}{{if .Auto}}{{if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}} ({{template "shop_grams" .Auto}}){{else}}{{template "shop_grams" .Auto}}{{end}}{{else}}{{.User.Item.QuantityText}}{{end}}{{end}}
+{{define "shop_cols"}}<span class="shop-qty"><span class="shop-pc">{{if .Pieces}}<b>{{t "shopping.pieces" "Pieces" .Pieces}}</b>{{end}}</span><span class="shop-gr"{{if .Amount}} title="{{.Amount}}"{{end}}>{{if .Auto}}{{template "shop_grams" .Auto}}{{else}}{{.Amount}}{{end}}</span></span>{{end}}
+{{define "shop_qty"}}{{if .Auto}}{{if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}} ({{template "shop_grams" .Auto}}){{else}}{{template "shop_grams" .Auto}}{{end}}{{else if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}}{{else}}{{.Amount}}{{end}}{{end}}
 
 {{define "shop_row"}}{{if .Row.Auto}}{{template "shop_item" .}}{{else}}{{template "shop_user_item" .}}{{end}}{{end}}
 

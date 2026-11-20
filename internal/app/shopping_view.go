@@ -89,7 +89,7 @@ func userItemQuantity(text string) (pieces int, amount string) {
 	num, unit, ok := strings.Cut(strings.TrimSpace(text), " ")
 	if ok && unit == "pz" {
 		if q, err := strconv.ParseFloat(strings.ReplaceAll(num, ",", "."), 64); err == nil && q > 0 {
-			return int(math.Ceil(q - 0.05)), ""
+			return max(1, int(math.Ceil(q-0.05))), ""
 		}
 	}
 	return 0, text

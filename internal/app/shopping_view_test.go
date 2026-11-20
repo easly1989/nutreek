@@ -74,6 +74,7 @@ func TestUserItemQuantity(t *testing.T) {
 	}{
 		{"3 pz", 3, ""},
 		{"2,5 pz", 3, ""},
+		{"0.04 pz", 1, ""},
 		{"250 g", 0, "250 g"},
 		{"1 kg", 0, "1 kg"},
 		{"", 0, ""},

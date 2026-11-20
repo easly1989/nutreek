@@ -314,7 +314,7 @@
   /* Quantity: two fixed columns, pieces then amount, so rows line up (#222). */
   .shop-qty { @apply flex shrink-0 tabular-nums whitespace-nowrap; }
   .shop-pc { @apply w-[58px] text-right; }
-  .shop-gr { @apply w-[72px] text-right text-muted; }
+  .shop-gr { @apply w-[72px] overflow-hidden text-ellipsis text-right text-muted; }
   .shop-item[aria-pressed="true"] .shop-name,
   .shop-item[aria-pressed="true"] .shop-qty b,
   .shop-item[aria-pressed="true"] .shop-gr { @apply text-muted line-through; }
