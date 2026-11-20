@@ -23,6 +23,15 @@
   "week.generate_desc": "Sceglie dalle varianti del piano nutrizionale puntando ai tuoi obiettivi.",
   "week.generate": "Genera",
   "week.premium": "Premium",
+  "week.copy_desc": {
+    "one": "{{.Range}} · {{.Count}} pasto",
+    "other": "{{.Range}} · {{.Count}} pasti"
+  },
+  "week.copy_empty": "La settimana scorsa non ha pasti da copiare.",
+  "week.copy_btn": "Copia",
+  "week.no_template_title": "Non hai ancora un template",
+  "week.no_template_desc": "Salva una settimana tipo e riusala ogni volta.",
+  "week.create_template": "Crea il primo template",
   "week.days": "Giorni della settimana",
 
   "week.goal": "obiettivo {{.Kcal}} kcal",
