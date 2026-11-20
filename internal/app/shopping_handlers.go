@@ -15,13 +15,12 @@ import (
 // shoppingListData is the view model passed to shopping_list.html.
 type shoppingListData struct {
 	authPageData
-	List          *domain.ShoppingListFull
-	View          shoppingView
-	UserItemViews []shoppingUserItemView // for the duplicate badges
-	WeekStart     string                 // YYYY-MM-DD
-	WeekCount     int
-	NextWeek      string
-	PrevWeek      string
+	List      *domain.ShoppingListFull
+	View      shoppingView
+	WeekStart string // YYYY-MM-DD
+	WeekCount int
+	NextWeek  string
+	PrevWeek  string
 }
 
 // shoppingUserItemView enriches ShoppingUserItem with the "duplicate" flag:
@@ -119,8 +118,7 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 	data := shoppingListData{
 		authPageData:  a.baseData(r),
 		List:          full,
-		View:          buildShoppingView(full.Items, cats).withUserItems(full.UserItems),
-		UserItemViews: userViews,
+		View:          buildShoppingView(full.Items, userViews, cats),
 		WeekStart:     weekStart.Format("2006-01-02"),
 		WeekCount:     weeks,
 		PrevWeek:      weekStart.AddDate(0, 0, -7).Format("2006-01-02"),

@@ -3,92 +3,96 @@ package app
 import (
 	"math"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-// shoppingOtherGroup collects the items whose ingredient has no category.
-const shoppingOtherGroup = "Altro"
-
-// shoppingView is the shopping list as the page shows it: items to buy
-// grouped by category, items already in the cart apart, and the progress.
-// PrintGroups has every item, for the printed sheet.
+// shoppingView is the shopping list as the page shows it: one list with the
+// items from the meals and the ones added by hand, sorted by name; the ones
+// already in the cart apart; and the progress. The printed sheet has every row.
 type shoppingView struct {
-	Groups      []shoppingGroup
-	PrintGroups []shoppingGroup
-	Cart        []shoppingItemView
-	Done        int
-	Total       int
-	Percent     int
+	Rows    []shoppingRow // still to buy
+	Cart    []shoppingRow // checked
+	Print   []shoppingRow // every row, checked or not
+	Done    int
+	Total   int
+	Percent int
 }
 
-// shoppingGroupKey orders the groups: categories by sort_order, «Altro» last.
-type shoppingGroupKey struct {
-	order int
-	name  string
-	other bool
-}
-
-type shoppingGroup struct {
-	Name  string // the category's name; for Other the templates show a translated label
-	Other bool
-	Items []shoppingItemView
+// shoppingRow is a line of the list: either an item computed from the meals
+// (Auto) or one added by hand (User).
+type shoppingRow struct {
+	Auto     *shoppingItemView
+	User     *shoppingUserItemView
+	Category string // the ingredient's category; empty = «Altro» (also every manual item)
+	Pieces   int    // 0 = not counted in pieces
+	Amount   string // manual items: the quantity in g or ml, empty when it is in pieces
+	name     string
+	id       int64
 }
 
 type shoppingItemView struct {
-	Item   domain.ShoppingListItem
-	Pieces int // 0 = the ingredient is not counted in pieces
+	Item domain.ShoppingListItem
 }
 
-// buildShoppingView groups the items by the ingredient's category (in
-// category order, «Altro» last) and sets the checked ones apart.
-// Within every group the order of items stays (alphabetical, from LoadFull).
-func buildShoppingView(items []domain.ShoppingListItem, cats map[int64]domain.IngredientCategory) shoppingView {
-	v := shoppingView{Total: len(items)}
-	todo := map[shoppingGroupKey][]shoppingItemView{}
-	all := map[shoppingGroupKey][]shoppingItemView{}
+// buildShoppingView merges the computed and the manual items in one list
+// sorted by name, and sets the checked ones apart.
+func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemView, cats map[int64]domain.IngredientCategory) shoppingView {
+	var rows []shoppingRow
 	for _, it := range items {
-		iv := shoppingItemView{Item: it, Pieces: shoppingPieces(it)}
-		k := shoppingGroupKey{name: shoppingOtherGroup, other: true}
-		if c, ok := cats[it.IngredientID]; ok {
-			k = shoppingGroupKey{order: c.SortOrder, name: c.Name}
+		name := ""
+		if it.Ingredient != nil {
+			name = it.Ingredient.Name
 		}
-		all[k] = append(all[k], iv)
-		if it.Checked {
-			v.Cart = append(v.Cart, iv)
+		rows = append(rows, shoppingRow{Auto: &shoppingItemView{Item: it}, Category: cats[it.IngredientID].Name, Pieces: shoppingPieces(it), name: name, id: it.ID})
+	}
+	for i := range user {
+		u := user[i]
+		pieces, amount := userItemQuantity(u.Item.QuantityText)
+		rows = append(rows, shoppingRow{User: &u, Pieces: pieces, Amount: amount, name: u.Item.Description, id: u.Item.ID})
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, b := strings.ToLower(rows[i].name), strings.ToLower(rows[j].name)
+		if a != b {
+			return a < b
+		}
+		return rows[i].id < rows[j].id
+	})
+
+	v := shoppingView{Total: len(rows), Print: rows}
+	for _, r := range rows {
+		if r.checked() {
+			v.Cart = append(v.Cart, r)
 			v.Done++
 			continue
 		}
-		todo[k] = append(todo[k], iv)
+		v.Rows = append(v.Rows, r)
 	}
-	v.Groups = sortedShoppingGroups(todo)
-	v.PrintGroups = sortedShoppingGroups(all)
 	if v.Total > 0 {
 		v.Percent = v.Done * 100 / v.Total
 	}
 	return v
 }
 
-func sortedShoppingGroups(m map[shoppingGroupKey][]shoppingItemView) []shoppingGroup {
-	keys := make([]shoppingGroupKey, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+func (r shoppingRow) checked() bool {
+	if r.Auto != nil {
+		return r.Auto.Item.Checked
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		a, b := keys[i], keys[j]
-		if a.other != b.other {
-			return b.other
+	return r.User.Item.Checked
+}
+
+// userItemQuantity splits a manual item's «3 pz» / «250 g» text: pieces go in
+// the pieces column, anything else stays as typed in the amount column.
+func userItemQuantity(text string) (pieces int, amount string) {
+	num, unit, ok := strings.Cut(strings.TrimSpace(text), " ")
+	if ok && unit == "pz" {
+		if q, err := strconv.ParseFloat(strings.ReplaceAll(num, ",", "."), 64); err == nil && q > 0 {
+			return int(math.Ceil(q - 0.05)), ""
 		}
-		if a.order != b.order {
-			return a.order < b.order
-		}
-		return a.name < b.name
-	})
-	out := make([]shoppingGroup, 0, len(keys))
-	for _, k := range keys {
-		out = append(out, shoppingGroup{Name: k.name, Other: k.other, Items: m[k]})
 	}
-	return out
+	return 0, text
 }
 
 // shoppingPieces turns the quantity into whole pieces for the ingredients
@@ -99,19 +103,4 @@ func shoppingPieces(it domain.ShoppingListItem) int {
 		return 0
 	}
 	return int(math.Ceil(it.TotalQuantity / *it.Ingredient.UnitWeightG - 0.05))
-}
-
-// withUserItems counts the manual items in the progress: they sit in the
-// same list as the items from the meals.
-func (v shoppingView) withUserItems(items []domain.ShoppingUserItem) shoppingView {
-	v.Total += len(items)
-	for _, it := range items {
-		if it.Checked {
-			v.Done++
-		}
-	}
-	if v.Total > 0 {
-		v.Percent = v.Done * 100 / v.Total
-	}
-	return v
 }

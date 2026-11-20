@@ -311,10 +311,13 @@
   }
   .shop-item[aria-pressed="true"] .shop-box { @apply bg-accent border-accent text-accent-fg; }
   .shop-name { @apply flex-1 min-w-0; }
-  .shop-qty { @apply text-right tabular-nums whitespace-nowrap; }
-  .shop-qty small { @apply ml-1 text-[12.5px] text-muted; }
+  /* Quantity: two fixed columns, pieces then amount, so rows line up (#222). */
+  .shop-qty { @apply flex shrink-0 tabular-nums whitespace-nowrap; }
+  .shop-pc { @apply w-[58px] text-right; }
+  .shop-gr { @apply w-[72px] text-right text-muted; }
   .shop-item[aria-pressed="true"] .shop-name,
-  .shop-item[aria-pressed="true"] .shop-qty b { @apply text-muted line-through; }
+  .shop-item[aria-pressed="true"] .shop-qty b,
+  .shop-item[aria-pressed="true"] .shop-gr { @apply text-muted line-through; }
 
   /* Statistics (#123): summary cards, legends and SVG charts (static/js/charts.js). */
   .tile { @apply card px-3.5 py-3 flex flex-col gap-0.5 min-w-0; }
@@ -476,9 +479,7 @@
   .shop-print h1 { font-size: 20px; font-weight: 700; }
   .shop-print > p { color: #333333; margin-top: 2px; }
   .shop-print-cols { columns: 2; column-gap: 40px; margin-top: 24px; }
-  .shop-print section { break-inside: avoid; margin-bottom: 16px; }
-  .shop-print h2 { font-size: 12px; font-weight: 700; border-bottom: 1px solid #000000; padding-bottom: 3px; margin-bottom: 4px; }
-  .shop-print-line { display: flex; align-items: center; gap: 8px; min-height: 24px; border-bottom: 1px dotted #bbbbbb; }
+  .shop-print-line { break-inside: avoid; display: flex; align-items: center; gap: 8px; min-height: 24px; border-bottom: 1px dotted #bbbbbb; }
   .shop-print-line i { width: 12px; height: 12px; border: 1.2px solid #000000; flex: none; }
   .shop-print-line span { flex: 1; }
   .shop-print-line b { font-weight: 600; font-variant-numeric: tabular-nums; }

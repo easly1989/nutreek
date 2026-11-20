@@ -10,6 +10,10 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Changed
+- The shopping list is one list: items from the meals and items added by hand sit together, sorted by name, with the category under each name. A pencil marks the ones added by hand, and the printed sheet follows the same list (#222)
+- Quantities in the shopping list line up in two fixed columns, pieces then grams or ml, so a row without pieces no longer shifts to the right (#222)
+
 ---
 
 ## [2.3.0] — 2026-11-19

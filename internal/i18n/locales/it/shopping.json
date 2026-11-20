@@ -26,7 +26,7 @@
   "shopping.add_label": "Voce da aggiungere",
   "shopping.quantity": "Quantità",
   "shopping.add": "Aggiungi",
-  "shopping.category_note": "Le voci sono raggruppate per categoria dell'ingrediente; quelle senza categoria finiscono in «Altro».",
+  "shopping.category_note": "Le voci sono in ordine alfabetico; sotto ognuna trovi la categoria, «Altro» se non ne ha.",
   "shopping.print_weeks": "{{.Weeks}} settimane, ",
   "shopping.print_items": {
     "one": "{{.Count}} voci",
@@ -47,5 +47,7 @@
   "shopping.edit_qty_label": "Quantità in {{.Unit}}",
   "shopping.save": "Salva",
   "shopping.flash.quantity_invalid": "Inserisci una quantità maggiore di zero.",
+  "shopping.all_items": "Tutti gli articoli",
+  "shopping.by_hand": "Aggiunto a mano",
   "shopping.flash.regenerated": "Lista rigenerata."
 }
