@@ -10,7 +10,7 @@
   one column in DOM order: summary, meals, extras.
 */ -}}
 <section data-day="{{.DateStr}}" data-state="{{.State}}" aria-label="{{dayTitle .Day.Date}}"
-         class="grid gap-3 lg:gap-[18px] items-start lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_1fr]">
+         class="grid gap-3 lg:gap-[18px] items-start grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_1fr]">
 
   {{/* ---- The day's summary ---- */}}
   <div class="card p-4 flex flex-col gap-3.5 lg:col-start-2 lg:row-start-1">

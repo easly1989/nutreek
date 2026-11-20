@@ -310,7 +310,7 @@
     @apply w-[22px] h-[22px] shrink-0 grid place-items-center rounded-md border-[1.5px] border-border bg-surface;
   }
   .shop-item[aria-pressed="true"] .shop-box { @apply bg-accent border-accent text-accent-fg; }
-  .shop-name { @apply flex-1 min-w-0; }
+  .shop-name { @apply flex-1 min-w-0 [overflow-wrap:anywhere]; }
   /* Quantity: two fixed columns, pieces then amount, so rows line up (#222). */
   .shop-qty { @apply flex shrink-0 tabular-nums whitespace-nowrap; }
   .shop-pc { @apply w-[58px] text-right; }
