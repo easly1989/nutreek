@@ -10,6 +10,9 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Changed
+- An empty week shows its ways to start as cards of the same weight: start from a template, copy the previous week (with its range and meal count) and, with a nutrition plan, generate the week. Without a template the first card links to creating one (#229)
+
 ---
 
 ## [2.3.0] — 2026-11-19
