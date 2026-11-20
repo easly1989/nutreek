@@ -116,13 +116,13 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := shoppingListData{
-		authPageData:  a.baseData(r),
-		List:          full,
-		View:          buildShoppingView(full.Items, userViews, cats),
-		WeekStart:     weekStart.Format("2006-01-02"),
-		WeekCount:     weeks,
-		PrevWeek:      weekStart.AddDate(0, 0, -7).Format("2006-01-02"),
-		NextWeek:      weekStart.AddDate(0, 0, 7).Format("2006-01-02"),
+		authPageData: a.baseData(r),
+		List:         full,
+		View:         buildShoppingView(full.Items, userViews, cats),
+		WeekStart:    weekStart.Format("2006-01-02"),
+		WeekCount:    weeks,
+		PrevWeek:     weekStart.AddDate(0, 0, -7).Format("2006-01-02"),
+		NextWeek:     weekStart.AddDate(0, 0, 7).Format("2006-01-02"),
 	}
 	if err := a.Render.Render(w, r, http.StatusOK, "shopping_list", data); err != nil {
 		a.serverError(w, r, err)
