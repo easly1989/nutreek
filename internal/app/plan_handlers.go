@@ -31,6 +31,8 @@ type dashboardData struct {
 	NextWeek            string
 	Week                weekSummary
 	HasMeals            bool
+	PrevWeekStart       time.Time              // empty week: the week «Copy the previous week» would copy
+	PrevMeals           int                    // how many meals it has
 	Templates           []*domain.MealTemplate // for the "apply template" picker
 	HasNutritionistPlan bool                   // true when the user has variations to generate from
 	ApplyError          string
@@ -517,8 +519,16 @@ func (a *App) renderDashboard(
 		hasNutritionistPlan, _ = a.NutritionistPlans.HasVariations(r.Context(), user.ID)
 	}
 
+	prevWeek := weekStart.AddDate(0, 0, -7)
+	prevMeals := 0
+	if !hasMeals && user != nil {
+		prevMeals, _ = a.WeeklyPlans.MealCountForWeek(r.Context(), user.ID, prevWeek)
+	}
+
 	data := dashboardData{
 		authPageData:        base,
+		PrevWeekStart:       prevWeek,
+		PrevMeals:           prevMeals,
 		Plan:                full,
 		Days:                days,
 		AllCards:            allCards,

@@ -17,6 +17,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ### Changed
 - The shopping list is one list: items from the meals and items added by hand sit together, sorted by name, with the category under each name. A user icon marks the ones added by hand, and the printed sheet follows the same list (#222)
 - Quantities in the shopping list line up in two fixed columns, pieces then grams or ml, so a row without pieces no longer shifts to the right (#222)
+- An empty week shows its ways to start as cards of the same weight: start from a template, copy the previous week (with its range and meal count) and, with a nutrition plan, generate the week. Without a template the first card links to creating one. The same shortcut leaves the ⋯ menu (#229)
 
 ---
 

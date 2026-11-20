@@ -23,6 +23,15 @@
   "week.generate_desc": "Picks from the variations in the nutrition plan, aiming for your goals.",
   "week.generate": "Generate",
   "week.premium": "Premium",
+  "week.copy_desc": {
+    "one": "{{.Range}} · {{.Count}} meal",
+    "other": "{{.Range}} · {{.Count}} meals"
+  },
+  "week.copy_empty": "Last week has no meals to copy.",
+  "week.copy_btn": "Copy",
+  "week.no_template_title": "You have no template yet",
+  "week.no_template_desc": "Save a typical week once and reuse it every time.",
+  "week.create_template": "Create your first template",
   "week.days": "Days of the week",
 
   "week.goal": "goal {{.Kcal}} kcal",

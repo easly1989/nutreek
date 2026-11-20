@@ -16,13 +16,7 @@
       <div class="relative">
         <button type="button" class="btn-secondary btn-icon" data-popover="week-menu" aria-expanded="false" aria-controls="week-menu" aria-label="{{t "week.more_actions"}}" title="{{t "week.more_actions"}}">{{template "icon" "i-dots"}}</button>
         <div id="week-menu" class="menu-panel hidden absolute right-0 top-full mt-2 w-[290px] z-40 p-1.5 flex flex-col">
-          {{if not .HasMeals}}
-          <form method="post" action="/week/copy-previous">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <input type="hidden" name="start" value="{{.WeekStartStr}}">
-            <button class="nav-link w-full">{{t "week.copy_previous"}}</button>
-          </form>
-          {{else}}
+          {{if .HasMeals}}
           <form method="post" action="/week/reset" data-confirm="{{t "week.reset_confirm"}}">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <input type="hidden" name="start" value="{{.WeekStartStr}}">
@@ -44,19 +38,21 @@
     </div>
   </header>
 
-  {{/* Empty week: the shortcuts to fill it. */}}
+  {{/* Empty week: the ways to fill it, as cards of the same weight. */}}
   {{if not .HasMeals}}
-    {{if or .Templates .HasNutritionistPlan}}
-    <div class="grid gap-3 sm:grid-cols-2">
+    <div class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(100%,250px),1fr))]">
       {{if .Templates}}
-      <form method="post" action="/week/apply-template" class="card p-4 flex flex-col gap-2.5">
+      <form method="post" action="/week/apply-template" class="card p-4 flex flex-col gap-3">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <input type="hidden" name="start" value="{{.WeekStartStr}}">
-        <div>
-          <h2 class="font-bold text-[15px]">{{t "week.template_title"}}</h2>
-          <p class="text-muted">{{t "week.template_desc"}}</p>
+        <div class="flex items-start gap-3">
+          <span class="thumb w-10 h-10 rounded-xl bg-accent-soft text-accent shrink-0">{{template "icon" "i-week"}}</span>
+          <div class="min-w-0">
+            <h2 class="font-bold text-[15px]">{{t "week.template_title"}}</h2>
+            <p class="text-muted">{{t "week.template_desc"}}</p>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 mt-auto">
           <select name="template_id" required aria-label="{{t "week.template"}}" class="field">
             <option value="">{{t "week.template_choose"}}</option>
             {{range .Templates}}<option value="{{.ID}}" {{if .IsActive}}selected{{end}}>{{.Name}}{{if .IsActive}} {{t "week.template_active"}}{{end}}</option>{{end}}
@@ -64,22 +60,47 @@
           <button class="btn-primary shrink-0">{{t "week.apply"}}</button>
         </div>
       </form>
+      {{else}}
+      <div class="card p-4 flex flex-col gap-3">
+        <div class="flex items-start gap-3">
+          <span class="thumb w-10 h-10 rounded-xl bg-accent-soft text-accent shrink-0">{{template "icon" "i-week"}}</span>
+          <div class="min-w-0">
+            <h2 class="font-bold text-[15px]">{{t "week.no_template_title"}}</h2>
+            <p class="text-muted">{{t "week.no_template_desc"}}</p>
+          </div>
+        </div>
+        <a href="/templates/new" class="btn-secondary self-start mt-auto">{{template "icon_sm" "i-plus"}}{{t "week.create_template"}}</a>
+      </div>
       {{end}}
-      {{if .HasNutritionistPlan}}
-      <form method="post" action="/week/generate" class="card p-4 flex flex-col gap-2.5">
+      <form method="post" action="/week/copy-previous" class="card p-4 flex flex-col gap-3">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <input type="hidden" name="start" value="{{.WeekStartStr}}">
-        <div>
-          <h2 class="font-bold text-[15px] flex items-center gap-2">{{t "week.generate_title"}}
-            {{if not (index .Features "auto_plan")}}<span class="chip bg-warn-bg text-warn-fg">{{t "week.premium"}}</span>{{end}}
-          </h2>
-          <p class="text-muted">{{t "week.generate_desc"}}</p>
+        <div class="flex items-start gap-3">
+          <span class="thumb w-10 h-10 rounded-xl bg-accent-soft text-accent shrink-0">{{template "icon" "i-copy"}}</span>
+          <div class="min-w-0">
+            <h2 class="font-bold text-[15px]">{{t "week.copy_previous"}}</h2>
+            <p id="copy-prev-desc" class="text-muted">{{if .PrevMeals}}{{t "week.copy_desc" "Range" (weekRange .PrevWeekStart) "Count" .PrevMeals}}{{else}}{{t "week.copy_empty"}}{{end}}</p>
+          </div>
         </div>
-        <button class="btn-primary self-start">{{t "week.generate"}}<span class="htmx-indicator htmx-spinner" aria-hidden="true"></span></button>
+        <button class="btn-primary self-start mt-auto disabled:opacity-50 disabled:cursor-not-allowed" aria-describedby="copy-prev-desc"{{if not .PrevMeals}} disabled{{end}}>{{t "week.copy_btn"}}</button>
+      </form>
+      {{if .HasNutritionistPlan}}
+      <form method="post" action="/week/generate" class="card p-4 flex flex-col gap-3">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="hidden" name="start" value="{{.WeekStartStr}}">
+        <div class="flex items-start gap-3">
+          <span class="thumb w-10 h-10 rounded-xl bg-accent-soft text-accent shrink-0">{{template "icon" "i-refresh"}}</span>
+          <div class="min-w-0">
+            <h2 class="font-bold text-[15px] flex items-center gap-2">{{t "week.generate_title"}}
+              {{if not (index .Features "auto_plan")}}<span class="chip bg-warn-bg text-warn-fg">{{t "week.premium"}}</span>{{end}}
+            </h2>
+            <p class="text-muted">{{t "week.generate_desc"}}</p>
+          </div>
+        </div>
+        <button class="btn-primary self-start mt-auto">{{t "week.generate"}}<span class="htmx-indicator htmx-spinner" aria-hidden="true"></span></button>
       </form>
       {{end}}
     </div>
-    {{end}}
   {{end}}
 
   <div id="timeline-pills" role="tablist" aria-label="{{t "week.days"}}" class="grid grid-cols-7 gap-1 sm:gap-1.5">

@@ -106,6 +106,22 @@ func (r *WeeklyPlans) HasMeals(ctx context.Context, planID int64) (bool, error) 
 	return n > 0, nil
 }
 
+// MealCountForWeek counts the meals of the user's plan for the week of
+// weekStart; 0 when there is no plan. Unlike GetOrCreateForWeek it creates
+// nothing, so a page can ask about a week the user never opened.
+func (r *WeeklyPlans) MealCountForWeek(ctx context.Context, userID int64, weekStart time.Time) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(m.id) FROM weekly_plans p JOIN meals m ON m.weekly_plan_id = p.id
+		 WHERE p.user_id = ? AND substr(p.week_start, 1, 10) = ?`,
+		userID, MondayOf(weekStart).Format("2006-01-02"),
+	).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count meals of the week: %w", err)
+	}
+	return n, nil
+}
+
 // ApplyTemplate expands the template's slots into `meals` rows. Slots with
 // day_of_week=-1 expand to 7 rows (one per day). Runs in a transaction. When
 // the plan already has meals it returns without doing anything (the caller
