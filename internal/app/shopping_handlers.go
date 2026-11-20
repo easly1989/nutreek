@@ -147,18 +147,15 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 	}
 	back := shoppingListURL(r)
 	if !ok {
-		a.Sessions.Put(r.Context(), "flash", "shopping.flash.quantity_invalid")
-		http.Redirect(w, r, back, http.StatusSeeOther)
+		a.shoppingFlashBack(w, r, back, "shopping.flash.quantity_invalid")
 		return
 	}
 	if desc == "" {
-		a.Sessions.Put(r.Context(), "flash", "shopping.flash.description_required")
-		http.Redirect(w, r, back, http.StatusSeeOther)
+		a.shoppingFlashBack(w, r, back, "shopping.flash.description_required")
 		return
 	}
 	if !withinLen(desc, MaxNameLen) {
-		a.Sessions.Put(r.Context(), "flash", "shopping.flash.description_too_long")
-		http.Redirect(w, r, back, http.StatusSeeOther)
+		a.shoppingFlashBack(w, r, back, "shopping.flash.description_too_long")
 		return
 	}
 	if _, err := a.ShoppingLists.AddManualItem(r.Context(), listID, user.ID, desc, qty, unit); err != nil {
@@ -167,6 +164,19 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+// shoppingFlashBack leaves a flash message and sends the user back to the
+// list. An htmx request gets HX-Redirect, so the whole page loads and shows
+// the message; the swap that follows a success only takes #shop-list.
+func (a *App) shoppingFlashBack(w http.ResponseWriter, r *http.Request, back, key string) {
+	a.Sessions.Put(r.Context(), "flash", key)
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", back)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	http.Redirect(w, r, back, http.StatusSeeOther)
