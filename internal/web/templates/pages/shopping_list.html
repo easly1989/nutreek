@@ -35,9 +35,9 @@
   <p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">{{t "shopping.multi_week_warning" "Weeks" $wc}}</p>
   {{end}}
 
-  <div class="grid gap-4 lg:gap-[18px] lg:grid-cols-[minmax(0,1fr)_320px] items-start">
+  <div class="grid gap-4 lg:gap-[18px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] items-start [overflow-anchor:none]">
     <div id="shop-list" class="flex flex-col gap-3">
-      {{if or .View.Total .UserItemViews}}
+      {{if .View.Total}}
       <div class="card p-4 flex flex-col gap-2">
         <div class="flex items-baseline gap-1">
           <b class="tabular-nums">{{t "shopping.progress" "Done" .View.Done "Total" .View.Total}}</b><span class="text-muted">{{t "shopping.in_cart"}}</span>
@@ -49,20 +49,13 @@
       </div>
 
       <div class="card overflow-hidden">
-        {{range .View.Groups}}
-        <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{if .Other}}{{t "shopping.other"}}{{else}}{{.Name}}{{end}}</span><span class="tabular-nums">{{len .Items}}</span></h2>
+        {{if .View.Rows}}
+        <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums">{{len .View.Rows}}</span></h2>
         <ul>
-          {{range .Items}}{{template "shop_item" (row . $)}}{{end}}
+          {{range .View.Rows}}{{template "shop_row" (row . $)}}{{end}}
         </ul>
         {{else}}
-        {{if not .UserItemViews}}<p class="px-4 py-6 text-center text-muted">{{t "shopping.all_in_cart"}}</p>{{end}}
-        {{end}}
-
-        {{if .UserItemViews}}
-        <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.manual_title"}}</span><span class="tabular-nums">{{len .UserItemViews}}</span></h2>
-        <ul>
-          {{range .UserItemViews}}{{template "shop_user_item" (row . $)}}{{end}}
-        </ul>
+        <p class="px-4 py-6 text-center text-muted">{{t "shopping.all_in_cart"}}</p>
         {{end}}
 
         {{if .View.Cart}}
@@ -73,7 +66,7 @@
             <span class="ml-auto text-accent hidden group-open:inline">{{t "shopping.hide"}}</span>
           </summary>
           <ul>
-            {{range .View.Cart}}{{template "shop_item" (row . $)}}{{end}}
+            {{range .View.Cart}}{{template "shop_row" (row . $)}}{{end}}
           </ul>
         </details>
         {{end}}
@@ -94,11 +87,13 @@
           <span class="text-[12.5px] text-muted">{{t "shopping.manual_note"}}</span>
         </div>
         <form method="post" action="/shopping-list/{{.List.ID}}/user-items"
+              hx-post="/shopping-list/{{.List.ID}}/user-items" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML"
+              hx-disabled-elt="find button" data-reset-on-success
               class="flex flex-wrap gap-2 px-3 py-2.5 border-t border-border">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input type="hidden" name="week" value="{{$ws}}">
           <input type="hidden" name="weeks" value="{{$wc}}">
-          <input id="ui-desc" name="description" required maxlength="200" class="field min-w-0 basis-full" placeholder="{{t "shopping.add_placeholder"}}" aria-label="{{t "shopping.add_label"}}">
+          <input id="ui-desc" name="description" data-reset-focus required maxlength="200" class="field min-w-0 basis-full" placeholder="{{t "shopping.add_placeholder"}}" aria-label="{{t "shopping.add_label"}}">
           <input name="quantity" inputmode="decimal" maxlength="10" class="field min-w-0 flex-1" placeholder="{{t "shopping.quantity"}}" aria-label="{{t "shopping.quantity"}}">
           <select name="unit" class="field w-auto" aria-label="{{t "shopping.unit"}}">
             <option value="g">g</option>
@@ -116,34 +111,29 @@
 {{/* Printed sheet: black on white only, two columns, one box per item. */}}
 <div class="only-print shop-print">
   <h1>{{t "shopping.title"}}</h1>
-  <p>{{if gt $wc 1}}{{t "shopping.print_weeks" "Weeks" $wc}}{{end}}{{weeksRange .List.WeekStart $wc}} · {{t "shopping.print_items" "Count" (add .View.Total (len .UserItemViews))}}</p>
+  <p>{{if gt $wc 1}}{{t "shopping.print_weeks" "Weeks" $wc}}{{end}}{{weeksRange .List.WeekStart $wc}} · {{t "shopping.print_items" "Count" .View.Total}}</p>
   <div class="shop-print-cols">
-    {{range .View.PrintGroups}}
-    <section>
-      <h2>{{if .Other}}{{t "shopping.other"}}{{else}}{{.Name}}{{end}}</h2>
-      {{range .Items}}<div class="shop-print-line"><i></i><span>{{.Item.Ingredient.Name}}</span><b>{{template "shop_qty" .}}</b></div>{{end}}
-    </section>
-    {{end}}
-    {{if .UserItemViews}}
-    <section>
-      <h2>{{t "shopping.manual_title"}}</h2>
-      {{range .UserItemViews}}<div class="shop-print-line"><i></i><span>{{.Item.Description}}</span><b>{{.Item.QuantityText}}</b></div>{{end}}
-    </section>
-    {{end}}
+    {{range .View.Print}}<div class="shop-print-line"><i></i><span>{{if .Auto}}{{.Auto.Item.Ingredient.Name}}{{else}}{{.User.Item.Description}}{{end}}</span><b>{{template "shop_qty" .}}</b></div>{{end}}
   </div>
 </div>
 {{end}}
 
-{{/* An item's quantity, one format: «240 g»; for ingredients counted in
-     pieces «5 pcs (1000 g)», pieces first and the weight in brackets. */}}
+{{/* A quantity is two fixed columns so every row lines up: pieces (bold) and
+     the amount in g or ml. «240 g» for an ingredient without pieces;
+     «5 pcs  1000 g» for one counted in pieces. A manual item in pieces has no
+     amount. . is the shoppingRow. */}}
 {{define "shop_grams"}}{{if lt .Item.TotalQuantity 10.0}}{{dec .Item.TotalQuantity 1}}{{else}}{{num .Item.TotalQuantity}}{{end}} {{.Item.Ingredient.Unit}}{{end}}
-{{define "shop_qty"}}{{if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}} ({{template "shop_grams" .}}){{else}}{{template "shop_grams" .}}{{end}}{{end}}
+{{define "shop_cols"}}<span class="shop-qty"><span class="shop-pc">{{if .Pieces}}<b>{{t "shopping.pieces" "Pieces" .Pieces}}</b>{{end}}</span><span class="shop-gr"{{if .Amount}} title="{{.Amount}}"{{end}}>{{if .Auto}}{{template "shop_grams" .Auto}}{{else}}{{.Amount}}{{end}}</span></span>{{end}}
+{{define "shop_qty"}}{{if .Auto}}{{if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}} ({{template "shop_grams" .Auto}}){{else}}{{template "shop_grams" .Auto}}{{end}}{{else if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}}{{else}}{{.Amount}}{{end}}{{end}}
+
+{{define "shop_row"}}{{if .Row.Auto}}{{template "shop_item" .}}{{else}}{{template "shop_user_item" .}}{{end}}{{end}}
+
+{{define "shop_category"}}<small class="block text-[12.5px] text-muted">{{if .Category}}{{.Category}}{{else}}{{t "shopping.other"}}{{end}}</small>{{end}}
 
 {{/* An item computed from the meals. Tapping it puts it in the cart or takes
      it out: the server goes back to the list and HTMX takes #shop-list from
-     it, because the item changes group and the progress changes. The id on
-     the button keeps the focus. */}}
-{{define "shop_item"}}{{$v := .Row}}{{$it := $v.Item}}{{$p := .Page}}
+     it, because the progress changes. The id on the button keeps the focus. */}}
+{{define "shop_item"}}{{$r := .Row}}{{$it := $r.Auto.Item}}{{$p := .Page}}
 <li class="flex items-center pr-2">
   <form method="post" action="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-post="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
@@ -151,8 +141,8 @@
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
     <button id="shop-item-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
-      <span class="shop-name">{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}</span>
-      <span class="shop-qty">{{if $v.Pieces}}<b>{{t "shopping.pieces" "Pieces" $v.Pieces}}</b><small>({{template "shop_grams" $v}})</small>{{else}}<b>{{template "shop_grams" $v}}</b>{{end}}</span>
+      <span class="shop-name">{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}{{template "shop_category" $r}}</span>
+      {{template "shop_cols" $r}}
     </button>
   </form>
   <details class="relative shrink-0">
@@ -166,17 +156,17 @@
   </details>
 </li>{{end}}
 
-{{/* An item added by hand: the same shape, plus the button to remove it. */}}
-{{define "shop_user_item"}}{{$it := .Row.Item}}{{$p := .Page}}
+{{/* An item added by hand: the same row, marked with a pencil, plus the button to remove it. */}}
+{{define "shop_user_item"}}{{$r := .Row}}{{$it := $r.User.Item}}{{$p := .Page}}
 <li class="flex items-center pr-2">
   <form method="post" action="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-post="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="grow min-w-0">
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
-    <button id="shop-user-{{$it.ID}}" class="shop-item pr-2" aria-pressed="{{$it.Checked}}">
+    <button id="shop-user-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
-      <span class="shop-name">{{$it.Description}}{{if .Row.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}</span>
-      {{with $it.QuantityText}}<span class="shop-qty text-[12.5px] text-muted">{{.}}</span>{{end}}
+      <span class="shop-name">{{$it.Description}}<span class="inline-block align-[-2px] ml-1 text-muted" title="{{t "shopping.by_hand"}}">{{template "icon_sm" "i-user"}}<span class="sr-only">{{t "shopping.by_hand"}}</span></span>{{if $r.User.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}{{template "shop_category" $r}}</span>
+      {{template "shop_cols" $r}}
     </button>
   </form>
   <form method="post" action="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"

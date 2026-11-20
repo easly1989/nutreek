@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/amon2126/nutreek/internal/domain"
@@ -14,70 +15,74 @@ func shopItem(id, ingID int64, name string, qty float64, checked bool, unitWeigh
 	return domain.ShoppingListItem{ID: id, IngredientID: ingID, TotalQuantity: qty, Checked: checked, Ingredient: ing}
 }
 
-// Items are grouped by the ingredient's category, in category order; those
-// without a category end up in «Altro», last. The checked ones leave the
-// groups and go to «Nel carrello».
+// Computed and manual items form one list sorted by name; the checked ones
+// leave it and go to the cart, whatever their kind.
 func TestBuildShoppingView(t *testing.T) {
 	items := []domain.ShoppingListItem{
 		shopItem(1, 10, "Banana", 240, false, 120),
-		shopItem(2, 11, "Ceci", 400, false, 0),
+		shopItem(2, 11, "ceci", 400, false, 0),
 		shopItem(3, 12, "Mela", 450, true, 150),
-		shopItem(4, 13, "Sale", 5, false, 0),
-		shopItem(5, 14, "Yogurt", 1190, false, 0),
 	}
 	cats := map[int64]domain.IngredientCategory{
-		10: {ID: 1, Name: "Frutta e verdura", SortOrder: 1},
-		12: {ID: 1, Name: "Frutta e verdura", SortOrder: 1},
-		11: {ID: 3, Name: "Dispensa", SortOrder: 3},
-		14: {ID: 2, Name: "Latticini e uova", SortOrder: 2},
+		10: {ID: 1, Name: "Frutta e verdura"},
+		11: {ID: 3, Name: "Dispensa"},
+	}
+	user := []shoppingUserItemView{
+		{Item: domain.ShoppingUserItem{ID: 1, Description: "Carta da forno", QuantityText: "2 pz"}},
+		{Item: domain.ShoppingUserItem{ID: 2, Description: "Sale grosso", QuantityText: "1 kg", Checked: true}},
 	}
 
-	v := buildShoppingView(items, cats)
+	v := buildShoppingView(items, user, cats)
 
 	var names []string
-	for _, g := range v.Groups {
-		names = append(names, g.Name)
+	for _, r := range v.Rows {
+		names = append(names, r.name)
 	}
-	want := []string{"Frutta e verdura", "Latticini e uova", "Dispensa", "Altro"}
-	if len(names) != len(want) {
-		t.Fatalf("groups = %v, want %v", names, want)
+	if want := []string{"Banana", "Carta da forno", "ceci"}; strings.Join(names, ",") != strings.Join(want, ",") {
+		t.Errorf("rows = %v, want %v", names, want)
 	}
-	for i := range want {
-		if names[i] != want[i] {
-			t.Fatalf("groups = %v, want %v", names, want)
-		}
+	if len(v.Cart) != 2 || v.Cart[0].name != "Mela" || v.Cart[1].name != "Sale grosso" {
+		t.Errorf("cart = %+v, want the apple and the salt", v.Cart)
 	}
-	if got := v.Groups[0].Items; len(got) != 1 || got[0].Item.ID != 1 {
-		t.Errorf("Frutta e verdura = %+v, want only the banana (the apple is checked)", got)
+	if len(v.Print) != 5 {
+		t.Errorf("print = %d rows, want every one of the 5", len(v.Print))
 	}
-	if got := v.Groups[3].Items; len(got) != 1 || got[0].Item.ID != 4 {
-		t.Errorf("Altro = %+v, want the salt", got)
+	if v.Rows[0].Category != "Frutta e verdura" || v.Rows[2].Category != "Dispensa" {
+		t.Errorf("categories = %q, %q", v.Rows[0].Category, v.Rows[2].Category)
 	}
-	if len(v.Cart) != 1 || v.Cart[0].Item.ID != 3 {
-		t.Errorf("cart = %+v, want the apple", v.Cart)
+	if v.Rows[0].Pieces != 2 {
+		t.Errorf("banana pieces = %d, want 2", v.Rows[0].Pieces)
 	}
-	// On the printed sheet every item has its own box, checked or not.
-	if len(v.PrintGroups) != 4 || len(v.PrintGroups[0].Items) != 2 {
-		t.Errorf("print groups = %+v, want 4 with the apple in the first", v.PrintGroups)
+	if v.Rows[1].Pieces != 2 || v.Rows[1].Amount != "" {
+		t.Errorf("manual in pieces = %d pz, amount %q, want 2 and none", v.Rows[1].Pieces, v.Rows[1].Amount)
 	}
-	if v.Done != 1 || v.Total != 5 || v.Percent != 20 {
-		t.Errorf("progress = %d of %d (%d%%), want 1 of 5 (20%%)", v.Done, v.Total, v.Percent)
+	if v.Done != 2 || v.Total != 5 || v.Percent != 40 {
+		t.Errorf("progress = %d of %d (%d%%), want 2 of 5 (40%%)", v.Done, v.Total, v.Percent)
+	}
+	if empty := buildShoppingView(nil, nil, nil); empty.Percent != 0 || empty.Total != 0 {
+		t.Errorf("empty list = %+v", empty)
 	}
 }
 
-// A category with every item checked disappears from the groups.
-func TestBuildShoppingViewSkipsEmptyGroups(t *testing.T) {
-	items := []domain.ShoppingListItem{shopItem(1, 10, "Mela", 300, true, 0)}
-	cats := map[int64]domain.IngredientCategory{10: {ID: 1, Name: "Frutta e verdura"}}
-	v := buildShoppingView(items, cats)
-	if len(v.Groups) != 0 {
-		t.Errorf("groups = %+v, want none", v.Groups)
+// A manual quantity in pieces goes to the pieces column; anything else stays
+// as typed in the amount column.
+func TestUserItemQuantity(t *testing.T) {
+	cases := []struct {
+		text       string
+		wantPieces int
+		wantAmount string
+	}{
+		{"3 pz", 3, ""},
+		{"2,5 pz", 3, ""},
+		{"0.04 pz", 1, ""},
+		{"250 g", 0, "250 g"},
+		{"1 kg", 0, "1 kg"},
+		{"", 0, ""},
 	}
-	if v.Percent != 100 {
-		t.Errorf("percentage = %d, want 100", v.Percent)
-	}
-	if empty := buildShoppingView(nil, nil); empty.Percent != 0 || empty.Total != 0 {
-		t.Errorf("empty list = %+v", empty)
+	for _, c := range cases {
+		if p, a := userItemQuantity(c.text); p != c.wantPieces || a != c.wantAmount {
+			t.Errorf("userItemQuantity(%q) = %d, %q; want %d, %q", c.text, p, a, c.wantPieces, c.wantAmount)
+		}
 	}
 }
 
@@ -105,14 +110,5 @@ func TestShoppingPieces(t *testing.T) {
 	ml.Ingredient.Unit = domain.UnitMilliliter
 	if got := shoppingPieces(ml); got != 2 {
 		t.Errorf("pieces count in ml too: %d", got)
-	}
-}
-
-// Manual items sit in the same list, so they count in the progress.
-func TestShoppingViewCountsUserItems(t *testing.T) {
-	v := buildShoppingView([]domain.ShoppingListItem{shopItem(1, 1, "a", 10, true, 0)}, nil).
-		withUserItems([]domain.ShoppingUserItem{{ID: 1, Checked: true}, {ID: 2}})
-	if v.Total != 3 || v.Done != 2 || v.Percent != 66 {
-		t.Errorf("view = %+v", v)
 	}
 }

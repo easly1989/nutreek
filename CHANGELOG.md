@@ -10,7 +10,13 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Fixed
+- The shopping list and the other pages with a side column no longer scroll sideways on a phone when a name has no spaces (#244)
+- Ticking a shopping item and adding one by hand keep the page where it was instead of jumping to the bottom: the list no longer lets the browser anchor the scroll to the row that moved, and adding an item swaps the list instead of reloading the page (#245)
+
 ### Changed
+- The shopping list is one list: items from the meals and items added by hand sit together, sorted by name, with the category under each name. A user icon marks the ones added by hand, and the printed sheet follows the same list (#222)
+- Quantities in the shopping list line up in two fixed columns, pieces then grams or ml, so a row without pieces no longer shifts to the right (#222)
 - An empty week shows its ways to start as cards of the same weight: start from a template, copy the previous week (with its range and meal count) and, with a nutrition plan, generate the week. Without a template the first card links to creating one. The same shortcut leaves the ⋯ menu (#229)
 
 ---

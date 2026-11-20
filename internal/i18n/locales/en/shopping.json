@@ -26,7 +26,7 @@
   "shopping.add_label": "Item to add",
   "shopping.quantity": "Quantity",
   "shopping.add": "Add",
-  "shopping.category_note": "Items are grouped by the ingredient's category; those without a category go under “Other”.",
+  "shopping.category_note": "Items are sorted by name; the category shows under each one, and “Other” stands for no category.",
   "shopping.print_weeks": "{{.Weeks}} weeks, ",
   "shopping.print_items": {
     "one": "{{.Count}} item",
@@ -47,5 +47,7 @@
   "shopping.edit_qty_label": "Quantity in {{.Unit}}",
   "shopping.save": "Save",
   "shopping.flash.quantity_invalid": "Enter a quantity greater than zero.",
+  "shopping.all_items": "All items",
+  "shopping.by_hand": "Added by hand",
   "shopping.flash.regenerated": "List regenerated."
 }
