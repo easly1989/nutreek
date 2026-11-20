@@ -131,7 +131,8 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 
 // handleAddShoppingUserItem POST /shopping-list/{id}/user-items
 // Body: description, quantity_text. Adds a manual item.
-// HX-Request: returns the whole page (simpler) through a redirect.
+// HX-Request: the redirect to the list is followed by htmx, which swaps #shop-list;
+// an error leaves a flash and reloads the page (shoppingFlashBack).
 func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	listID, err := parseID(r, "id")
