@@ -35,7 +35,7 @@
   <p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">{{t "shopping.multi_week_warning" "Weeks" $wc}}</p>
   {{end}}
 
-  <div class="grid gap-4 lg:gap-[18px] lg:grid-cols-[minmax(0,1fr)_320px] items-start">
+  <div class="grid gap-4 lg:gap-[18px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] items-start">
     <div id="shop-list" class="flex flex-col gap-3">
       {{if .View.Total}}
       <div class="card p-4 flex flex-col gap-2">
