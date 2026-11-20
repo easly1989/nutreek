@@ -6,6 +6,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/amon2126/nutreek/internal/domain"
 )
 
 func TestShoppingGenerateAndAggregation(t *testing.T) {
@@ -252,13 +254,68 @@ func TestShoppingEditQuantityAndManualMerge(t *testing.T) {
 			melaID = it.ID
 		}
 	}
-	if err := shop.UpdateItemQuantity(ctx, melaID, alice, 300); err != nil || !approxEqual(qty("Mela"), 300) {
+	if err := shop.UpdateItemQuantity(ctx, melaID, alice, 300, "g"); err != nil || !approxEqual(qty("Mela"), 300) {
 		t.Errorf("edit: err=%v qty=%v", err, qty("Mela"))
 	}
-	if err := shop.UpdateItemQuantity(ctx, melaID, bob, 10); !errors.Is(err, ErrShoppingItemNotFound) {
+	if err := shop.UpdateItemQuantity(ctx, melaID, bob, 10, "g"); !errors.Is(err, ErrShoppingItemNotFound) {
 		t.Errorf("Bob edit: %v", err)
 	}
-	if err := shop.UpdateItemQuantity(ctx, melaID, alice, 0); !errors.Is(err, ErrShoppingQuantityInvalid) {
+	if err := shop.UpdateItemQuantity(ctx, melaID, alice, 0, "g"); !errors.Is(err, ErrShoppingQuantityInvalid) {
 		t.Errorf("zero qty: %v", err)
 	}
+
+	// Pieces become grams with the weight per piece (3 × 150 g); an ingredient
+	// without one refuses pieces.
+	if err := shop.UpdateItemQuantity(ctx, melaID, alice, 3, "pz"); err != nil || !approxEqual(qty("Mela"), 450) {
+		t.Errorf("pieces: err=%v qty=%v, want 450", err, qty("Mela"))
+	}
+	var pastaID int64
+	for _, it := range full.Items {
+		if it.Ingredient.Name == "Pasta" {
+			pastaID = it.ID
+		}
+	}
+	if err := shop.UpdateItemQuantity(ctx, pastaID, alice, 2, "pz"); !errors.Is(err, ErrShoppingQuantityInvalid) {
+		t.Errorf("pieces without weight: %v", err)
+	}
+
+	// Edit a manual item: name, number and unit; then switch it to free text.
+	candeleID := full.UserItems[1].ID
+	if err := shop.UpdateUserItem(ctx, candeleID, alice, "Candele grandi", 5, "pz", ""); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := shop.LoadFull(ctx, list.ID, alice)
+	if u := got.UserItems[1]; u.Description != "Candele grandi" || u.QuantityText != "5 pz" || u.Quantity != 5 || u.Unit != "pz" {
+		t.Errorf("manual after edit = %+v", u)
+	}
+	if err := shop.UpdateUserItem(ctx, candeleID, alice, "Candele grandi", 0, "g", ""); err != nil {
+		t.Fatal(err)
+	}
+	if u := mustUserItem(t, shop, ctx, list.ID, alice, 1); u.QuantityText != "" || u.Unit != "" {
+		t.Errorf("quantity removed = %+v", u)
+	}
+	if err := shop.UpdateUserItem(ctx, candeleID, alice, "Candele grandi", 0, "", "una confezione"); err != nil {
+		t.Fatal(err)
+	}
+	if u := mustUserItem(t, shop, ctx, list.ID, alice, 1); u.QuantityText != "una confezione" || u.Unit != "" {
+		t.Errorf("free text = %+v", u)
+	}
+	if err := shop.UpdateUserItem(ctx, candeleID, bob, "x", 1, "g", ""); !errors.Is(err, ErrShoppingItemNotFound) {
+		t.Errorf("Bob edits Alice's item: %v", err)
+	}
+	if err := shop.UpdateUserItem(ctx, candeleID, alice, " ", 1, "g", ""); !errors.Is(err, ErrShoppingDescriptionRequired) {
+		t.Errorf("empty name: %v", err)
+	}
+	if err := shop.UpdateUserItem(ctx, candeleID, alice, "x", 1, "kg", ""); !errors.Is(err, ErrShoppingQuantityInvalid) {
+		t.Errorf("bad unit: %v", err)
+	}
+}
+
+func mustUserItem(t *testing.T, shop *ShoppingLists, ctx context.Context, listID, userID int64, i int) domain.ShoppingUserItem {
+	t.Helper()
+	full, err := shop.LoadFull(ctx, listID, userID)
+	if err != nil || len(full.UserItems) <= i {
+		t.Fatalf("load: %v, %d items", err, len(full.UserItems))
+	}
+	return full.UserItems[i]
 }

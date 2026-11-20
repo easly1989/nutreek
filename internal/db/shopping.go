@@ -15,9 +15,10 @@ import (
 
 // Errors of the shopping repository.
 var (
-	ErrShoppingListNotFound    = errors.New("lista della spesa non trovata")
-	ErrShoppingItemNotFound    = errors.New("voce della lista non trovata")
-	ErrShoppingQuantityInvalid = errors.New("quantità non valida")
+	ErrShoppingListNotFound        = errors.New("lista della spesa non trovata")
+	ErrShoppingItemNotFound        = errors.New("voce della lista non trovata")
+	ErrShoppingQuantityInvalid     = errors.New("quantità non valida")
+	ErrShoppingDescriptionRequired = errors.New("description required")
 )
 
 // ShoppingLists is the shopping lists repository.
@@ -274,7 +275,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 
 	// User items.
 	userRows, err := r.db.QueryContext(ctx, `
-		SELECT id, shopping_list_id, description, COALESCE(quantity_text, ''), checked, sort_order, created_at
+		SELECT id, shopping_list_id, description, COALESCE(quantity_text, ''), COALESCE(quantity, 0), COALESCE(unit, ''), checked, sort_order, created_at
 		FROM shopping_user_items
 		WHERE shopping_list_id = ?
 		ORDER BY sort_order, id
@@ -285,7 +286,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 	for userRows.Next() {
 		var it domain.ShoppingUserItem
 		var checked int
-		if err := userRows.Scan(&it.ID, &it.ShoppingListID, &it.Description, &it.QuantityText, &checked, &it.SortOrder, &it.CreatedAt); err != nil {
+		if err := userRows.Scan(&it.ID, &it.ShoppingListID, &it.Description, &it.QuantityText, &it.Quantity, &it.Unit, &checked, &it.SortOrder, &it.CreatedAt); err != nil {
 			userRows.Close()
 			return nil, fmt.Errorf("scan user item: %w", err)
 		}
@@ -416,12 +417,31 @@ func (r *ShoppingLists) ReorderUserItems(ctx context.Context, listID, userID int
 		ids, listID)
 }
 
-// UpdateItemQuantity sets the total quantity (grams/ml) of an auto item, so
-// the user can correct what the meals computed. Regenerating the list
-// recomputes it from the meals.
-func (r *ShoppingLists) UpdateItemQuantity(ctx context.Context, itemID, userID int64, quantity float64) error {
-	if quantity <= 0 {
+// UpdateItemQuantity sets the total quantity of an auto item, so the user can
+// correct what the meals computed. unit is g, ml or pz: pieces are turned into
+// the ingredient's unit with its weight per piece (without one they are
+// refused). Regenerating the list recomputes the quantity from the meals.
+func (r *ShoppingLists) UpdateItemQuantity(ctx context.Context, itemID, userID int64, quantity float64, unit string) error {
+	if quantity <= 0 || (unit != "g" && unit != "ml" && unit != "pz") {
 		return ErrShoppingQuantityInvalid
+	}
+	if unit == "pz" {
+		var weight sql.NullFloat64
+		err := r.db.QueryRowContext(ctx, `
+			SELECT i.unit_weight_g FROM shopping_list_items s
+			JOIN ingredients i ON i.id = s.ingredient_id
+			WHERE s.id = ? AND s.shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+		`, itemID, userID).Scan(&weight)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrShoppingItemNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("read piece weight: %w", err)
+		}
+		if !weight.Valid || weight.Float64 <= 0 {
+			return ErrShoppingQuantityInvalid
+		}
+		quantity *= weight.Float64
 	}
 	res, err := r.db.ExecContext(ctx, `
 		UPDATE shopping_list_items SET total_quantity = ?
@@ -430,6 +450,49 @@ func (r *ShoppingLists) UpdateItemQuantity(ctx context.Context, itemID, userID i
 	`, quantity, itemID, userID)
 	if err != nil {
 		return fmt.Errorf("update item quantity: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrShoppingItemNotFound
+	}
+	return nil
+}
+
+// UpdateUserItem changes a manual item: its description and its quantity. With
+// a unit (g, ml or pz) the quantity is a number, 0 meaning none; with an empty
+// unit it is the free text freeText, kept for items typed before quantities
+// had units.
+func (r *ShoppingLists) UpdateUserItem(ctx context.Context, itemID, userID int64, description string, quantity float64, unit, freeText string) error {
+	description = strings.TrimSpace(description)
+	if description == "" {
+		return ErrShoppingDescriptionRequired
+	}
+	var qtyPtr *float64
+	var unitPtr *string
+	text := strings.TrimSpace(freeText)
+	if unit == "" {
+		if quantity != 0 {
+			return ErrShoppingQuantityInvalid
+		}
+	} else {
+		if quantity < 0 || (unit != "g" && unit != "ml" && unit != "pz") {
+			return ErrShoppingQuantityInvalid
+		}
+		text = formatManualQuantity(quantity, unit)
+		if quantity > 0 {
+			qtyPtr, unitPtr = &quantity, &unit
+		}
+	}
+	var textPtr *string
+	if text != "" {
+		textPtr = &text
+	}
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE shopping_user_items SET description = ?, quantity_text = ?, quantity = ?, unit = ?
+		WHERE id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+	`, description, textPtr, qtyPtr, unitPtr, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("update user item: %w", err)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrShoppingItemNotFound

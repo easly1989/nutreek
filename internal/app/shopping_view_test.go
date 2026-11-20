@@ -112,3 +112,31 @@ func TestShoppingPieces(t *testing.T) {
 		t.Errorf("pieces count in ml too: %d", got)
 	}
 }
+
+// The quantity editor opens in pieces when the quantity is a whole number of
+// them, as the row shows, and in the ingredient's unit otherwise.
+func TestAutoEditor(t *testing.T) {
+	cases := []struct {
+		name            string
+		qty, unitWeight float64
+		wantQty         float64
+		wantUnit        string
+		wantWeight      float64
+	}{
+		{"whole pieces", 1000, 200, 5, "pz", 200},
+		{"not whole", 1190, 120, 1190, "g", 120},
+		{"less than one piece", 50, 120, 50, "g", 120},
+		{"no piece weight", 400, 0, 400, "g", 0},
+	}
+	for _, c := range cases {
+		qty, unit, weight := autoEditor(shopItem(1, 1, "x", c.qty, false, c.unitWeight))
+		if qty != c.wantQty || unit != c.wantUnit || weight != c.wantWeight {
+			t.Errorf("%s: got %v %s (piece %v), want %v %s (piece %v)", c.name, qty, unit, weight, c.wantQty, c.wantUnit, c.wantWeight)
+		}
+	}
+	ml := shopItem(1, 1, "latte", 500, false, 250)
+	ml.Ingredient.Unit = domain.UnitMilliliter
+	if _, unit, _ := autoEditor(ml); unit != "pz" {
+		t.Errorf("500 ml of a 250 ml piece: unit %q, want pz", unit)
+	}
+}

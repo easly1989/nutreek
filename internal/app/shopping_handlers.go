@@ -198,7 +198,8 @@ func parseShoppingQuantity(raw string) (float64, bool) {
 }
 
 // handleShoppingItemQuantity POST /shopping-list/items/{id}/quantity
-// Body: quantity (grams/ml). Corrects the quantity computed from the meals.
+// Body: quantity, qty_unit (g, ml or pz). Corrects the quantity computed from
+// the meals; pieces are turned into the ingredient's unit.
 func (a *App) handleShoppingItemQuantity(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
 	itemID, err := parseID(r, "id")
@@ -206,13 +207,75 @@ func (a *App) handleShoppingItemQuantity(w http.ResponseWriter, r *http.Request)
 		a.notFound(w, r)
 		return
 	}
+	back := shoppingListURL(r)
 	qty, ok := parseShoppingQuantity(r.PostFormValue("quantity"))
 	if !ok || qty == 0 {
-		a.Sessions.Put(r.Context(), "flash", "shopping.flash.quantity_invalid")
-		http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+		a.shoppingFlashBack(w, r, back, "shopping.flash.quantity_invalid")
 		return
 	}
-	if err := a.ShoppingLists.UpdateItemQuantity(r.Context(), itemID, user.ID, qty); err != nil {
+	if err := a.ShoppingLists.UpdateItemQuantity(r.Context(), itemID, user.ID, qty, shoppingUnit(r.PostFormValue("qty_unit"))); err != nil {
+		switch {
+		case errors.Is(err, db.ErrShoppingItemNotFound):
+			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
+		case errors.Is(err, db.ErrShoppingQuantityInvalid):
+			a.shoppingFlashBack(w, r, back, "shopping.flash.quantity_invalid")
+		default:
+			a.serverError(w, r, err)
+		}
+		return
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+// shoppingUnit keeps a unit the list knows (g, ml or pz) and reads anything
+// else as grams.
+func shoppingUnit(u string) string {
+	if u == "pz" || u == "ml" {
+		return u
+	}
+	return "g"
+}
+
+// handleShoppingUserItemEdit POST /shopping-list/user-items/{id}/edit
+// Body: description, quantity, qty_unit; or quantity_text for an item whose
+// quantity is free text. Changes an item added by hand.
+func (a *App) handleShoppingUserItemEdit(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	itemID, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	back := shoppingListURL(r)
+	desc := strings.TrimSpace(r.PostFormValue("description"))
+	if desc == "" {
+		a.shoppingFlashBack(w, r, back, "shopping.flash.description_required")
+		return
+	}
+	if !withinLen(desc, MaxNameLen) {
+		a.shoppingFlashBack(w, r, back, "shopping.flash.description_too_long")
+		return
+	}
+	var (
+		qty      float64
+		unit     string
+		freeText string
+	)
+	if r.PostForm.Has("quantity_text") {
+		freeText = strings.TrimSpace(r.PostFormValue("quantity_text"))
+		if !withinLen(freeText, MaxNameLen) {
+			a.shoppingFlashBack(w, r, back, "shopping.flash.description_too_long")
+			return
+		}
+	} else {
+		var ok bool
+		if qty, ok = parseShoppingQuantity(r.PostFormValue("quantity")); !ok {
+			a.shoppingFlashBack(w, r, back, "shopping.flash.quantity_invalid")
+			return
+		}
+		unit = shoppingUnit(r.PostFormValue("qty_unit"))
+	}
+	if err := a.ShoppingLists.UpdateUserItem(r.Context(), itemID, user.ID, desc, qty, unit, freeText); err != nil {
 		if errors.Is(err, db.ErrShoppingItemNotFound) {
 			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
 			return
@@ -220,7 +283,7 @@ func (a *App) handleShoppingItemQuantity(w http.ResponseWriter, r *http.Request)
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 // handleToggleShoppingUserItem POST /shopping-list/user-items/{id}/toggle

@@ -49,5 +49,9 @@
   "shopping.flash.quantity_invalid": "Inserisci una quantità maggiore di zero.",
   "shopping.all_items": "Tutti gli articoli",
   "shopping.by_hand": "Aggiunto a mano",
+  "shopping.piece_hint": "1 pz = {{.Weight}} {{.Unit}}",
+  "shopping.edit_item": "Modifica {{.Name}}",
+  "shopping.edit_item_title": "Modifica la voce",
+  "shopping.item_name": "Nome",
   "shopping.flash.regenerated": "Lista rigenerata."
 }

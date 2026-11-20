@@ -49,5 +49,9 @@
   "shopping.flash.quantity_invalid": "Enter a quantity greater than zero.",
   "shopping.all_items": "All items",
   "shopping.by_hand": "Added by hand",
+  "shopping.piece_hint": "1 pc = {{.Weight}} {{.Unit}}",
+  "shopping.edit_item": "Edit {{.Name}}",
+  "shopping.edit_item_title": "Edit the item",
+  "shopping.item_name": "Name",
   "shopping.flash.regenerated": "List regenerated."
 }

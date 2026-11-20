@@ -29,8 +29,14 @@ type shoppingRow struct {
 	Category string // the ingredient's category; empty = «Altro» (also every manual item)
 	Pieces   int    // 0 = not counted in pieces
 	Amount   string // manual items: the quantity in g or ml, empty when it is in pieces
-	name     string
-	id       int64
+	// The quantity editor opens on EditQty in EditUnit; PieceWeight is the
+	// weight of a piece of an item from the meals (0 = no pieces offered).
+	EditQty     float64
+	EditUnit    string
+	PieceWeight float64
+	Legacy      bool // manual item with a free-text quantity, from before units
+	name        string
+	id          int64
 }
 
 type shoppingItemView struct {
@@ -46,12 +52,19 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 		if it.Ingredient != nil {
 			name = it.Ingredient.Name
 		}
-		rows = append(rows, shoppingRow{Auto: &shoppingItemView{Item: it}, Category: cats[it.IngredientID].Name, Pieces: shoppingPieces(it), name: name, id: it.ID})
+		row := shoppingRow{Auto: &shoppingItemView{Item: it}, Category: cats[it.IngredientID].Name, Pieces: shoppingPieces(it), name: name, id: it.ID}
+		row.EditQty, row.EditUnit, row.PieceWeight = autoEditor(it)
+		rows = append(rows, row)
 	}
 	for i := range user {
 		u := user[i]
 		pieces, amount := userItemQuantity(u.Item.QuantityText)
-		rows = append(rows, shoppingRow{User: &u, Pieces: pieces, Amount: amount, name: u.Item.Description, id: u.Item.ID})
+		row := shoppingRow{User: &u, Pieces: pieces, Amount: amount, name: u.Item.Description, id: u.Item.ID,
+			EditQty: u.Item.Quantity, EditUnit: u.Item.Unit, Legacy: u.Item.Unit == "" && u.Item.QuantityText != ""}
+		if row.EditUnit == "" {
+			row.EditUnit = "g"
+		}
+		rows = append(rows, row)
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
 		a, b := strings.ToLower(rows[i].name), strings.ToLower(rows[j].name)
@@ -81,6 +94,25 @@ func (r shoppingRow) checked() bool {
 		return r.Auto.Item.Checked
 	}
 	return r.User.Item.Checked
+}
+
+// autoEditor says what the quantity editor of an item from the meals opens
+// on: pieces when the quantity is a whole number of them (as the row shows
+// «5 pcs»), the ingredient's unit otherwise. It also returns the weight of a
+// piece, 0 when the ingredient has none.
+func autoEditor(it domain.ShoppingListItem) (qty float64, unit string, pieceWeight float64) {
+	qty, unit = it.TotalQuantity, "g"
+	if it.Ingredient == nil {
+		return qty, unit, 0
+	}
+	unit = string(it.Ingredient.Unit)
+	pieceWeight = it.Ingredient.PieceWeight()
+	if pieceWeight > 0 && it.TotalQuantity > 0 {
+		if n := it.TotalQuantity / pieceWeight; n >= 1 && math.Abs(n-math.Round(n)) < 0.01 {
+			return math.Round(n), "pz", pieceWeight
+		}
+	}
+	return qty, unit, pieceWeight
 }
 
 // userItemQuantity splits a manual item's «3 pz» / «250 g» text: pieces go in

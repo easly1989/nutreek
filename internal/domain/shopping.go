@@ -33,6 +33,8 @@ type ShoppingUserItem struct {
 	ShoppingListID int64
 	Description    string
 	QuantityText   string
+	Quantity       float64 // 0 = no number: a free-text quantity or none
+	Unit           string  // g, ml or pz; empty with Quantity 0
 	Checked        bool
 	SortOrder      int
 	CreatedAt      time.Time
