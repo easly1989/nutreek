@@ -35,7 +35,7 @@
   <p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">{{t "shopping.multi_week_warning" "Weeks" $wc}}</p>
   {{end}}
 
-  <div class="grid gap-4 lg:gap-[18px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] items-start">
+  <div class="grid gap-4 lg:gap-[18px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] items-start [overflow-anchor:none]">
     <div id="shop-list" class="flex flex-col gap-3">
       {{if .View.Total}}
       <div class="card p-4 flex flex-col gap-2">
@@ -87,11 +87,13 @@
           <span class="text-[12.5px] text-muted">{{t "shopping.manual_note"}}</span>
         </div>
         <form method="post" action="/shopping-list/{{.List.ID}}/user-items"
+              hx-post="/shopping-list/{{.List.ID}}/user-items" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML"
+              hx-disabled-elt="find button" data-reset-on-success
               class="flex flex-wrap gap-2 px-3 py-2.5 border-t border-border">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input type="hidden" name="week" value="{{$ws}}">
           <input type="hidden" name="weeks" value="{{$wc}}">
-          <input id="ui-desc" name="description" required maxlength="200" class="field min-w-0 basis-full" placeholder="{{t "shopping.add_placeholder"}}" aria-label="{{t "shopping.add_label"}}">
+          <input id="ui-desc" name="description" data-reset-focus required maxlength="200" class="field min-w-0 basis-full" placeholder="{{t "shopping.add_placeholder"}}" aria-label="{{t "shopping.add_label"}}">
           <input name="quantity" inputmode="decimal" maxlength="10" class="field min-w-0 flex-1" placeholder="{{t "shopping.quantity"}}" aria-label="{{t "shopping.quantity"}}">
           <select name="unit" class="field w-auto" aria-label="{{t "shopping.unit"}}">
             <option value="g">g</option>
