@@ -31,8 +31,8 @@ type dashboardData struct {
 	NextWeek            string
 	Week                weekSummary
 	HasMeals            bool
-	PrevWeekStart       time.Time // empty week: the week «Copy the previous week» would copy
-	PrevMeals           int       // how many meals it has
+	PrevWeekStart       time.Time              // empty week: the week «Copy the previous week» would copy
+	PrevMeals           int                    // how many meals it has
 	Templates           []*domain.MealTemplate // for the "apply template" picker
 	HasNutritionistPlan bool                   // true when the user has variations to generate from
 	ApplyError          string
