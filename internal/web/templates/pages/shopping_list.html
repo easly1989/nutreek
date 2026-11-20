@@ -163,7 +163,7 @@
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
     <button id="shop-user-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
-      <span class="shop-name">{{$it.Description}}<span class="inline-block align-[-2px] ml-1 text-muted" title="{{t "shopping.by_hand"}}">{{template "icon_sm" "i-edit"}}<span class="sr-only">{{t "shopping.by_hand"}}</span></span>{{if $r.User.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}{{template "shop_category" $r}}</span>
+      <span class="shop-name">{{$it.Description}}<span class="inline-block align-[-2px] ml-1 text-muted" title="{{t "shopping.by_hand"}}">{{template "icon_sm" "i-user"}}<span class="sr-only">{{t "shopping.by_hand"}}</span></span>{{if $r.User.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}{{template "shop_category" $r}}</span>
       {{template "shop_cols" $r}}
     </button>
   </form>
