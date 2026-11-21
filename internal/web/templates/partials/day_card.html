@@ -218,7 +218,7 @@
        opens an editor in place (#206, picker.js): servings for a recipe,
        quantity and g / pz for an ingredient. */ -}}
 {{$editable := and (not .Cheat) (or $it.Ingredient (and $it.Recipe (not $it.IsCustomized)))}}
-<li class="group grid grid-cols-[minmax(0,1fr)_auto_3.5rem_auto] gap-x-2.5 gap-y-1.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0 data-[editing]:-mx-4 data-[editing]:px-4 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}>
+<li class="item-grid group grid gap-x-2.5 gap-y-1.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0 data-[editing]:-mx-4 data-[editing]:px-4 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}>
   <div class="col-start-1 min-w-0 flex items-start gap-1">
     {{if not .Cheat}}<span data-item-grip class="hidden sm:grid w-4 h-5 -ml-4 place-items-center text-muted cursor-grab touch-none opacity-0 group-hover:opacity-100" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
     <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
@@ -263,9 +263,10 @@
   {{- else}}
   <span class="col-start-2 text-right text-muted tabular-nums whitespace-nowrap {{if .Struck}}line-through{{end}}"{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}>{{template "meal_item_qty" .}}</span>
   {{- end}}
-  <span class="col-start-3 text-right tabular-nums {{if .Cheat}}text-danger{{end}} {{if .Struck}}line-through text-muted{{end}}"
-        title="{{t "week.macros_summary" "Protein" (dec $v.Macros.Protein 1) "Carbs" (dec $v.Macros.Carbs 1) "Fat" (dec $v.Macros.Fat 1)}}">{{num $v.Macros.Kcal}}</span>
-  <span class="col-start-4 flex items-center -mr-2 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity group-data-[editing]:invisible">
+  {{- /* The grams of protein, carbs and fat of the quantity used: on the row from sm up, under the name on a phone. */}}
+  <span class="item-macros{{if .Struck}} line-through{{end}}">{{template "macros_inline" $v.Macros}}</span>
+  <span class="item-kcal text-right tabular-nums {{if .Cheat}}text-danger{{end}} {{if .Struck}}line-through text-muted{{end}}">{{num $v.Macros.Kcal}}</span>
+  <span class="item-actions flex items-center -mr-2 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity group-data-[editing]:invisible">
     {{if and $it.Recipe (not .Struck) (not .Cheat)}}
     <button type="button" hx-get="/meal-items/{{$it.ID}}/customize?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
             class="icon-action" title="{{t "week.customize"}}" aria-label="{{t "week.customize_named" "Name" $it.Recipe.Name}}">
