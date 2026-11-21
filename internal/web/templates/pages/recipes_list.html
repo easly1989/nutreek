@@ -130,7 +130,7 @@
             {{else}}<span class="hidden lg:block"></span>{{end}}
             <div class="flex items-center gap-3 min-w-0">
               {{if .PhotoETag}}
-                <img src="/recipes/{{.Recipe.ID}}/photo/thumb?v={{.PhotoETag}}" alt="" width="44" height="44" loading="lazy" class="w-11 h-11 shrink-0 rounded-[10px] object-cover bg-surface-2">
+                <img src="/recipes/{{.Recipe.ID}}/photo/thumb?v={{.PhotoETag}}" data-zoom data-zoom-src="/recipes/{{.Recipe.ID}}/photo?v={{.PhotoETag}}" alt="" width="44" height="44" loading="lazy" class="w-11 h-11 shrink-0 rounded-[10px] object-cover bg-surface-2">
               {{else}}
                 <span class="w-11 h-11 shrink-0 rounded-[10px] bg-surface-2 grid place-items-center text-muted" aria-hidden="true">{{template "icon_sm" "i-camera"}}</span>
               {{end}}

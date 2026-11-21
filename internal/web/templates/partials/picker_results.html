@@ -77,7 +77,7 @@
        there is none). The barcode icon sits under the photo, which appears
        only once loaded: while it arrives, or if it does not (404, network),
        the icon shows. no-referrer: OFF does not see which instance it comes from. */ -}}
-{{template "icon_sm" "i-barcode"}}{{with .}}<img src="{{.}}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.classList.add('is-loaded')" onerror="this.remove()" class="thumb-img">{{end}}
+{{template "icon_sm" "i-barcode"}}{{with .}}<img src="{{.}}" data-zoom alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="this.classList.add('is-loaded')" onerror="this.remove()" class="thumb-img">{{end}}
 {{- end}}
 
 {{define "picker_row"}}
