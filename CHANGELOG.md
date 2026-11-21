@@ -10,6 +10,9 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Added
+- Resting the mouse on a product photo in the ingredient picker, or on a recipe thumbnail in the recipe list, shows a larger preview next to it. Touch screens are unchanged (#223)
+
 ### Fixed
 - A shopping item from the meals can be changed in pieces, grams or ml: the editor offers the units the ingredient has and converts the number when you switch (#246)
 - Items added by hand can be edited, name, quantity and unit, instead of being removed and added again (#247)
