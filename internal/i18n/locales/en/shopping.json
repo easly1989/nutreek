@@ -74,5 +74,16 @@
   "shopping.merged": "Items merged.",
   "shopping.undo": "Undo",
   "shopping.flash.undo_invalid": "There is nothing to undo, or it can no longer be undone.",
+  "shopping.copy_from": "Copy from…",
+  "shopping.copy_title": "Copy from previous lists",
+  "shopping.copy_n": {
+    "one": "Copy {{.Count}} item",
+    "other": "Copy {{.Count}} items"
+  },
+  "shopping.suggest_uses": {
+    "one": "used {{.Count}} time",
+    "other": "used {{.Count}} times"
+  },
+  "shopping.flash.copy_none": "Tick at least one item to copy.",
   "shopping.flash.regenerated": "List regenerated."
 }

@@ -19,8 +19,9 @@ type shoppingListData struct {
 	authPageData
 	List      *domain.ShoppingListFull
 	View      shoppingView
-	CanUndo   bool   // a merge was just made: the toast offers to undo it
-	WeekStart string // YYYY-MM-DD
+	CanUndo   bool           // a merge was just made: the toast offers to undo it
+	Past      []copyListView // items added by hand to past lists, to copy here
+	WeekStart string         // YYYY-MM-DD
 	WeekCount int
 	NextWeek  string
 	PrevWeek  string
@@ -128,9 +129,15 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	past, err := a.ShoppingLists.PastManualLists(r.Context(), user.ID, weekStart, copyListsMax)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	data := shoppingListData{
 		authPageData: a.baseData(r),
 		List:         full,
+		Past:         pastCopyLists(past, full.UserItems),
 		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order).withSimilar(full.Dismissed, usage),
 		CanUndo:      a.showMergeToast(r, list.ID),
 		WeekStart:    weekStart.Format("2006-01-02"),
