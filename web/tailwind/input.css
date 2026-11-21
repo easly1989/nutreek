@@ -175,7 +175,7 @@
   /* Segmented control (Modalità in the Aspetto menu). */
   .segmented { @apply grid gap-1 p-[3px] rounded-[10px] bg-surface-2; }
   .segmented button { @apply h-[30px] rounded-lg text-[12.5px] font-semibold text-text; }
-  .segmented button[aria-checked="true"] { @apply bg-surface; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .segmented button[aria-checked="true"], .segmented button[aria-selected="true"] { @apply bg-surface; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
   .swatch {
     @apply flex flex-col items-center gap-1 py-1.5 rounded-lg text-[11.5px] font-medium text-text border-[1.5px] border-transparent hover:bg-surface-2;
   }
@@ -340,6 +340,23 @@
     @apply absolute right-0 top-full z-20 mt-1 w-[300px] flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 shadow-lg;
   }
   .sheet-qty { @apply w-28 text-right tabular-nums; }
+  /* The copy sheet is wider than the quantity editors, and is a sheet from the
+     bottom up to lg too (below lg the tab bar would cover a panel hanging off the page). */
+  @media (min-width: 640px) and (max-width: 1023px) {
+    details[data-sheet][open]:has(.sheet-wide)::before { content: ""; @apply fixed inset-0 z-30 bg-black/40; }
+    details[data-sheet] .sheet-panel.sheet-wide {
+      @apply fixed inset-x-0 bottom-0 top-auto z-40 mx-auto mt-0 w-auto max-w-lg rounded-b-none rounded-t-2xl border-x-0 border-b-0 p-4;
+      padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
+  @media (min-width: 1024px) {
+    details[data-sheet] .sheet-panel.sheet-wide { @apply w-[24rem]; }
+  }
+  /* Suggestions under the field of the items added by hand (#234). */
+  .suggest-panel { @apply absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-border bg-surface shadow-lg; }
+  .suggest-list > li + li { @apply border-t border-border; }
+  .suggest-item { @apply flex w-full items-baseline justify-between gap-3 px-3.5 py-2.5 text-left hover:bg-surface-2 focus-visible:bg-surface-2; }
+  .suggest-item b { @apply font-bold; }
   @media (max-width: 639px) {
     details[data-sheet][open]::before { content: ""; @apply fixed inset-0 z-30 bg-black/40; }
     details[data-sheet] .sheet-panel {

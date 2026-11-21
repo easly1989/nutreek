@@ -74,5 +74,16 @@
   "shopping.merged": "Voci unite.",
   "shopping.undo": "Annulla",
   "shopping.flash.undo_invalid": "Non c'è niente da annullare, o non si può più annullare.",
+  "shopping.copy_from": "Copia da…",
+  "shopping.copy_title": "Copia dalle liste precedenti",
+  "shopping.copy_n": {
+    "one": "Copia {{.Count}} voce",
+    "other": "Copia {{.Count}} voci"
+  },
+  "shopping.suggest_uses": {
+    "one": "usata {{.Count}} volta",
+    "other": "usata {{.Count}} volte"
+  },
+  "shopping.flash.copy_none": "Spunta almeno una voce da copiare.",
   "shopping.flash.regenerated": "Lista rigenerata."
 }

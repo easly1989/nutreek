@@ -115,10 +115,39 @@
     </div>
 
     <div class="flex flex-col gap-3">
-      <section id="shop-manual" class="card overflow-hidden">
-        <div class="flex items-baseline justify-between gap-2 px-4 pt-3.5 pb-3">
-          <h2 class="h2">{{t "shopping.manual_title"}}</h2>
-          <span class="text-[12.5px] text-muted">{{t "shopping.manual_note"}}</span>
+      <section id="shop-manual" class="card">
+        <div class="flex items-center justify-between gap-2 px-4 pt-3.5 pb-3">
+          <div class="min-w-0"><h2 class="h2">{{t "shopping.manual_title"}}</h2><span class="text-[12.5px] text-muted">{{t "shopping.manual_note"}}</span></div>
+          {{if .Past}}
+          {{/* Copy what was added by hand to a past list (#234): a tab per list,
+               a checkbox per item; sheet.js opens and closes it, manual.js runs the tabs and the count. */}}
+          <details class="relative shrink-0" data-sheet>
+            <summary class="btn-secondary h-8 px-2.5 text-[12.5px] cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="{{t "shopping.copy_title"}}" title="{{t "shopping.copy_title"}}">{{template "icon_sm" "i-copy"}}{{t "shopping.copy_from"}}</summary>
+            <form method="post" action="/shopping-list/{{.List.ID}}/copy?week={{$ws}}&weeks={{$wc}}"
+                  hx-post="/shopping-list/{{.List.ID}}/copy?week={{$ws}}&weeks={{$wc}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
+                  class="sheet-panel sheet-wide" data-copy>
+              <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+              <div class="flex items-center justify-between gap-2"><h3 class="font-bold">{{t "shopping.copy_title"}}</h3><button type="button" class="icon-action" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button></div>
+              {{if gt (len .Past) 1}}
+              <div class="segmented overflow-x-auto" role="tablist">
+                {{range $i, $l := .Past}}<button type="button" role="tab" data-copy-tab="{{$i}}" aria-selected="{{$l.Active}}" class="px-3 whitespace-nowrap">{{weeksRange $l.WeekStart $l.WeekCount}}</button>{{end}}
+              </div>
+              {{else}}{{range .Past}}<p class="text-[12.5px] text-muted">{{weeksRange .WeekStart .WeekCount}}</p>{{end}}{{end}}
+              {{range $i, $l := .Past}}
+              <ul data-copy-pane="{{$i}}" class="max-h-[45vh] overflow-y-auto divide-y divide-border"{{if not $l.Active}} hidden{{end}}>
+                {{range $l.Items}}
+                <li><label class="flex items-center gap-3 py-2.5 cursor-pointer">
+                  <input type="checkbox" class="check" name="item" value="{{.ID}}"{{if .Checked}} checked{{end}}>
+                  <span class="grow min-w-0 truncate">{{.Description}}</span>
+                  <span class="shrink-0 text-muted tabular-nums">{{if .Qty}}{{template "shop_n" .Qty}} {{if eq .Unit "pz"}}{{t "shopping.unit_pieces"}}{{else}}{{.Unit}}{{end}}{{else}}{{.Text}}{{end}}</span>
+                </label></li>
+                {{end}}
+              </ul>
+              {{end}}
+              <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit" data-copy-submit data-single="{{t "shopping.copy_n" "Count" 1}}" data-plural="{{t "shopping.copy_n" "Count" 2}}">{{t "shopping.copy_n" "Count" 2}}</button></div>
+            </form>
+          </details>
+          {{end}}
         </div>
         <form method="post" action="/shopping-list/{{.List.ID}}/user-items"
               hx-post="/shopping-list/{{.List.ID}}/user-items" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML"
@@ -127,7 +156,13 @@
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input type="hidden" name="week" value="{{$ws}}">
           <input type="hidden" name="weeks" value="{{$wc}}">
-          <input id="ui-desc" name="description" data-reset-focus required maxlength="200" class="field min-w-0 basis-full" placeholder="{{t "shopping.add_placeholder"}}" aria-label="{{t "shopping.add_label"}}">
+          {{/* What was added by hand before is suggested while typing (manual.js
+               fills the quantity and the unit); the form's htmx settings do not apply here. */}}
+          <div class="relative min-w-0 basis-full">
+            <input id="ui-desc" name="description" data-reset-focus data-suggest-field required maxlength="200" autocomplete="off" class="field w-full" placeholder="{{t "shopping.add_placeholder"}}" aria-label="{{t "shopping.add_label"}}"
+                   hx-get="/shopping-list/suggest" hx-trigger="input changed delay:200ms" hx-target="#shop-suggest" hx-swap="innerHTML" hx-select="unset" hx-sync="this:replace" hx-disabled-elt="unset">
+            <div id="shop-suggest" class="suggest-panel empty:hidden" aria-live="polite"></div>
+          </div>
           <input name="quantity" inputmode="decimal" maxlength="10" class="field min-w-0 flex-1" placeholder="{{t "shopping.quantity"}}" aria-label="{{t "shopping.quantity"}}">
           <select name="unit" class="field w-auto" aria-label="{{t "shopping.unit"}}">
             <option value="g">g</option>
@@ -161,6 +196,15 @@
 {{define "shop_qty"}}{{if .Auto}}{{if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}} ({{template "shop_grams" .Auto}}){{else}}{{template "shop_grams" .Auto}}{{end}}{{else if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}}{{else}}{{.Amount}}{{end}}{{end}}
 
 {{define "shop_row"}}{{if .Row.Auto}}{{template "shop_item" .}}{{else}}{{template "shop_user_item" .}}{{end}}{{end}}
+
+{{/* The items added by hand before that match what is being typed (#234);
+     the buttons carry what manual.js puts in the form. . is the []suggestView. */}}
+{{define "shop_suggest"}}{{if .}}<ul class="suggest-list" role="listbox">{{range .}}
+  <li><button type="button" role="option" class="suggest-item" data-suggest data-desc="{{.Description}}" data-qty="{{.QtyAttr}}" data-unit="{{.Unit}}">
+    <span class="min-w-0 truncate">{{if .Head}}<b>{{.Head}}</b>{{end}}{{.Tail}}</span>
+    <span class="shrink-0 text-muted text-[12.5px]">{{if .Qty}}{{template "shop_n" .Qty}} {{if eq .Unit "pz"}}{{t "shopping.unit_pieces"}}{{else}}{{.Unit}}{{end}}{{end}}{{if gt .Uses 1}}{{if .Qty}} · {{end}}{{t "shopping.suggest_uses" "Count" .Uses}}{{end}}</span>
+  </button></li>{{end}}
+</ul>{{end}}{{end}}
 
 {{define "shop_n"}}{{if lt . 10.0}}{{dec . 1}}{{else}}{{num .}}{{end}}{{end}}
 
