@@ -1,0 +1,99 @@
+package app
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+)
+
+func withIDParam(r *http.Request, id int64) *http.Request {
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", strconv.FormatInt(id, 10))
+	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+}
+
+// The quantity editors post to two handlers: a valid post redirects back to
+// the list, an invalid one flashes (HX-Redirect for htmx), and another
+// user's item is not found.
+func TestShoppingEditHandlers(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	bob := mustCreateTestUser(t, a, "bob@x.com", "password-di-prova")
+	monday, _ := time.Parse("2006-01-02", "2026-10-12")
+	list, err := a.ShoppingLists.GetOrCreateList(ctx, alice.ID, monday, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Candele", 3, "pz"); err != nil {
+		t.Fatal(err)
+	}
+	full, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+	itemID := full.UserItems[0].ID
+
+	post := func(h http.HandlerFunc, form url.Values, user int, htmx bool) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodPost, "/x?week=2026-10-12&weeks=1", strings.NewReader(form.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if htmx {
+			r.Header.Set("HX-Request", "true")
+		}
+		u := alice
+		if user == 2 {
+			u = bob
+		}
+		r = withIDParam(requestWithUser(r, u), itemID)
+		w := httptest.NewRecorder()
+		a.Sessions.LoadAndSave(h).ServeHTTP(w, r)
+		return w
+	}
+	edit := a.handleShoppingUserItemEdit
+
+	// Valid: name, number with a comma, unit.
+	w := post(edit, url.Values{"description": {"Candele grandi"}, "quantity": {"2,5"}, "qty_unit": {"pz"}}, 1, false)
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("valid edit: code %d", w.Code)
+	}
+	got, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+	if u := got.UserItems[0]; u.Description != "Candele grandi" || u.Quantity != 2.5 || u.Unit != "pz" {
+		t.Errorf("stored = %+v", u)
+	}
+
+	// Free text branch.
+	w = post(edit, url.Values{"description": {"Candele grandi"}, "quantity_text": {"una confezione"}}, 1, false)
+	got, _ = a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+	if w.Code != http.StatusSeeOther || got.UserItems[0].QuantityText != "una confezione" || got.UserItems[0].Unit != "" {
+		t.Errorf("free text: code %d, %+v", w.Code, got.UserItems[0])
+	}
+
+	// Invalid: empty name, bad number (plain: 303; htmx: 204 + HX-Redirect).
+	for _, form := range []url.Values{
+		{"description": {" "}, "quantity": {"1"}},
+		{"description": {"x"}, "quantity": {"abc"}},
+	} {
+		if w := post(edit, form, 1, false); w.Code != http.StatusSeeOther {
+			t.Errorf("invalid %v: code %d, want 303", form, w.Code)
+		}
+		if w := post(edit, form, 1, true); w.Code != http.StatusNoContent || w.Header().Get("HX-Redirect") == "" {
+			t.Errorf("invalid %v with htmx: code %d, HX-Redirect %q", form, w.Code, w.Header().Get("HX-Redirect"))
+		}
+	}
+
+	// Another user's item does not exist.
+	if w := post(edit, url.Values{"description": {"x"}, "quantity": {"1"}, "qty_unit": {"g"}}, 2, false); w.Code != http.StatusNotFound {
+		t.Errorf("Bob edits Alice's item: code %d, want 404", w.Code)
+	}
+	if w := post(a.handleShoppingItemQuantity, url.Values{"quantity": {"1"}, "qty_unit": {"pz"}}, 2, false); w.Code != http.StatusNotFound {
+		t.Errorf("Bob edits Alice's quantity: code %d, want 404", w.Code)
+	}
+	// Zero and bad quantities on a computed item flash instead of saving.
+	if w := post(a.handleShoppingItemQuantity, url.Values{"quantity": {"0"}}, 1, true); w.Header().Get("HX-Redirect") == "" {
+		t.Errorf("zero quantity: want HX-Redirect, code %d", w.Code)
+	}
+}

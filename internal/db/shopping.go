@@ -417,6 +417,9 @@ func (r *ShoppingLists) ReorderUserItems(ctx context.Context, listID, userID int
 		ids, listID)
 }
 
+// maxShoppingQuantity bounds a quantity once pieces are turned into grams.
+const maxShoppingQuantity = 1000000
+
 // UpdateItemQuantity sets the total quantity of an auto item, so the user can
 // correct what the meals computed. unit is g, ml or pz: pieces are turned into
 // the ingredient's unit with its weight per piece (without one they are
@@ -442,6 +445,9 @@ func (r *ShoppingLists) UpdateItemQuantity(ctx context.Context, itemID, userID i
 			return ErrShoppingQuantityInvalid
 		}
 		quantity *= weight.Float64
+	}
+	if quantity > maxShoppingQuantity {
+		return ErrShoppingQuantityInvalid
 	}
 	res, err := r.db.ExecContext(ctx, `
 		UPDATE shopping_list_items SET total_quantity = ?

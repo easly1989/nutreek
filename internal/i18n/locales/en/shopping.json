@@ -44,7 +44,6 @@
   "shopping.unit_pieces": "pcs",
   "shopping.edit_qty": "Edit the quantity of {{.Name}}",
   "shopping.edit_qty_title": "Edit the quantity",
-  "shopping.edit_qty_label": "Quantity in {{.Unit}}",
   "shopping.save": "Save",
   "shopping.flash.quantity_invalid": "Enter a quantity greater than zero.",
   "shopping.all_items": "All items",

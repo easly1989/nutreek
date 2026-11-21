@@ -329,7 +329,7 @@
   @media (max-width: 639px) {
     details[data-sheet][open]::before { content: ""; @apply fixed inset-0 z-30 bg-black/40; }
     details[data-sheet] .sheet-panel {
-      @apply fixed inset-x-0 bottom-0 top-auto right-auto z-40 mt-0 w-auto rounded-b-none rounded-t-2xl border-x-0 border-b-0 p-4;
+      @apply fixed inset-x-0 bottom-0 top-auto z-40 mt-0 w-auto rounded-b-none rounded-t-2xl border-x-0 border-b-0 p-4;
       padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
     }
     .sheet-qty { @apply h-11 text-[18px]; flex: 1 1 0%; width: auto; min-width: 0; }

@@ -108,8 +108,9 @@ func autoEditor(it domain.ShoppingListItem) (qty float64, unit string, pieceWeig
 	unit = string(it.Ingredient.Unit)
 	pieceWeight = it.Ingredient.PieceWeight()
 	if pieceWeight > 0 && it.TotalQuantity > 0 {
-		if n := it.TotalQuantity / pieceWeight; n >= 1 && math.Abs(n-math.Round(n)) < 0.01 {
-			return math.Round(n), "pz", pieceWeight
+		// Exact to the gram, so saving without a change keeps the quantity.
+		if n := math.Round(it.TotalQuantity / pieceWeight); n >= 1 && math.Abs(it.TotalQuantity-n*pieceWeight) < 0.05 {
+			return n, "pz", pieceWeight
 		}
 	}
 	return qty, unit, pieceWeight

@@ -48,7 +48,7 @@
         </div>
       </div>
 
-      <div class="card overflow-hidden">
+      <div class="card overflow-hidden sm:overflow-visible">
         {{if .View.Rows}}
         <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums">{{len .View.Rows}}</span></h2>
         <ul>
@@ -161,7 +161,7 @@
           {{if $r.PieceWeight}}<label><input type="radio" name="qty_unit" value="pz"{{if eq $r.EditUnit "pz"}} checked{{end}}>{{t "shopping.unit_pieces"}}</label>{{end}}
         </span>
       </div>
-      {{if $r.PieceWeight}}<p class="text-[12.5px] text-muted">{{t "shopping.piece_hint" "Weight" (num $r.PieceWeight) "Unit" $it.Ingredient.Unit}}</p>{{end}}
+      {{if $r.PieceWeight}}<p class="text-[12.5px] text-muted">{{t "shopping.piece_hint" "Weight" (dec $r.PieceWeight 2) "Unit" $it.Ingredient.Unit}}</p>{{end}}
       <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit">{{t "shopping.save"}}</button></div>
     </form>
   </details>

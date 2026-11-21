@@ -44,7 +44,6 @@
   "shopping.unit_pieces": "pz",
   "shopping.edit_qty": "Modifica la quantità di {{.Name}}",
   "shopping.edit_qty_title": "Modifica la quantità",
-  "shopping.edit_qty_label": "Quantità in {{.Unit}}",
   "shopping.save": "Salva",
   "shopping.flash.quantity_invalid": "Inserisci una quantità maggiore di zero.",
   "shopping.all_items": "Tutti gli articoli",
