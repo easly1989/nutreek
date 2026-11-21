@@ -187,7 +187,7 @@ func TestShoppingOrderHandler(t *testing.T) {
 	}
 }
 
-// The three swipe actions redirect back to the list (303), act on the owner's
+// The ignore actions redirect back to the list (303), act on the owner's
 // items only (404 for another user) and change the item.
 func TestShoppingSwipeHandlers(t *testing.T) {
 	a := newTestApp(t)
@@ -225,10 +225,33 @@ func TestShoppingSwipeHandlers(t *testing.T) {
 	if got, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID); !got.UserItems[0].Ignored {
 		t.Error("the manual item must be ignored")
 	}
-	if w := post(a.handleShoppingItemDelete, 1, 999999); w.Code != http.StatusNotFound {
-		t.Errorf("deleting a missing item: code %d, want 404", w.Code)
-	}
 	if w := post(a.handleShoppingIgnore, 1, 999999); w.Code != http.StatusNotFound {
 		t.Errorf("ignoring a missing item: code %d, want 404", w.Code)
+	}
+}
+
+// When every item is ignored the list still shows them, so they can be restored.
+func TestShoppingListShowsIgnoredOnly(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	monday, _ := time.Parse("2006-01-02", "2026-10-12")
+	list, err := a.ShoppingLists.GetOrCreateList(ctx, alice.ID, monday, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Candele", 2, "pz"); err != nil {
+		t.Fatal(err)
+	}
+	full, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+	if err := a.ShoppingLists.ToggleUserItemIgnored(ctx, full.UserItems[0].ID, alice.ID); err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest(http.MethodGet, "/shopping-list?week=2026-10-12&weeks=1", nil)
+	w := httptest.NewRecorder()
+	a.Sessions.LoadAndSave(http.HandlerFunc(a.handleShoppingList)).ServeHTTP(w, requestWithUser(r, alice))
+	body := w.Body.String()
+	if w.Code != http.StatusOK || !strings.Contains(body, "Candele") || !strings.Contains(body, "/user-items/") {
+		t.Errorf("an all-ignored list must still list its items: code %d", w.Code)
 	}
 }

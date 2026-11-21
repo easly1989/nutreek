@@ -146,21 +146,6 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 		}
 	}
 
-	// An ingredient the user deleted from this list stays out of it.
-	delRows, err := r.db.QueryContext(ctx, `SELECT ingredient_id FROM shopping_list_deleted WHERE shopping_list_id = ?`, listID)
-	if err != nil {
-		return fmt.Errorf("load deleted items: %w", err)
-	}
-	for delRows.Next() {
-		var ingID int64
-		if err := delRows.Scan(&ingID); err != nil {
-			delRows.Close()
-			return fmt.Errorf("scan deleted item: %w", err)
-		}
-		delete(totals, ingID)
-	}
-	delRows.Close()
-
 	// Load the existing checked flags to merge them.
 	existing := make(map[int64]struct {
 		Quantity float64
@@ -432,36 +417,6 @@ func (r *ShoppingLists) ToggleUserItemIgnored(ctx context.Context, itemID, userI
 		return ErrShoppingItemNotFound
 	}
 	return nil
-}
-
-// RemoveItem deletes an auto item from this list and remembers it, so
-// regenerating the list does not bring it back.
-func (r *ShoppingLists) RemoveItem(ctx context.Context, itemID, userID int64) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	var listID, ingID int64
-	err = tx.QueryRowContext(ctx, `
-		SELECT shopping_list_id, ingredient_id FROM shopping_list_items
-		WHERE id = ?
-		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
-	`, itemID, userID).Scan(&listID, &ingID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrShoppingItemNotFound
-	}
-	if err != nil {
-		return fmt.Errorf("find item to delete: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM shopping_list_items WHERE id = ?`, itemID); err != nil {
-		return fmt.Errorf("delete item: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx,
-		`INSERT OR IGNORE INTO shopping_list_deleted (shopping_list_id, ingredient_id) VALUES (?, ?)`, listID, ingID); err != nil {
-		return fmt.Errorf("remember deleted item: %w", err)
-	}
-	return tx.Commit()
 }
 
 // ToggleUserItem flips checked on a manual item.

@@ -11,7 +11,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Added
-- On a phone, swipe a shopping row to the right to ignore it (it stays, greyed out, and leaves the progress; swipe again to restore it) or to the left to delete it from the list, which stays deleted when the list is regenerated. A computer shows buttons on the row for the same actions (migrations 0040 and 0041) (#230)
+- On a phone, swipe a shopping row to the right to ignore it (it stays, greyed out, and leaves the progress; swipe again to restore it) or, for an item added by hand, to the left to delete it. An item from the weekly plan can be ignored but not deleted. A computer shows buttons on the row for the same actions (migration 0040) (#230)
 - Rows of the shopping list, of a day and of the ingredient picker all have one height: a name or category that does not fit scrolls slowly back and forth, and only then; with «reduce motion» it is cut with an ellipsis and its full text is the tooltip (#259)
 - The shopping list has a third grouping, «My order»: drag the rows by their grip, or press «Reorder» for up and down arrows. The order is kept per list, also when the list is regenerated (#231)
 - The shopping list can be grouped by category, with a switch above it. It stays one list sorted by name by default; the choice is saved per user and applies to every list. Items added by hand go under «Altro» (#232)

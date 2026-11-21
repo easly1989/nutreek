@@ -411,7 +411,7 @@ func (a *App) handleShoppingToggle(w http.ResponseWriter, r *http.Request) {
 }
 
 // shoppingItemAction runs one change on an item of the user's list and goes
-// back to the list: the toggles and the delete of the swipe and the buttons.
+// back to the list: the ignore toggles of the swipe and the buttons.
 func (a *App) shoppingItemAction(w http.ResponseWriter, r *http.Request, do func(ctx context.Context, itemID, userID int64) error) {
 	user := userFromContext(r.Context())
 	itemID, err := parseID(r, "id")
@@ -438,12 +438,6 @@ func (a *App) handleShoppingIgnore(w http.ResponseWriter, r *http.Request) {
 // handleShoppingUserItemIgnore POST /shopping-list/user-items/{id}/ignore
 func (a *App) handleShoppingUserItemIgnore(w http.ResponseWriter, r *http.Request) {
 	a.shoppingItemAction(w, r, a.ShoppingLists.ToggleUserItemIgnored)
-}
-
-// handleShoppingItemDelete POST /shopping-list/items/{id}/delete: takes an item
-// computed from the meals off this list (regenerating brings it back).
-func (a *App) handleShoppingItemDelete(w http.ResponseWriter, r *http.Request) {
-	a.shoppingItemAction(w, r, a.ShoppingLists.RemoveItem)
 }
 
 // shoppingListURL is the address of the list the request comes from,

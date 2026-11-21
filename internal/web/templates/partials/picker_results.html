@@ -92,7 +92,7 @@
     {{end}}
     <span class="grow min-w-0">
       <span class="marq"><b class="mq font-semibold">{{$r.Name}}</b></span>
-      <span class="marq text-[12.5px] text-muted min-h-[18px]"><span class="mq">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}{{range $r.Allergens}} <span class="chip chip-warn h-5 text-[11px]">{{ref "allergen" .Code .Name}}</span>{{end}}</span></span>
+      <span class="flex items-center gap-1.5 min-w-0 min-h-[20px]"><span class="marq text-[12.5px] text-muted"><span class="mq">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}</span></span>{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px] shrink-0">{{ref "allergen" .Code .Name}}</span>{{end}}</span>
       <span class="block sm:hidden mt-0.5">{{template "macros_inline" $r}}</span>
     </span>
     <span class="hidden sm:block">{{template "macros_inline" $r}}</span>

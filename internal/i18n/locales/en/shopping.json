@@ -65,5 +65,6 @@
   "shopping.delete": "Delete",
   "shopping.ignore_named": "Ignore {{.Name}}",
   "shopping.restore_named": "Bring back {{.Name}}",
+  "shopping.ignored": "Ignored",
   "shopping.flash.regenerated": "List regenerated."
 }

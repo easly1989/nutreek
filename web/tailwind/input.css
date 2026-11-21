@@ -314,8 +314,8 @@
 
   /* A line that scrolls when it does not fit (#259, marquee.js): the box has one
      line and a fixed width, the text inside it moves. */
-  .marq { @apply block min-w-0 overflow-hidden whitespace-nowrap; }
-  .marq > .mq { @apply inline-block; }
+  .marq { @apply block min-w-0 overflow-hidden whitespace-nowrap; text-decoration: inherit; }
+  .marq > .mq { @apply inline-block; text-decoration: inherit; }
   .marq[data-over] > .mq { animation: marq var(--mq-t, 6s) linear 1.2s infinite alternate; }
   .marq[data-over]:hover > .mq, .marq[data-over]:active > .mq { animation-play-state: paused; }
   @keyframes marq { 0%, 12% { transform: translateX(0); } 88%, 100% { transform: translateX(calc(-1 * var(--mq-d, 0px))); } }

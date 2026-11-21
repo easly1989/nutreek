@@ -14,14 +14,16 @@
   function measure(box) {
     var mq = box.firstElementChild;
     if (!mq) return;
-    var over = Math.ceil(mq.scrollWidth - box.clientWidth);
+    var over = Math.ceil(box.scrollWidth - box.clientWidth);
     if (over > 1) {
       box.setAttribute("data-over", "");
       box.style.setProperty("--mq-d", over + "px");
       box.style.setProperty("--mq-t", Math.max(4, over / SPEED + 2.4).toFixed(1) + "s");
-      if (!box.title) box.title = mq.textContent.replace(/\s+/g, " ").trim();
+      box.title = mq.textContent.replace(/\s+/g, " ").trim();
+      box.setAttribute("data-mqt", "");
     } else {
       box.removeAttribute("data-over");
+      if (box.hasAttribute("data-mqt")) { box.removeAttribute("title"); box.removeAttribute("data-mqt"); }
     }
   }
 

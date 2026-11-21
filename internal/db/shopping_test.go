@@ -412,9 +412,9 @@ func TestShoppingSaveOrder(t *testing.T) {
 	}
 }
 
-// Ignoring flips for auto and manual items, survives a regenerate, is per
-// owner; a deleted auto item stays deleted when the list is regenerated.
-func TestShoppingIgnoreAndDelete(t *testing.T) {
+// Ignoring flips for auto and manual items, survives a regenerate and is per
+// owner.
+func TestShoppingIgnore(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)
 	plans := NewWeeklyPlans(store.DB)
@@ -467,33 +467,5 @@ func TestShoppingIgnoreAndDelete(t *testing.T) {
 	}
 	if got, _ := shop.LoadFull(ctx, list.ID, alice); got.Items[0].Ignored {
 		t.Error("the second toggle must restore the item")
-	}
-
-	// Delete: owner only; a regenerate brings the item back.
-	cur, _ := shop.LoadFull(ctx, list.ID, alice)
-	if err := shop.RemoveItem(ctx, cur.Items[0].ID, bob); !errors.Is(err, ErrShoppingItemNotFound) {
-		t.Errorf("Bob deletes Alice's item: %v", err)
-	}
-	if err := shop.RemoveItem(ctx, cur.Items[0].ID, alice); err != nil {
-		t.Fatal(err)
-	}
-	if got, _ := shop.LoadFull(ctx, list.ID, alice); len(got.Items) != 0 {
-		t.Errorf("after delete: %d items, want 0", len(got.Items))
-	}
-	if err := shop.Generate(ctx, list.ID, alice); err != nil {
-		t.Fatal(err)
-	}
-	if got, _ := shop.LoadFull(ctx, list.ID, alice); len(got.Items) != 0 {
-		t.Errorf("after regenerate: %d items, a deleted item must stay deleted", len(got.Items))
-	}
-
-	// Another ingredient added to the plan later still shows up.
-	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 360, 12, 75, 1, &alice, nil, nil, nil, nil, nil, nil)
-	_, _ = plans.AddItem(ctx, meal, alice, nil, &pasta, 100, "g")
-	if err := shop.Generate(ctx, list.ID, alice); err != nil {
-		t.Fatal(err)
-	}
-	if got, _ := shop.LoadFull(ctx, list.ID, alice); len(got.Items) != 1 || got.Items[0].Ingredient.Name != "Pasta" {
-		t.Errorf("after adding Pasta: %+v, want only Pasta", got.Items)
 	}
 }
