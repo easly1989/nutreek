@@ -335,6 +335,21 @@
     .sheet-qty { @apply h-11 text-[18px]; flex: 1 1 0%; width: auto; min-width: 0; }
   }
 
+  /* A meal item's row (#226): name, quantity, kcal and actions, and the macros
+     under the name; in the row itself where it is wide enough (sm to lg, and xl
+     up: between lg and xl the day sits beside its 300 px side column). */
+  .item-grid { grid-template-columns: minmax(0, 1fr) auto 3.5rem auto; }
+  .item-macros { grid-column: 1 / -1; grid-row: 2; }
+  .item-macros > span { text-decoration: inherit; }
+  .item-kcal { grid-column: 3; }
+  .item-actions { grid-column: 4; }
+  @media (min-width: 640px) and (max-width: 1023px), (min-width: 1280px) {
+    .item-grid { grid-template-columns: minmax(0, 1fr) auto auto 3.5rem auto; }
+    .item-macros { grid-column: 3; grid-row: auto; justify-self: end; }
+    .item-kcal { grid-column: 4; }
+    .item-actions { grid-column: 5; }
+  }
+
   /* Statistics (#123): summary cards, legends and SVG charts (static/js/charts.js). */
   .tile { @apply card px-3.5 py-3 flex flex-col gap-0.5 min-w-0; }
   .tile-k { @apply text-[12.5px] font-semibold text-muted; }
