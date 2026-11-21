@@ -61,7 +61,11 @@ func nameTokens(name string) map[string]bool {
 // the longer, or most of their words are shared. One shared word is not enough
 // («Pasta» and «Pasta integrale» stay apart).
 func similarNames(a, b string) bool {
-	ta, tb := nameTokens(a), nameTokens(b)
+	return similarTokens(nameTokens(a), nameTokens(b))
+}
+
+// similarTokens is similarNames on names already reduced by nameTokens.
+func similarTokens(ta, tb map[string]bool) bool {
 	if len(ta) == 0 || len(tb) == 0 {
 		return false
 	}
@@ -159,13 +163,20 @@ func pairQuantities(a, b shoppingRow) (qa, qb float64, unit string, ok bool) {
 // the one proposed to keep.
 func (v shoppingView) withSimilar(dismissed map[string]bool, usage map[int64]int) shoppingView {
 	used := map[int]bool{}
+	if len(v.Rows) > 400 { // a list this long is not a shopping list; skip the pairs
+		return v
+	}
+	tokens := make([]map[string]bool, len(v.Rows))
+	for i, r := range v.Rows {
+		tokens[i] = nameTokens(r.name)
+	}
 	for i := range v.Rows {
 		if used[i] || v.Rows[i].Ignored {
 			continue
 		}
 		for j := i + 1; j < len(v.Rows); j++ {
 			a, b := v.Rows[i], v.Rows[j]
-			if used[j] || b.Ignored || dismissed[db.PairKey(a.Key, b.Key)] || !similarNames(a.name, b.name) {
+			if used[j] || b.Ignored || dismissed[db.PairKey(a.Key, b.Key)] || !similarTokens(tokens[i], tokens[j]) {
 				continue
 			}
 			qa, qb, unit, ok := pairQuantities(a, b)

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/amon2126/nutreek/internal/domain"
@@ -23,7 +24,8 @@ func ParseRowKey(key string) (kind byte, id int64, ok bool) {
 		return 0, 0, false
 	}
 	n, err := strconv.ParseInt(key[1:], 10, 64)
-	if err != nil || n <= 0 {
+	// Only the canonical spelling: «i05» and «i+5» are not a second name for «i5».
+	if err != nil || n <= 0 || strconv.FormatInt(n, 10) != key[1:] {
 		return 0, 0, false
 	}
 	return key[0], n, true
@@ -64,20 +66,32 @@ func (r *ShoppingLists) DismissSimilar(ctx context.Context, listID, userID int64
 // plans that use it: the more used of two similar ingredients is the one the
 // merge proposes to keep.
 func (r *ShoppingLists) IngredientUsage(ctx context.Context, userID int64, ids []int64) (map[int64]int, error) {
-	out := map[int64]int{}
+	want := map[int64]bool{}
 	for _, id := range ids {
-		var n int
-		err := r.db.QueryRowContext(ctx, `
-			SELECT COUNT(*) FROM meal_items mi
-			JOIN meals m ON m.id = mi.meal_id
-			JOIN weekly_plans p ON p.id = m.weekly_plan_id
-			WHERE p.user_id = ? AND mi.ingredient_id = ?`, userID, id).Scan(&n)
-		if err != nil {
-			return nil, fmt.Errorf("count ingredient usage: %w", err)
-		}
-		out[id] = n
+		want[id] = true
 	}
-	return out, nil
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT mi.ingredient_id, COUNT(*) FROM meal_items mi
+		JOIN meals m ON m.id = mi.meal_id
+		JOIN weekly_plans p ON p.id = m.weekly_plan_id
+		WHERE p.user_id = ? AND mi.ingredient_id IS NOT NULL
+		GROUP BY mi.ingredient_id`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("count ingredient usage: %w", err)
+	}
+	defer rows.Close()
+	out := map[int64]int{}
+	for rows.Next() {
+		var id int64
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, fmt.Errorf("scan ingredient usage: %w", err)
+		}
+		if want[id] {
+			out[id] = n
+		}
+	}
+	return out, rows.Err()
 }
 
 // MergeRows merges the row dropKey into the row keepKey of a list.
@@ -90,15 +104,15 @@ func (r *ShoppingLists) IngredientUsage(ctx context.Context, userID int64, ids [
 //
 // Both rows must be in units that add up (g with g, ml with ml, or pieces of an
 // ingredient with a weight per piece).
-func (r *ShoppingLists) MergeRows(ctx context.Context, listID, userID int64, keepKey, dropKey string) error {
+func (r *ShoppingLists) MergeRows(ctx context.Context, listID, userID int64, keepKey, dropKey string) (*MergeUndo, error) {
 	kKind, kID, kOK := ParseRowKey(keepKey)
 	dKind, dID, dOK := ParseRowKey(dropKey)
-	if !kOK || !dOK || keepKey == dropKey {
-		return ErrShoppingMergeInvalid
+	if !kOK || !dOK || (kKind == dKind && kID == dID) {
+		return nil, ErrShoppingMergeInvalid
 	}
 	full, err := r.LoadFull(ctx, listID, userID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	autoByIng := map[int64]domain.ShoppingListItem{}
 	for _, it := range full.Items {
@@ -114,24 +128,26 @@ func (r *ShoppingLists) MergeRows(ctx context.Context, listID, userID int64, kee
 		keep, ok1 := autoByIng[kID]
 		drop, ok2 := autoByIng[dID]
 		if !ok1 || !ok2 || keep.Ingredient == nil || drop.Ingredient == nil || keep.Ingredient.Unit != drop.Ingredient.Unit {
-			return ErrShoppingMergeInvalid
+			return nil, ErrShoppingMergeInvalid
 		}
-		if err := r.mergeIngredients(ctx, full, userID, keep.Ingredient, drop.Ingredient); err != nil {
-			return err
+		undo, err := r.mergeIngredients(ctx, full, userID, keep.Ingredient, drop.Ingredient)
+		if err != nil {
+			return nil, err
 		}
-		return r.Generate(ctx, listID, userID)
+		return undo, r.Generate(ctx, listID, userID)
 
 	case kKind == 'i' && dKind == 'u':
 		keep, ok1 := autoByIng[kID]
 		drop, ok2 := userByID[dID]
 		if !ok1 || !ok2 || keep.Ingredient == nil || drop.Quantity <= 0 {
-			return ErrShoppingMergeInvalid
+			return nil, ErrShoppingMergeInvalid
 		}
 		if drop.Unit == "pz" && keep.Ingredient.PieceWeight() <= 0 || drop.Unit != "pz" && drop.Unit != string(keep.Ingredient.Unit) {
-			return ErrShoppingMergeInvalid
+			return nil, ErrShoppingMergeInvalid
 		}
 		add := macros.Grams(drop.Quantity, drop.Unit, keep.Ingredient)
-		return r.inTx(ctx, func(tx *sql.Tx) error {
+		undo := &MergeUndo{Kind: "manual-auto", ListID: listID, AutoID: keep.ID, AutoQty: keep.TotalQuantity, Dropped: &drop}
+		return undo, r.inTx(ctx, func(tx *sql.Tx) error {
 			if _, err := tx.ExecContext(ctx, `UPDATE shopping_list_items SET total_quantity = total_quantity + ? WHERE id = ?`, add, keep.ID); err != nil {
 				return fmt.Errorf("add quantity: %w", err)
 			}
@@ -143,10 +159,11 @@ func (r *ShoppingLists) MergeRows(ctx context.Context, listID, userID int64, kee
 		keep, ok1 := userByID[kID]
 		drop, ok2 := userByID[dID]
 		if !ok1 || !ok2 || keep.Quantity <= 0 || drop.Quantity <= 0 || keep.Unit != drop.Unit {
-			return ErrShoppingMergeInvalid
+			return nil, ErrShoppingMergeInvalid
 		}
-		sum := keep.Quantity + drop.Quantity
-		return r.inTx(ctx, func(tx *sql.Tx) error {
+		sum := math.Round((keep.Quantity+drop.Quantity)*1000) / 1000
+		undo := &MergeUndo{Kind: "manual-manual", ListID: listID, KeepID: keep.ID, KeepQty: keep.Quantity, KeepText: keep.QuantityText, Dropped: &drop}
+		return undo, r.inTx(ctx, func(tx *sql.Tx) error {
 			if _, err := tx.ExecContext(ctx, `UPDATE shopping_user_items SET quantity = ?, quantity_text = ? WHERE id = ?`,
 				sum, formatManualQuantity(sum, keep.Unit), keep.ID); err != nil {
 				return fmt.Errorf("add quantity: %w", err)
@@ -155,7 +172,7 @@ func (r *ShoppingLists) MergeRows(ctx context.Context, listID, userID int64, kee
 			return err
 		})
 	}
-	return ErrShoppingMergeInvalid
+	return nil, ErrShoppingMergeInvalid
 }
 
 func (r *ShoppingLists) inTx(ctx context.Context, f func(tx *sql.Tx) error) error {
@@ -171,13 +188,34 @@ func (r *ShoppingLists) inTx(ctx context.Context, f func(tx *sql.Tx) error) erro
 }
 
 // mergeIngredients records that drop is now keep for this list and rewrites the
-// rows of the plan, in the weeks the list covers, that use drop. A quantity in
+// rows of the plan, in the weeks the list covers, that use drop. Meals with a
+// cheat logged are left alone: the list does not count them either. A quantity in
 // pieces keeps its weight: 2 pieces of 150 g become the pieces of keep that
 // weigh the same, or grams when keep has no weight per piece.
-func (r *ShoppingLists) mergeIngredients(ctx context.Context, full *domain.ShoppingListFull, userID int64, keep, drop *domain.Ingredient) error {
+func (r *ShoppingLists) mergeIngredients(ctx context.Context, full *domain.ShoppingListFull, userID int64, keep, drop *domain.Ingredient) (*MergeUndo, error) {
 	first := full.WeekStart.Format("2006-01-02")
 	last := full.WeekStart.AddDate(0, 0, 7*(full.WeekCount-1)).Format("2006-01-02")
-	return r.inTx(ctx, func(tx *sql.Tx) error {
+	undo := &MergeUndo{Kind: "plan", ListID: full.ID, From: drop.ID, To: keep.ID}
+	return undo, r.inTx(ctx, func(tx *sql.Tx) error {
+		// What the merge is about to change, for the undo.
+		var prev sql.NullInt64
+		if err := tx.QueryRowContext(ctx, `SELECT to_ingredient_id FROM shopping_list_merges WHERE shopping_list_id = ? AND from_ingredient_id = ?`, full.ID, drop.ID).Scan(&prev); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("read previous merge: %w", err)
+		}
+		undo.PrevTo = prev.Int64
+		pointing, err := tx.QueryContext(ctx, `SELECT from_ingredient_id FROM shopping_list_merges WHERE shopping_list_id = ? AND to_ingredient_id = ?`, full.ID, drop.ID)
+		if err != nil {
+			return fmt.Errorf("read merges into the dropped ingredient: %w", err)
+		}
+		for pointing.Next() {
+			var id int64
+			if err := pointing.Scan(&id); err != nil {
+				pointing.Close()
+				return fmt.Errorf("scan merge: %w", err)
+			}
+			undo.Retargeted = append(undo.Retargeted, id)
+		}
+		pointing.Close()
 		if _, err := tx.ExecContext(ctx,
 			`INSERT OR REPLACE INTO shopping_list_merges (shopping_list_id, from_ingredient_id, to_ingredient_id) VALUES (?, ?, ?)`,
 			full.ID, drop.ID, keep.ID); err != nil {
@@ -192,7 +230,8 @@ func (r *ShoppingLists) mergeIngredients(ctx context.Context, full *domain.Shopp
 			SELECT mi.id, mi.quantity, mi.quantity_unit FROM meal_items mi
 			JOIN meals m ON m.id = mi.meal_id
 			JOIN weekly_plans p ON p.id = m.weekly_plan_id
-			WHERE p.user_id = ? AND mi.ingredient_id = ? AND substr(p.week_start, 1, 10) BETWEEN ? AND ?`,
+			WHERE p.user_id = ? AND mi.ingredient_id = ? AND substr(p.week_start, 1, 10) BETWEEN ? AND ?
+			  AND NOT EXISTS (SELECT 1 FROM meal_cheat_items c WHERE c.meal_id = mi.meal_id)`,
 			userID, drop.ID, first, last)
 		if err != nil {
 			return fmt.Errorf("find plan rows: %w", err)
@@ -211,6 +250,7 @@ func (r *ShoppingLists) mergeIngredients(ctx context.Context, full *domain.Shopp
 				rows.Close()
 				return fmt.Errorf("scan plan row: %w", err)
 			}
+			undo.Rows = append(undo.Rows, UndoPlanRow{ID: id, IngredientID: drop.ID, Quantity: q, Unit: unit})
 			if unit == "pz" {
 				wd, wk := drop.PieceWeight(), keep.PieceWeight()
 				switch {
@@ -250,7 +290,9 @@ func (r *ShoppingLists) loadMerges(ctx context.Context, listID int64) (map[int64
 		if err := rows.Scan(&from, &to); err != nil {
 			return nil, fmt.Errorf("scan merge: %w", err)
 		}
-		out[from] = to
+		if from != to {
+			out[from] = to
+		}
 	}
 	return out, rows.Err()
 }

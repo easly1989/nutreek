@@ -151,8 +151,21 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 	if err != nil {
 		return err
 	}
-	for from, to := range merges {
-		if q, ok := totals[from]; ok {
+	for from := range merges {
+		q, ok := totals[from]
+		if !ok {
+			continue
+		}
+		// Follow a chain (A into B, B into C) to its end, with a guard against a loop.
+		to := merges[from]
+		for i := 0; i < 8; i++ {
+			next, more := merges[to]
+			if !more || next == from {
+				break
+			}
+			to = next
+		}
+		if to != from {
 			totals[to] += q
 			delete(totals, from)
 		}

@@ -37,6 +37,16 @@
 
   <div class="grid gap-4 lg:gap-[18px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] items-start [overflow-anchor:none]">
     <div id="shop-list" class="flex flex-col gap-3">
+      {{/* After a merge: a toast with «Undo», for a few seconds (the server keeps the undo for three minutes). */}}
+      {{if .CanUndo}}
+      <div class="toast-undo fixed z-40 inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[360px] flex items-center justify-between gap-3 rounded-xl bg-[#1f2328] text-white px-4 py-3 shadow-lg" role="status">
+        <span>{{t "shopping.merged"}}</span>
+        <form method="post" action="/shopping-list/{{.List.ID}}/merge/undo?week={{$ws}}&weeks={{$wc}}" hx-post="/shopping-list/{{.List.ID}}/merge/undo?week={{$ws}}&weeks={{$wc}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <button class="font-bold text-[#5fbf8c]">{{t "shopping.undo"}}</button>
+        </form>
+      </div>
+      {{end}}
       {{if or .View.Total .View.Rows .View.Cart}}
       {{if .View.Total}}
       <div class="card p-4 flex flex-col gap-2">
@@ -150,14 +160,14 @@
 {{define "shop_cols"}}<span class="shop-qty"><span class="shop-pc">{{if .Pieces}}<b>{{t "shopping.pieces" "Pieces" .Pieces}}</b>{{end}}</span><span class="shop-gr"{{if .Amount}} title="{{.Amount}}"{{end}}>{{if .Auto}}{{template "shop_grams" .Auto}}{{else}}{{.Amount}}{{end}}</span></span>{{end}}
 {{define "shop_qty"}}{{if .Auto}}{{if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}} ({{template "shop_grams" .Auto}}){{else}}{{template "shop_grams" .Auto}}{{end}}{{else if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}}{{else}}{{.Amount}}{{end}}{{end}}
 
-{{define "shop_row"}}{{if .Row.Auto}}{{template "shop_item" .}}{{else}}{{template "shop_user_item" .}}{{end}}{{template "shop_similar" .}}{{end}}
+{{define "shop_row"}}{{if .Row.Auto}}{{template "shop_item" .}}{{else}}{{template "shop_user_item" .}}{{end}}{{end}}
 
 {{define "shop_n"}}{{if lt . 10.0}}{{dec . 1}}{{else}}{{num .}}{{end}}{{end}}
 
 {{/* Under a row that looks like another one (#233): merge them, or keep them
      apart. Merging two ingredients of the meals also changes the weekly plan. */}}
 {{define "shop_similar"}}{{$p := .Page}}{{$s := .Row.Similar}}{{if $s}}{{$u := $s.Unit}}
-<li class="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-warn-bg text-warn-fg text-[12.5px]" data-similar>
+<div class="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-warn-bg text-warn-fg text-[12.5px]" data-similar>
   <span class="grow min-w-0 basis-full sm:basis-0">{{t "shopping.similar" "Name" $s.OtherName}}{{if $s.HasSum}}: {{template "shop_n" $s.QtyA}} + {{template "shop_n" $s.QtyB}} = <b>{{template "shop_n" $s.Sum}}</b> {{if eq $u "pz"}}{{t "shopping.unit_pieces"}}{{else}}{{$u}}{{end}}{{end}}</span>
   {{range $s.Options}}
   <form method="post" action="/shopping-list/{{$p.List.ID}}/merge?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/{{$p.List.ID}}/merge?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button">
@@ -169,7 +179,7 @@
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}"><input type="hidden" name="a" value="{{$s.A}}"><input type="hidden" name="b" value="{{$s.B}}">
     <button class="btn btn-secondary h-7 px-2.5 text-[12.5px]">{{t "shopping.keep_apart"}}</button>
   </form>
-</li>{{end}}{{end}}
+</div>{{end}}{{end}}
 
 {{define "shop_category"}}{{if .ShowCat}}<span class="marq text-[12.5px] text-muted"><span class="mq">{{if .Category}}{{.Category}}{{else}}{{t "shopping.other"}}{{end}}</span></span>{{end}}{{end}}
 
@@ -222,6 +232,7 @@
     <button class="icon-action" aria-label="{{if $r.Ignored}}{{t "shopping.restore_named" "Name" $it.Ingredient.Name}}{{else}}{{t "shopping.ignore_named" "Name" $it.Ingredient.Name}}{{end}}" title="{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}">{{template "icon" "i-ban"}}</button>
   </form>
   </div>
+  {{template "shop_similar" .}}
 </li>{{end}}
 
 {{/* An item added by hand: the same row, marked with a pencil, plus the button to remove it. */}}
@@ -277,4 +288,5 @@
     <button class="icon-action hover:text-danger" aria-label="{{t "shopping.remove" "Name" $it.Description}}" title="{{t "shopping.remove_title"}}">{{template "icon" "i-trash"}}</button>
   </form>
   </div>
+  {{template "shop_similar" .}}
 </li>{{end}}

@@ -70,6 +70,9 @@
   "shopping.merge": "Merge",
   "shopping.merge_into": "Merge into “{{.Name}}”",
   "shopping.keep_apart": "Keep separate",
-  "shopping.flash.merge_invalid": "These two items cannot be merged: their quantities do not add up.",
+  "shopping.flash.merge_invalid": "These two items cannot be merged now: the list may have changed, or their quantities do not add up.",
+  "shopping.merged": "Items merged.",
+  "shopping.undo": "Undo",
+  "shopping.flash.undo_invalid": "There is nothing to undo, or it can no longer be undone.",
   "shopping.flash.regenerated": "List regenerated."
 }
