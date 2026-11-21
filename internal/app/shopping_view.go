@@ -46,8 +46,10 @@ type shoppingRow struct {
 	EditQty     float64
 	EditUnit    string
 	PieceWeight float64
-	Legacy      bool // manual item with a free-text quantity, from before units
-	ShowCat     bool // the row names its category (only when the list is not grouped)
+	Legacy      bool   // manual item with a free-text quantity, from before units
+	ShowCat     bool   // the row names its category (only when the list is not grouped)
+	Reorder     bool   // the row can be dragged (the user's own order)
+	Key         string // the row's key in the stored order: «i<ingredient id>» or «u<id>»
 	name        string
 	id          int64
 	catOrder    int
@@ -59,28 +61,40 @@ type shoppingItemView struct {
 
 // buildShoppingView merges the computed and the manual items in one list
 // sorted by name, and sets the checked ones apart.
-func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemView, cats map[int64]domain.IngredientCategory, grouping string) shoppingView {
+func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemView, cats map[int64]domain.IngredientCategory, grouping string, order map[string]int) shoppingView {
 	var rows []shoppingRow
 	for _, it := range items {
 		name := ""
 		if it.Ingredient != nil {
 			name = it.Ingredient.Name
 		}
-		row := shoppingRow{Auto: &shoppingItemView{Item: it}, Category: cats[it.IngredientID].Name, catOrder: cats[it.IngredientID].SortOrder, Pieces: shoppingPieces(it), name: name, id: it.ID}
+		row := shoppingRow{Auto: &shoppingItemView{Item: it}, Category: cats[it.IngredientID].Name, catOrder: cats[it.IngredientID].SortOrder, Key: db.RowKeyIngredient(it.IngredientID), Pieces: shoppingPieces(it), name: name, id: it.ID}
 		row.EditQty, row.EditUnit, row.PieceWeight = autoEditor(it)
 		rows = append(rows, row)
 	}
 	for i := range user {
 		u := user[i]
 		pieces, amount := userItemQuantity(u.Item.QuantityText)
-		row := shoppingRow{User: &u, Pieces: pieces, Amount: amount, name: u.Item.Description, id: u.Item.ID,
+		row := shoppingRow{User: &u, Pieces: pieces, Amount: amount, name: u.Item.Description, id: u.Item.ID, Key: db.RowKeyUserItem(u.Item.ID),
 			EditQty: u.Item.Quantity, EditUnit: u.Item.Unit, Legacy: u.Item.Unit == "" && u.Item.QuantityText != ""}
 		if row.EditUnit == "" {
 			row.EditUnit = "g"
 		}
 		rows = append(rows, row)
 	}
+	custom := grouping == db.ShoppingGroupCustom
 	sort.SliceStable(rows, func(i, j int) bool {
+		if custom {
+			// The user's own order first; rows they never placed after them, by name.
+			pi, oi := order[rows[i].Key]
+			pj, oj := order[rows[j].Key]
+			if oi != oj {
+				return oi
+			}
+			if oi && pi != pj {
+				return pi < pj
+			}
+		}
 		a, b := strings.ToLower(rows[i].name), strings.ToLower(rows[j].name)
 		if a != b {
 			return a < b
@@ -91,6 +105,7 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 	v := shoppingView{Total: len(rows), Print: rows, Grouping: grouping}
 	for i := range rows {
 		rows[i].ShowCat = grouping != db.ShoppingGroupCategory
+		rows[i].Reorder = custom && !rows[i].checked() // the rows in the cart are not draggable
 	}
 	for _, r := range rows {
 		if r.checked() {

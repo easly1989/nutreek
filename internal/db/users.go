@@ -192,7 +192,7 @@ func (u *Users) SetLocale(ctx context.Context, id int64, locale string) error {
 }
 
 // ShoppingGrouping returns how the user wants the shopping list grouped:
-// ShoppingGroupNone or ShoppingGroupCategory.
+// ShoppingGroupNone, ShoppingGroupCategory or ShoppingGroupCustom.
 func (u *Users) ShoppingGrouping(ctx context.Context, id int64) (string, error) {
 	var g string
 	err := u.db.QueryRowContext(ctx, `SELECT shopping_group FROM users WHERE id = ?`, id).Scan(&g)
@@ -208,7 +208,7 @@ func (u *Users) ShoppingGrouping(ctx context.Context, id int64) (string, error) 
 // SetShoppingGrouping saves the shopping list grouping; anything but a known
 // value is refused.
 func (u *Users) SetShoppingGrouping(ctx context.Context, id int64, group string) error {
-	if group != ShoppingGroupNone && group != ShoppingGroupCategory {
+	if group != ShoppingGroupNone && group != ShoppingGroupCategory && group != ShoppingGroupCustom {
 		return ErrShoppingGroupInvalid
 	}
 	_, err := u.db.ExecContext(ctx, `UPDATE users SET shopping_group = ? WHERE id = ?`, group, id)
@@ -219,6 +219,7 @@ func (u *Users) SetShoppingGrouping(ctx context.Context, id int64, group string)
 const (
 	ShoppingGroupNone     = "none"
 	ShoppingGroupCategory = "category"
+	ShoppingGroupCustom   = "custom"
 )
 
 // ErrShoppingGroupInvalid is returned for a grouping the list does not know.

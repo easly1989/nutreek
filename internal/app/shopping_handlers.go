@@ -123,7 +123,7 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 	data := shoppingListData{
 		authPageData: a.baseData(r),
 		List:         full,
-		View:         buildShoppingView(full.Items, userViews, cats, grouping),
+		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order),
 		WeekStart:    weekStart.Format("2006-01-02"),
 		WeekCount:    weeks,
 		PrevWeek:     weekStart.AddDate(0, 0, -7).Format("2006-01-02"),
@@ -148,6 +148,32 @@ func (a *App) handleShoppingGrouping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+}
+
+// handleShoppingOrder POST /shopping-list/{id}/order
+// Body: ids, the row keys the user dragged into order, comma separated. It
+// saves the order and answers 204: the page already shows it.
+func (a *App) handleShoppingOrder(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	listID, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	keys := strings.Split(r.PostFormValue("ids"), ",")
+	if len(keys) > 2000 {
+		http.Error(w, a.t(r, "week.error.invalid_ids"), http.StatusBadRequest)
+		return
+	}
+	if err := a.ShoppingLists.SaveOrder(r.Context(), listID, user.ID, keys); err != nil {
+		if errors.Is(err, db.ErrShoppingListNotFound) {
+			a.notFound(w, r)
+			return
+		}
+		a.serverError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleAddShoppingUserItem POST /shopping-list/{id}/user-items

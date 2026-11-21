@@ -49,13 +49,15 @@
       </div>
 
       {{/* How the list is grouped, for every list of the user. */}}
-      <form method="post" action="/shopping-list/grouping?week={{$ws}}&weeks={{$wc}}" hx-post="/shopping-list/grouping?week={{$ws}}&weeks={{$wc}}" hx-trigger="change" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="flex items-center gap-2">
+      <form method="post" action="/shopping-list/grouping?week={{$ws}}&weeks={{$wc}}" hx-post="/shopping-list/grouping?week={{$ws}}&weeks={{$wc}}" hx-trigger="change" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <span class="text-[12.5px] font-semibold text-muted">{{t "shopping.group_by"}}</span>
         <span class="segmented" role="radiogroup" aria-label="{{t "shopping.group_by"}}">
-          <label><input type="radio" id="shop-group-none" name="group" value="none"{{if ne .View.Grouping "category"}} checked{{end}}>{{t "shopping.group_none"}}</label>
+          <label><input type="radio" id="shop-group-none" name="group" value="none"{{if eq .View.Grouping "none"}} checked{{end}}>{{t "shopping.group_none"}}</label>
           <label><input type="radio" id="shop-group-category" name="group" value="category"{{if eq .View.Grouping "category"}} checked{{end}}>{{t "shopping.group_category"}}</label>
+          <label><input type="radio" id="shop-group-custom" name="group" value="custom"{{if eq .View.Grouping "custom"}} checked{{end}}>{{t "shopping.group_custom"}}</label>
         </span>
+        {{if eq .View.Grouping "custom"}}<button type="button" class="btn-ghost ml-auto h-[30px] px-2.5 text-[12.5px]" data-reorder-toggle aria-pressed="false">{{t "shopping.reorder"}}</button>{{end}}
         <noscript><button class="btn-secondary">{{t "shopping.save"}}</button></noscript>
       </form>
 
@@ -70,7 +72,7 @@
         {{end}}
         {{else}}
         <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums">{{len .View.Rows}}</span></h2>
-        <ul>
+        <ul{{if eq .View.Grouping "custom"}} data-sortable="shop" data-sortable-handle="[data-shop-grip]" data-sort-url="/shopping-list/{{.List.ID}}/order" data-csrf="{{.CSRFToken}}" data-reorder-list{{end}}>
           {{range .View.Rows}}{{template "shop_row" (row . $)}}{{end}}
         </ul>
         {{end}}
@@ -150,11 +152,17 @@
 
 {{define "shop_category"}}{{if .ShowCat}}<small class="block text-[12.5px] text-muted">{{if .Category}}{{.Category}}{{else}}{{t "shopping.other"}}{{end}}</small>{{end}}{{end}}
 
+{{/* In the user's own order a row has a grip to drag by and, once «Reorder» is
+     on, the arrows (reorder.js) for the keyboard and for those who cannot drag. */}}
+{{define "shop_grip"}}{{if .Reorder}}<span data-shop-grip class="grid place-items-center w-6 h-9 shrink-0 text-muted cursor-grab touch-none ml-1" aria-hidden="true"><svg class="w-4 h-4" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>
+<span data-move-btns class="hidden items-center shrink-0"><button type="button" data-move="up" class="icon-action" aria-label="{{t "shopping.move_up"}}"><span class="inline-flex rotate-180">{{template "icon_sm" "i-chevron-down"}}</span></button><button type="button" data-move="down" class="icon-action" aria-label="{{t "shopping.move_down"}}">{{template "icon_sm" "i-chevron-down"}}</button></span>{{end}}{{end}}
+
 {{/* An item computed from the meals. Tapping it puts it in the cart or takes
      it out: the server goes back to the list and HTMX takes #shop-list from
      it, because the progress changes. The id on the button keeps the focus. */}}
 {{define "shop_item"}}{{$r := .Row}}{{$it := $r.Auto.Item}}{{$p := .Page}}
-<li class="flex items-center pr-2">
+<li class="flex items-center pr-2" data-id="{{$r.Key}}">
+  {{template "shop_grip" $r}}
   <form method="post" action="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-post="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="grow min-w-0">
@@ -189,7 +197,8 @@
 
 {{/* An item added by hand: the same row, marked with a pencil, plus the button to remove it. */}}
 {{define "shop_user_item"}}{{$r := .Row}}{{$it := $r.User.Item}}{{$p := .Page}}
-<li class="flex items-center pr-2">
+<li class="flex items-center pr-2" data-id="{{$r.Key}}">
+  {{template "shop_grip" $r}}
   <form method="post" action="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-post="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="grow min-w-0">

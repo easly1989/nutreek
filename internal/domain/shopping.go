@@ -46,4 +46,7 @@ type ShoppingListFull struct {
 	ShoppingList
 	Items     []ShoppingListItem
 	UserItems []ShoppingUserItem
+	// Order is the position the user gave each row by dragging it, by row key
+	// («i<ingredient id>», «u<manual item id>»); rows without one come last.
+	Order map[string]int
 }

@@ -340,7 +340,74 @@ func TestShoppingGroupingSetting(t *testing.T) {
 	if g, _ := users.ShoppingGrouping(ctx, bob); g != ShoppingGroupNone {
 		t.Errorf("Bob = %q, want none: the setting is per user", g)
 	}
-	if err := users.SetShoppingGrouping(ctx, alice, "custom"); !errors.Is(err, ErrShoppingGroupInvalid) {
+	if err := users.SetShoppingGrouping(ctx, alice, ShoppingGroupCustom); err != nil {
+		t.Errorf("custom: %v", err)
+	}
+	if err := users.SetShoppingGrouping(ctx, alice, "alphabetical"); !errors.Is(err, ErrShoppingGroupInvalid) {
 		t.Errorf("unknown value: %v", err)
+	}
+}
+
+// SaveOrder stores the dragged order, ignores keys that are not rows of the
+// list, keeps the rows placed before after the ones it names, and belongs to
+// the list's owner.
+func TestShoppingSaveOrder(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	plans := NewWeeklyPlans(store.DB)
+	ings := NewIngredients(store.DB)
+	shop := NewShoppingLists(store.DB, plans)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
+	monday, _ := time.Parse("2006-01-02", "2026-04-27")
+	plan, _ := plans.GetOrCreateForWeek(ctx, alice, monday)
+	mela, _ := ings.CreateLocal(ctx, "Mela", nil, "g", 52, 0.3, 13.8, 0.2, &alice, nil, nil, nil, nil, nil, nil)
+	pasta, _ := ings.CreateLocal(ctx, "Pasta", nil, "g", 360, 12, 75, 1, &alice, nil, nil, nil, nil, nil, nil)
+	meal, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "Pranzo")
+	_, _ = plans.AddItem(ctx, meal, alice, nil, &mela, 100, "g")
+	_, _ = plans.AddItem(ctx, meal, alice, nil, &pasta, 100, "g")
+	list, _ := shop.GetOrCreateList(ctx, alice, monday, 1)
+	if err := shop.Generate(ctx, list.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := shop.AddManualItem(ctx, list.ID, alice, "Candele", 2, "pz"); err != nil {
+		t.Fatal(err)
+	}
+	full, _ := shop.LoadFull(ctx, list.ID, alice)
+	candele := RowKeyUserItem(full.UserItems[0].ID)
+	kMela, kPasta := RowKeyIngredient(mela), RowKeyIngredient(pasta)
+
+	// Pasta first, an unknown key, Candele; Mela is not named.
+	if err := shop.SaveOrder(ctx, list.ID, alice, []string{kPasta, "i999999", "x1", candele}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := shop.LoadFull(ctx, list.ID, alice)
+	if len(got.Order) != 2 || got.Order[kPasta] != 0 || got.Order[candele] != 1 {
+		t.Errorf("order = %v, want Pasta 0 and Candele 1; Mela, never placed, has no position", got.Order)
+	}
+	if _, ok := got.Order["i999999"]; ok {
+		t.Error("an unknown key must be ignored")
+	}
+
+	// A second save names only Mela: it goes first, the others keep their order.
+	if err := shop.SaveOrder(ctx, list.ID, alice, []string{kMela}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = shop.LoadFull(ctx, list.ID, alice)
+	if got.Order[kMela] != 0 || got.Order[kPasta] != 1 || got.Order[candele] != 2 {
+		t.Errorf("after the second save = %v", got.Order)
+	}
+
+	// The order survives a regenerate: it is keyed by ingredient, not by row.
+	if err := shop.Generate(ctx, list.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	if again, _ := shop.LoadFull(ctx, list.ID, alice); again.Order[kPasta] != 1 {
+		t.Errorf("after regenerate = %v", again.Order)
+	}
+	if err := shop.SaveOrder(ctx, list.ID, bob, []string{kMela}); !errors.Is(err, ErrShoppingListNotFound) {
+		t.Errorf("Bob saves Alice's list: %v", err)
 	}
 }
