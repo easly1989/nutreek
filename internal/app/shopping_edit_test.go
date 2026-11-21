@@ -97,3 +97,46 @@ func TestShoppingEditHandlers(t *testing.T) {
 		t.Errorf("zero quantity: want HX-Redirect, code %d", w.Code)
 	}
 }
+
+// POST /shopping-list/grouping saves the choice and goes back to the list (303,
+// week and weeks kept); an unknown value is refused (400); the page then shows
+// the groups, with «Altro» for the manual items.
+func TestShoppingGroupingHandler(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	monday, _ := time.Parse("2006-01-02", "2026-10-12")
+	list, err := a.ShoppingLists.GetOrCreateList(ctx, alice.ID, monday, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Candele", 2, "pz"); err != nil {
+		t.Fatal(err)
+	}
+
+	post := func(group string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodPost, "/shopping-list/grouping?week=2026-10-12&weeks=1", strings.NewReader(url.Values{"group": {group}}.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		w := httptest.NewRecorder()
+		a.Sessions.LoadAndSave(http.HandlerFunc(a.handleShoppingGrouping)).ServeHTTP(w, requestWithUser(r, alice))
+		return w
+	}
+	if w := post("custom"); w.Code != http.StatusBadRequest {
+		t.Errorf("unknown value: code %d, want 400", w.Code)
+	}
+	w := post("category")
+	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/shopping-list?week=2026-10-12&weeks=1" {
+		t.Errorf("save: code %d, Location %q", w.Code, w.Header().Get("Location"))
+	}
+	if g, _ := a.Users.ShoppingGrouping(ctx, alice.ID); g != "category" {
+		t.Fatalf("saved = %q", g)
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "/shopping-list?week=2026-10-12&weeks=1", nil)
+	w = httptest.NewRecorder()
+	a.Sessions.LoadAndSave(http.HandlerFunc(a.handleShoppingList)).ServeHTTP(w, requestWithUser(r, alice))
+	body := w.Body.String()
+	if w.Code != http.StatusOK || !strings.Contains(body, "Candele") || !strings.Contains(body, `id="shop-group-category"`) {
+		t.Fatalf("grouped page: code %d", w.Code)
+	}
+}

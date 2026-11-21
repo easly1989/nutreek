@@ -53,8 +53,8 @@
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <span class="text-[12.5px] font-semibold text-muted">{{t "shopping.group_by"}}</span>
         <span class="segmented" role="radiogroup" aria-label="{{t "shopping.group_by"}}">
-          <label><input type="radio" name="group" value="none"{{if ne .View.Grouping "category"}} checked{{end}}>{{t "shopping.group_none"}}</label>
-          <label><input type="radio" name="group" value="category"{{if eq .View.Grouping "category"}} checked{{end}}>{{t "shopping.group_category"}}</label>
+          <label><input type="radio" id="shop-group-none" name="group" value="none"{{if ne .View.Grouping "category"}} checked{{end}}>{{t "shopping.group_none"}}</label>
+          <label><input type="radio" id="shop-group-category" name="group" value="category"{{if eq .View.Grouping "category"}} checked{{end}}>{{t "shopping.group_category"}}</label>
         </span>
         <noscript><button class="btn-secondary">{{t "shopping.save"}}</button></noscript>
       </form>

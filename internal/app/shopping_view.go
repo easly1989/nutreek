@@ -94,6 +94,7 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 	}
 	for _, r := range rows {
 		if r.checked() {
+			r.ShowCat = true // the cart has no group headings: its rows name their category
 			v.Cart = append(v.Cart, r)
 			v.Done++
 			continue
