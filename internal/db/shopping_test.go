@@ -319,3 +319,28 @@ func mustUserItem(t *testing.T, shop *ShoppingLists, ctx context.Context, listID
 	}
 	return full.UserItems[i]
 }
+
+// The grouping is saved per user, starts as «none» and refuses unknown values.
+func TestShoppingGroupingSetting(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	ctx := context.Background()
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
+
+	if g, err := users.ShoppingGrouping(ctx, alice); err != nil || g != ShoppingGroupNone {
+		t.Fatalf("default = %q, %v, want none", g, err)
+	}
+	if err := users.SetShoppingGrouping(ctx, alice, ShoppingGroupCategory); err != nil {
+		t.Fatal(err)
+	}
+	if g, _ := users.ShoppingGrouping(ctx, alice); g != ShoppingGroupCategory {
+		t.Errorf("after set = %q", g)
+	}
+	if g, _ := users.ShoppingGrouping(ctx, bob); g != ShoppingGroupNone {
+		t.Errorf("Bob = %q, want none: the setting is per user", g)
+	}
+	if err := users.SetShoppingGrouping(ctx, alice, "custom"); !errors.Is(err, ErrShoppingGroupInvalid) {
+		t.Errorf("unknown value: %v", err)
+	}
+}

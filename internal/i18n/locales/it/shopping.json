@@ -26,7 +26,7 @@
   "shopping.add_label": "Voce da aggiungere",
   "shopping.quantity": "Quantità",
   "shopping.add": "Aggiungi",
-  "shopping.category_note": "Le voci sono in ordine alfabetico; sotto ognuna trovi la categoria, «Altro» se non ne ha.",
+  "shopping.category_note": "Le voci sono in ordine alfabetico; con il raggruppamento attivo stanno sotto la loro categoria, «Altro» se non ne hanno.",
   "shopping.print_weeks": "{{.Weeks}} settimane, ",
   "shopping.print_items": {
     "one": "{{.Count}} voci",
@@ -52,5 +52,9 @@
   "shopping.edit_item": "Modifica {{.Name}}",
   "shopping.edit_item_title": "Modifica la voce",
   "shopping.item_name": "Nome",
+  "shopping.group_by": "Raggruppa per",
+  "shopping.group_none": "Nessuno",
+  "shopping.group_category": "Categoria",
+  "shopping.group_invalid": "Raggruppamento sconosciuto.",
   "shopping.flash.regenerated": "Lista rigenerata."
 }

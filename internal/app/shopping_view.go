@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
@@ -13,12 +14,23 @@ import (
 // items from the meals and the ones added by hand, sorted by name; the ones
 // already in the cart apart; and the progress. The printed sheet has every row.
 type shoppingView struct {
-	Rows    []shoppingRow // still to buy
-	Cart    []shoppingRow // checked
-	Print   []shoppingRow // every row, checked or not
-	Done    int
-	Total   int
-	Percent int
+	Rows []shoppingRow // still to buy
+	// Groups is Rows grouped by category, in category order and «Altro» last;
+	// it is only filled when the user chose to group by category.
+	Grouping string
+	Groups   []shoppingGroup
+	Cart     []shoppingRow // checked
+	Print    []shoppingRow // every row, checked or not
+	Done     int
+	Total    int
+	Percent  int
+}
+
+// shoppingGroup is a category of the list.
+type shoppingGroup struct {
+	Name  string // the category's name; for Other the template shows a translated label
+	Other bool
+	Rows  []shoppingRow
 }
 
 // shoppingRow is a line of the list: either an item computed from the meals
@@ -35,8 +47,10 @@ type shoppingRow struct {
 	EditUnit    string
 	PieceWeight float64
 	Legacy      bool // manual item with a free-text quantity, from before units
+	ShowCat     bool // the row names its category (only when the list is not grouped)
 	name        string
 	id          int64
+	catOrder    int
 }
 
 type shoppingItemView struct {
@@ -45,14 +59,14 @@ type shoppingItemView struct {
 
 // buildShoppingView merges the computed and the manual items in one list
 // sorted by name, and sets the checked ones apart.
-func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemView, cats map[int64]domain.IngredientCategory) shoppingView {
+func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemView, cats map[int64]domain.IngredientCategory, grouping string) shoppingView {
 	var rows []shoppingRow
 	for _, it := range items {
 		name := ""
 		if it.Ingredient != nil {
 			name = it.Ingredient.Name
 		}
-		row := shoppingRow{Auto: &shoppingItemView{Item: it}, Category: cats[it.IngredientID].Name, Pieces: shoppingPieces(it), name: name, id: it.ID}
+		row := shoppingRow{Auto: &shoppingItemView{Item: it}, Category: cats[it.IngredientID].Name, catOrder: cats[it.IngredientID].SortOrder, Pieces: shoppingPieces(it), name: name, id: it.ID}
 		row.EditQty, row.EditUnit, row.PieceWeight = autoEditor(it)
 		rows = append(rows, row)
 	}
@@ -74,9 +88,13 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 		return rows[i].id < rows[j].id
 	})
 
-	v := shoppingView{Total: len(rows), Print: rows}
+	v := shoppingView{Total: len(rows), Print: rows, Grouping: grouping}
+	for i := range rows {
+		rows[i].ShowCat = grouping != db.ShoppingGroupCategory
+	}
 	for _, r := range rows {
 		if r.checked() {
+			r.ShowCat = true // the cart has no group headings: its rows name their category
 			v.Cart = append(v.Cart, r)
 			v.Done++
 			continue
@@ -86,7 +104,43 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 	if v.Total > 0 {
 		v.Percent = v.Done * 100 / v.Total
 	}
+	if grouping == db.ShoppingGroupCategory {
+		v.Groups = groupRows(v.Rows)
+	}
 	return v
+}
+
+// groupRows groups rows by category: categories in their order, «Altro» (no
+// category) last; the rows keep their order, by name.
+func groupRows(rows []shoppingRow) []shoppingGroup {
+	byName := map[string]*shoppingGroup{}
+	var order []*shoppingGroup
+	for _, r := range rows {
+		g := byName[r.Category]
+		if g == nil {
+			g = &shoppingGroup{Name: r.Category, Other: r.Category == ""}
+			byName[r.Category] = g
+			order = append(order, g)
+		}
+		g.Rows = append(g.Rows, r)
+	}
+	pos := func(g *shoppingGroup) int {
+		if g.Other {
+			return math.MaxInt
+		}
+		return g.Rows[0].catOrder
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		if pi, pj := pos(order[i]), pos(order[j]); pi != pj {
+			return pi < pj
+		}
+		return order[i].Name < order[j].Name
+	})
+	out := make([]shoppingGroup, 0, len(order))
+	for _, g := range order {
+		out = append(out, *g)
+	}
+	return out
 }
 
 func (r shoppingRow) checked() bool {

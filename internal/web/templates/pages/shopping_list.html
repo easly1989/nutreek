@@ -48,12 +48,32 @@
         </div>
       </div>
 
+      {{/* How the list is grouped, for every list of the user. */}}
+      <form method="post" action="/shopping-list/grouping?week={{$ws}}&weeks={{$wc}}" hx-post="/shopping-list/grouping?week={{$ws}}&weeks={{$wc}}" hx-trigger="change" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="flex items-center gap-2">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <span class="text-[12.5px] font-semibold text-muted">{{t "shopping.group_by"}}</span>
+        <span class="segmented" role="radiogroup" aria-label="{{t "shopping.group_by"}}">
+          <label><input type="radio" id="shop-group-none" name="group" value="none"{{if ne .View.Grouping "category"}} checked{{end}}>{{t "shopping.group_none"}}</label>
+          <label><input type="radio" id="shop-group-category" name="group" value="category"{{if eq .View.Grouping "category"}} checked{{end}}>{{t "shopping.group_category"}}</label>
+        </span>
+        <noscript><button class="btn-secondary">{{t "shopping.save"}}</button></noscript>
+      </form>
+
       <div class="card overflow-hidden sm:overflow-visible">
         {{if .View.Rows}}
+        {{if .View.Groups}}
+        {{range .View.Groups}}
+        <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{if .Other}}{{t "shopping.other"}}{{else}}{{.Name}}{{end}}</span><span class="tabular-nums">{{len .Rows}}</span></h2>
+        <ul>
+          {{range .Rows}}{{template "shop_row" (row . $)}}{{end}}
+        </ul>
+        {{end}}
+        {{else}}
         <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums">{{len .View.Rows}}</span></h2>
         <ul>
           {{range .View.Rows}}{{template "shop_row" (row . $)}}{{end}}
         </ul>
+        {{end}}
         {{else}}
         <p class="px-4 py-6 text-center text-muted">{{t "shopping.all_in_cart"}}</p>
         {{end}}
@@ -128,7 +148,7 @@
 
 {{define "shop_row"}}{{if .Row.Auto}}{{template "shop_item" .}}{{else}}{{template "shop_user_item" .}}{{end}}{{end}}
 
-{{define "shop_category"}}<small class="block text-[12.5px] text-muted">{{if .Category}}{{.Category}}{{else}}{{t "shopping.other"}}{{end}}</small>{{end}}
+{{define "shop_category"}}{{if .ShowCat}}<small class="block text-[12.5px] text-muted">{{if .Category}}{{.Category}}{{else}}{{t "shopping.other"}}{{end}}</small>{{end}}{{end}}
 
 {{/* An item computed from the meals. Tapping it puts it in the cart or takes
      it out: the server goes back to the list and HTMX takes #shop-list from

@@ -191,6 +191,39 @@ func (u *Users) SetLocale(ctx context.Context, id int64, locale string) error {
 	return err
 }
 
+// ShoppingGrouping returns how the user wants the shopping list grouped:
+// ShoppingGroupNone or ShoppingGroupCategory.
+func (u *Users) ShoppingGrouping(ctx context.Context, id int64) (string, error) {
+	var g string
+	err := u.db.QueryRowContext(ctx, `SELECT shopping_group FROM users WHERE id = ?`, id).Scan(&g)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ShoppingGroupNone, ErrUserNotFound
+	}
+	if err != nil {
+		return ShoppingGroupNone, fmt.Errorf("read shopping grouping: %w", err)
+	}
+	return g, nil
+}
+
+// SetShoppingGrouping saves the shopping list grouping; anything but a known
+// value is refused.
+func (u *Users) SetShoppingGrouping(ctx context.Context, id int64, group string) error {
+	if group != ShoppingGroupNone && group != ShoppingGroupCategory {
+		return ErrShoppingGroupInvalid
+	}
+	_, err := u.db.ExecContext(ctx, `UPDATE users SET shopping_group = ? WHERE id = ?`, group, id)
+	return err
+}
+
+// The shopping list groupings.
+const (
+	ShoppingGroupNone     = "none"
+	ShoppingGroupCategory = "category"
+)
+
+// ErrShoppingGroupInvalid is returned for a grouping the list does not know.
+var ErrShoppingGroupInvalid = errors.New("invalid shopping grouping")
+
 // Delete deletes the user and, through FK cascades, all their data.
 func (u *Users) Delete(ctx context.Context, id int64) error {
 	_, err := u.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)

@@ -115,10 +115,15 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	grouping, err := a.Users.ShoppingGrouping(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	data := shoppingListData{
 		authPageData: a.baseData(r),
 		List:         full,
-		View:         buildShoppingView(full.Items, userViews, cats),
+		View:         buildShoppingView(full.Items, userViews, cats, grouping),
 		WeekStart:    weekStart.Format("2006-01-02"),
 		WeekCount:    weeks,
 		PrevWeek:     weekStart.AddDate(0, 0, -7).Format("2006-01-02"),
@@ -127,6 +132,22 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 	if err := a.Render.Render(w, r, http.StatusOK, "shopping_list", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+// handleShoppingGrouping POST /shopping-list/grouping
+// Body: group (none or category). Saves how the user wants every shopping list
+// grouped and goes back to the list.
+func (a *App) handleShoppingGrouping(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	if err := a.Users.SetShoppingGrouping(r.Context(), user.ID, r.PostFormValue("group")); err != nil {
+		if errors.Is(err, db.ErrShoppingGroupInvalid) {
+			http.Error(w, a.t(r, "shopping.group_invalid"), http.StatusBadRequest)
+			return
+		}
+		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 }
 
 // handleAddShoppingUserItem POST /shopping-list/{id}/user-items

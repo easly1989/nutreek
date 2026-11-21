@@ -26,7 +26,7 @@
   "shopping.add_label": "Item to add",
   "shopping.quantity": "Quantity",
   "shopping.add": "Add",
-  "shopping.category_note": "Items are sorted by name; the category shows under each one, and “Other” stands for no category.",
+  "shopping.category_note": "Items are sorted by name; with grouping on, they sit under their category, and “Other” stands for no category.",
   "shopping.print_weeks": "{{.Weeks}} weeks, ",
   "shopping.print_items": {
     "one": "{{.Count}} item",
@@ -52,5 +52,9 @@
   "shopping.edit_item": "Edit {{.Name}}",
   "shopping.edit_item_title": "Edit the item",
   "shopping.item_name": "Name",
+  "shopping.group_by": "Group by",
+  "shopping.group_none": "None",
+  "shopping.group_category": "Category",
+  "shopping.group_invalid": "Unknown grouping.",
   "shopping.flash.regenerated": "List regenerated."
 }
