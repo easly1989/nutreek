@@ -150,7 +150,7 @@
 
 {{define "shop_row"}}{{if .Row.Auto}}{{template "shop_item" .}}{{else}}{{template "shop_user_item" .}}{{end}}{{end}}
 
-{{define "shop_category"}}{{if .ShowCat}}<small class="block text-[12.5px] text-muted">{{if .Category}}{{.Category}}{{else}}{{t "shopping.other"}}{{end}}</small>{{end}}{{end}}
+{{define "shop_category"}}{{if .ShowCat}}<span class="marq text-[12.5px] text-muted"><span class="mq">{{if .Category}}{{.Category}}{{else}}{{t "shopping.other"}}{{end}}</span></span>{{end}}{{end}}
 
 {{/* In the user's own order a row has a grip to drag by and, once «Reorder» is
      on, the arrows (reorder.js) for the keyboard and for those who cannot drag. */}}
@@ -161,7 +161,11 @@
      it out: the server goes back to the list and HTMX takes #shop-list from
      it, because the progress changes. The id on the button keeps the focus. */}}
 {{define "shop_item"}}{{$r := .Row}}{{$it := $r.Auto.Item}}{{$p := .Page}}
-<li class="flex items-center pr-2" data-id="{{$r.Key}}">
+<li class="swipe-row{{if $r.Ignored}} is-ignored{{end}}" data-id="{{$r.Key}}" data-csrf="{{$p.CSRFToken}}" data-swipe-ignore="/shopping-list/items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" data-swipe-delete="/shopping-list/items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}">
+  {{/* What a swipe shows behind the row (swipe.js): right ignores, left deletes. */}}
+  <span class="swipe-bg swipe-bg-l" aria-hidden="true">{{template "icon_sm" "i-ban"}}{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}</span>
+  <span class="swipe-bg swipe-bg-r" aria-hidden="true">{{t "shopping.delete"}}{{template "icon_sm" "i-trash"}}</span>
+  <div class="swipe-fg flex items-center pr-2 bg-surface">
   {{template "shop_grip" $r}}
   <form method="post" action="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-post="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
@@ -169,7 +173,7 @@
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
     <button id="shop-item-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
-      <span class="shop-name">{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}{{template "shop_category" $r}}</span>
+      <span class="shop-name"><span class="marq"><span class="mq">{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}</span></span>{{template "shop_category" $r}}</span>
       {{template "shop_cols" $r}}
     </button>
   </form>
@@ -193,11 +197,24 @@
       <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit">{{t "shopping.save"}}</button></div>
     </form>
   </details>
+  <form method="post" action="/shopping-list/items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="shrink-0 [@media(hover:none)]:hidden">
+    <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+    <button class="icon-action" aria-label="{{if $r.Ignored}}{{t "shopping.restore_named" "Name" $it.Ingredient.Name}}{{else}}{{t "shopping.ignore_named" "Name" $it.Ingredient.Name}}{{end}}" title="{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}">{{template "icon" "i-ban"}}</button>
+  </form>
+  <form method="post" action="/shopping-list/items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="shrink-0 [@media(hover:none)]:hidden">
+    <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+    <button class="icon-action hover:text-danger" aria-label="{{t "shopping.remove" "Name" $it.Ingredient.Name}}" title="{{t "shopping.remove_title"}}">{{template "icon" "i-trash"}}</button>
+  </form>
+  </div>
 </li>{{end}}
 
 {{/* An item added by hand: the same row, marked with a pencil, plus the button to remove it. */}}
 {{define "shop_user_item"}}{{$r := .Row}}{{$it := $r.User.Item}}{{$p := .Page}}
-<li class="flex items-center pr-2" data-id="{{$r.Key}}">
+<li class="swipe-row{{if $r.Ignored}} is-ignored{{end}}" data-id="{{$r.Key}}" data-csrf="{{$p.CSRFToken}}" data-swipe-ignore="/shopping-list/user-items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" data-swipe-delete="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}">
+  {{/* What a swipe shows behind the row (swipe.js): right ignores, left deletes. */}}
+  <span class="swipe-bg swipe-bg-l" aria-hidden="true">{{template "icon_sm" "i-ban"}}{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}</span>
+  <span class="swipe-bg swipe-bg-r" aria-hidden="true">{{t "shopping.delete"}}{{template "icon_sm" "i-trash"}}</span>
+  <div class="swipe-fg flex items-center pr-2 bg-surface">
   {{template "shop_grip" $r}}
   <form method="post" action="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-post="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
@@ -205,7 +222,7 @@
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
     <button id="shop-user-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
-      <span class="shop-name">{{$it.Description}}<span class="inline-block align-[-2px] ml-1 text-muted" title="{{t "shopping.by_hand"}}">{{template "icon_sm" "i-user"}}<span class="sr-only">{{t "shopping.by_hand"}}</span></span>{{if $r.User.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}{{template "shop_category" $r}}</span>
+      <span class="shop-name"><span class="marq"><span class="mq">{{$it.Description}}<span class="inline-block align-[-2px] ml-1 text-muted" title="{{t "shopping.by_hand"}}">{{template "icon_sm" "i-user"}}<span class="sr-only">{{t "shopping.by_hand"}}</span></span>{{if $r.User.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}</span></span>{{template "shop_category" $r}}</span>
       {{template "shop_cols" $r}}
     </button>
   </form>
@@ -232,10 +249,16 @@
       <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit">{{t "shopping.save"}}</button></div>
     </form>
   </details>
+
+  <form method="post" action="/shopping-list/user-items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/user-items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="shrink-0 [@media(hover:none)]:hidden">
+    <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+    <button class="icon-action" aria-label="{{if $r.Ignored}}{{t "shopping.restore_named" "Name" $it.Description}}{{else}}{{t "shopping.ignore_named" "Name" $it.Description}}{{end}}" title="{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}">{{template "icon" "i-ban"}}</button>
+  </form>
   <form method="post" action="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-post="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML">
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
     <button class="icon-action hover:text-danger" aria-label="{{t "shopping.remove" "Name" $it.Description}}" title="{{t "shopping.remove_title"}}">{{template "icon" "i-trash"}}</button>
   </form>
+  </div>
 </li>{{end}}

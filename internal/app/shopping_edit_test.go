@@ -186,3 +186,49 @@ func TestShoppingOrderHandler(t *testing.T) {
 		t.Errorf("too many keys: code %d, want 400", w.Code)
 	}
 }
+
+// The three swipe actions redirect back to the list (303), act on the owner's
+// items only (404 for another user) and change the item.
+func TestShoppingSwipeHandlers(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	bob := mustCreateTestUser(t, a, "bob@x.com", "password-di-prova")
+	monday, _ := time.Parse("2006-01-02", "2026-10-12")
+	list, err := a.ShoppingLists.GetOrCreateList(ctx, alice.ID, monday, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Candele", 2, "pz"); err != nil {
+		t.Fatal(err)
+	}
+	full, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+	userItem := full.UserItems[0].ID
+
+	post := func(h http.HandlerFunc, user int, id int64) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodPost, "/x?week=2026-10-12&weeks=1", nil)
+		u := alice
+		if user == 2 {
+			u = bob
+		}
+		w := httptest.NewRecorder()
+		a.Sessions.LoadAndSave(h).ServeHTTP(w, withIDParam(requestWithUser(r, u), id))
+		return w
+	}
+	if w := post(a.handleShoppingUserItemIgnore, 2, userItem); w.Code != http.StatusNotFound {
+		t.Errorf("Bob ignores Alice's item: code %d, want 404", w.Code)
+	}
+	w := post(a.handleShoppingUserItemIgnore, 1, userItem)
+	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/shopping-list?week=2026-10-12&weeks=1" {
+		t.Errorf("ignore: code %d, Location %q", w.Code, w.Header().Get("Location"))
+	}
+	if got, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID); !got.UserItems[0].Ignored {
+		t.Error("the manual item must be ignored")
+	}
+	if w := post(a.handleShoppingItemDelete, 1, 999999); w.Code != http.StatusNotFound {
+		t.Errorf("deleting a missing item: code %d, want 404", w.Code)
+	}
+	if w := post(a.handleShoppingIgnore, 1, 999999); w.Code != http.StatusNotFound {
+		t.Errorf("ignoring a missing item: code %d, want 404", w.Code)
+	}
+}

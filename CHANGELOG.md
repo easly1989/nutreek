@@ -11,6 +11,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Added
+- On a phone, swipe a shopping row to the right to ignore it (it stays, greyed out, and leaves the progress; swipe again to restore it) or to the left to delete it from the list. A computer shows buttons on the row for the same actions (migration 0040) (#230)
+- Rows of the shopping list, of a day and of the ingredient picker all have one height: a name or category that does not fit scrolls slowly back and forth, and only then; with «reduce motion» it is cut with an ellipsis and its full text is the tooltip (#259)
 - The shopping list has a third grouping, «My order»: drag the rows by their grip, or press «Reorder» for up and down arrows. The order is kept per list, also when the list is regenerated (#231)
 - The shopping list can be grouped by category, with a switch above it. It stays one list sorted by name by default; the choice is saved per user and applies to every list. Items added by hand go under «Altro» (#232)
 - Protein, carbs and fat of every ingredient and recipe in a day are shown on its row (under the name on a phone), and the ingredient picker shows them per 100 g on every result, with a wider dialog on desktop (#226)

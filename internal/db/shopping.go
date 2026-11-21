@@ -150,9 +150,10 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 	existing := make(map[int64]struct {
 		Quantity float64
 		Checked  bool
+		Ignored  bool
 	})
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT ingredient_id, total_quantity, checked
+		`SELECT ingredient_id, total_quantity, checked, ignored
 		 FROM shopping_list_items WHERE shopping_list_id = ?`, listID,
 	)
 	if err != nil {
@@ -161,15 +162,16 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 	for rows.Next() {
 		var ingID int64
 		var qty float64
-		var checked int
-		if err := rows.Scan(&ingID, &qty, &checked); err != nil {
+		var checked, ignored int
+		if err := rows.Scan(&ingID, &qty, &checked, &ignored); err != nil {
 			rows.Close()
 			return fmt.Errorf("scan existing item: %w", err)
 		}
 		existing[ingID] = struct {
 			Quantity float64
 			Checked  bool
-		}{qty, checked == 1}
+			Ignored  bool
+		}{qty, checked == 1, ignored == 1}
 	}
 	rows.Close()
 
@@ -190,7 +192,7 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 	}
 
 	stmt, err := tx.PrepareContext(ctx,
-		`INSERT INTO shopping_list_items (shopping_list_id, ingredient_id, total_quantity, checked, sort_order) VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO shopping_list_items (shopping_list_id, ingredient_id, total_quantity, checked, ignored, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
 	)
 	if err != nil {
 		return fmt.Errorf("prepare insert: %w", err)
@@ -206,7 +208,12 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 				checked = 1
 			}
 		}
-		if _, err := stmt.ExecContext(ctx, listID, ingID, qty, checked, idx); err != nil {
+		// An ignored item stays ignored, whatever its quantity becomes.
+		ignored := 0
+		if prev, ok := existing[ingID]; ok && prev.Ignored {
+			ignored = 1
+		}
+		if _, err := stmt.ExecContext(ctx, listID, ingID, qty, checked, ignored, idx); err != nil {
 			return fmt.Errorf("insert item: %w", err)
 		}
 		idx++
@@ -239,7 +246,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 
 	// Auto items + ingredients in a JOIN, sorted alphabetically by name.
 	itemRows, err := r.db.QueryContext(ctx, `
-		SELECT sli.id, sli.shopping_list_id, sli.ingredient_id, sli.total_quantity, sli.checked, sli.sort_order,
+		SELECT sli.id, sli.shopping_list_id, sli.ingredient_id, sli.total_quantity, sli.checked, sli.ignored, sli.sort_order,
 		       i.id, i.source, i.off_barcode, i.name, i.brand, i.unit,
 		       i.kcal_per_100, i.protein_per_100, i.carbs_per_100, i.fat_per_100,
 		       i.created_by, i.created_at, i.last_verified_at, i.superseded_by, i.unit_weight_g
@@ -255,9 +262,9 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 		var it domain.ShoppingListItem
 		var ing domain.Ingredient
 		var src, unit string
-		var checked int
+		var checked, ignored int
 		err := itemRows.Scan(
-			&it.ID, &it.ShoppingListID, &it.IngredientID, &it.TotalQuantity, &checked, &it.SortOrder,
+			&it.ID, &it.ShoppingListID, &it.IngredientID, &it.TotalQuantity, &checked, &ignored, &it.SortOrder,
 			&ing.ID, &src, &ing.OFFBarcode, &ing.Name, &ing.Brand, &unit,
 			&ing.KcalPer100, &ing.ProteinPer100, &ing.CarbsPer100, &ing.FatPer100,
 			&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy, &ing.UnitWeightG,
@@ -267,6 +274,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 			return nil, fmt.Errorf("scan list item: %w", err)
 		}
 		it.Checked = checked == 1
+		it.Ignored = ignored == 1
 		ing.Source = domain.IngredientSource(src)
 		ing.Unit = domain.IngredientUnit(unit)
 		it.Ingredient = &ing
@@ -276,7 +284,7 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 
 	// User items.
 	userRows, err := r.db.QueryContext(ctx, `
-		SELECT id, shopping_list_id, description, COALESCE(quantity_text, ''), COALESCE(quantity, 0), COALESCE(unit, ''), checked, sort_order, created_at
+		SELECT id, shopping_list_id, description, COALESCE(quantity_text, ''), COALESCE(quantity, 0), COALESCE(unit, ''), checked, ignored, sort_order, created_at
 		FROM shopping_user_items
 		WHERE shopping_list_id = ?
 		ORDER BY sort_order, id
@@ -286,12 +294,13 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 	}
 	for userRows.Next() {
 		var it domain.ShoppingUserItem
-		var checked int
-		if err := userRows.Scan(&it.ID, &it.ShoppingListID, &it.Description, &it.QuantityText, &it.Quantity, &it.Unit, &checked, &it.SortOrder, &it.CreatedAt); err != nil {
+		var checked, ignored int
+		if err := userRows.Scan(&it.ID, &it.ShoppingListID, &it.Description, &it.QuantityText, &it.Quantity, &it.Unit, &checked, &ignored, &it.SortOrder, &it.CreatedAt); err != nil {
 			userRows.Close()
 			return nil, fmt.Errorf("scan user item: %w", err)
 		}
 		it.Checked = checked == 1
+		it.Ignored = ignored == 1
 		out.UserItems = append(out.UserItems, it)
 	}
 	userRows.Close()
@@ -374,6 +383,57 @@ func (r *ShoppingLists) AddUserItem(ctx context.Context, listID, userID int64, d
 		return 0, fmt.Errorf("insert user item: %w", err)
 	}
 	return res.LastInsertId()
+}
+
+// ToggleItemIgnored flips «ignored» on an auto item.
+func (r *ShoppingLists) ToggleItemIgnored(ctx context.Context, itemID, userID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE shopping_list_items
+		SET ignored = CASE ignored WHEN 1 THEN 0 ELSE 1 END
+		WHERE id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+	`, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("toggle ignored item: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrShoppingItemNotFound
+	}
+	return nil
+}
+
+// ToggleUserItemIgnored flips «ignored» on a manual item.
+func (r *ShoppingLists) ToggleUserItemIgnored(ctx context.Context, itemID, userID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE shopping_user_items
+		SET ignored = CASE ignored WHEN 1 THEN 0 ELSE 1 END
+		WHERE id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+	`, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("toggle ignored user item: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrShoppingItemNotFound
+	}
+	return nil
+}
+
+// RemoveItem deletes an auto item from this list; regenerating the list brings
+// it back.
+func (r *ShoppingLists) RemoveItem(ctx context.Context, itemID, userID int64) error {
+	res, err := r.db.ExecContext(ctx, `
+		DELETE FROM shopping_list_items
+		WHERE id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+	`, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("delete item: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrShoppingItemNotFound
+	}
+	return nil
 }
 
 // ToggleUserItem flips checked on a manual item.

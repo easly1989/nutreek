@@ -223,13 +223,13 @@
     {{if not .Cheat}}<span data-item-grip class="hidden sm:grid w-4 h-5 -ml-4 place-items-center text-muted cursor-grab touch-none opacity-0 group-hover:opacity-100" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
     <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
       {{if $it.Recipe}}
-        <a href="/recipes/{{$it.Recipe.ID}}" class="font-medium hover:underline" title="{{t "week.open_recipe"}}">{{$it.Recipe.Name}}</a>
-        {{if $it.IsCustomized}}<span class="text-[12px] text-accent" title="{{t "week.customized_title"}}">{{t "week.customized"}}</span>{{end}}
+        <span class="marq"><span class="mq"><a href="/recipes/{{$it.Recipe.ID}}" class="font-medium hover:underline" title="{{t "week.open_recipe"}}">{{$it.Recipe.Name}}</a>
+        {{if $it.IsCustomized}}<span class="text-[12px] text-accent" title="{{t "week.customized_title"}}">{{t "week.customized"}}</span>{{end}}</span></span>
         {{if $v.ScaledRecipeItems}}
-        <span class="block text-[12.5px] text-muted truncate">{{range $i, $s := $v.ScaledRecipeItems}}{{if $i}}, {{end}}{{$s.Name}} {{num $s.Quantity}} {{$s.Unit}}{{end}}</span>
+        <span class="marq text-[12.5px] text-muted"><span class="mq">{{range $i, $s := $v.ScaledRecipeItems}}{{if $i}}, {{end}}{{$s.Name}} {{num $s.Quantity}} {{$s.Unit}}{{end}}</span></span>
         {{end}}
       {{else if $it.Ingredient}}
-        <span>{{$it.Ingredient.Name}}</span>
+        <span class="marq"><span class="mq">{{$it.Ingredient.Name}}</span></span>
       {{end}}
     </div>
   </div>

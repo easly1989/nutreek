@@ -411,3 +411,79 @@ func TestShoppingSaveOrder(t *testing.T) {
 		t.Errorf("Bob saves Alice's list: %v", err)
 	}
 }
+
+// Ignoring flips for auto and manual items, survives a regenerate, is per
+// owner; an auto item can be deleted and regenerating brings it back.
+func TestShoppingIgnoreAndDelete(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	plans := NewWeeklyPlans(store.DB)
+	ings := NewIngredients(store.DB)
+	shop := NewShoppingLists(store.DB, plans)
+	ctx := context.Background()
+
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
+	monday, _ := time.Parse("2006-01-02", "2026-04-27")
+	plan, _ := plans.GetOrCreateForWeek(ctx, alice, monday)
+	mela, _ := ings.CreateLocal(ctx, "Mela", nil, "g", 52, 0.3, 13.8, 0.2, &alice, nil, nil, nil, nil, nil, nil)
+	meal, _ := plans.AddMeal(ctx, plan.ID, alice, 0, "Pranzo")
+	_, _ = plans.AddItem(ctx, meal, alice, nil, &mela, 100, "g")
+	list, _ := shop.GetOrCreateList(ctx, alice, monday, 1)
+	if err := shop.Generate(ctx, list.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := shop.AddManualItem(ctx, list.ID, alice, "Candele", 2, "pz"); err != nil {
+		t.Fatal(err)
+	}
+	full, _ := shop.LoadFull(ctx, list.ID, alice)
+	autoID, userID := full.Items[0].ID, full.UserItems[0].ID
+
+	if err := shop.ToggleItemIgnored(ctx, autoID, alice); err != nil {
+		t.Fatal(err)
+	}
+	if err := shop.ToggleUserItemIgnored(ctx, userID, alice); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := shop.LoadFull(ctx, list.ID, alice)
+	if !got.Items[0].Ignored || !got.UserItems[0].Ignored {
+		t.Fatalf("after toggle: auto %v, manual %v, want both ignored", got.Items[0].Ignored, got.UserItems[0].Ignored)
+	}
+	if err := shop.ToggleItemIgnored(ctx, autoID, bob); !errors.Is(err, ErrShoppingItemNotFound) {
+		t.Errorf("Bob ignores Alice's item: %v", err)
+	}
+
+	// A regenerate keeps the item ignored.
+	if err := shop.Generate(ctx, list.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	if again, _ := shop.LoadFull(ctx, list.ID, alice); !again.Items[0].Ignored {
+		t.Error("an ignored item must stay ignored after a regenerate")
+	}
+	// Toggling again restores it.
+	again, _ := shop.LoadFull(ctx, list.ID, alice)
+	if err := shop.ToggleItemIgnored(ctx, again.Items[0].ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := shop.LoadFull(ctx, list.ID, alice); got.Items[0].Ignored {
+		t.Error("the second toggle must restore the item")
+	}
+
+	// Delete: owner only; a regenerate brings the item back.
+	cur, _ := shop.LoadFull(ctx, list.ID, alice)
+	if err := shop.RemoveItem(ctx, cur.Items[0].ID, bob); !errors.Is(err, ErrShoppingItemNotFound) {
+		t.Errorf("Bob deletes Alice's item: %v", err)
+	}
+	if err := shop.RemoveItem(ctx, cur.Items[0].ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := shop.LoadFull(ctx, list.ID, alice); len(got.Items) != 0 {
+		t.Errorf("after delete: %d items, want 0", len(got.Items))
+	}
+	if err := shop.Generate(ctx, list.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := shop.LoadFull(ctx, list.ID, alice); len(got.Items) != 1 {
+		t.Errorf("after regenerate: %d items, want it back", len(got.Items))
+	}
+}
