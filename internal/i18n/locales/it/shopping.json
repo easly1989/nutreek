@@ -44,10 +44,13 @@
   "shopping.unit_pieces": "pz",
   "shopping.edit_qty": "Modifica la quantità di {{.Name}}",
   "shopping.edit_qty_title": "Modifica la quantità",
-  "shopping.edit_qty_label": "Quantità in {{.Unit}}",
   "shopping.save": "Salva",
   "shopping.flash.quantity_invalid": "Inserisci una quantità maggiore di zero.",
   "shopping.all_items": "Tutti gli articoli",
   "shopping.by_hand": "Aggiunto a mano",
+  "shopping.piece_hint": "1 pz = {{.Weight}} {{.Unit}}",
+  "shopping.edit_item": "Modifica {{.Name}}",
+  "shopping.edit_item_title": "Modifica la voce",
+  "shopping.item_name": "Nome",
   "shopping.flash.regenerated": "Lista rigenerata."
 }

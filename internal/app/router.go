@@ -241,6 +241,7 @@ func (a *App) Router() http.Handler {
 		r.Post("/shopping-list/items/{id}/quantity", a.handleShoppingItemQuantity)
 		r.Post("/shopping-list/{id}/user-items", a.handleAddShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/toggle", a.handleToggleShoppingUserItem)
+		r.Post("/shopping-list/user-items/{id}/edit", a.handleShoppingUserItemEdit)
 		r.Post("/shopping-list/user-items/{id}/delete", a.handleRemoveShoppingUserItem)
 
 		// Premium upgrade page (target of requireFeature's redirects).

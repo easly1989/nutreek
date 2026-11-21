@@ -319,6 +319,22 @@
   .shop-item[aria-pressed="true"] .shop-qty b,
   .shop-item[aria-pressed="true"] .shop-gr { @apply text-muted line-through; }
 
+  /* Quantity editor (#246, #247): a panel on the row; below sm a sheet from the
+     bottom of the screen, with the page dimmed behind it (a click on the dim
+     closes it, see sheet.js). */
+  details[data-sheet] .sheet-panel {
+    @apply absolute right-0 top-full z-20 mt-1 w-[300px] flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 shadow-lg;
+  }
+  .sheet-qty { @apply w-28 text-right tabular-nums; }
+  @media (max-width: 639px) {
+    details[data-sheet][open]::before { content: ""; @apply fixed inset-0 z-30 bg-black/40; }
+    details[data-sheet] .sheet-panel {
+      @apply fixed inset-x-0 bottom-0 top-auto z-40 mt-0 w-auto rounded-b-none rounded-t-2xl border-x-0 border-b-0 p-4;
+      padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+    .sheet-qty { @apply h-11 text-[18px]; flex: 1 1 0%; width: auto; min-width: 0; }
+  }
+
   /* Statistics (#123): summary cards, legends and SVG charts (static/js/charts.js). */
   .tile { @apply card px-3.5 py-3 flex flex-col gap-0.5 min-w-0; }
   .tile-k { @apply text-[12.5px] font-semibold text-muted; }

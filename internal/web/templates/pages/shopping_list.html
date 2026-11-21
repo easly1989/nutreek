@@ -48,7 +48,7 @@
         </div>
       </div>
 
-      <div class="card overflow-hidden">
+      <div class="card overflow-hidden sm:overflow-visible">
         {{if .View.Rows}}
         <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums">{{len .View.Rows}}</span></h2>
         <ul>
@@ -145,13 +145,24 @@
       {{template "shop_cols" $r}}
     </button>
   </form>
-  <details class="relative shrink-0">
+  {{/* The quantity editor: a panel on the row, a sheet from the bottom on a
+       phone (sheet.js closes it; picker.js converts the number when the unit changes). */}}
+  <details class="relative shrink-0" data-sheet>
     <summary class="icon-action cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="{{t "shopping.edit_qty" "Name" $it.Ingredient.Name}}" title="{{t "shopping.edit_qty_title"}}">{{template "icon" "i-edit"}}</summary>
-    <form method="post" action="/shopping-list/items/{{$it.ID}}/quantity?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" class="absolute right-0 top-full z-20 mt-1 flex items-center gap-2 rounded-xl border border-border bg-surface p-2 shadow-lg">
+    <form method="post" action="/shopping-list/items/{{$it.ID}}/quantity?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+          hx-post="/shopping-list/items/{{$it.ID}}/quantity?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
+          class="sheet-panel"{{if $r.PieceWeight}} data-unit-weight="{{$r.PieceWeight}}"{{end}}>
       <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
-      <input name="quantity" inputmode="decimal" maxlength="10" required value="{{dec $it.TotalQuantity 1}}" class="field w-24" aria-label="{{t "shopping.edit_qty_label" "Unit" $it.Ingredient.Unit}}">
-      <span class="text-muted">{{$it.Ingredient.Unit}}</span>
-      <button class="btn-secondary btn-icon" aria-label="{{t "shopping.save"}}" title="{{t "shopping.save"}}">{{template "icon" "i-check"}}</button>
+      <div class="flex items-center justify-between gap-2"><h3 class="font-bold truncate">{{$it.Ingredient.Name}}</h3><button type="button" class="icon-action" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button></div>
+      <div class="flex items-center gap-2">
+        <input name="quantity" inputmode="decimal" maxlength="10" required value="{{dec $r.EditQty 2}}" class="field sheet-qty" aria-label="{{t "shopping.quantity"}}">
+        <span class="segmented" role="radiogroup" aria-label="{{t "shopping.unit"}}">
+          <label><input type="radio" name="qty_unit" value="{{$it.Ingredient.Unit}}"{{if ne $r.EditUnit "pz"}} checked{{end}}>{{$it.Ingredient.Unit}}</label>
+          {{if $r.PieceWeight}}<label><input type="radio" name="qty_unit" value="pz"{{if eq $r.EditUnit "pz"}} checked{{end}}>{{t "shopping.unit_pieces"}}</label>{{end}}
+        </span>
+      </div>
+      {{if $r.PieceWeight}}<p class="text-[12.5px] text-muted">{{t "shopping.piece_hint" "Weight" (dec $r.PieceWeight 2) "Unit" $it.Ingredient.Unit}}</p>{{end}}
+      <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit">{{t "shopping.save"}}</button></div>
     </form>
   </details>
 </li>{{end}}
@@ -169,6 +180,29 @@
       {{template "shop_cols" $r}}
     </button>
   </form>
+  <details class="relative shrink-0" data-sheet>
+    <summary class="icon-action cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="{{t "shopping.edit_item" "Name" $it.Description}}" title="{{t "shopping.edit_item_title"}}">{{template "icon" "i-edit"}}</summary>
+    <form method="post" action="/shopping-list/user-items/{{$it.ID}}/edit?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+          hx-post="/shopping-list/user-items/{{$it.ID}}/edit?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
+          class="sheet-panel">
+      <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+      <div class="flex items-center justify-between gap-2"><h3 class="font-bold">{{t "shopping.edit_item_title"}}</h3><button type="button" class="icon-action" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button></div>
+      <div><label class="block text-[12.5px] font-semibold text-muted mb-1" for="ui-name-{{$it.ID}}">{{t "shopping.item_name"}}</label><input id="ui-name-{{$it.ID}}" name="description" required maxlength="200" value="{{$it.Description}}" class="field"></div>
+      {{if $r.Legacy}}
+      <div><label class="block text-[12.5px] font-semibold text-muted mb-1" for="ui-qt-{{$it.ID}}">{{t "shopping.quantity"}}</label><input id="ui-qt-{{$it.ID}}" name="quantity_text" maxlength="200" value="{{$it.QuantityText}}" class="field sheet-qty"></div>
+      {{else}}
+      <div class="flex items-center gap-2">
+        <input name="quantity" inputmode="decimal" maxlength="10" {{if $r.EditQty}}value="{{dec $r.EditQty 2}}" {{end}}class="field sheet-qty" placeholder="{{t "shopping.quantity"}}" aria-label="{{t "shopping.quantity"}}">
+        <span class="segmented" role="radiogroup" aria-label="{{t "shopping.unit"}}">
+          <label><input type="radio" name="qty_unit" value="g"{{if eq $r.EditUnit "g"}} checked{{end}}>g</label>
+          <label><input type="radio" name="qty_unit" value="ml"{{if eq $r.EditUnit "ml"}} checked{{end}}>ml</label>
+          <label><input type="radio" name="qty_unit" value="pz"{{if eq $r.EditUnit "pz"}} checked{{end}}>{{t "shopping.unit_pieces"}}</label>
+        </span>
+      </div>
+      {{end}}
+      <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit">{{t "shopping.save"}}</button></div>
+    </form>
+  </details>
   <form method="post" action="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-post="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML">
