@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
@@ -32,7 +33,7 @@ func TestBuildShoppingView(t *testing.T) {
 		{Item: domain.ShoppingUserItem{ID: 2, Description: "Sale grosso", QuantityText: "1 kg", Checked: true}},
 	}
 
-	v := buildShoppingView(items, user, cats)
+	v := buildShoppingView(items, user, cats, db.ShoppingGroupNone)
 
 	var names []string
 	for _, r := range v.Rows {
@@ -59,7 +60,7 @@ func TestBuildShoppingView(t *testing.T) {
 	if v.Done != 2 || v.Total != 5 || v.Percent != 40 {
 		t.Errorf("progress = %d of %d (%d%%), want 2 of 5 (40%%)", v.Done, v.Total, v.Percent)
 	}
-	if empty := buildShoppingView(nil, nil, nil); empty.Percent != 0 || empty.Total != 0 {
+	if empty := buildShoppingView(nil, nil, nil, db.ShoppingGroupNone); empty.Percent != 0 || empty.Total != 0 {
 		t.Errorf("empty list = %+v", empty)
 	}
 }
@@ -138,5 +139,45 @@ func TestAutoEditor(t *testing.T) {
 	ml.Ingredient.Unit = domain.UnitMilliliter
 	if _, unit, _ := autoEditor(ml); unit != "pz" {
 		t.Errorf("500 ml of a 250 ml piece: unit %q, want pz", unit)
+	}
+}
+
+// Grouping by category puts the rows under their category, in category order
+// and «Altro» last, manual items included; without it there are no groups and
+// the rows name their category.
+func TestShoppingViewGrouping(t *testing.T) {
+	items := []domain.ShoppingListItem{
+		shopItem(1, 10, "Zucchine", 400, false, 0),
+		shopItem(2, 11, "Pasta", 500, false, 0),
+		shopItem(3, 12, "Mela", 450, false, 0),
+	}
+	cats := map[int64]domain.IngredientCategory{
+		10: {ID: 1, Name: "Frutta e verdura", SortOrder: 1},
+		12: {ID: 1, Name: "Frutta e verdura", SortOrder: 1},
+		11: {ID: 3, Name: "Dispensa", SortOrder: 3},
+	}
+	user := []shoppingUserItemView{{Item: domain.ShoppingUserItem{ID: 1, Description: "Candele"}}}
+
+	v := buildShoppingView(items, user, cats, db.ShoppingGroupCategory)
+	var names []string
+	for _, g := range v.Groups {
+		names = append(names, g.Name)
+	}
+	if want := "Frutta e verdura,Dispensa,"; strings.Join(names, ",") != want {
+		t.Errorf("groups = %q, want %q", strings.Join(names, ","), want)
+	}
+	if !v.Groups[2].Other || len(v.Groups[2].Rows) != 1 || v.Groups[2].Rows[0].name != "Candele" {
+		t.Errorf("Altro = %+v, want the manual candles", v.Groups[2])
+	}
+	if got := v.Groups[0].Rows; len(got) != 2 || got[0].name != "Mela" || got[1].name != "Zucchine" {
+		t.Errorf("Frutta e verdura rows = %+v, want Mela then Zucchine", got)
+	}
+	if v.Rows[0].ShowCat {
+		t.Error("a grouped row must not repeat its category")
+	}
+
+	flat := buildShoppingView(items, user, cats, db.ShoppingGroupNone)
+	if len(flat.Groups) != 0 || !flat.Rows[0].ShowCat {
+		t.Errorf("not grouped: groups %d, ShowCat %v", len(flat.Groups), flat.Rows[0].ShowCat)
 	}
 }

@@ -11,6 +11,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Added
+- The shopping list can be grouped by category, with a switch above it. It stays one list sorted by name by default; the choice is saved per user and applies to every list. Items added by hand go under «Altro» (#232)
 - Protein, carbs and fat of every ingredient and recipe in a day are shown on its row (under the name on a phone), and the ingredient picker shows them per 100 g on every result, with a wider dialog on desktop (#226)
 - Resting the mouse on a product photo in the ingredient picker, or on a recipe thumbnail in the recipe list, shows a larger preview next to it. Touch screens are unchanged (#223)
 
