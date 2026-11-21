@@ -10,6 +10,9 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+### Added
+- Protein, carbs and fat of every ingredient and recipe in a day are shown on its row (under the name on a phone), and the ingredient picker shows them per 100 g on every result, with a wider dialog on desktop (#226)
+
 ### Fixed
 - A shopping item from the meals can be changed in pieces, grams or ml: the editor offers the units the ingredient has and converts the number when you switch (#246)
 - Items added by hand can be edited, name, quantity and unit, instead of being removed and added again (#247)

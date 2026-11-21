@@ -16,7 +16,7 @@
 {{define "meal_picker_dialog"}}
 {{- /* The same thing in a dialog over the week (a bottom sheet on the
        phone). Inserted into #modal-host by HTMX, opened by modal.js. */ -}}
-<dialog data-modal class="dialog-panel" aria-label="{{template "meal_picker_title" .}}">
+<dialog data-modal class="dialog-panel lg:w-[680px]" aria-label="{{template "meal_picker_title" .}}">
   <div class="flex items-start gap-3 pl-4 lg:pl-5 pr-4 pt-4 pb-3">
     <div class="grow min-w-0">
       <h2 class="text-[17px] font-bold">{{template "meal_picker_title" .}}</h2>

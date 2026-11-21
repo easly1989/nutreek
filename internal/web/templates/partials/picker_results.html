@@ -93,8 +93,10 @@
     <span class="grow min-w-0">
       <b class="font-semibold line-clamp-2">{{$r.Name}}</b>
       {{if or $r.Brand $r.Quantity}}<span class="block truncate text-[12.5px] text-muted">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}</span>{{end}}
+      <span class="block sm:hidden mt-0.5">{{template "macros_inline" $r}}</span>
       {{if $r.Allergens}}<span class="flex flex-wrap gap-1 mt-0.5">{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px]">{{ref "allergen" .Code .Name}}</span>{{end}}</span>{{end}}
     </span>
+    <span class="hidden sm:block">{{template "macros_inline" $r}}</span>
     <span class="text-right leading-tight tabular-nums whitespace-nowrap">
       {{- /* Below sm the unit goes under the number: the name keeps the width. */}}
       <b class="block sm:inline">{{num $r.Kcal}}</b> <span class="block sm:inline text-[11.5px] sm:text-[12.5px] text-muted">{{t "picker.kcal_per_100" "Unit" $r.Unit}}</span>
