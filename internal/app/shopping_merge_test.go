@@ -145,6 +145,10 @@ func TestShoppingMergeUndoToast(t *testing.T) {
 	if body := do(http.MethodGet, "/list", nil).Body.String(); !strings.Contains(body, "toast-undo") || !strings.Contains(body, "/merge/undo") {
 		t.Fatal("the page must offer to undo the merge")
 	}
+	// The toast shows once; the undo itself stays available for the three minutes.
+	if body := do(http.MethodGet, "/list", nil).Body.String(); strings.Contains(body, "toast-undo") {
+		t.Error("the toast must not come back after other actions")
+	}
 	if w := do(http.MethodPost, "/undo", url.Values{}); w.Code != http.StatusSeeOther {
 		t.Fatalf("undo: code %d", w.Code)
 	}

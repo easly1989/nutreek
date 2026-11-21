@@ -19,12 +19,12 @@ type MergeUndo struct {
 	PrevTo     int64   // where From pointed before, 0 when it did not
 	Retargeted []int64 // merges that pointed at From and now point at To
 	// "manual-auto" and "manual-manual": the row that grew and the item that went.
-	AutoID   int64
-	AutoQty  float64
-	KeepID   int64
-	KeepQty  float64
-	KeepText string
-	Dropped  *domain.ShoppingUserItem
+	AutoIngredient int64 // the row from the meals that grew, by ingredient: a regenerate changes row ids
+	AutoQty        float64
+	KeepID         int64
+	KeepQty        float64
+	KeepText       string
+	Dropped        *domain.ShoppingUserItem
 }
 
 // UndoPlanRow is a plan row as it was before a merge rewrote it.
@@ -50,8 +50,8 @@ func (r *ShoppingLists) UndoMerge(ctx context.Context, listID, userID int64, u *
 			for _, row := range u.Rows {
 				if _, err := tx.ExecContext(ctx, `
 					UPDATE meal_items SET ingredient_id = ?, quantity = ?, quantity_unit = ?
-					WHERE id = ? AND meal_id IN (SELECT m.id FROM meals m JOIN weekly_plans p ON p.id = m.weekly_plan_id WHERE p.user_id = ?)`,
-					row.IngredientID, row.Quantity, row.Unit, row.ID, userID); err != nil {
+					WHERE id = ? AND ingredient_id = ? AND meal_id IN (SELECT m.id FROM meals m JOIN weekly_plans p ON p.id = m.weekly_plan_id WHERE p.user_id = ?)`,
+					row.IngredientID, row.Quantity, row.Unit, row.ID, u.To, userID); err != nil {
 					return fmt.Errorf("restore plan row: %w", err)
 				}
 			}
@@ -82,7 +82,7 @@ func (r *ShoppingLists) UndoMerge(ctx context.Context, listID, userID int64, u *
 		d := u.Dropped
 		return r.inTx(ctx, func(tx *sql.Tx) error {
 			if u.Kind == "manual-auto" {
-				if _, err := tx.ExecContext(ctx, `UPDATE shopping_list_items SET total_quantity = ? WHERE id = ? AND shopping_list_id = ?`, u.AutoQty, u.AutoID, listID); err != nil {
+				if _, err := tx.ExecContext(ctx, `UPDATE shopping_list_items SET total_quantity = ? WHERE ingredient_id = ? AND shopping_list_id = ?`, u.AutoQty, u.AutoIngredient, listID); err != nil {
 					return fmt.Errorf("restore quantity: %w", err)
 				}
 			} else {
@@ -104,9 +104,9 @@ func (r *ShoppingLists) UndoMerge(ctx context.Context, listID, userID int64, u *
 				qty, unit = &d.Quantity, &d.Unit
 			}
 			if _, err := tx.ExecContext(ctx, `
-				INSERT OR IGNORE INTO shopping_user_items (id, shopping_list_id, description, quantity_text, quantity, unit, checked, ignored, sort_order, created_at)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				d.ID, listID, d.Description, text, qty, unit, d.Checked, d.Ignored, d.SortOrder, d.CreatedAt); err != nil {
+				INSERT INTO shopping_user_items (shopping_list_id, description, quantity_text, quantity, unit, checked, ignored, sort_order, created_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				listID, d.Description, text, qty, unit, d.Checked, d.Ignored, d.SortOrder, d.CreatedAt); err != nil {
 				return fmt.Errorf("restore the item: %w", err)
 			}
 			return nil

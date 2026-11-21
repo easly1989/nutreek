@@ -365,7 +365,7 @@
   }
 
   /* The toast after a merge goes away by itself (#233). */
-  .toast-undo { animation: toast-out 0.4s ease 12s forwards; }
+  .toast-undo { animation: toast-out 0.4s ease 15s forwards; }
   @keyframes toast-out { to { opacity: 0; visibility: hidden; } }
 
   /* A shopping row that swipes (#230, swipe.js): the content (.swipe-fg) slides over

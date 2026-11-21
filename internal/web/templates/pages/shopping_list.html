@@ -39,7 +39,7 @@
     <div id="shop-list" class="flex flex-col gap-3">
       {{/* After a merge: a toast with «Undo», for a few seconds (the server keeps the undo for three minutes). */}}
       {{if .CanUndo}}
-      <div class="toast-undo fixed z-40 inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[360px] flex items-center justify-between gap-3 rounded-xl bg-[#1f2328] text-white px-4 py-3 shadow-lg" role="status">
+      <div class="toast-undo print:hidden fixed z-40 inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[360px] flex items-center justify-between gap-3 rounded-xl bg-[#1f2328] text-white px-4 py-3 shadow-lg" role="status">
         <span>{{t "shopping.merged"}}</span>
         <form method="post" action="/shopping-list/{{.List.ID}}/merge/undo?week={{$ws}}&weeks={{$wc}}" hx-post="/shopping-list/{{.List.ID}}/merge/undo?week={{$ws}}&weeks={{$wc}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">

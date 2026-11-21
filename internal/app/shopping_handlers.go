@@ -132,7 +132,7 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		authPageData: a.baseData(r),
 		List:         full,
 		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order).withSimilar(full.Dismissed, usage),
-		CanUndo:      a.pendingMergeUndo(r, list.ID) != nil,
+		CanUndo:      a.showMergeToast(r, list.ID),
 		WeekStart:    weekStart.Format("2006-01-02"),
 		WeekCount:    weeks,
 		PrevWeek:     weekStart.AddDate(0, 0, -7).Format("2006-01-02"),
@@ -213,8 +213,9 @@ func (a *App) handleShoppingMerge(w http.ResponseWriter, r *http.Request) {
 const mergeUndoKey = "shop_merge_undo"
 
 type mergeUndoState struct {
-	Undo *db.MergeUndo
-	At   int64
+	Undo  *db.MergeUndo
+	At    int64
+	Shown bool // the toast has been shown once: it does not come back after other actions
 }
 
 // rememberMergeUndo keeps what a merge changed in the session.
@@ -231,16 +232,30 @@ func (a *App) rememberMergeUndo(r *http.Request, undo *db.MergeUndo) {
 
 // pendingMergeUndo is the merge of this list that can still be undone: the
 // last one, made less than three minutes ago.
-func (a *App) pendingMergeUndo(r *http.Request, listID int64) *db.MergeUndo {
+func (a *App) pendingMergeUndo(r *http.Request, listID int64) (*db.MergeUndo, mergeUndoState) {
 	raw := a.Sessions.GetString(r.Context(), mergeUndoKey)
 	if raw == "" {
-		return nil
+		return nil, mergeUndoState{}
 	}
 	var st mergeUndoState
 	if json.Unmarshal([]byte(raw), &st) != nil || st.Undo == nil || st.Undo.ListID != listID || time.Since(time.Unix(st.At, 0)) > 3*time.Minute {
-		return nil
+		return nil, mergeUndoState{}
 	}
-	return st.Undo
+	return st.Undo, st
+}
+
+// showMergeToast says whether the page offers the undo toast now: once, on the
+// first page that follows the merge.
+func (a *App) showMergeToast(r *http.Request, listID int64) bool {
+	undo, st := a.pendingMergeUndo(r, listID)
+	if undo == nil || st.Shown {
+		return false
+	}
+	st.Shown = true
+	if b, err := json.Marshal(st); err == nil {
+		a.Sessions.Put(r.Context(), mergeUndoKey, string(b))
+	}
+	return true
 }
 
 // handleShoppingMergeUndo POST /shopping-list/{id}/merge/undo
@@ -252,14 +267,14 @@ func (a *App) handleShoppingMergeUndo(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	undo := a.pendingMergeUndo(r, listID)
+	undo, _ := a.pendingMergeUndo(r, listID)
 	if undo == nil {
 		a.shoppingFlashBack(w, r, shoppingListURL(r), "shopping.flash.undo_invalid")
 		return
 	}
-	a.Sessions.Remove(r.Context(), mergeUndoKey)
 	switch err := a.ShoppingLists.UndoMerge(r.Context(), listID, user.ID, undo); {
 	case err == nil:
+		a.Sessions.Remove(r.Context(), mergeUndoKey)
 		http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 	case errors.Is(err, db.ErrShoppingListNotFound):
 		a.notFound(w, r)

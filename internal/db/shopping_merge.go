@@ -146,7 +146,7 @@ func (r *ShoppingLists) MergeRows(ctx context.Context, listID, userID int64, kee
 			return nil, ErrShoppingMergeInvalid
 		}
 		add := macros.Grams(drop.Quantity, drop.Unit, keep.Ingredient)
-		undo := &MergeUndo{Kind: "manual-auto", ListID: listID, AutoID: keep.ID, AutoQty: keep.TotalQuantity, Dropped: &drop}
+		undo := &MergeUndo{Kind: "manual-auto", ListID: listID, AutoIngredient: keep.IngredientID, AutoQty: keep.TotalQuantity, Dropped: &drop}
 		return undo, r.inTx(ctx, func(tx *sql.Tx) error {
 			if _, err := tx.ExecContext(ctx, `UPDATE shopping_list_items SET total_quantity = total_quantity + ? WHERE id = ?`, add, keep.ID); err != nil {
 				return fmt.Errorf("add quantity: %w", err)
