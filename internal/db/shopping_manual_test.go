@@ -65,6 +65,11 @@ func TestSuggestManualItems(t *testing.T) {
 	if got, _ := shop.SuggestManualItems(ctx, alice, "100%", 6); len(got) != 1 || got[0].Quantity != 0 {
 		t.Errorf("an item without quantity: %+v", got)
 	}
+	// An accented capital matches as typed (SQLite folds the case of ASCII only).
+	add(l2.ID, alice, "Èvian", 1, "pz")
+	if got, _ := shop.SuggestManualItems(ctx, alice, "Èv", 6); len(got) != 1 || got[0].Description != "Èvian" {
+		t.Errorf("accented capital: %+v", got)
+	}
 	if got, _ := shop.SuggestManualItems(ctx, alice, "  ", 6); len(got) != 0 {
 		t.Errorf("empty prefix: %+v", got)
 	}

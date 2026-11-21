@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -34,11 +36,14 @@ const MaxCopyItems = 100
 // starts with prefix or has a word that does: the most used first, then the
 // most recent. One entry per text, whatever its case.
 func (r *ShoppingLists) SuggestManualItems(ctx context.Context, userID int64, prefix string, limit int) ([]ManualSuggestion, error) {
-	prefix = strings.ToLower(strings.TrimSpace(prefix))
-	if prefix == "" || limit <= 0 {
+	raw := strings.TrimSpace(prefix)
+	if raw == "" || limit <= 0 {
 		return nil, nil
 	}
-	esc := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(prefix)
+	// SQLite folds the case of ASCII letters only: the text is also matched as
+	// typed, so an accented capital still finds itself.
+	escape := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace
+	esc, escRaw := escape(strings.ToLower(raw)), escape(raw)
 	rows, err := r.db.QueryContext(ctx, `
 		WITH m AS (
 			SELECT i.description, i.quantity, i.unit, i.created_at,
@@ -47,11 +52,12 @@ func (r *ShoppingLists) SuggestManualItems(ctx context.Context, userID int64, pr
 			FROM shopping_user_items i
 			JOIN shopping_lists l ON l.id = i.shopping_list_id
 			WHERE l.user_id = ?
-			  AND (lower(i.description) LIKE ? ESCAPE '\' OR lower(i.description) LIKE ? ESCAPE '\')
+			  AND (lower(i.description) LIKE ? ESCAPE '\' OR lower(i.description) LIKE ? ESCAPE '\'
+			    OR i.description LIKE ? ESCAPE '\' OR i.description LIKE ? ESCAPE '\')
 		)
 		SELECT description, quantity, unit, uses FROM m WHERE rn = 1
 		ORDER BY uses DESC, created_at DESC, description LIMIT ?`,
-		userID, esc+"%", "% "+esc+"%", limit)
+		userID, esc+"%", "% "+esc+"%", escRaw+"%", "% "+escRaw+"%", limit)
 	if err != nil {
 		return nil, fmt.Errorf("suggest manual items: %w", err)
 	}
@@ -160,8 +166,11 @@ func (r *ShoppingLists) CopyManualItems(ctx context.Context, listID, userID int6
 			FROM shopping_user_items i JOIN shopping_lists l ON l.id = i.shopping_list_id
 			WHERE i.id = ? AND l.user_id = ? AND l.id <> ?`, id, userID, listID).
 			Scan(&it.Description, &text, &qty, &unit)
-		if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			continue // not found, someone else's, or from this list
+		}
+		if err != nil {
+			return n, fmt.Errorf("read item to copy: %w", err)
 		}
 		key := strings.ToLower(strings.TrimSpace(it.Description))
 		if have[key] {

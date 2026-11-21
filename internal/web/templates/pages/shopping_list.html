@@ -124,7 +124,7 @@
           <details class="relative shrink-0" data-sheet>
             <summary class="btn-secondary h-8 px-2.5 text-[12.5px] cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="{{t "shopping.copy_title"}}" title="{{t "shopping.copy_title"}}">{{template "icon_sm" "i-copy"}}{{t "shopping.copy_from"}}</summary>
             <form method="post" action="/shopping-list/{{.List.ID}}/copy?week={{$ws}}&weeks={{$wc}}"
-                  hx-post="/shopping-list/{{.List.ID}}/copy?week={{$ws}}&weeks={{$wc}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
+                  hx-post="/shopping-list/{{.List.ID}}/copy?week={{$ws}}&weeks={{$wc}}" hx-target="#shop-list" hx-select="#shop-list" hx-select-oob="#shop-manual" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
                   class="sheet-panel sheet-wide" data-copy>
               <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
               <div class="flex items-center justify-between gap-2"><h3 class="font-bold">{{t "shopping.copy_title"}}</h3><button type="button" class="icon-action" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button></div>

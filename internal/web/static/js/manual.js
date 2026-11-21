@@ -50,7 +50,11 @@
   document.addEventListener("keydown", function (evt) {
     var t = evt.target;
     if (!(t instanceof Element)) return;
-    if (evt.key === "Escape" && panel() && panel().firstChild) { clearSuggest(); return; }
+    if (evt.key === "Escape" && panel() && panel().firstChild) {
+      clearSuggest();
+      if (t.matches("[data-suggest]")) document.querySelector("[data-suggest-field]").focus();
+      return;
+    }
     if (evt.key !== "ArrowDown" && evt.key !== "ArrowUp") return;
     var items = Array.prototype.slice.call(document.querySelectorAll("#shop-suggest [data-suggest]"));
     if (!items.length) return;
@@ -60,6 +64,15 @@
     var next = evt.key === "ArrowDown" ? i + 1 : i - 1;
     if (next < 0) { document.querySelector("[data-suggest-field]").focus(); return; }
     if (next < items.length) items[next].focus();
+  });
+
+  // A late answer must not reopen a list the user has left: it is shown only
+  // while the field or the list has the focus.
+  document.body.addEventListener("htmx:beforeSwap", function (evt) {
+    var p = panel();
+    if (!p || evt.detail.target !== p) return;
+    var a = document.activeElement;
+    if (!(a && (a.matches("[data-suggest-field]") || p.contains(a)))) evt.detail.shouldSwap = false;
   });
 
   // A request that went through empties the suggestions the form's reset left.
