@@ -304,17 +304,31 @@
 
   /* Shopping list (#123): a 48 px row, tappable as a whole. */
   .shop-item {
-    @apply w-full flex items-center gap-3 min-h-12 px-4 py-1 text-left hover:bg-surface-2 transition-colors;
+    @apply w-full flex items-center gap-3 h-14 px-4 text-left hover:bg-surface-2 transition-colors;
   }
   .shop-box {
     @apply w-[22px] h-[22px] shrink-0 grid place-items-center rounded-md border-[1.5px] border-border bg-surface;
   }
   .shop-item[aria-pressed="true"] .shop-box { @apply bg-accent border-accent text-accent-fg; }
-  .shop-name { @apply flex-1 min-w-0 [overflow-wrap:anywhere]; }
+  .shop-name { @apply flex flex-col justify-center flex-1 min-w-0; }
+
+  /* A line that scrolls when it does not fit (#259, marquee.js): the box has one
+     line and a fixed width, the text inside it moves. */
+  .marq { @apply block min-w-0 overflow-hidden whitespace-nowrap; text-decoration: inherit; }
+  .marq > .mq { @apply inline-block; text-decoration: inherit; }
+  .marq[data-over] > .mq { animation: marq var(--mq-t, 6s) linear 1.2s infinite alternate; }
+  .marq[data-over]:hover > .mq, .marq[data-over]:active > .mq { animation-play-state: paused; }
+  @keyframes marq { 0%, 12% { transform: translateX(0); } 88%, 100% { transform: translateX(calc(-1 * var(--mq-d, 0px))); } }
+  /* Reduce motion: no scrolling; the line is cut with an ellipsis and its full
+     text is the tooltip. */
+  @media (prefers-reduced-motion: reduce) {
+    .marq[data-over] { text-overflow: ellipsis; }
+    .marq[data-over] > .mq { animation: none; display: inline; }
+  }
   /* Quantity: two fixed columns, pieces then amount, so rows line up (#222). */
   .shop-qty { @apply flex shrink-0 tabular-nums whitespace-nowrap; }
-  .shop-pc { @apply w-[58px] text-right; }
-  .shop-gr { @apply w-[72px] overflow-hidden text-ellipsis text-right text-muted; }
+  .shop-pc { @apply w-[58px] max-sm:w-[46px] text-right; }
+  .shop-gr { @apply w-[72px] max-sm:w-[62px] overflow-hidden text-ellipsis text-right text-muted; }
   .shop-item[aria-pressed="true"] .shop-name,
   .shop-item[aria-pressed="true"] .shop-qty b,
   .shop-item[aria-pressed="true"] .shop-gr { @apply text-muted line-through; }
@@ -350,12 +364,26 @@
     .item-actions { grid-column: 5; }
   }
 
+  /* A shopping row that swipes (#230, swipe.js): the content (.swipe-fg) slides over
+     two layers; a swipe to the right ignores the item, to the left deletes it. */
+  .swipe-row { @apply relative; overflow-x: clip; touch-action: pan-y; }
+  .swipe-bg { @apply absolute inset-y-0 flex items-center gap-1.5 px-5 font-bold text-[13px] text-white opacity-0; }
+  .swipe-bg-l { @apply left-0; background: #5d6570; }
+  .swipe-bg-r { @apply right-0 bg-danger; }
+  .swipe-row[data-swipe="right"] .swipe-bg-l, .swipe-row[data-swipe="left"] .swipe-bg-r { @apply opacity-100; }
+  .swipe-row[data-swipe="right"] .swipe-bg-l { right: 0; }
+  .swipe-row[data-swipe="left"] .swipe-bg-r { left: 0; justify-content: flex-end; }
+  .swipe-fg { @apply relative; }
+  /* An ignored item stays, greyed out. */
+  .is-ignored .shop-name, .is-ignored .shop-qty { @apply opacity-50; }
+  .is-ignored .shop-name > .marq:first-child .mq { @apply line-through; }
+
   /* «Reorder» on the shopping list (#231): the arrows show beside the grip. */
   #shop-list[data-reorder-on] [data-move-btns] { display: flex; }
   /* With the arrows on, a row keeps only what it needs to be moved. */
   #shop-list[data-reorder-on] [data-shop-grip],
-  #shop-list[data-reorder-on] li > details,
-  #shop-list[data-reorder-on] li > form ~ form { display: none; }
+  #shop-list[data-reorder-on] .swipe-fg > details,
+  #shop-list[data-reorder-on] .swipe-fg > form ~ form { display: none; }
 
   /* Statistics (#123): summary cards, legends and SVG charts (static/js/charts.js). */
   .tile { @apply card px-3.5 py-3 flex flex-col gap-0.5 min-w-0; }

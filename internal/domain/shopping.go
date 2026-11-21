@@ -22,6 +22,7 @@ type ShoppingListItem struct {
 	IngredientID   int64
 	TotalQuantity  float64
 	Checked        bool
+	Ignored        bool // kept in the list, greyed out, not counted (#230)
 	SortOrder      int
 	Ingredient     *Ingredient
 }
@@ -36,6 +37,7 @@ type ShoppingUserItem struct {
 	Quantity       float64 // 0 = no number: a free-text quantity or none
 	Unit           string  // g, ml or pz; empty with Quantity 0
 	Checked        bool
+	Ignored        bool
 	SortOrder      int
 	CreatedAt      time.Time
 }

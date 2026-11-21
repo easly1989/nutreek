@@ -86,15 +86,14 @@
 {{- $cheat := eq $d.PickerKind "meal_cheat" -}}
 {{- $scanned := barcode $d.Query -}}
 <details class="group" data-picker-row{{if $scanned}} open{{end}}>
-  <summary class="flex items-center gap-3 min-h-[52px] py-1.5 pl-4 lg:pl-5 pr-4 cursor-pointer list-none hover:bg-surface-2 group-open:bg-accent-soft [&::-webkit-details-marker]:hidden">
+  <summary class="flex items-center gap-3 h-[68px] max-sm:h-[84px] pl-4 lg:pl-5 pr-4 cursor-pointer list-none hover:bg-surface-2 group-open:bg-accent-soft [&::-webkit-details-marker]:hidden">
     {{if $r.IsOFF}}
       <span class="thumb">{{template "off_thumb" $r.ImageURL}}</span>
     {{end}}
     <span class="grow min-w-0">
-      <b class="font-semibold line-clamp-2">{{$r.Name}}</b>
-      {{if or $r.Brand $r.Quantity}}<span class="block truncate text-[12.5px] text-muted">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}</span>{{end}}
+      <span class="marq"><b class="mq font-semibold">{{$r.Name}}</b></span>
+      <span class="flex items-center gap-1.5 min-w-0 min-h-[20px]"><span class="marq text-[12.5px] text-muted"><span class="mq">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}</span></span>{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px] shrink-0">{{ref "allergen" .Code .Name}}</span>{{end}}</span>
       <span class="block sm:hidden mt-0.5">{{template "macros_inline" $r}}</span>
-      {{if $r.Allergens}}<span class="flex flex-wrap gap-1 mt-0.5">{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px]">{{ref "allergen" .Code .Name}}</span>{{end}}</span>{{end}}
     </span>
     <span class="hidden sm:block">{{template "macros_inline" $r}}</span>
     <span class="text-right leading-tight tabular-nums whitespace-nowrap">

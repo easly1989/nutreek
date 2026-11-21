@@ -49,6 +49,7 @@ type shoppingRow struct {
 	Legacy      bool   // manual item with a free-text quantity, from before units
 	ShowCat     bool   // the row names its category (only when the list is not grouped)
 	Reorder     bool   // the row can be dragged (the user's own order)
+	Ignored     bool   // greyed out and not counted (#230)
 	Key         string // the row's key in the stored order: «i<ingredient id>» or «u<id>»
 	name        string
 	id          int64
@@ -68,14 +69,14 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 		if it.Ingredient != nil {
 			name = it.Ingredient.Name
 		}
-		row := shoppingRow{Auto: &shoppingItemView{Item: it}, Category: cats[it.IngredientID].Name, catOrder: cats[it.IngredientID].SortOrder, Key: db.RowKeyIngredient(it.IngredientID), Pieces: shoppingPieces(it), name: name, id: it.ID}
+		row := shoppingRow{Auto: &shoppingItemView{Item: it}, Ignored: it.Ignored, Category: cats[it.IngredientID].Name, catOrder: cats[it.IngredientID].SortOrder, Key: db.RowKeyIngredient(it.IngredientID), Pieces: shoppingPieces(it), name: name, id: it.ID}
 		row.EditQty, row.EditUnit, row.PieceWeight = autoEditor(it)
 		rows = append(rows, row)
 	}
 	for i := range user {
 		u := user[i]
 		pieces, amount := userItemQuantity(u.Item.QuantityText)
-		row := shoppingRow{User: &u, Pieces: pieces, Amount: amount, name: u.Item.Description, id: u.Item.ID, Key: db.RowKeyUserItem(u.Item.ID),
+		row := shoppingRow{User: &u, Ignored: u.Item.Ignored, Pieces: pieces, Amount: amount, name: u.Item.Description, id: u.Item.ID, Key: db.RowKeyUserItem(u.Item.ID),
 			EditQty: u.Item.Quantity, EditUnit: u.Item.Unit, Legacy: u.Item.Unit == "" && u.Item.QuantityText != ""}
 		if row.EditUnit == "" {
 			row.EditUnit = "g"
@@ -102,12 +103,18 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 		return rows[i].id < rows[j].id
 	})
 
-	v := shoppingView{Total: len(rows), Print: rows, Grouping: grouping}
+	v := shoppingView{Grouping: grouping}
 	for i := range rows {
 		rows[i].ShowCat = grouping != db.ShoppingGroupCategory
-		rows[i].Reorder = custom && !rows[i].checked() // the rows in the cart are not draggable
+		rows[i].Reorder = custom && (!rows[i].checked() || rows[i].Ignored) // the rows in the cart are not draggable
 	}
 	for _, r := range rows {
+		if r.Ignored {
+			v.Rows = append(v.Rows, r) // stays in its place, greyed out; not counted
+			continue
+		}
+		v.Total++
+		v.Print = append(v.Print, r)
 		if r.checked() {
 			r.ShowCat = true // the cart has no group headings: its rows name their category
 			v.Cart = append(v.Cart, r)

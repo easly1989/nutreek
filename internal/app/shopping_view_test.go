@@ -217,3 +217,22 @@ func TestShoppingViewCustomCartNotDraggable(t *testing.T) {
 		t.Errorf("cart %+v rows %+v", v.Cart, v.Rows)
 	}
 }
+
+// An ignored row stays in its place, in the list, and does not count in the
+// progress or on the printed sheet, checked or not.
+func TestShoppingViewIgnored(t *testing.T) {
+	a := shopItem(1, 10, "Mela", 100, false, 0)
+	b := shopItem(2, 11, "Pasta", 100, true, 0)
+	b.Ignored = true // ignored while checked: it still stays in the list, not in the cart
+	c := shopItem(3, 12, "Sale", 100, true, 0)
+	v := buildShoppingView([]domain.ShoppingListItem{a, b, c}, nil, nil, db.ShoppingGroupNone, nil)
+	if len(v.Rows) != 2 || v.Rows[1].name != "Pasta" || !v.Rows[1].Ignored {
+		t.Fatalf("rows = %+v, want Mela and the ignored Pasta", v.Rows)
+	}
+	if len(v.Cart) != 1 || v.Cart[0].name != "Sale" {
+		t.Errorf("cart = %+v, want only Sale", v.Cart)
+	}
+	if v.Total != 2 || v.Done != 1 || len(v.Print) != 2 {
+		t.Errorf("total %d, done %d, print %d: want 2, 1, 2", v.Total, v.Done, len(v.Print))
+	}
+}

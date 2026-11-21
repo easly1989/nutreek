@@ -240,6 +240,8 @@ func (a *App) Router() http.Handler {
 		r.Post("/shopping-list/grouping", a.handleShoppingGrouping)
 		r.Post("/shopping-list/{id}/order", a.handleShoppingOrder)
 		r.Post("/shopping-list/items/{id}/toggle", a.handleShoppingToggle)
+		r.Post("/shopping-list/items/{id}/ignore", a.handleShoppingIgnore)
+		r.Post("/shopping-list/user-items/{id}/ignore", a.handleShoppingUserItemIgnore)
 		r.Post("/shopping-list/items/{id}/quantity", a.handleShoppingItemQuantity)
 		r.Post("/shopping-list/{id}/user-items", a.handleAddShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/toggle", a.handleToggleShoppingUserItem)

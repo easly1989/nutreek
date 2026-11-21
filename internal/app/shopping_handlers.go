@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"math"
 	"net/http"
@@ -407,6 +408,36 @@ func (a *App) handleShoppingToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+}
+
+// shoppingItemAction runs one change on an item of the user's list and goes
+// back to the list: the ignore toggles of the swipe and the buttons.
+func (a *App) shoppingItemAction(w http.ResponseWriter, r *http.Request, do func(ctx context.Context, itemID, userID int64) error) {
+	user := userFromContext(r.Context())
+	itemID, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	if err := do(r.Context(), itemID, user.ID); err != nil {
+		if errors.Is(err, db.ErrShoppingItemNotFound) {
+			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
+			return
+		}
+		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+}
+
+// handleShoppingIgnore POST /shopping-list/items/{id}/ignore
+func (a *App) handleShoppingIgnore(w http.ResponseWriter, r *http.Request) {
+	a.shoppingItemAction(w, r, a.ShoppingLists.ToggleItemIgnored)
+}
+
+// handleShoppingUserItemIgnore POST /shopping-list/user-items/{id}/ignore
+func (a *App) handleShoppingUserItemIgnore(w http.ResponseWriter, r *http.Request) {
+	a.shoppingItemAction(w, r, a.ShoppingLists.ToggleUserItemIgnored)
 }
 
 // shoppingListURL is the address of the list the request comes from,
