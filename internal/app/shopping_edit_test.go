@@ -121,7 +121,7 @@ func TestShoppingGroupingHandler(t *testing.T) {
 		a.Sessions.LoadAndSave(http.HandlerFunc(a.handleShoppingGrouping)).ServeHTTP(w, requestWithUser(r, alice))
 		return w
 	}
-	if w := post("custom"); w.Code != http.StatusBadRequest {
+	if w := post("alphabetical"); w.Code != http.StatusBadRequest {
 		t.Errorf("unknown value: code %d, want 400", w.Code)
 	}
 	w := post("category")

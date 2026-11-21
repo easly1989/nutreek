@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -295,6 +296,25 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 	}
 	userRows.Close()
 
+	orderRows, err := r.db.QueryContext(ctx,
+		`SELECT row_key, position FROM shopping_list_order WHERE shopping_list_id = ?`, listID)
+	if err != nil {
+		return nil, fmt.Errorf("load list order: %w", err)
+	}
+	defer orderRows.Close()
+	out.Order = map[string]int{}
+	for orderRows.Next() {
+		var key string
+		var pos int
+		if err := orderRows.Scan(&key, &pos); err != nil {
+			return nil, fmt.Errorf("scan list order: %w", err)
+		}
+		out.Order[key] = pos
+	}
+	if err := orderRows.Err(); err != nil {
+		return nil, fmt.Errorf("read list order: %w", err)
+	}
+
 	return out, nil
 }
 
@@ -419,6 +439,59 @@ func (r *ShoppingLists) ReorderUserItems(ctx context.Context, listID, userID int
 
 // maxShoppingQuantity bounds a quantity once pieces are turned into grams.
 const maxShoppingQuantity = 1000000
+
+// RowKeyIngredient and RowKeyUserItem are the keys the list order uses.
+func RowKeyIngredient(ingredientID int64) string { return "i" + strconv.FormatInt(ingredientID, 10) }
+func RowKeyUserItem(itemID int64) string         { return "u" + strconv.FormatInt(itemID, 10) }
+
+// SaveOrder stores the order the user gave some rows of the list: keys, first
+// to last. Rows not named keep their place after them, in their old order;
+// keys that match no row of the list are ignored.
+func (r *ShoppingLists) SaveOrder(ctx context.Context, listID, userID int64, keys []string) error {
+	full, err := r.LoadFull(ctx, listID, userID)
+	if err != nil {
+		return err
+	}
+	valid := map[string]bool{}
+	for _, it := range full.Items {
+		valid[RowKeyIngredient(it.IngredientID)] = true
+	}
+	for _, it := range full.UserItems {
+		valid[RowKeyUserItem(it.ID)] = true
+	}
+	ordered := make([]string, 0, len(valid))
+	seen := map[string]bool{}
+	for _, k := range keys {
+		if valid[k] && !seen[k] {
+			ordered = append(ordered, k)
+			seen[k] = true
+		}
+	}
+	rest := make([]string, 0, len(full.Order))
+	for k := range full.Order {
+		if valid[k] && !seen[k] {
+			rest = append(rest, k)
+		}
+	}
+	sort.Slice(rest, func(i, j int) bool { return full.Order[rest[i]] < full.Order[rest[j]] })
+	ordered = append(ordered, rest...)
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM shopping_list_order WHERE shopping_list_id = ?`, listID); err != nil {
+		return fmt.Errorf("clear list order: %w", err)
+	}
+	for i, k := range ordered {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO shopping_list_order (shopping_list_id, row_key, position) VALUES (?, ?, ?)`, listID, k, i); err != nil {
+			return fmt.Errorf("store list order: %w", err)
+		}
+	}
+	return tx.Commit()
+}
 
 // UpdateItemQuantity sets the total quantity of an auto item, so the user can
 // correct what the meals computed. unit is g, ml or pz: pieces are turned into

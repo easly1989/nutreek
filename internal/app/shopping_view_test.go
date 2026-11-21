@@ -33,7 +33,7 @@ func TestBuildShoppingView(t *testing.T) {
 		{Item: domain.ShoppingUserItem{ID: 2, Description: "Sale grosso", QuantityText: "1 kg", Checked: true}},
 	}
 
-	v := buildShoppingView(items, user, cats, db.ShoppingGroupNone)
+	v := buildShoppingView(items, user, cats, db.ShoppingGroupNone, nil)
 
 	var names []string
 	for _, r := range v.Rows {
@@ -60,7 +60,7 @@ func TestBuildShoppingView(t *testing.T) {
 	if v.Done != 2 || v.Total != 5 || v.Percent != 40 {
 		t.Errorf("progress = %d of %d (%d%%), want 2 of 5 (40%%)", v.Done, v.Total, v.Percent)
 	}
-	if empty := buildShoppingView(nil, nil, nil, db.ShoppingGroupNone); empty.Percent != 0 || empty.Total != 0 {
+	if empty := buildShoppingView(nil, nil, nil, db.ShoppingGroupNone, nil); empty.Percent != 0 || empty.Total != 0 {
 		t.Errorf("empty list = %+v", empty)
 	}
 }
@@ -158,7 +158,7 @@ func TestShoppingViewGrouping(t *testing.T) {
 	}
 	user := []shoppingUserItemView{{Item: domain.ShoppingUserItem{ID: 1, Description: "Candele"}}}
 
-	v := buildShoppingView(items, user, cats, db.ShoppingGroupCategory)
+	v := buildShoppingView(items, user, cats, db.ShoppingGroupCategory, nil)
 	var names []string
 	for _, g := range v.Groups {
 		names = append(names, g.Name)
@@ -176,8 +176,35 @@ func TestShoppingViewGrouping(t *testing.T) {
 		t.Error("a grouped row must not repeat its category")
 	}
 
-	flat := buildShoppingView(items, user, cats, db.ShoppingGroupNone)
+	flat := buildShoppingView(items, user, cats, db.ShoppingGroupNone, nil)
 	if len(flat.Groups) != 0 || !flat.Rows[0].ShowCat {
 		t.Errorf("not grouped: groups %d, ShowCat %v", len(flat.Groups), flat.Rows[0].ShowCat)
+	}
+}
+
+// In the user's own order the rows the user placed come first, in their order,
+// and the ones never placed follow by name; the rows can be dragged.
+func TestShoppingViewCustomOrder(t *testing.T) {
+	items := []domain.ShoppingListItem{
+		shopItem(1, 10, "Zucchine", 400, false, 0),
+		shopItem(2, 11, "Pasta", 500, false, 0),
+		shopItem(3, 12, "Mela", 450, false, 0),
+	}
+	user := []shoppingUserItemView{{Item: domain.ShoppingUserItem{ID: 7, Description: "Candele"}}}
+	order := map[string]int{"i10": 0, "u7": 1, "i11": 2} // Zucchine, Candele, Pasta; Mela unplaced
+
+	v := buildShoppingView(items, user, nil, db.ShoppingGroupCustom, order)
+	var names []string
+	for _, r := range v.Rows {
+		names = append(names, r.name)
+	}
+	if got, want := strings.Join(names, ","), "Zucchine,Candele,Pasta,Mela"; got != want {
+		t.Errorf("order = %q, want %q", got, want)
+	}
+	if !v.Rows[0].Reorder || v.Rows[0].Key != "i10" || v.Rows[1].Key != "u7" {
+		t.Errorf("rows = %+v", v.Rows[:2])
+	}
+	if flat := buildShoppingView(items, user, nil, db.ShoppingGroupNone, order); flat.Rows[0].Reorder || flat.Rows[0].name != "Candele" {
+		t.Errorf("not custom: first %q, Reorder %v", flat.Rows[0].name, flat.Rows[0].Reorder)
 	}
 }

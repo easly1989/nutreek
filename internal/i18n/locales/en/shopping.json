@@ -56,5 +56,9 @@
   "shopping.group_none": "None",
   "shopping.group_category": "Category",
   "shopping.group_invalid": "Unknown grouping.",
+  "shopping.group_custom": "My order",
+  "shopping.reorder": "Reorder",
+  "shopping.move_up": "Move up",
+  "shopping.move_down": "Move down",
   "shopping.flash.regenerated": "List regenerated."
 }

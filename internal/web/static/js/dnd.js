@@ -44,6 +44,8 @@
           swap: "outerHTML",
           values: { ids: ids.join(",") },
           source: el,
+          // A sortable outside any form names its CSRF token itself.
+          headers: el.dataset.csrf ? { "X-CSRF-Token": el.dataset.csrf } : undefined,
         });
       },
     });
