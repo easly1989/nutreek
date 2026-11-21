@@ -66,5 +66,10 @@
   "shopping.ignore_named": "Ignore {{.Name}}",
   "shopping.restore_named": "Bring back {{.Name}}",
   "shopping.ignored": "Ignored",
+  "shopping.similar": "Similar to “{{.Name}}”",
+  "shopping.merge": "Merge",
+  "shopping.merge_into": "Merge into “{{.Name}}”",
+  "shopping.keep_apart": "Keep separate",
+  "shopping.flash.merge_invalid": "These two items cannot be merged: their quantities do not add up.",
   "shopping.flash.regenerated": "List regenerated."
 }

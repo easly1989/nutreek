@@ -146,6 +146,18 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 		}
 	}
 
+	// An ingredient the user merged into another counts as that one.
+	merges, err := r.loadMerges(ctx, listID)
+	if err != nil {
+		return err
+	}
+	for from, to := range merges {
+		if q, ok := totals[from]; ok {
+			totals[to] += q
+			delete(totals, from)
+		}
+	}
+
 	// Load the existing checked flags to merge them.
 	existing := make(map[int64]struct {
 		Quantity float64
@@ -322,6 +334,10 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 	}
 	if err := orderRows.Err(); err != nil {
 		return nil, fmt.Errorf("read list order: %w", err)
+	}
+	orderRows.Close()
+	if out.Dismissed, err = r.loadDismissed(ctx, listID); err != nil {
+		return nil, err
 	}
 
 	return out, nil

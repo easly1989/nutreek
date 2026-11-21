@@ -51,4 +51,6 @@ type ShoppingListFull struct {
 	// Order is the position the user gave each row by dragging it, by row key
 	// («i<ingredient id>», «u<manual item id>»); rows without one come last.
 	Order map[string]int
+	// Dismissed holds the pairs of rows the user keeps apart, by db.PairKey.
+	Dismissed map[string]bool
 }

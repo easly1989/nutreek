@@ -121,10 +121,19 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	ingIDs = ingIDs[:0]
+	for _, it := range full.Items {
+		ingIDs = append(ingIDs, it.IngredientID)
+	}
+	usage, err := a.ShoppingLists.IngredientUsage(r.Context(), user.ID, ingIDs)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	data := shoppingListData{
 		authPageData: a.baseData(r),
 		List:         full,
-		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order),
+		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order).withSimilar(full.Dismissed, usage),
 		WeekStart:    weekStart.Format("2006-01-02"),
 		WeekCount:    weeks,
 		PrevWeek:     weekStart.AddDate(0, 0, -7).Format("2006-01-02"),
@@ -175,6 +184,48 @@ func (a *App) handleShoppingOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleShoppingMerge POST /shopping-list/{id}/merge
+// Body: keep, drop (row keys). Merges two similar rows of the list.
+func (a *App) handleShoppingMerge(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	listID, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	switch err := a.ShoppingLists.MergeRows(r.Context(), listID, user.ID, r.PostFormValue("keep"), r.PostFormValue("drop")); {
+	case err == nil:
+		http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	case errors.Is(err, db.ErrShoppingListNotFound):
+		a.notFound(w, r)
+	case errors.Is(err, db.ErrShoppingMergeInvalid):
+		a.shoppingFlashBack(w, r, shoppingListURL(r), "shopping.flash.merge_invalid")
+	default:
+		a.serverError(w, r, err)
+	}
+}
+
+// handleShoppingSimilarDismiss POST /shopping-list/{id}/similar/dismiss
+// Body: a, b (row keys). Keeps two similar rows apart: they are not offered again.
+func (a *App) handleShoppingSimilarDismiss(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	listID, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	switch err := a.ShoppingLists.DismissSimilar(r.Context(), listID, user.ID, r.PostFormValue("a"), r.PostFormValue("b")); {
+	case err == nil:
+		http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	case errors.Is(err, db.ErrShoppingListNotFound):
+		a.notFound(w, r)
+	case errors.Is(err, db.ErrShoppingMergeInvalid):
+		http.Error(w, a.t(r, "week.error.invalid_ids"), http.StatusBadRequest)
+	default:
+		a.serverError(w, r, err)
+	}
 }
 
 // handleAddShoppingUserItem POST /shopping-list/{id}/user-items
