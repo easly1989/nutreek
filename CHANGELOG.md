@@ -11,6 +11,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Added
+- The shopping list notices two similar items (the same words in the name, as «Yogurt greco 0%» and «Altoproteico yogurt greco bianco 0%») and offers to merge them, with the quantities added, or to keep them separate (remembered). Merging two ingredients of the weekly plan asks which one to keep, proposing the more used, and changes the plan to use it, so plan and list agree. A toast with «Undo» puts the merge back for a few minutes (migration 0041) (#233)
 - On a phone, swipe a shopping row to the right to ignore it (it stays, greyed out, and leaves the progress; swipe again to restore it) or, for an item added by hand, to the left to delete it. An item from the weekly plan can be ignored but not deleted. A computer shows buttons on the row for the same actions (migration 0040) (#230)
 - Rows of the shopping list, of a day and of the ingredient picker all have one height: a name or category that does not fit scrolls slowly back and forth, and only then; with «reduce motion» it is cut with an ellipsis and its full text is the tooltip (#259)
 - The shopping list has a third grouping, «My order»: drag the rows by their grip, or press «Reorder» for up and down arrows. The order is kept per list, also when the list is regenerated (#231)

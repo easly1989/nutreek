@@ -25,7 +25,7 @@
     if (!li || document.getElementById("shop-list").hasAttribute("data-reorder-on")) return;
     // Not from a control, the drag grip or an open editor.
     if (li.hasAttribute("data-busy")) return;
-    if (e.target.closest("[data-shop-grip], details[data-sheet], input, select, textarea, [data-move-btns]")) return;
+    if (e.target.closest("[data-shop-grip], details[data-sheet], input, select, textarea, [data-move-btns], [data-similar]")) return;
     start = { li: li, fg: li.querySelector(".swipe-fg"), x: e.clientX, y: e.clientY, id: e.pointerId, on: false, dx: 0 };
   });
 

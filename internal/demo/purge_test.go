@@ -105,6 +105,8 @@ func fill(t *testing.T, d *sql.DB, userID int64) int64 {
 	exec(`INSERT INTO shopping_list_items (shopping_list_id, ingredient_id, total_quantity) VALUES (?, ?, 80)`, list, ing)
 	exec(`INSERT INTO shopping_user_items (shopping_list_id, description) VALUES (?, 'Milk')`, list)
 	exec(`INSERT INTO shopping_list_order (shopping_list_id, row_key, position) VALUES (?, 'u1', 0)`, list)
+	exec(`INSERT INTO shopping_list_merges (shopping_list_id, from_ingredient_id, to_ingredient_id) VALUES (?, ?, ?)`, list, ing, ing)
+	exec(`INSERT INTO shopping_similar_dismissed (shopping_list_id, key_a, key_b) VALUES (?, 'i1', 'u1')`, list)
 	exec(`INSERT INTO weight_logs (user_id, measured_at, weight_kg) VALUES (?, '2020-01-06', 72)`, userID)
 	exec(`INSERT INTO water_logs (user_id, logged_at, amount_ml) VALUES (?, '2020-01-06', 250)`, userID)
 	exec(`INSERT INTO workout_logs (user_id, activity_id, logged_at, duration_minutes, kcal_burned)

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math"
 	"net/http"
@@ -18,6 +19,7 @@ type shoppingListData struct {
 	authPageData
 	List      *domain.ShoppingListFull
 	View      shoppingView
+	CanUndo   bool   // a merge was just made: the toast offers to undo it
 	WeekStart string // YYYY-MM-DD
 	WeekCount int
 	NextWeek  string
@@ -121,10 +123,16 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	usage, err := a.ShoppingLists.IngredientUsage(r.Context(), user.ID, ingIDs)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	data := shoppingListData{
 		authPageData: a.baseData(r),
 		List:         full,
-		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order),
+		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order).withSimilar(full.Dismissed, usage),
+		CanUndo:      a.showMergeToast(r, list.ID),
 		WeekStart:    weekStart.Format("2006-01-02"),
 		WeekCount:    weeks,
 		PrevWeek:     weekStart.AddDate(0, 0, -7).Format("2006-01-02"),
@@ -175,6 +183,127 @@ func (a *App) handleShoppingOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleShoppingMerge POST /shopping-list/{id}/merge
+// Body: keep, drop (row keys). Merges two similar rows of the list.
+func (a *App) handleShoppingMerge(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	listID, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	undo, err := a.ShoppingLists.MergeRows(r.Context(), listID, user.ID, r.PostFormValue("keep"), r.PostFormValue("drop"))
+	switch {
+	case err == nil:
+		a.rememberMergeUndo(r, undo)
+		http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	case errors.Is(err, db.ErrShoppingListNotFound):
+		a.notFound(w, r)
+	case errors.Is(err, db.ErrShoppingMergeInvalid):
+		a.shoppingFlashBack(w, r, shoppingListURL(r), "shopping.flash.merge_invalid")
+	default:
+		a.serverError(w, r, err)
+	}
+}
+
+// mergeUndoKey is the session key of the last merge, kept for a few minutes so
+// it can be undone from the toast.
+const mergeUndoKey = "shop_merge_undo"
+
+type mergeUndoState struct {
+	Undo  *db.MergeUndo
+	At    int64
+	Shown bool // the toast has been shown once: it does not come back after other actions
+}
+
+// rememberMergeUndo keeps what a merge changed in the session.
+func (a *App) rememberMergeUndo(r *http.Request, undo *db.MergeUndo) {
+	if undo == nil {
+		return
+	}
+	b, err := json.Marshal(mergeUndoState{Undo: undo, At: time.Now().Unix()})
+	if err != nil {
+		return
+	}
+	a.Sessions.Put(r.Context(), mergeUndoKey, string(b))
+}
+
+// pendingMergeUndo is the merge of this list that can still be undone: the
+// last one, made less than three minutes ago.
+func (a *App) pendingMergeUndo(r *http.Request, listID int64) (*db.MergeUndo, mergeUndoState) {
+	raw := a.Sessions.GetString(r.Context(), mergeUndoKey)
+	if raw == "" {
+		return nil, mergeUndoState{}
+	}
+	var st mergeUndoState
+	if json.Unmarshal([]byte(raw), &st) != nil || st.Undo == nil || st.Undo.ListID != listID || time.Since(time.Unix(st.At, 0)) > 3*time.Minute {
+		return nil, mergeUndoState{}
+	}
+	return st.Undo, st
+}
+
+// showMergeToast says whether the page offers the undo toast now: once, on the
+// first page that follows the merge.
+func (a *App) showMergeToast(r *http.Request, listID int64) bool {
+	undo, st := a.pendingMergeUndo(r, listID)
+	if undo == nil || st.Shown {
+		return false
+	}
+	st.Shown = true
+	if b, err := json.Marshal(st); err == nil {
+		a.Sessions.Put(r.Context(), mergeUndoKey, string(b))
+	}
+	return true
+}
+
+// handleShoppingMergeUndo POST /shopping-list/{id}/merge/undo
+// Puts back the last merge of the list (the toast's «Undo»).
+func (a *App) handleShoppingMergeUndo(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	listID, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	undo, _ := a.pendingMergeUndo(r, listID)
+	if undo == nil {
+		a.shoppingFlashBack(w, r, shoppingListURL(r), "shopping.flash.undo_invalid")
+		return
+	}
+	switch err := a.ShoppingLists.UndoMerge(r.Context(), listID, user.ID, undo); {
+	case err == nil:
+		a.Sessions.Remove(r.Context(), mergeUndoKey)
+		http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	case errors.Is(err, db.ErrShoppingListNotFound):
+		a.notFound(w, r)
+	case errors.Is(err, db.ErrShoppingMergeInvalid):
+		a.shoppingFlashBack(w, r, shoppingListURL(r), "shopping.flash.undo_invalid")
+	default:
+		a.serverError(w, r, err)
+	}
+}
+
+// handleShoppingSimilarDismiss POST /shopping-list/{id}/similar/dismiss
+// Body: a, b (row keys). Keeps two similar rows apart: they are not offered again.
+func (a *App) handleShoppingSimilarDismiss(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	listID, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	switch err := a.ShoppingLists.DismissSimilar(r.Context(), listID, user.ID, r.PostFormValue("a"), r.PostFormValue("b")); {
+	case err == nil:
+		http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	case errors.Is(err, db.ErrShoppingListNotFound):
+		a.notFound(w, r)
+	case errors.Is(err, db.ErrShoppingMergeInvalid):
+		http.Error(w, a.t(r, "week.error.invalid_ids"), http.StatusBadRequest)
+	default:
+		a.serverError(w, r, err)
+	}
 }
 
 // handleAddShoppingUserItem POST /shopping-list/{id}/user-items

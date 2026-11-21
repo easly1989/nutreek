@@ -66,5 +66,13 @@
   "shopping.ignore_named": "Ignora {{.Name}}",
   "shopping.restore_named": "Rimetti {{.Name}}",
   "shopping.ignored": "Ignorata",
+  "shopping.similar": "Simile a «{{.Name}}»",
+  "shopping.merge": "Unisci",
+  "shopping.merge_into": "Unisci in «{{.Name}}»",
+  "shopping.keep_apart": "Tieni separati",
+  "shopping.flash.merge_invalid": "Queste due voci non si possono unire ora: la lista potrebbe essere cambiata o le quantità non si sommano.",
+  "shopping.merged": "Voci unite.",
+  "shopping.undo": "Annulla",
+  "shopping.flash.undo_invalid": "Non c'è niente da annullare, o non si può più annullare.",
   "shopping.flash.regenerated": "Lista rigenerata."
 }

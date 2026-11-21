@@ -46,11 +46,12 @@ type shoppingRow struct {
 	EditQty     float64
 	EditUnit    string
 	PieceWeight float64
-	Legacy      bool   // manual item with a free-text quantity, from before units
-	ShowCat     bool   // the row names its category (only when the list is not grouped)
-	Reorder     bool   // the row can be dragged (the user's own order)
-	Ignored     bool   // greyed out and not counted (#230)
-	Key         string // the row's key in the stored order: «i<ingredient id>» or «u<id>»
+	Legacy      bool             // manual item with a free-text quantity, from before units
+	ShowCat     bool             // the row names its category (only when the list is not grouped)
+	Reorder     bool             // the row can be dragged (the user's own order)
+	Ignored     bool             // greyed out and not counted (#230)
+	Similar     *shoppingSimilar // the notice under the row: it looks like another row (#233)
+	Key         string           // the row's key in the stored order: «i<ingredient id>» or «u<id>»
 	name        string
 	id          int64
 	catOrder    int

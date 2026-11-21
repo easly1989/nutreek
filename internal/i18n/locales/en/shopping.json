@@ -66,5 +66,13 @@
   "shopping.ignore_named": "Ignore {{.Name}}",
   "shopping.restore_named": "Bring back {{.Name}}",
   "shopping.ignored": "Ignored",
+  "shopping.similar": "Similar to “{{.Name}}”",
+  "shopping.merge": "Merge",
+  "shopping.merge_into": "Merge into “{{.Name}}”",
+  "shopping.keep_apart": "Keep separate",
+  "shopping.flash.merge_invalid": "These two items cannot be merged now: the list may have changed, or their quantities do not add up.",
+  "shopping.merged": "Items merged.",
+  "shopping.undo": "Undo",
+  "shopping.flash.undo_invalid": "There is nothing to undo, or it can no longer be undone.",
   "shopping.flash.regenerated": "List regenerated."
 }

@@ -364,6 +364,10 @@
     .item-actions { grid-column: 5; }
   }
 
+  /* The toast after a merge goes away by itself (#233). */
+  .toast-undo { animation: toast-out 0.4s ease 15s forwards; }
+  @keyframes toast-out { to { opacity: 0; visibility: hidden; } }
+
   /* A shopping row that swipes (#230, swipe.js): the content (.swipe-fg) slides over
      two layers; a swipe to the right ignores the item, to the left deletes it. */
   .swipe-row { @apply relative; overflow-x: clip; touch-action: pan-y; }
