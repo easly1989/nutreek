@@ -16,14 +16,13 @@
   function build() {
     pop = document.createElement("div");
     pop.setAttribute("aria-hidden", "true");
-    pop.className = "fixed z-[60] pointer-events-none overflow-hidden rounded-[14px] border border-border bg-surface";
-    pop.style.cssText = "display:none;box-shadow:var(--shadow);width:" + WIDTH + "px";
+    pop.style.cssText = "display:none;position:fixed;z-index:60;pointer-events:none;overflow:hidden;border-radius:14px;" +
+      "border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);width:" + WIDTH + "px;max-height:calc(100vh - 16px)";
     var img = document.createElement("img");
     img.alt = "";
     img.referrerPolicy = "no-referrer";
-    img.className = "block w-full h-auto";
+    img.style.cssText = "display:block;width:100%;height:auto";
     pop.appendChild(img);
-    document.body.appendChild(pop);
   }
 
   function hide() {
@@ -32,7 +31,12 @@
     if (pop) pop.style.display = "none";
   }
 
+  // A modal <dialog> is in the top layer, above any z-index: inside one, the
+  // preview has to be a child of the dialog to show.
+  function host(src) { return src.closest("dialog") || document.body; }
+
   function place(src) {
+    if (!src.isConnected) return hide();
     var r = src.getBoundingClientRect();
     pop.style.display = "block";
     var h = pop.offsetHeight || WIDTH * 0.75;
@@ -45,6 +49,8 @@
 
   function show(src) {
     if (!pop) build();
+    var h = host(src);
+    if (pop.parentNode !== h) h.appendChild(pop);
     var img = pop.firstChild;
     var url = src.getAttribute("data-zoom-src") || src.currentSrc || src.src;
     if (!url) return;
