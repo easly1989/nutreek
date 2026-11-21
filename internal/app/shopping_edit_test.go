@@ -140,3 +140,49 @@ func TestShoppingGroupingHandler(t *testing.T) {
 		t.Fatalf("grouped page: code %d", w.Code)
 	}
 }
+
+// POST /shopping-list/{id}/order saves the order and answers 204; another
+// user's list and a bad id are 404; too many keys are 400.
+func TestShoppingOrderHandler(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	bob := mustCreateTestUser(t, a, "bob@x.com", "password-di-prova")
+	monday, _ := time.Parse("2006-01-02", "2026-10-12")
+	list, err := a.ShoppingLists.GetOrCreateList(ctx, alice.ID, monday, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Candele", 2, "pz"); err != nil {
+		t.Fatal(err)
+	}
+	full, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+	key := "u" + strconv.FormatInt(full.UserItems[0].ID, 10)
+
+	post := func(user int, id int64, ids string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodPost, "/shopping-list/x/order", strings.NewReader(url.Values{"ids": {ids}}.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		u := alice
+		if user == 2 {
+			u = bob
+		}
+		w := httptest.NewRecorder()
+		a.Sessions.LoadAndSave(http.HandlerFunc(a.handleShoppingOrder)).ServeHTTP(w, withIDParam(requestWithUser(r, u), id))
+		return w
+	}
+	if w := post(1, list.ID, key); w.Code != http.StatusNoContent {
+		t.Fatalf("save: code %d, want 204", w.Code)
+	}
+	if got, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID); got.Order[key] != 0 {
+		t.Errorf("stored order = %v", got.Order)
+	}
+	if w := post(2, list.ID, key); w.Code != http.StatusNotFound {
+		t.Errorf("Bob: code %d, want 404", w.Code)
+	}
+	if w := post(1, 999999, key); w.Code != http.StatusNotFound {
+		t.Errorf("missing list: code %d, want 404", w.Code)
+	}
+	if w := post(1, list.ID, strings.Repeat("i1,", 2001)); w.Code != http.StatusBadRequest {
+		t.Errorf("too many keys: code %d, want 400", w.Code)
+	}
+}

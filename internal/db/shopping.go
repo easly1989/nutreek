@@ -445,8 +445,9 @@ func RowKeyIngredient(ingredientID int64) string { return "i" + strconv.FormatIn
 func RowKeyUserItem(itemID int64) string         { return "u" + strconv.FormatInt(itemID, 10) }
 
 // SaveOrder stores the order the user gave some rows of the list: keys, first
-// to last. Rows not named keep their place after them, in their old order;
-// keys that match no row of the list are ignored.
+// to last. Rows not named (the ones in the cart, which the page does not send)
+// follow them in their old order; keys that match no row of the list are
+// ignored.
 func (r *ShoppingLists) SaveOrder(ctx context.Context, listID, userID int64, keys []string) error {
 	full, err := r.LoadFull(ctx, listID, userID)
 	if err != nil {

@@ -208,3 +208,12 @@ func TestShoppingViewCustomOrder(t *testing.T) {
 		t.Errorf("not custom: first %q, Reorder %v", flat.Rows[0].name, flat.Rows[0].Reorder)
 	}
 }
+
+// Only the rows still to buy can be dragged; the ones in the cart cannot.
+func TestShoppingViewCustomCartNotDraggable(t *testing.T) {
+	items := []domain.ShoppingListItem{shopItem(1, 10, "Mela", 100, true, 0), shopItem(2, 11, "Pasta", 100, false, 0)}
+	v := buildShoppingView(items, nil, nil, db.ShoppingGroupCustom, nil)
+	if len(v.Cart) != 1 || v.Cart[0].Reorder || !v.Rows[0].Reorder {
+		t.Errorf("cart %+v rows %+v", v.Cart, v.Rows)
+	}
+}

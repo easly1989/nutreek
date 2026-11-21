@@ -105,7 +105,7 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 	v := shoppingView{Total: len(rows), Print: rows, Grouping: grouping}
 	for i := range rows {
 		rows[i].ShowCat = grouping != db.ShoppingGroupCategory
-		rows[i].Reorder = custom
+		rows[i].Reorder = custom && !rows[i].checked() // the rows in the cart are not draggable
 	}
 	for _, r := range rows {
 		if r.checked() {
