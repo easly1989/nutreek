@@ -7,15 +7,22 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/notify"
 )
 
-type recordingSender struct{ sent []notify.Message }
+// recordingSender is called from several goroutines at once (a user's devices).
+type recordingSender struct {
+	mu   sync.Mutex
+	sent []notify.Message
+}
 
 func (s *recordingSender) Send(_ context.Context, _ db.PushSub, m notify.Message) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.sent = append(s.sent, m)
 	return false, nil
 }

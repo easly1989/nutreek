@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -139,12 +140,16 @@ func TestDue(t *testing.T) {
 	}
 }
 
+// fakeSender is called from several goroutines at once (a user's devices), so it locks.
 type fakeSender struct {
+	mu   sync.Mutex
 	sent []Message
 	gone map[string]bool
 }
 
 func (f *fakeSender) Send(_ context.Context, sub db.PushSub, m Message) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.gone[sub.Endpoint] {
 		return true, nil
 	}
