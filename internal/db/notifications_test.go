@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -91,10 +92,22 @@ func TestNotifications(t *testing.T) {
 	if subs, _ := n.Subs(ctx, alice); len(subs) != 0 {
 		t.Error("a device belongs to one user")
 	}
-	for _, bad := range []string{"", "http://x", "ftp://x"} {
+	for _, bad := range []string{"", "http://x", "ftp://x", "https://", "https://user:pw@push.example/x", "https:///x"} {
 		if err := n.AddSub(ctx, bob, bad, "k", "a", ""); !errors.Is(err, ErrInvalidReminder) {
 			t.Errorf("endpoint %q: %v, want ErrInvalidReminder", bad, err)
 		}
+	}
+	// A user has a limited number of devices; a device they already have still updates.
+	for i := 0; i < MaxDevices-1; i++ { // bob has push.example/1 already
+		if err := n.AddSub(ctx, bob, fmt.Sprintf("https://push.example/b%d", i), "k", "a", ""); err != nil {
+			t.Fatalf("device %d: %v", i, err)
+		}
+	}
+	if err := n.AddSub(ctx, bob, "https://push.example/one-too-many", "k", "a", ""); !errors.Is(err, ErrInvalidReminder) {
+		t.Errorf("device over the cap: %v, want ErrInvalidReminder", err)
+	}
+	if err := n.AddSub(ctx, bob, "https://push.example/1", "k3", "a3", ""); err != nil {
+		t.Errorf("an existing device at the cap must still update: %v", err)
 	}
 
 	// Quiet hours and the time zone.

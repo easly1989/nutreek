@@ -12,7 +12,7 @@
 
   {{/* The device: the state is picked by notifications.js; without it, the last block. */}}
   <section class="card" id="dispositivo" data-notify data-available="{{.Available}}" data-vapid="{{.PublicKey}}" data-csrf="{{.CSRFToken}}" data-devices="{{.Devices}}"
-           data-msg-denied="{{t "notifications.js.denied"}}" data-msg-failed="{{t "notifications.js.failed"}}" data-msg-sent="{{t "notifications.js.sent"}}">
+           data-msg-denied="{{t "notifications.js.denied"}}" data-msg-failed="{{t "notifications.js.failed"}}" data-msg-sent="{{t "notifications.js.sent"}}" data-msg-none="{{t "notifications.js.none"}}">
     {{if not .Available}}
     <div class="flex items-center gap-3 p-4"><span class="w-2.5 h-2.5 rounded-full bg-muted shrink-0"></span><div class="grow"><b class="block">{{t "notifications.state.demo"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.state.demo_hint"}}</span></div></div>
     {{else}}
@@ -99,8 +99,9 @@
     </form>
 
     {{/* Custom reminders */}}
+    <span id="custom"></span>
     {{range .Customs}}
-    <div id="custom" class="flex flex-col">
+    <div class="flex flex-col">
       <form method="post" action="/settings/notifications/reminder" class="flex flex-col">
         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="kind" value="custom"><input type="hidden" name="id" value="{{.ID}}">
         <div class="flex items-center gap-3 px-4 py-3">

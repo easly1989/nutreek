@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -274,14 +275,36 @@ func (n *Notifications) SetMealMutes(ctx context.Context, userID int64, names []
 	return tx.Commit()
 }
 
+// MaxDevices is how many devices one user can have: the server sends to each of them.
+const MaxDevices = 10
+
+// validEndpoint accepts an https URL with a host, no credentials and a sane length.
+// The sender also refuses private addresses when it connects (notify.SafeClient).
+func validEndpoint(endpoint string) bool {
+	if len(endpoint) > 2000 {
+		return false
+	}
+	u, err := url.Parse(endpoint)
+	return err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil
+}
+
 // AddSub keeps a device (by its endpoint: a device that comes back replaces its
 // keys, and moves to the new user when someone else signs in on it).
 func (n *Notifications) AddSub(ctx context.Context, userID int64, endpoint, p256dh, auth, userAgent string) error {
-	if endpoint == "" || p256dh == "" || auth == "" || len(endpoint) > 2000 || !strings.HasPrefix(endpoint, "https://") {
+	if p256dh == "" || auth == "" || !validEndpoint(endpoint) {
 		return ErrInvalidReminder
 	}
 	if len(userAgent) > 300 {
 		userAgent = userAgent[:300]
+	}
+	// A device of this user that already exists is an update; a new one counts against the cap.
+	var have int
+	if err := n.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM push_subscriptions WHERE user_id = ? AND endpoint <> ?`, userID, endpoint).Scan(&have); err != nil {
+		return err
+	}
+	if have >= MaxDevices {
+		return ErrInvalidReminder
 	}
 	_, err := n.db.ExecContext(ctx, `
 		INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent) VALUES (?, ?, ?, ?, ?)

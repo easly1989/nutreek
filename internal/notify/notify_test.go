@@ -15,6 +15,44 @@ func at0(day, hhmm string) time.Time {
 	return t
 }
 
+// On the day the clocks change, 08:00 is still 08:00 on the wall; a gym session just
+// after midnight with a lead time is announced the evening before, on the right day.
+func TestDueDSTAndMidnight(t *testing.T) {
+	rome, err := time.LoadLocation("Europe/Rome")
+	if err != nil {
+		t.Skip("no tz database")
+	}
+	win := 2 * time.Minute
+	custom := db.Reminder{ID: 1, Kind: db.KindCustom, Enabled: true, Title: "x", Start: "08:00", Days: 127}
+	// 2027-03-28: Rome springs forward at 02:00. 08:00 there is 06:00 UTC.
+	if got := Due(custom, Input{Now: time.Date(2027, 3, 28, 8, 0, 0, 0, rome), Window: win, Lang: "en"}); len(got) != 1 {
+		t.Errorf("spring-forward day, 08:00 local: %d events, want 1", len(got))
+	}
+	if got := Due(custom, Input{Now: time.Date(2027, 3, 28, 9, 0, 0, 0, rome), Window: win, Lang: "en"}); len(got) != 0 {
+		t.Errorf("spring-forward day, 09:00 local: %d events, want 0", len(got))
+	}
+	// 2027-10-31: back at 03:00. 08:00 is still 08:00.
+	if got := Due(custom, Input{Now: time.Date(2027, 10, 31, 8, 0, 0, 0, rome), Window: win, Lang: "en"}); len(got) != 1 {
+		t.Errorf("fall-back day, 08:00 local: %d events, want 1", len(got))
+	}
+	// Water slots after the change keep their wall-clock times.
+	water := db.Reminder{Kind: db.KindWater, Enabled: true, Start: "06:00", End: "20:00", EveryMin: 120, Days: 127}
+	if got := Due(water, Input{Now: time.Date(2027, 3, 28, 10, 0, 0, 0, rome), Window: win, Lang: "en"}); len(got) != 1 {
+		t.Errorf("water slot 10:00 on the spring-forward day: %d events, want 1", len(got))
+	}
+
+	// Gym at 00:10 on a Tuesday, 30 minutes ahead: 23:40 on the Monday. Monday-only is not enough.
+	gym := db.Reminder{Kind: db.KindGym, Enabled: true, Start: "00:10", LeadMin: 30, Days: 1 << 1} // Tuesday
+	monday := time.Date(2027, 1, 4, 23, 40, 0, 0, time.UTC)                                        // a Monday
+	got := Due(gym, Input{Now: monday, Window: win, Lang: "en"})
+	if len(got) != 1 || got[0].Key != "gym:2027-01-05" {
+		t.Errorf("gym announced the evening before: %+v, want one event keyed for Tuesday", got)
+	}
+	if got := Due(gym, Input{Now: time.Date(2027, 1, 5, 23, 40, 0, 0, time.UTC), Window: win, Lang: "en"}); len(got) != 0 {
+		t.Errorf("Tuesday evening is announcing Wednesday's session, which is not a gym day: %+v", got)
+	}
+}
+
 // Quiet hours run through midnight and end where they say.
 func TestInQuiet(t *testing.T) {
 	for _, tc := range []struct {

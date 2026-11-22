@@ -105,6 +105,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(self.registration.showNotification(msg.title || "Nutreek", {
     body: msg.body || "",
     tag: msg.tag || undefined,
+    renotify: !!msg.tag,
     icon: msg.icon || undefined,
     badge: msg.icon || undefined,
     data: { url: msg.url || "/" },

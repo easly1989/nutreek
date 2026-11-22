@@ -195,7 +195,7 @@ func run(logger *slog.Logger) error {
 		a.NotifyPublicKey = keys.Public
 		a.Notify = &notify.Service{
 			Notifications: a.Notifications, Users: usersRepo, Plans: weeklyPlansRepo, Water: a.WaterLogs, Logger: logger,
-			Sender: notify.WebPush{Keys: keys, Subscriber: "https://github.com/easly1989/nutreek", Client: &http.Client{Timeout: 15 * time.Second}},
+			Sender: notify.WebPush{Keys: keys, Subscriber: "https://github.com/easly1989/nutreek", Client: notify.SafeClient(5 * time.Second)},
 		}
 	}
 	if err := applyDemo(ctx, store, sessions, a, logger); err != nil {

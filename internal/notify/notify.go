@@ -6,11 +6,14 @@ package notify
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
@@ -96,12 +99,21 @@ func (w WebPush) Send(ctx context.Context, sub db.PushSub, msg Message) (bool, e
 		Keys:     webpush.Keys{Auth: sub.Auth, P256dh: sub.P256dh},
 	}, opts)
 	if err != nil {
+		// The endpoint is a secret URL: keep it out of the error that gets logged.
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			err = fmt.Errorf("push request failed: %w", ue.Err)
+		}
 		return false, err
 	}
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 	switch {
-	case resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone:
+	// 404 and 410: the device is gone. 401 and 403: the push service no longer accepts
+	// our key for it (new keys, or a subscription made with another one); it needs a new
+	// subscription either way.
+	case resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone ||
+		resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 		return true, nil
 	case resp.StatusCode >= 400:
 		return false, fmt.Errorf("push service answered %d", resp.StatusCode)
@@ -227,20 +239,11 @@ func (s *Service) tickUser(ctx context.Context, userID int64, reminders []db.Rem
 			if !first {
 				continue
 			}
-			for _, sub := range subs {
-				gone, err := s.Sender.Send(ctx, sub, ev.Message)
-				if gone {
-					_ = s.Notifications.DeleteSub(ctx, userID, sub.Endpoint)
-					continue
-				}
-				if err != nil {
-					if s.Logger != nil {
-						s.Logger.Warn("push failed", "user", userID, "err", err)
-					}
-					continue
-				}
-				sent++
+			n, err := s.push(ctx, userID, subs, ev.Message)
+			if err != nil && s.Logger != nil {
+				s.Logger.Warn("push failed", "user", userID, "err", err)
 			}
+			sent += n
 		}
 	}
 	return sent, nil
@@ -252,21 +255,44 @@ func (s *Service) SendTest(ctx context.Context, userID int64, lang string) (int,
 	if err != nil {
 		return 0, err
 	}
-	n := 0
-	for _, sub := range subs {
-		gone, err := s.Sender.Send(ctx, sub, Message{
-			Title: i18n.T(lang, "notify.test.title"), Body: i18n.T(lang, "notify.test.body"), URL: "/settings/notifications", Tag: "nutreek-test",
-		})
-		if gone {
-			_ = s.Notifications.DeleteSub(ctx, userID, sub.Endpoint)
-			continue
-		}
-		if err != nil {
-			return n, err
-		}
-		n++
+	return s.push(ctx, userID, subs, Message{
+		Title: i18n.T(lang, "notify.test.title"), Body: i18n.T(lang, "notify.test.body"), URL: "/settings/notifications", Tag: "nutreek-test",
+	})
+}
+
+// push sends msg to every device of userID at once (a slow one does not hold up the
+// others), forgets the ones the push service says are gone, and returns how many
+// were reached and the first error of the others.
+func (s *Service) push(ctx context.Context, userID int64, subs []db.PushSub, msg Message) (int, error) {
+	type result struct {
+		gone bool
+		err  error
 	}
-	return n, nil
+	results := make([]result, len(subs))
+	var wg sync.WaitGroup
+	for i, sub := range subs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results[i].gone, results[i].err = s.Sender.Send(ctx, sub, msg)
+		}()
+	}
+	wg.Wait()
+	n := 0
+	var first error
+	for i, r := range results {
+		switch {
+		case r.gone:
+			_ = s.Notifications.DeleteSub(ctx, userID, subs[i].Endpoint)
+		case r.err != nil:
+			if first == nil {
+				first = r.err
+			}
+		default:
+			n++
+		}
+	}
+	return n, first
 }
 
 // ---- what is due (pure) ------------------------------------------------------
@@ -316,10 +342,15 @@ func minutes(hhmm string) int {
 	return h*60 + m
 }
 
-// at is the time hhmm on the day of now.
-func at(now time.Time, hhmm string) time.Time {
-	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Add(time.Duration(minutes(hhmm)) * time.Minute)
+// atMin is the wall-clock time mins minutes after midnight on the day of day (a
+// negative or large value runs into the day before or after). It is built from the
+// calendar, not by adding a duration, so 08:00 stays 08:00 on the days the clocks change.
+func atMin(day time.Time, mins int) time.Time {
+	return time.Date(day.Year(), day.Month(), day.Day(), 0, mins, 0, 0, day.Location())
 }
+
+// at is the time hhmm on the day of now.
+func at(now time.Time, hhmm string) time.Time { return atMin(now, minutes(hhmm)) }
 
 // due says whether moment fell in the window that ends at now.
 func due(now, moment time.Time, window time.Duration) bool {
@@ -328,35 +359,45 @@ func due(now, moment time.Time, window time.Duration) bool {
 
 // Due returns the notifications of reminder r that are due at in.Now.
 func Due(r db.Reminder, in Input) []Event {
-	if !r.Enabled || !r.OnDay((int(in.Now.Weekday())+6)%7) {
+	if !r.Enabled {
 		return nil
 	}
 	day := in.Now.Format("2006-01-02")
 	var out []Event
+	onToday := r.OnDay((int(in.Now.Weekday()) + 6) % 7)
 	switch r.Kind {
 	case db.KindWater:
-		if in.Water != nil && r.SkipDone && (in.Water.Total >= in.Water.Target || (!in.Water.Last.IsZero() && in.Now.Sub(in.Water.Last) < time.Hour)) {
+		if !onToday || (in.Water != nil && r.SkipDone && (in.Water.Total >= in.Water.Target || (!in.Water.Last.IsZero() && in.Now.Sub(in.Water.Last) < time.Hour))) {
 			return nil
 		}
-		end := at(in.Now, r.End)
-		for slot := at(in.Now, r.Start); !slot.After(end) && r.EveryMin > 0; slot = slot.Add(time.Duration(r.EveryMin) * time.Minute) {
-			if due(in.Now, slot, in.Window) {
+		start, end := minutes(r.Start), minutes(r.End)
+		for slot := start; slot <= end && r.EveryMin > 0; slot += r.EveryMin {
+			if due(in.Now, atMin(in.Now, slot), in.Window) {
 				body := ""
 				if in.Water != nil {
 					body = i18n.T(in.Lang, "notify.water.body", "Done", in.Water.Total, "Target", in.Water.Target)
 				}
-				out = append(out, Event{"water:" + day + ":" + slot.Format("15:04"), Message{
+				out = append(out, Event{"water:" + day + ":" + atMin(in.Now, slot).Format("15:04"), Message{
 					Title: i18n.T(in.Lang, "notify.water.title"), Body: body, URL: "/", Tag: "nutreek-water"}})
 			}
 		}
 	case db.KindGym:
-		if due(in.Now, at(in.Now, r.Start).Add(-time.Duration(r.LeadMin)*time.Minute), in.Window) {
-			out = append(out, Event{"gym:" + day, Message{
+		// Today's session and tomorrow's: with a lead time, a session just after
+		// midnight is announced late the evening before.
+		for off := 0; off <= 1; off++ {
+			session := in.Now.AddDate(0, 0, off)
+			if !r.OnDay((int(session.Weekday())+6)%7) || !due(in.Now, atMin(session, minutes(r.Start)-r.LeadMin), in.Window) {
+				continue
+			}
+			out = append(out, Event{"gym:" + session.Format("2006-01-02"), Message{
 				Title: i18n.T(in.Lang, "notify.gym.title"), Body: i18n.T(in.Lang, "notify.at", "Time", r.Start), URL: "/", Tag: "nutreek-gym"}})
 		}
 	case db.KindMeals:
+		if !onToday {
+			return nil
+		}
 		for _, m := range in.Meals {
-			if in.Muted[strings.ToLower(m.Name)] || !due(in.Now, at(in.Now, m.Start).Add(-time.Duration(r.LeadMin)*time.Minute), in.Window) {
+			if in.Muted[strings.ToLower(m.Name)] || !due(in.Now, atMin(in.Now, minutes(m.Start)-r.LeadMin), in.Window) {
 				continue
 			}
 			body := i18n.T(in.Lang, "notify.at", "Time", m.Start)
@@ -366,7 +407,7 @@ func Due(r db.Reminder, in Input) []Event {
 			out = append(out, Event{fmt.Sprintf("meal:%d:%s", m.ID, day), Message{Title: m.Name, Body: body, URL: "/", Tag: fmt.Sprintf("nutreek-meal-%d", m.ID)}})
 		}
 	case db.KindCustom:
-		if due(in.Now, at(in.Now, r.Start), in.Window) {
+		if onToday && due(in.Now, at(in.Now, r.Start), in.Window) {
 			out = append(out, Event{fmt.Sprintf("custom:%d:%s", r.ID, day), Message{Title: r.Title, URL: "/", Tag: fmt.Sprintf("nutreek-custom-%d", r.ID)}})
 		}
 	}

@@ -64,6 +64,12 @@ func TestWebPush(t *testing.T) {
 	if gone, err := sender.Send(ctx, sub, Message{Title: "t"}); err != nil || !gone {
 		t.Errorf("410: gone=%v err=%v, want gone", gone, err)
 	}
+	for _, s := range []int{http.StatusUnauthorized, http.StatusForbidden} { // our key no longer fits the subscription
+		status = s
+		if gone, err := sender.Send(ctx, sub, Message{Title: "t"}); err != nil || !gone {
+			t.Errorf("%d: gone=%v err=%v, want gone", s, gone, err)
+		}
+	}
 	status = http.StatusInternalServerError
 	if gone, err := sender.Send(ctx, sub, Message{Title: "t"}); err == nil || gone {
 		t.Errorf("500: gone=%v err=%v, want an error and not gone", gone, err)

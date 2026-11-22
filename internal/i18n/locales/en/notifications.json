@@ -32,6 +32,7 @@
   "notifications.js.denied": "Permission was not given.",
   "notifications.js.failed": "Could not turn notifications on. Try again in a moment.",
   "notifications.js.sent": "Sent. Look at the notification on this device.",
+  "notifications.js.none": "No device received it. Turn notifications on for this device first.",
   "notifications.water.title": "Water",
   "notifications.water.summary": "Every {{.Every}} min, {{.Start}}–{{.End}}",
   "notifications.water.skip": "Skip when I reached the goal or drank recently",

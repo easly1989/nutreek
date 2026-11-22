@@ -26,11 +26,17 @@
     states.forEach(function (s) { s.classList.toggle("hidden", s.dataset.notifyState !== name); });
   }
 
-  function fail(msg) {
+  // The box is red for an error and neutral for a result that went well.
+  function say(msg, ok) {
     if (!errorBox) return;
     errorBox.textContent = msg;
     errorBox.hidden = false;
+    errorBox.classList.toggle("bg-danger-soft", !ok);
+    errorBox.classList.toggle("text-danger", !ok);
+    errorBox.classList.toggle("bg-surface-2", !!ok);
+    errorBox.classList.toggle("text-text", !!ok);
   }
+  function fail(msg) { say(msg, false); }
 
   function post(url, body) {
     return fetch(url, {
@@ -95,7 +101,9 @@
       btn.disabled = true;
       post("/notifications/test").then(function (r) {
         if (!r.ok) throw new Error("test " + r.status);
-        fail(card.dataset.msgSent);
+        return r.json();
+      }).then(function (res) {
+        if (res.sent > 0) say(card.dataset.msgSent, true); else fail(card.dataset.msgNone);
       }).catch(function () { fail(card.dataset.msgFailed); }).then(function () { btn.disabled = false; });
     }
 

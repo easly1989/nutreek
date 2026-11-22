@@ -32,6 +32,7 @@
   "notifications.js.denied": "Il permesso non è stato dato.",
   "notifications.js.failed": "Non è stato possibile attivare le notifiche. Riprova tra poco.",
   "notifications.js.sent": "Inviata. Guarda la notifica su questo dispositivo.",
+  "notifications.js.none": "Nessun dispositivo l'ha ricevuta. Attiva prima le notifiche su questo dispositivo.",
   "notifications.water.title": "Acqua",
   "notifications.water.summary": "Ogni {{.Every}} min, {{.Start}}–{{.End}}",
   "notifications.water.skip": "Salta se ho raggiunto l'obiettivo o ho bevuto da poco",
