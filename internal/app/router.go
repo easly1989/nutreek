@@ -259,6 +259,7 @@ func (a *App) Router() http.Handler {
 
 		// Account settings (GDPR export, password change, deletion, API tokens).
 		r.Get("/settings", a.handleSettingsPage)
+		r.Post("/settings/keep-awake", a.handleSettingsKeepAwake)
 		r.Get("/settings/export", a.handleUserDataExport)
 		if a.Demo == nil { // both ask for the password a demo account does not have
 			r.Post("/settings/password", a.handleChangePassword)

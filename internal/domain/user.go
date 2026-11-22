@@ -49,4 +49,8 @@ type User struct {
 
 	// Locale is the interface language the user picked; "" follows the browser.
 	Locale string
+
+	// KeepAwake asks the phone to keep its screen on while a page is open
+	// (Screen Wake Lock, #249). Off by default.
+	KeepAwake bool
 }

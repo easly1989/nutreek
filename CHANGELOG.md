@@ -11,6 +11,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Added
+- A setting to keep the phone screen on while Nutreek is open («In the kitchen and at the shop» in Settings), off by default and shown only on a phone or tablet whose browser supports it. The page asks for the screen lock while it is visible and again when you come back to it (migration 0044) (#249)
 - A «Check before shopping» on the shopping list: each row still to buy gets «Have it», «Some» or «Need it». «Have it» sets the row aside, «Some» lowers its quantity by what you have (in g, ml or pieces), and «Done» applies it all and goes back to the list. Nothing is deleted (#235)
 - On the shopping list, typing an item added by hand suggests those added before (most used first, with the last quantity and unit filled in when picked), and «Copy from…» brings items added by hand to the latest past lists over to this one, with the ones you tick (#234)
 - The shopping list notices two similar items (the same words in the name, as «Yogurt greco 0%» and «Altoproteico yogurt greco bianco 0%») and offers to merge them, with the quantities added, or to keep them separate (remembered). Merging two ingredients of the weekly plan asks which one to keep, proposing the more used, and changes the plan to use it, so plan and list agree. A toast with «Undo» puts the merge back for a few minutes (migration 0041) (#233)
