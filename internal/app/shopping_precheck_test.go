@@ -23,6 +23,7 @@ func TestShoppingPrecheckHandlers(t *testing.T) {
 	list, _ := a.ShoppingLists.GetOrCreateList(ctx, alice.ID, monday, 1)
 	_, _ = a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Candele", 4, "pz")
 	_, _ = a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Pepe", 100, "g")
+	_, _ = a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Latte", 0, "g") // no quantity: «Some» cannot apply
 	full, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
 	key := map[string]string{}
 	for _, u := range full.UserItems {
@@ -56,6 +57,21 @@ func TestShoppingPrecheckHandlers(t *testing.T) {
 	body := get("&check=1")
 	if !strings.Contains(body, "data-precheck") || !strings.Contains(body, `name="st-`+key["Candele"]+`"`) || !strings.Contains(body, `name="have-`+key["Pepe"]+`"`) {
 		t.Fatal("the check must show the answers of every row")
+	}
+
+	// An item with no quantity cannot answer «Some»: its radio is disabled.
+	rowOf := func(k string) string {
+		start := strings.Index(body, `name="row" value="`+k+`"`)
+		if start < 0 {
+			t.Fatalf("no row %s in the check", k)
+		}
+		return body[start : start+strings.Index(body[start:], "</li>")]
+	}
+	if !strings.Contains(rowOf(key["Latte"]), `name="st-`+key["Latte"]+`" value="some" disabled`) {
+		t.Error("«Some» must be disabled for an item without quantity")
+	}
+	if strings.Contains(rowOf(key["Pepe"]), `value="some" disabled`) {
+		t.Error("«Some» must be on for an item with a quantity")
 	}
 
 	form := url.Values{"row": {key["Candele"], key["Pepe"]}, "st-" + key["Candele"]: {"some"}, "have-" + key["Candele"]: {"1"}, "unit-" + key["Candele"]: {"pz"}, "st-" + key["Pepe"]: {"have"}}

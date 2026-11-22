@@ -231,7 +231,7 @@
     </div>
     <span class="segmented pc-seg shrink-0" role="radiogroup" aria-label="{{$name}}">
       <label><input type="radio" name="st-{{$k}}" value="have"{{if $r.Ignored}} checked{{end}}>{{t "shopping.pc_have"}}</label>
-      <label><input type="radio" name="st-{{$k}}" value="some"{{if $r.Legacy}} disabled{{end}}>{{t "shopping.pc_some"}}</label>
+      <label><input type="radio" name="st-{{$k}}" value="some"{{if or $r.Legacy (and $r.User (not $r.EditQty))}} disabled{{end}}>{{t "shopping.pc_some"}}</label>
       <label><input type="radio" name="st-{{$k}}" value="need"{{if not $r.Ignored}} checked{{end}}>{{t "shopping.pc_need"}}</label>
     </span>
   </div>

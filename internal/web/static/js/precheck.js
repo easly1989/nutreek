@@ -19,6 +19,14 @@
     }
   }
 
+  // The browser may bring back a checked «Some» (form restore, back button):
+  // show its field then too.
+  function syncAll() {
+    document.querySelectorAll("form[data-precheck] .pc-row").forEach(sync);
+  }
+  document.addEventListener("DOMContentLoaded", syncAll);
+  window.addEventListener("pageshow", syncAll);
+
   document.addEventListener("change", function (evt) {
     var t = evt.target;
     if (!(t instanceof Element) || !t.matches("form[data-precheck] input[type=radio]")) return;
