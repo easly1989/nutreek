@@ -52,16 +52,18 @@
       {{template "shop_precheck" .}}
       {{else if or .View.Total .View.Rows .View.Cart}}
       {{if .View.Total}}
-      <div class="card p-4 flex flex-col gap-2">
+      {{/* shop_progress.js animates the fill (clip-path) when the number of items in the cart changes, and celebrates when it reaches the total. */}}
+      <div id="shop-progress" class="card p-4 flex flex-col gap-2 relative" data-list="{{.List.ID}}" data-done="{{.View.Done}}" data-total="{{.View.Total}}">
         <div class="flex items-baseline gap-1">
           <b class="tabular-nums">{{t "shopping.progress" "Done" .View.Done "Total" .View.Total}}</b><span class="text-muted">{{t "shopping.in_cart"}}</span>
           <span class="ml-auto text-[12.5px] text-muted tabular-nums">{{.View.Percent}}%</span>
         </div>
-      {{end}}
-        <div class="h-1.5 rounded-full bg-track overflow-hidden" role="progressbar" aria-label="{{t "shopping.progress_label"}}" aria-valuemin="0" aria-valuemax="{{.View.Total}}" aria-valuenow="{{.View.Done}}">
-          <span class="block h-full rounded-full bg-accent" style="width: {{.View.Percent}}%"></span>
+        <div class="relative h-1.5 rounded-full bg-track overflow-hidden" role="progressbar" aria-label="{{t "shopping.progress_label"}}" aria-valuemin="0" aria-valuemax="{{.View.Total}}" aria-valuenow="{{.View.Done}}">
+          <span data-progress-fill class="block h-full bg-accent" style="clip-path: inset(0 {{.View.Rest}}% 0 0 round 9999px)"></span>
         </div>
+        {{if eq .View.Done .View.Total}}<p data-progress-done class="flex items-center gap-1.5 text-[13px] font-bold text-accent">{{template "icon_sm" "i-check"}}{{t "shopping.complete"}}</p>{{end}}
       </div>
+      {{end}}
 
       {{/* How the list is grouped, for every list of the user. */}}
       <form method="post" action="/shopping-list/grouping?week={{$ws}}&weeks={{$wc}}" hx-post="/shopping-list/grouping?week={{$ws}}&weeks={{$wc}}" hx-trigger="change" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="flex flex-wrap items-center gap-x-2 gap-y-1.5">

@@ -24,6 +24,7 @@ type shoppingView struct {
 	Done     int
 	Total    int
 	Percent  int
+	Rest     int // 100 - Percent: what the progress bar still has to fill
 }
 
 // shoppingGroup is a category of the list.
@@ -126,6 +127,7 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 	}
 	if v.Total > 0 {
 		v.Percent = v.Done * 100 / v.Total
+		v.Rest = 100 - v.Percent
 	}
 	if grouping == db.ShoppingGroupCategory {
 		v.Groups = groupRows(v.Rows)
