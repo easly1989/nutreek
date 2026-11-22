@@ -12,7 +12,7 @@
    hx-get="/days/{{.DateStr}}" hx-target="#day-panel" hx-swap="innerHTML"
    hx-push-url="/?start={{.WeekStart}}&day={{.DateStr}}"
    aria-selected="{{.Selected}}" aria-controls="day-panel" tabindex="{{if .Selected}}0{{else}}-1{{end}}"
-   data-day="{{.DateStr}}" data-state="{{.State}}"
+   data-day="{{.DateStr}}" data-state="{{.State}}" data-title="{{dayTitle .Day.Date}}"
    class="day-tab"{{if .OOB}} hx-swap-oob="true"{{end}}>
   <span class="flex items-center gap-1 text-[11px] sm:text-[12.5px] font-semibold opacity-85">
     <span class="sm:hidden">{{dayLetter .Day.Date}}</span>
