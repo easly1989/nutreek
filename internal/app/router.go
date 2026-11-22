@@ -238,6 +238,7 @@ func (a *App) Router() http.Handler {
 		r.Get("/shopping-list", a.handleShoppingList)
 		r.Get("/shopping-list/suggest", a.handleShoppingSuggest)
 		r.Post("/shopping-list/{id}/copy", a.handleShoppingCopy)
+		r.Post("/shopping-list/{id}/precheck", a.handleShoppingPrecheck)
 		r.Post("/shopping-list/generate", a.handleShoppingGenerate)
 		r.Post("/shopping-list/grouping", a.handleShoppingGrouping)
 		r.Post("/shopping-list/{id}/order", a.handleShoppingOrder)

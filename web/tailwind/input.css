@@ -352,6 +352,10 @@
   @media (min-width: 1024px) {
     details[data-sheet] .sheet-panel.sheet-wide { @apply w-[24rem]; }
   }
+  /* The three answers of the check before shopping (#235) are tighter than a segmented control elsewhere. */
+  .pc-seg > label { @apply px-2.5; }
+  .pc-seg > label:has(input:disabled) { @apply cursor-default opacity-50; }
+  .pc-seg > label:has(input:checked) { @apply bg-accent text-white; box-shadow: none; }
   /* Suggestions under the field of the items added by hand (#234). */
   .suggest-panel { @apply absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-border bg-surface shadow-lg; }
   .suggest-list > li + li { @apply border-t border-border; }

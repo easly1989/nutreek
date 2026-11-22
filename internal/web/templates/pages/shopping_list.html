@@ -10,6 +10,7 @@
     </div>
     <div class="flex items-center gap-2 shrink-0">
       <a href="/?start={{$ws}}" class="btn-secondary max-sm:w-9 max-sm:px-0" aria-label="{{t "shopping.go_to_week"}}" title="{{t "shopping.go_to_week"}}">{{template "icon" "i-week"}}<span class="hidden sm:inline">{{t "shopping.go_to_week"}}</span></a>
+      {{if and .View.Rows (not .Check)}}<a href="/shopping-list?week={{$ws}}&weeks={{$wc}}&check=1" class="btn-secondary max-sm:w-9 max-sm:px-0" aria-label="{{t "shopping.precheck"}}" title="{{t "shopping.precheck_title"}}">{{template "icon" "i-check"}}<span class="hidden sm:inline">{{t "shopping.precheck"}}</span></a>{{end}}
       <form method="post" action="/shopping-list/generate?week={{$ws}}&weeks={{$wc}}">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button class="btn-secondary btn-icon" title="{{t "shopping.regenerate"}}" aria-label="{{t "shopping.regenerate"}}">{{template "icon" "i-refresh"}}</button>
@@ -47,7 +48,9 @@
         </form>
       </div>
       {{end}}
-      {{if or .View.Total .View.Rows .View.Cart}}
+      {{if .Check}}
+      {{template "shop_precheck" .}}
+      {{else if or .View.Total .View.Rows .View.Cart}}
       {{if .View.Total}}
       <div class="card p-4 flex flex-col gap-2">
         <div class="flex items-baseline gap-1">
@@ -196,6 +199,56 @@
 {{define "shop_qty"}}{{if .Auto}}{{if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}} ({{template "shop_grams" .Auto}}){{else}}{{template "shop_grams" .Auto}}{{end}}{{else if .Pieces}}{{t "shopping.pieces" "Pieces" .Pieces}}{{else}}{{.Amount}}{{end}}{{end}}
 
 {{define "shop_row"}}{{if .Row.Auto}}{{template "shop_item" .}}{{else}}{{template "shop_user_item" .}}{{end}}{{end}}
+
+{{/* The check before shopping (#235): every row still to buy gets «Have it»,
+     «Some» or «Need it»; «Done» applies the answers and goes back to the list
+     (precheck.js shows the quantity field of «Some»). */}}
+{{define "shop_precheck"}}
+<form method="post" action="/shopping-list/{{.List.ID}}/precheck?week={{.WeekStart}}&weeks={{.WeekCount}}" class="flex flex-col gap-3" data-precheck>
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl bg-warn-bg text-warn-fg px-4 py-3">
+    <div class="min-w-0"><b>{{t "shopping.precheck_title"}}</b><p class="text-[12.5px]">{{t "shopping.precheck_hint"}}</p></div>
+    <div class="flex items-center gap-2">
+      <a href="/shopping-list?week={{.WeekStart}}&weeks={{.WeekCount}}" class="btn-secondary h-8 px-2.5 text-[12.5px]">{{t "common.cancel"}}</a>
+      <button class="btn-primary h-8 px-3 text-[12.5px]">{{t "shopping.precheck_done"}}</button>
+    </div>
+  </div>
+  <div class="card overflow-hidden">
+    <ul>
+      {{range .View.Rows}}{{template "shop_check_row" (row . $)}}{{end}}
+    </ul>
+  </div>
+</form>
+{{end}}
+
+{{define "shop_check_row"}}{{$r := .Row}}{{$k := $r.Key}}{{$name := ""}}{{if $r.Auto}}{{$name = $r.Auto.Item.Ingredient.Name}}{{else}}{{$name = $r.User.Item.Description}}{{end}}
+<li class="pc-row px-4 py-2.5 border-t border-border first:border-t-0">
+  <input type="hidden" name="row" value="{{$k}}">
+  <div class="flex items-center gap-3">
+    <div class="grow min-w-0">
+      <div class="font-medium truncate">{{$name}}</div>
+      <div class="text-[12.5px] text-muted tabular-nums">{{template "shop_qty" $r}}</div>
+    </div>
+    <span class="segmented pc-seg shrink-0" role="radiogroup" aria-label="{{$name}}">
+      <label><input type="radio" name="st-{{$k}}" value="have"{{if $r.Ignored}} checked{{end}}>{{t "shopping.pc_have"}}</label>
+      <label><input type="radio" name="st-{{$k}}" value="some"{{if $r.Legacy}} disabled{{end}}>{{t "shopping.pc_some"}}</label>
+      <label><input type="radio" name="st-{{$k}}" value="need"{{if not $r.Ignored}} checked{{end}}>{{t "shopping.pc_need"}}</label>
+    </span>
+  </div>
+  <div class="pc-have hidden items-center gap-2 pt-2 text-[12.5px]">
+    <label class="text-muted" for="have-{{$k}}">{{t "shopping.pc_have_label"}}</label>
+    <input id="have-{{$k}}" name="have-{{$k}}" inputmode="decimal" maxlength="10" class="field w-24 text-right tabular-nums" disabled>
+    {{if $r.Auto}}
+    <select name="unit-{{$k}}" class="field w-auto" aria-label="{{t "shopping.unit"}}" disabled>
+      <option value="{{$r.Auto.Item.Ingredient.Unit}}"{{if ne $r.EditUnit "pz"}} selected{{end}}>{{$r.Auto.Item.Ingredient.Unit}}</option>
+      {{if $r.PieceWeight}}<option value="pz"{{if eq $r.EditUnit "pz"}} selected{{end}}>{{t "shopping.unit_pieces"}}</option>{{end}}
+    </select>
+    {{else}}
+    <input type="hidden" name="unit-{{$k}}" value="{{$r.EditUnit}}" disabled>
+    <span class="text-muted">{{if eq $r.EditUnit "pz"}}{{t "shopping.unit_pieces"}}{{else}}{{$r.EditUnit}}{{end}}</span>
+    {{end}}
+  </div>
+</li>{{end}}
 
 {{/* The items added by hand before that match what is being typed (#234);
      the buttons carry what manual.js puts in the form. . is the []suggestView. */}}

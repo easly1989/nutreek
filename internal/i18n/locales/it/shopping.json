@@ -84,6 +84,15 @@
     "one": "usata {{.Count}} volta",
     "other": "usata {{.Count}} volte"
   },
+  "shopping.precheck": "Controllo pre-spesa",
+  "shopping.precheck_title": "Controlla prima di uscire",
+  "shopping.precheck_hint": "Segna cosa hai già in casa. «Fine» porta le modifiche sulla lista.",
+  "shopping.precheck_done": "Fine",
+  "shopping.pc_have": "Ce l'ho",
+  "shopping.pc_some": "Un po'",
+  "shopping.pc_need": "Serve",
+  "shopping.pc_have_label": "Ne ho",
+  "shopping.flash.precheck_invalid": "Alcune risposte non si sono potute applicare: scrivi quanto ne hai per le voci segnate «Un po'».",
   "shopping.flash.copy_none": "Spunta almeno una voce da copiare.",
   "shopping.flash.regenerated": "Lista rigenerata."
 }
