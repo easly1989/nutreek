@@ -94,6 +94,65 @@ func TestSearchByNameFTS5(t *testing.T) {
 	}
 }
 
+// The words of a query may come from the name, the brand or the package size,
+// in any order (#224).
+func TestSearchByNameBrandAndSize(t *testing.T) {
+	sqldb := openTestDB(t)
+	seedOFFProducts(t, sqldb, []Product{
+		{Code: "1000000000001", Name: "Yogurt greco", Brand: "Fage", Quantity: "150 g", Kcal: 97, Protein: 9, Carbs: 4, Fat: 5, HasFullNutrients: true},
+		{Code: "1000000000002", Name: "Yogurt greco", Brand: "Fage", Quantity: "500 g", Kcal: 97, Protein: 9, Carbs: 4, Fat: 5, HasFullNutrients: true},
+		{Code: "1000000000003", Name: "Yogurt bianco", Brand: "Parmalat", Quantity: "125 g", Kcal: 60, Protein: 4, Carbs: 5, Fat: 3, HasFullNutrients: true},
+	})
+	c := NewClient(sqldb, "", nil)
+	for _, tc := range []struct {
+		name, query string
+		want        []string
+	}{
+		// The same product in two sizes is one result (the search collapses
+		// exact duplicates); a size in the query picks the size.
+		{"name then brand", "yogurt fage", []string{"1000000000001"}},
+		{"brand first", "fage yogurt", []string{"1000000000001"}},
+		{"name, brand and size", "yogurt fage 150", []string{"1000000000001"}},
+		{"size with its unit", "parmalat 125 g", []string{"1000000000003"}},
+		{"size of the other one", "greco 500", []string{"1000000000002"}},
+		{"a word that is nowhere", "yogurt fage 999", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := c.SearchByName(context.Background(), tc.query)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var codes []string
+			for _, p := range got {
+				codes = append(codes, p.Code)
+			}
+			if len(codes) != len(tc.want) {
+				t.Fatalf("%q: %v, want %v", tc.query, codes, tc.want)
+			}
+			if tc.name == "name then brand" || tc.name == "brand first" {
+				return // one result, whichever size the search keeps
+			}
+			for _, w := range tc.want {
+				found := false
+				for _, c := range codes {
+					found = found || c == w
+				}
+				if !found {
+					t.Errorf("%q: %v is missing %s", tc.query, codes, w)
+				}
+			}
+		})
+	}
+
+	// The index can be rebuilt from the table (the migration does it).
+	if _, err := sqldb.Exec(`INSERT INTO off_products_fts(off_products_fts) VALUES('rebuild')`); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := c.SearchByName(context.Background(), "fage 500"); len(got) != 1 {
+		t.Errorf("after a rebuild: %d results, want 1", len(got))
+	}
+}
+
 func TestSearchByNameEmpty(t *testing.T) {
 	sqldb := openTestDB(t)
 	c := NewClient(sqldb, "", nil)

@@ -65,9 +65,12 @@ func NewClient(db *sql.DB, baseURL string, logger *slog.Logger) *Client {
 // the public OFF dump (the Italian subset).
 //
 // It tokenizes the query and wraps the tokens in `"token"*` for a prefix
-// match + an implicit AND between terms (the FTS5 default). Example:
+// match + an implicit AND between terms (the FTS5 default). Every token may
+// match the name, the brand or the package size, so the words of a query can
+// come from different columns (#224). Example:
 //
 //	"grana pad" → `"grana"* "pad"*` → matches "Grana Padano DOP"
+//	"fage 150"  → matches the products of the brand Fage sold in 150 g
 func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
@@ -95,7 +98,7 @@ func (c *Client) SearchByName(ctx context.Context, q string) ([]Product, error) 
 			SELECT p.barcode, p.product_name, p.brands, p.quantity,
 			       p.kcal_per_100, p.protein_per_100, p.carbs_per_100, p.fat_per_100,
 			       p.has_full_nutrients, p.image_url, p.serving_g,
-			       bm25(off_products_fts) AS rank
+			       bm25(off_products_fts, 0.0, 1.0, 1.0, 0.5) AS rank
 			FROM off_products p
 			JOIN off_products_fts fts ON fts.rowid = p.rowid
 			WHERE off_products_fts MATCH ? AND p.has_full_nutrients = 1
