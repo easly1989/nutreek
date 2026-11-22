@@ -897,7 +897,7 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 	case "ingredient":
 		// The OFF search is now local via FTS5: a single fast synchronous call
 		// (<50ms) returns local + OFF merged.
-		rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r))
+		rows, warn, err := a.searchPicker(r.Context(), q, includeOFFParam(r))
 		if err != nil {
 			a.serverError(w, r, err)
 			return
