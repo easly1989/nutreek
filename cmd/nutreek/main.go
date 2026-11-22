@@ -19,6 +19,7 @@ import (
 	"github.com/amon2126/nutreek/internal/app"
 	"github.com/amon2126/nutreek/internal/config"
 	"github.com/amon2126/nutreek/internal/db"
+	"github.com/amon2126/nutreek/internal/notify"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/service"
 	"github.com/amon2126/nutreek/internal/updates"
@@ -183,6 +184,19 @@ func run(logger *slog.Logger) error {
 		Render:     renderer,
 		Logger:     logger,
 		Updates:    updates.New(db.NewInstanceSettings(store.DB), version, cfg.UpdateCheck),
+
+		Notifications: db.NewNotifications(store.DB),
+	}
+	// Notifications (#237): the VAPID keys are made on the first start and kept in the
+	// database; the ticker sends from the browsers' own push services.
+	if keys, err := notify.EnsureVAPID(ctx, db.NewInstanceSettings(store.DB)); err != nil {
+		logger.Warn("notifications are off: VAPID keys", "err", err)
+	} else {
+		a.NotifyPublicKey = keys.Public
+		a.Notify = &notify.Service{
+			Notifications: a.Notifications, Users: usersRepo, Plans: weeklyPlansRepo, Water: a.WaterLogs, Logger: logger,
+			Sender: notify.WebPush{Keys: keys, Subscriber: "https://github.com/easly1989/nutreek", Client: notify.SafeClient(5 * time.Second)},
+		}
 	}
 	if err := applyDemo(ctx, store, sessions, a, logger); err != nil {
 		return err
@@ -192,6 +206,9 @@ func run(logger *slog.Logger) error {
 	}
 	if a.Updates != nil { // after applyDemo, which drops it
 		go a.Updates.Run(ctx, logger)
+	}
+	if a.Notify != nil { // after applyDemo, which drops it: nobody owns the demo's devices
+		go a.Notify.Run(ctx)
 	}
 
 	srv := &http.Server{
