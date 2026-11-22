@@ -148,4 +148,48 @@ func TestMoveItem(t *testing.T) {
 	if meals != 0 {
 		t.Error("a refused move must not create a meal")
 	}
+
+	// An order with a repeated id is not the meal's rows.
+	if _, err := plans.MoveItem(ctx, soupRow, alice, lunch, []int64{soupRow, soupRow}); !errors.Is(err, ErrReorderMismatch) {
+		t.Errorf("a repeated id: %v, want ErrReorderMismatch", err)
+	}
+
+	// A meal with cheats (what was eaten instead) takes no rows: its own are struck
+	// out. It is not in the menu, a drop on it is refused, and «another day» goes
+	// round it, to the last meal that can take the row, or to a new one.
+	wedMeal, _ := plans.AddMeal(ctx, plan.ID, alice, 2, "Dinner")
+	if _, err := plans.AddCheat(ctx, wedMeal, alice, nil, &rice, 100); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := plans.MoveItem(ctx, soupRow, alice, wedMeal, nil); !errors.Is(err, ErrMealNotFound) {
+		t.Errorf("a meal with cheats: %v, want ErrMealNotFound", err)
+	}
+	sibling, _ := plans.AddMeal(ctx, plan.ID, alice, 2, "Lunch")
+	mc, err = plans.MoveContextFor(ctx, soupRow, alice)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range mc.Meals {
+		if target.ID == wedMeal {
+			t.Error("a meal with cheats must not be in the menu")
+		}
+	}
+	if _, err := plans.MoveItemToDay(ctx, soupRow, alice, 2); err != nil {
+		t.Fatal(err)
+	}
+	if m, _ := meal(soupRow); m != sibling {
+		t.Errorf("another day: soup in meal %d, want the meal without cheats (%d)", m, sibling)
+	}
+
+	// Names are compared by letters, not bytes: «È» and «è» are the same meal.
+	accent, _ := plans.AddMeal(ctx, plan.ID, alice, 0, " Èspresso ")
+	other, _ := plans.AddMeal(ctx, plan.ID, alice, 3, "èspresso")
+	plans.AddMeal(ctx, plan.ID, alice, 3, "Zzz")
+	accentRow, _ := plans.AddItem(ctx, accent, alice, nil, &milk, 30, "g")
+	if _, err := plans.MoveItemToDay(ctx, accentRow, alice, 3); err != nil {
+		t.Fatal(err)
+	}
+	if m, _ := meal(accentRow); m != other {
+		t.Errorf("accented name: row in meal %d, want the meal named èspresso (%d)", m, other)
+	}
 }

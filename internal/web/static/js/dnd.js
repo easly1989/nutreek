@@ -63,13 +63,21 @@
       ghostClass: "opacity-40",
       handle: el.dataset.sortableHandle || undefined,
       // Lists of one group take rows from each other: the rows of the meals of a day.
-      group: el.dataset.sortableGroup || undefined,
+      // A meal with cheats (data-no-drop) takes no rows: its own are struck out.
+      group: el.dataset.sortableGroup
+        ? { name: el.dataset.sortableGroup, put: function (to) { return !to.el.hasAttribute("data-no-drop"); } }
+        : undefined,
+      // On a touch screen a drag starts after a short press, so a thumb that
+      // brushes the handle while scrolling does not pick the row up.
+      delay: el.dataset.sortableGroup ? 120 : 0,
+      delayOnTouchOnly: true,
+      touchStartThreshold: 6,
       onStart: function () {
         var day = el.closest("section[data-day]");
         if (day && el.dataset.sortableGroup) day.classList.add("dnd-active");
       },
       onMove: function (evt) {
-        if (el.dataset.sortableGroup) highlight(evt.to);
+        if (el.dataset.sortableGroup) highlight(evt.to !== evt.from ? evt.to : null);
         return true;
       },
       onEnd: function (evt) {
@@ -92,9 +100,16 @@
 
   // A request of a list that fails (the row is gone, the order is stale) leaves the
   // page showing a move that did not happen: show the week as it is.
-  document.body.addEventListener("htmx:responseError", function (e) {
+  // Also the «Move to…» menu of a row (move-menu-<id>): a row deleted in another
+  // tab leaves it on «Loading…», or its choice with no answer.
+  function fromLists(e) {
     var elt = e.detail && e.detail.elt;
-    if (elt && elt.matches && elt.matches("[data-sortable]")) window.location.reload();
+    if (!elt || !elt.matches) return;
+    var menu = elt.matches('[data-popover^="move-menu-"]') || (elt.closest && elt.closest('[id^="move-menu-"]'));
+    if (elt.matches("[data-sortable]") || menu) window.location.reload();
+  }
+  ["htmx:responseError", "htmx:sendError", "htmx:timeout"].forEach(function (name) {
+    document.body.addEventListener(name, fromLists);
   });
 
   function scan(root) {

@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+// noCheats keeps the meals that have no cheats (what was eaten instead): their
+// rows are shown struck and count for nothing, so a row moved there would vanish
+// from the day's totals.
+const noCheats = `NOT EXISTS (SELECT 1 FROM meal_cheat_items c WHERE c.meal_id = meals.id)`
+
 // MoveContext is what the «Move to…» menu of a row needs (#228): where the row
 // is, and the other meals of its day.
 type MoveContext struct {
@@ -42,7 +47,7 @@ func (r *WeeklyPlans) MoveContextFor(ctx context.Context, itemID, userID int64) 
 	}
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, name FROM meals
-		WHERE weekly_plan_id = ? AND day_of_week = ? AND id <> ?
+		WHERE weekly_plan_id = ? AND day_of_week = ? AND id <> ? AND `+noCheats+`
 		ORDER BY sort_order, id`, planID, mc.DayOfWeek, mc.MealID)
 	if err != nil {
 		return nil, fmt.Errorf("move targets: %w", err)
@@ -113,25 +118,47 @@ func (r *WeeklyPlans) MoveItemToDay(ctx context.Context, itemID, userID int64, d
 		return MoveResult{}, fmt.Errorf("load item meal: %w", err)
 	}
 
-	var toMeal int64
-	err = tx.QueryRowContext(ctx, `
-		SELECT id FROM meals
-		WHERE weekly_plan_id = ? AND day_of_week = ?
-		ORDER BY (lower(name) = lower(?)) DESC, sort_order DESC, id DESC
-		LIMIT 1`, planID, day, fromName,
-	).Scan(&toMeal)
-	if errors.Is(err, sql.ErrNoRows) {
+	// The meals of that day that can take a row (see noCheats), in order: the
+	// first with the name it leaves, else the last.
+	fromName = strings.TrimSpace(fromName)
+	rows, err := tx.QueryContext(ctx, `
+		SELECT id, name FROM meals
+		WHERE weekly_plan_id = ? AND day_of_week = ? AND `+noCheats+`
+		ORDER BY sort_order, id`, planID, day)
+	if err != nil {
+		return MoveResult{}, fmt.Errorf("find meal of the day: %w", err)
+	}
+	var toMeal, lastMeal int64
+	for rows.Next() {
+		var id int64
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			rows.Close()
+			return MoveResult{}, fmt.Errorf("scan meal: %w", err)
+		}
+		lastMeal = id
+		if toMeal == 0 && strings.EqualFold(strings.TrimSpace(name), fromName) {
+			toMeal = id
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return MoveResult{}, err
+	}
+	rows.Close()
+	if toMeal == 0 {
+		toMeal = lastMeal
+	}
+	if toMeal == 0 {
 		res, err := tx.ExecContext(ctx,
 			`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, 0)`,
-			planID, day, strings.TrimSpace(fromName))
+			planID, day, fromName)
 		if err != nil {
 			return MoveResult{}, fmt.Errorf("insert meal: %w", err)
 		}
 		if toMeal, err = res.LastInsertId(); err != nil {
 			return MoveResult{}, err
 		}
-	} else if err != nil {
-		return MoveResult{}, fmt.Errorf("find meal of the day: %w", err)
 	}
 	res, err := moveItemTx(ctx, tx, itemID, userID, toMeal, nil)
 	if err != nil {
@@ -157,9 +184,10 @@ func moveItemTx(ctx context.Context, tx *sql.Tx, itemID, userID, toMealID int64,
 		return res, fmt.Errorf("load item: %w", err)
 	}
 	var toPlan int64
-	err = tx.QueryRowContext(ctx, `SELECT weekly_plan_id, day_of_week FROM meals WHERE id = ?`, toMealID).Scan(&toPlan, &res.ToDay)
-	if errors.Is(err, sql.ErrNoRows) || (err == nil && toPlan != fromPlan) {
-		return res, ErrMealNotFound // another plan, even the user's own, is not this week
+	var cheated bool
+	err = tx.QueryRowContext(ctx, `SELECT weekly_plan_id, day_of_week, NOT (`+noCheats+`) FROM meals WHERE id = ?`, toMealID).Scan(&toPlan, &res.ToDay, &cheated)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && (toPlan != fromPlan || cheated)) {
+		return res, ErrMealNotFound // another plan, even the user's own, is not this week; a meal with cheats takes no rows
 	}
 	if err != nil {
 		return res, fmt.Errorf("load meal: %w", err)
