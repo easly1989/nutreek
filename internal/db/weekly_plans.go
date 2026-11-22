@@ -94,11 +94,12 @@ func (r *WeeklyPlans) SetSourcePlan(ctx context.Context, weeklyPlanID, sourcePla
 	return nil
 }
 
-// HasMeals reports whether the plan already has at least one meal (to avoid a double apply).
+// HasMeals reports whether the plan already has at least one meal (to avoid a double
+// apply). A reminder (#236) is not one: it is no food, and it must not block a template.
 func (r *WeeklyPlans) HasMeals(ctx context.Context, planID int64) (bool, error) {
 	var n int
 	err := r.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM meals WHERE weekly_plan_id = ?`, planID,
+		`SELECT COUNT(*) FROM meals WHERE weekly_plan_id = ? AND is_reminder = 0`, planID,
 	).Scan(&n)
 	if err != nil {
 		return false, fmt.Errorf("count meals: %w", err)
@@ -113,7 +114,7 @@ func (r *WeeklyPlans) MealCountForWeek(ctx context.Context, userID int64, weekSt
 	var n int
 	err := r.db.QueryRowContext(ctx,
 		`SELECT COUNT(m.id) FROM weekly_plans p JOIN meals m ON m.weekly_plan_id = p.id
-		 WHERE p.user_id = ? AND substr(p.week_start, 1, 10) = ?`,
+		 WHERE p.user_id = ? AND substr(p.week_start, 1, 10) = ? AND m.is_reminder = 0`,
 		userID, MondayOf(weekStart).Format("2006-01-02"),
 	).Scan(&n)
 	if err != nil {

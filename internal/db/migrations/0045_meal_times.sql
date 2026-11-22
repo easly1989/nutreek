@@ -17,7 +17,7 @@ CREATE TABLE meal_time_defaults (
     PRIMARY KEY (user_id, name)
 );
 
--- A column «Ora» in the printed week and in the CSV export, off by default.
+-- A column «ora» in the CSV export of the week, off by default.
 ALTER TABLE users ADD COLUMN show_meal_times INTEGER NOT NULL DEFAULT 0 CHECK (show_meal_times IN (0, 1));
 
 -- +goose Down

@@ -156,6 +156,9 @@ func (a *App) handleWeekImport(w http.ResponseWriter, r *http.Request) {
 	mealIndex := make(map[mealKey]int64)
 	for d, dayMeals := range full.Days {
 		for _, m := range dayMeals {
+			if m.IsReminder {
+				continue // no food: no row of the CSV goes there (#236)
+			}
 			k := mealKey{d, strings.ToLower(m.Name)}
 			mealIndex[k] = m.ID
 		}

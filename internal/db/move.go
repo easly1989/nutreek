@@ -49,7 +49,7 @@ func (r *WeeklyPlans) MoveContextFor(ctx context.Context, itemID, userID int64) 
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, name FROM meals
 		WHERE weekly_plan_id = ? AND day_of_week = ? AND id <> ? AND `+noCheats+`
-		ORDER BY sort_order, id`, planID, mc.DayOfWeek, mc.MealID)
+		ORDER BY (start_time IS NULL), start_time, sort_order, id`, planID, mc.DayOfWeek, mc.MealID)
 	if err != nil {
 		return nil, fmt.Errorf("move targets: %w", err)
 	}
@@ -125,7 +125,7 @@ func (r *WeeklyPlans) MoveItemToDay(ctx context.Context, itemID, userID int64, d
 	rows, err := tx.QueryContext(ctx, `
 		SELECT id, name FROM meals
 		WHERE weekly_plan_id = ? AND day_of_week = ? AND `+noCheats+`
-		ORDER BY sort_order, id`, planID, day)
+		ORDER BY (start_time IS NULL), start_time, sort_order, id`, planID, day)
 	if err != nil {
 		return MoveResult{}, fmt.Errorf("find meal of the day: %w", err)
 	}
@@ -151,9 +151,14 @@ func (r *WeeklyPlans) MoveItemToDay(ctx context.Context, itemID, userID int64, d
 		toMeal = lastMeal
 	}
 	if toMeal == 0 {
+		defaults, err := mealTimeDefaults(ctx, tx, userID)
+		if err != nil {
+			return MoveResult{}, err
+		}
+		start, end := defaults.For(fromName)
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, 0)`,
-			planID, day, fromName)
+			`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order, start_time, end_time) VALUES (?, ?, ?, 0, ?, ?)`,
+			planID, day, fromName, start, end)
 		if err != nil {
 			return MoveResult{}, fmt.Errorf("insert meal: %w", err)
 		}

@@ -170,6 +170,40 @@ func TestMealTimes(t *testing.T) {
 		}
 	}
 
+	// A week with only reminders is not a week with meals: a template still applies,
+	// the planned-days count ignores it, and a reminder takes no cheat either.
+	rw, _ := plans.GetOrCreateForWeek(ctx, alice, monday.AddDate(0, 0, 21))
+	rem, err := plans.AddReminder(ctx, rw.ID, alice, 3, "Magnesio", "", "16:00", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if has, _ := plans.HasMeals(ctx, rw.ID); has {
+		t.Error("HasMeals must ignore a reminder")
+	}
+	if n, _ := plans.MealCountForWeek(ctx, alice, monday.AddDate(0, 0, 21)); n != 0 {
+		t.Errorf("MealCountForWeek = %d, want 0 with only a reminder", n)
+	}
+	if _, err := plans.AddCheat(ctx, rem, alice, nil, &oats, 50); !errors.Is(err, ErrMealNotFound) {
+		t.Errorf("a cheat in a reminder: %v, want ErrMealNotFound", err)
+	}
+	if err := plans.ApplyTemplate(ctx, rw.ID, alice, tpl); err != nil {
+		t.Errorf("a template on a week with only a reminder: %v", err)
+	}
+	if _, err := plans.AddReminder(ctx, rw.ID, alice, 0, "N", string(make([]rune, 201)), "08:00", ""); !errors.Is(err, ErrTooLong) {
+		t.Errorf("a note of 201 characters: %v, want ErrTooLong", err)
+	}
+	// A row sent to a day with only a reminder lands in a new meal with the time of its name.
+	dayRow, _ := plans.AddItem(ctx, lunch, alice, nil, &oats, 30, "g")
+	solo, _ := plans.AddReminder(ctx, plan.ID, alice, 5, "Ferro", "", "09:00", "")
+	_ = solo
+	if _, err := plans.MoveItemToDay(ctx, dayRow, alice, 5); err != nil {
+		t.Fatal(err)
+	}
+	var movedStart *string
+	if err := store.DB.QueryRowContext(ctx, `SELECT m.start_time FROM meals m JOIN meal_items mi ON mi.meal_id = m.id WHERE mi.id = ?`, dayRow).Scan(&movedStart); err != nil || movedStart == nil || *movedStart != "13:00" {
+		t.Errorf("the new meal's time = %v (%v), want the 13:00 of its name", movedStart, err)
+	}
+
 	if err := plans.DeleteMealTimeDefault(ctx, alice, "Pranzo"); err != nil {
 		t.Fatal(err)
 	}

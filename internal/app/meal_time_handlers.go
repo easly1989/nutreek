@@ -79,6 +79,10 @@ func (a *App) handleAddReminder(w http.ResponseWriter, r *http.Request) {
 		a.flashAndBack(w, r, weekStart, "meal_times.flash.invalid_time")
 		return
 	}
+	if errors.Is(err, db.ErrTooLong) {
+		a.flashAndBack(w, r, weekStart, "week.flash.name_too_long")
+		return
+	}
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -120,6 +124,8 @@ func (a *App) handleSettingsMealTime(w http.ResponseWriter, r *http.Request) {
 		strings.TrimSpace(r.PostFormValue("start_time")), strings.TrimSpace(r.PostFormValue("end_time")))
 	if errors.Is(err, db.ErrInvalidTime) {
 		a.Sessions.Put(r.Context(), "flash", "meal_times.flash.invalid_time")
+	} else if errors.Is(err, db.ErrTooLong) {
+		a.Sessions.Put(r.Context(), "flash", "week.flash.name_too_long")
 	} else if err != nil {
 		a.serverError(w, r, err)
 		return

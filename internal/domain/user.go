@@ -54,7 +54,6 @@ type User struct {
 	// (Screen Wake Lock, #249). Off by default.
 	KeepAwake bool
 
-	// ShowMealTimes adds a column with the meal times to the printed week and the
-	// CSV export (#236). Off by default.
+	// ShowMealTimes adds a column with the meal times to the CSV export (#236). Off by default.
 	ShowMealTimes bool
 }

@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
+
+// ErrTooLong is returned for a meal name or a reminder's note over 200 characters.
+var ErrTooLong = errors.New("too long")
 
 // Meal times and reminders (#236). Times are wall-clock «HH:MM» with no time zone.
 
@@ -108,7 +112,10 @@ func (r *WeeklyPlans) MealTimeDefaults(ctx context.Context, userID int64) (MealT
 // ErrInvalidTime for a bad time, an empty or too long name.
 func (r *WeeklyPlans) SetMealTimeDefault(ctx context.Context, userID int64, name, start, end string) error {
 	name = strings.TrimSpace(name)
-	if name == "" || len(name) > 200 || ValidTimes(start, end) != nil {
+	if utf8.RuneCountInString(name) > 200 {
+		return ErrTooLong
+	}
+	if name == "" || ValidTimes(start, end) != nil {
 		return ErrInvalidTime
 	}
 	if _, err := r.db.ExecContext(ctx, `
@@ -165,8 +172,8 @@ func (r *WeeklyPlans) AddReminder(ctx context.Context, planID, userID int64, day
 	if err := ValidTimes(start, end); err != nil {
 		return 0, err
 	}
-	if len(note) > 200 {
-		return 0, ErrInvalidTime
+	if utf8.RuneCountInString(note) > 200 {
+		return 0, ErrTooLong
 	}
 	id, err := r.AddMeal(ctx, planID, userID, day, name)
 	if err != nil {

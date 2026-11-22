@@ -83,7 +83,7 @@ type dayCardData struct {
 
 // HasMeals says whether the day has at least one planned meal (to decide
 // whether to show the adherence badge).
-func (d dayCardData) HasMeals() bool { return len(d.Day.Meals) > 0 }
+func (d dayCardData) HasMeals() bool { return d.Day.HasFood() }
 
 // waterWidgetData feeds the water_widget.html partial, renderable both inside
 // the day card and alone (HTMX swap after a quick log).
