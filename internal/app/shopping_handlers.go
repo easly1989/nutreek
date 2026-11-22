@@ -21,6 +21,7 @@ type shoppingListData struct {
 	View      shoppingView
 	CanUndo   bool           // a merge was just made: the toast offers to undo it
 	Past      []copyListView // items added by hand to past lists, to copy here
+	Check     bool           // the check before shopping (#235) instead of the list
 	WeekStart string         // YYYY-MM-DD
 	WeekCount int
 	NextWeek  string
@@ -138,6 +139,7 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		authPageData: a.baseData(r),
 		List:         full,
 		Past:         pastCopyLists(past, full.UserItems),
+		Check:        r.URL.Query().Get("check") == "1",
 		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order).withSimilar(full.Dismissed, usage),
 		CanUndo:      a.showMergeToast(r, list.ID),
 		WeekStart:    weekStart.Format("2006-01-02"),

@@ -84,6 +84,15 @@
     "one": "used {{.Count}} time",
     "other": "used {{.Count}} times"
   },
+  "shopping.precheck": "Check before shopping",
+  "shopping.precheck_title": "Check before you go",
+  "shopping.precheck_hint": "Mark what you already have at home. Done puts the changes on the list.",
+  "shopping.precheck_done": "Done",
+  "shopping.pc_have": "Have it",
+  "shopping.pc_some": "Some",
+  "shopping.pc_need": "Need it",
+  "shopping.pc_have_label": "I have",
+  "shopping.flash.precheck_invalid": "Some answers could not be applied: enter how much you have for the items marked “Some”.",
   "shopping.flash.copy_none": "Tick at least one item to copy.",
   "shopping.flash.regenerated": "List regenerated."
 }

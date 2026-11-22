@@ -430,6 +430,7 @@ func TestEnglishEveryPage(t *testing.T) {
 		{route: "/shopping-list", target: "/shopping-list?week=" + thisWeek},
 		{target: "/shopping-list?week=" + thisWeek + "&weeks=2"},
 		{target: "/shopping-list?week=" + thisWeek, as: "eve"},
+		{target: "/shopping-list?week=" + thisWeek + "&check=1", as: "eve"},
 		{route: "/shopping-list/suggest", target: "/shopping-list/suggest?description=ca", as: "eve"},
 
 		// Onboarding, account, premium.
