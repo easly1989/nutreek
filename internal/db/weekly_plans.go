@@ -442,6 +442,22 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 				}
 			}
 		}
+		// The quantities the household's people set by hand follow their rows (#238).
+		for srcID, dstID := range itemIDMap {
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO household_item_quantities (person_id, meal_item_id, quantity)
+				 SELECT person_id, ?, quantity FROM household_item_quantities WHERE meal_item_id = ?`, dstID, srcID); err != nil {
+				return fmt.Errorf("copy household quantities: %w", err)
+			}
+		}
+	}
+	// And the meals they skip.
+	for srcID, dstID := range idMap {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO household_meal_skips (person_id, meal_id)
+			 SELECT person_id, ? FROM household_meal_skips WHERE meal_id = ?`, dstID, srcID); err != nil {
+			return fmt.Errorf("copy household skips: %w", err)
+		}
 	}
 
 	return tx.Commit()

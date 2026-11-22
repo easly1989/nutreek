@@ -37,6 +37,9 @@ func TestQuantity(t *testing.T) {
 	if got := tiny.Quantity(item(4, 10, 10, "g", ing(4, 900))); got != 5 { // never zero
 		t.Errorf("a small quantity rounds to the step, not to nothing: %v", got)
 	}
+	if got := (Person{Ratio: 0.5}).Quantity(item(6, 10, 3, "g", ing(6, 0))); got != 3 { // 1.5 g would round up to 5 g
+		t.Errorf("a person never gets more than the owner: %v, want 3", got)
+	}
 	if got := (Person{Ratio: 1}).Quantity(item(5, 10, 103, "g", ing(5, 100))); got != 103 {
 		t.Errorf("the owner's own quantity is not rounded: %v", got)
 	}

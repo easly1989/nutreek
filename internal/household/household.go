@@ -82,7 +82,9 @@ func (p Person) Auto(it domain.MealItemFull) float64 {
 	if p.Ratio == 1 { // the owner, or the same goal: the very same quantity, not rounded
 		return it.Quantity
 	}
-	return RoundTo(it.Quantity*p.Ratio, Step(it))
+	// Never more than the owner: a person with a smaller goal does not get a larger
+	// pinch of salt because the step is 5 g.
+	return math.Min(RoundTo(it.Quantity*p.Ratio, Step(it)), it.Quantity*math.Max(p.Ratio, 1))
 }
 
 // Factor is the person's quantity over the owner's: every macro is linear in the

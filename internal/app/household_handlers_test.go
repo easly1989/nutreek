@@ -132,6 +132,15 @@ func TestHouseholdHandlers(t *testing.T) {
 	if len(week()) != 0 {
 		t.Errorf("junk was saved: %v", week())
 	}
+	// A bad field saves nothing, not even the good ones before it.
+	leo, _ := a.Household.Add(ctx, alice.ID, "Leo", 1200)
+	call(a.handleHouseholdItemSave, http.MethodPost, "/meal-items/x/people"+start, url.Values{field: {"90"}, "q_" + strconv.FormatInt(leo, 10): {"abc"}}, rowParam, alice, true)
+	if len(week()) != 0 {
+		t.Errorf("a partial save: %v", week())
+	}
+	if err := a.Household.Delete(ctx, alice.ID, leo); err != nil {
+		t.Fatal(err)
+	}
 	if w := call(a.handleHouseholdItemSave, http.MethodPost, "/meal-items/x/people"+start, url.Values{field: {"50"}}, rowParam, bob, true); w.Code != http.StatusNotFound || len(week()) != 0 {
 		t.Errorf("Bob setting Alice's row: %d, %v", w.Code, week())
 	}

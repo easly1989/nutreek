@@ -67,6 +67,13 @@ func TestShoppingWithHousehold(t *testing.T) {
 	if other, _ := shop.Shares(ctx, list.ID, alice+1); len(other) != 0 {
 		t.Error("another account reads the shares")
 	}
+	// A person who goes takes their details along (their id can be given to the next one).
+	if err := h.Delete(ctx, alice, leo); err != nil {
+		t.Fatal(err)
+	}
+	if s, _ := shop.Shares(ctx, list.ID, alice); len(s[pasta]) != 2 {
+		t.Errorf("shares after removing Leo: %v", s[pasta])
+	}
 }
 
 // The household tables (#238): people with a name and a goal (up to six), what they
@@ -182,6 +189,20 @@ func TestHousehold(t *testing.T) {
 	if err := plans.ReplaceItemIngredient(ctx, row, alice, rice, 120, "g"); err != nil || count() != 0 {
 		t.Errorf("replacing the ingredient drops it: %v, %d", err, count())
 	}
+
+	// Copying the week to another keeps what the people changed on their rows and meals.
+	_ = h.SetQuantity(ctx, alice, leo, row, 40)
+	_ = h.SetSkip(ctx, alice, leo, lunch, true)
+	next, _ := plans.GetOrCreateForWeek(ctx, alice, monday.AddDate(0, 0, 7))
+	if err := plans.CopyFrom(ctx, plan.ID, next.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	nw, _ := h.Week(ctx, alice, next.ID)
+	if len(nw.Quantities[leo]) != 1 || len(nw.Skips[leo]) != 1 {
+		t.Errorf("the copied week lost the household's changes: %+v", nw)
+	}
+	_, _ = store.DB.Exec(`DELETE FROM household_item_quantities WHERE person_id = ?`, leo)
+	_, _ = store.DB.Exec(`DELETE FROM household_meal_skips WHERE person_id = ?`, leo)
 
 	// Deleting an item, a meal or a person takes what hangs on it along.
 	_ = h.SetQuantity(ctx, alice, giulia, row, 80)

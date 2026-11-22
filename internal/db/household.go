@@ -100,10 +100,24 @@ func (h *Household) Update(ctx context.Context, userID, id int64, name string, k
 	return affected(res, err)
 }
 
-// Delete removes a person and everything they changed.
+// Delete removes a person and everything they changed, shopping list details included
+// (a new person can take the id, and must not inherit them).
 func (h *Household) Delete(ctx context.Context, userID, id int64) error {
-	res, err := h.db.ExecContext(ctx, `DELETE FROM household_people WHERE id = ? AND user_id = ?`, id, userID)
-	return affected(res, err)
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx, `DELETE FROM household_people WHERE id = ? AND user_id = ?`, id, userID)
+	if err := affected(res, err); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM shopping_list_shares WHERE person_id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)`, id, userID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func affected(res sql.Result, err error) error {

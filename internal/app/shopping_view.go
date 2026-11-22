@@ -83,6 +83,15 @@ func (v shoppingView) withShares(people []db.HouseholdPerson, ownerName string, 
 				continue
 			}
 			byPerson := shares[rows[i].Auto.Item.IngredientID]
+			// The details are as old as the last generation: when they no longer add up to
+			// the row (its quantity was edited, a person came or went), show none.
+			var sum float64
+			for _, q := range byPerson {
+				sum += q
+			}
+			if math.Abs(sum-rows[i].Auto.Item.TotalQuantity) > 0.01 {
+				continue
+			}
 			unit := string(rows[i].Auto.Item.Ingredient.Unit)
 			rows[i].Shares = rows[i].Shares[:0:0]
 			if q := byPerson[0]; q > 0 {

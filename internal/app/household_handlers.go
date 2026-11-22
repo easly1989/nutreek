@@ -222,26 +222,37 @@ func (a *App) handleHouseholdItemSave(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, a.t(r, "week.error.item_not_found"), http.StatusNotFound)
 		return
 	}
+	// Read every field first, so a bad one saves nothing.
+	type change struct {
+		person int64
+		qty    float64
+		clear  bool
+	}
+	var changes []change
 	for _, p := range iv.People {
 		raw, sent := r.PostForm["q_"+strconv.FormatInt(p.PersonID, 10)]
 		if !sent {
 			continue
 		}
-		raw[0] = strings.TrimSpace(raw[0])
+		text := strings.TrimSpace(raw[0])
+		if text == "" {
+			changes = append(changes, change{person: p.PersonID, clear: true})
+			continue
+		}
+		q, perr := parseNonNegFloat(text)
+		if perr != nil || q > MaxItemQuantity {
+			a.flashAndBack(w, r, parseWeekStart(r), a.t(r, "household.error.quantity"))
+			return
+		}
+		// The same as the automatic quantity: nothing to keep.
+		changes = append(changes, change{person: p.PersonID, qty: q, clear: q == household.RoundTo(p.Auto, 0.01)})
+	}
+	for _, c := range changes {
 		var err error
-		if raw[0] == "" {
-			err = a.Household.ClearQuantity(r.Context(), user.ID, p.PersonID, itemID)
+		if c.clear {
+			err = a.Household.ClearQuantity(r.Context(), user.ID, c.person, itemID)
 		} else {
-			q, perr := parseNonNegFloat(raw[0])
-			if perr != nil || q > MaxItemQuantity {
-				a.flashAndBack(w, r, parseWeekStart(r), a.t(r, "household.error.quantity"))
-				return
-			}
-			if q == household.RoundTo(p.Auto, 0.01) { // the same as the automatic one: nothing to keep
-				err = a.Household.ClearQuantity(r.Context(), user.ID, p.PersonID, itemID)
-			} else {
-				err = a.Household.SetQuantity(r.Context(), user.ID, p.PersonID, itemID, q)
-			}
+			err = a.Household.SetQuantity(r.Context(), user.ID, c.person, itemID, c.qty)
 		}
 		if err != nil {
 			a.serverError(w, r, err)
