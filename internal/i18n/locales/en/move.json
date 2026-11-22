@@ -1,0 +1,6 @@
+{
+  "move.button": "Move to…",
+  "move.button_named": "Move {{.Name}} to another meal",
+  "move.title": "Move to",
+  "move.other_day": "Another day…"
+}

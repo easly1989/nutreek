@@ -70,7 +70,7 @@
   {{/* ---- Pasti ---- */}}
   <div class="flex flex-col gap-3 min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
     {{if .Day.Meals}}
-    <div class="flex flex-col gap-3" data-sortable="meals" data-sortable-handle="[data-meal-grip]"
+    <div class="flex flex-col gap-3" data-sortable="meals" data-sortable-handle="[data-meal-grip]" data-csrf="{{.CSRFToken}}"
          data-sort-url="/meals/reorder?day_of_week={{.Day.Index}}&start={{.WeekStart}}">
       {{range .Day.Meals}}{{template "meal_card" (mealCtx . $.WeekStart $.CSRFToken)}}{{end}}
     </div>
@@ -178,12 +178,12 @@
     </div>
   </header>
 
-  {{if $m.ItemViews}}
+  {{- /* Always there, even with no rows: it is where a row dragged from another meal lands (#228). */}}
   <ul class="px-4 {{if $m.HasCheats}}opacity-60{{end}}" data-sortable="items" data-sortable-handle="[data-item-grip]"
+      data-csrf="{{$csrf}}" data-sortable-group="meal-items" data-meal-id="{{$m.Meal.ID}}"{{if $m.HasCheats}} data-no-drop{{end}} data-move-url="/meal-items/%s/move?start={{$ws}}"
       data-sort-url="/meals/{{$m.Meal.ID}}/items/reorder?start={{$ws}}">
     {{range $m.ItemViews}}{{template "meal_item_row" (itemCtx . $m.HasCheats false $ws $csrf)}}{{end}}
   </ul>
-  {{end}}
 
   {{if $m.HasCheats}}
   <div class="mx-4 mt-2 mb-1 pl-3 border-l-2 border-danger">
@@ -220,7 +220,7 @@
 {{$editable := and (not .Cheat) (or $it.Ingredient (and $it.Recipe (not $it.IsCustomized)))}}
 <li class="item-grid group grid gap-x-2.5 gap-y-1.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0 data-[editing]:-mx-4 data-[editing]:px-4 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}>
   <div class="col-start-1 min-w-0 flex items-start gap-1">
-    {{if not .Cheat}}<span data-item-grip class="hidden sm:grid w-4 h-5 -ml-4 place-items-center text-muted cursor-grab touch-none opacity-0 group-hover:opacity-100" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
+    {{if not .Cheat}}<span data-item-grip class="relative grid w-4 h-6 -ml-4 place-items-center text-muted cursor-grab touch-none [@media(hover:hover)]:opacity-0 group-hover:opacity-100 before:content-[''] before:absolute before:-top-2 before:-bottom-2 before:-left-1 before:-right-1" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
     <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
       {{if $it.Recipe}}
         <span class="marq"><span class="mq"><a href="/recipes/{{$it.Recipe.ID}}" class="font-medium hover:underline" title="{{t "week.open_recipe"}}">{{$it.Recipe.Name}}</a>
@@ -283,6 +283,16 @@
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <button class="icon-action hover:text-danger" title="{{t "week.delete"}}" aria-label="{{t "week.delete_named" "Name" $nm}}">{{template "icon" "i-trash"}}</button>
     </form>
+    {{- /* «Move to…» (#228): the meals of the day and the other days, loaded when the menu opens. */}}
+    {{if not .Cheat}}
+    <div class="relative">
+      <button type="button" class="icon-action" data-popover="move-menu-{{$it.ID}}" aria-expanded="false" aria-controls="move-menu-{{$it.ID}}"
+              hx-get="/meal-items/{{$it.ID}}/move?start={{.WeekStart}}" hx-target="#move-menu-{{$it.ID}}" hx-swap="innerHTML"              title="{{t "move.button"}}" aria-label="{{t "move.button_named" "Name" $nm}}">{{template "icon" "i-dots"}}</button>
+      <div id="move-menu-{{$it.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
+        <p class="px-3 py-2 text-muted animate-pulse">{{t "picker.loading"}}</p>
+      </div>
+    </div>
+    {{end}}
   </span>
 </li>
 {{end}}
@@ -311,5 +321,6 @@
        View model: dayMutationResponse. */ -}}
 {{template "day_card" .Card}}
 {{template "day_pill" .Card}}
+{{with .Extra}}{{template "day_pill" .}}{{end}}
 {{template "week_totals" .Week}}
 {{end}}
