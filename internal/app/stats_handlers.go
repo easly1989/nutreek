@@ -65,8 +65,11 @@ func (a *App) handleStats(w http.ResponseWriter, r *http.Request) {
 
 		sw.Total = macros.ForWeek(full.Days)
 		for _, dayMeals := range full.Days {
-			if len(dayMeals) > 0 {
-				sw.DaysLogged++
+			for _, m := range dayMeals {
+				if !m.IsReminder { // a reminder is no food (#236)
+					sw.DaysLogged++
+					break
+				}
 			}
 			for _, meal := range dayMeals {
 				if meal.HasCheats() {

@@ -11,7 +11,8 @@ import (
 // noCheats keeps the meals that have no cheats (what was eaten instead): their
 // rows are shown struck and count for nothing, so a row moved there would vanish
 // from the day's totals.
-const noCheats = `NOT EXISTS (SELECT 1 FROM meal_cheat_items c WHERE c.meal_id = meals.id)`
+// A reminder (#236) has no food: it takes no rows either.
+const noCheats = `meals.is_reminder = 0 AND NOT EXISTS (SELECT 1 FROM meal_cheat_items c WHERE c.meal_id = meals.id)`
 
 // MoveContext is what the «Move to…» menu of a row needs (#228): where the row
 // is, and the other meals of its day.
@@ -48,7 +49,7 @@ func (r *WeeklyPlans) MoveContextFor(ctx context.Context, itemID, userID int64) 
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, name FROM meals
 		WHERE weekly_plan_id = ? AND day_of_week = ? AND id <> ? AND `+noCheats+`
-		ORDER BY sort_order, id`, planID, mc.DayOfWeek, mc.MealID)
+		ORDER BY (start_time IS NULL), start_time, sort_order, id`, planID, mc.DayOfWeek, mc.MealID)
 	if err != nil {
 		return nil, fmt.Errorf("move targets: %w", err)
 	}
@@ -124,7 +125,7 @@ func (r *WeeklyPlans) MoveItemToDay(ctx context.Context, itemID, userID int64, d
 	rows, err := tx.QueryContext(ctx, `
 		SELECT id, name FROM meals
 		WHERE weekly_plan_id = ? AND day_of_week = ? AND `+noCheats+`
-		ORDER BY sort_order, id`, planID, day)
+		ORDER BY (start_time IS NULL), start_time, sort_order, id`, planID, day)
 	if err != nil {
 		return MoveResult{}, fmt.Errorf("find meal of the day: %w", err)
 	}
@@ -150,9 +151,14 @@ func (r *WeeklyPlans) MoveItemToDay(ctx context.Context, itemID, userID int64, d
 		toMeal = lastMeal
 	}
 	if toMeal == 0 {
+		defaults, err := mealTimeDefaults(ctx, tx, userID)
+		if err != nil {
+			return MoveResult{}, err
+		}
+		start, end := defaults.For(fromName)
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, 0)`,
-			planID, day, fromName)
+			`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order, start_time, end_time) VALUES (?, ?, ?, 0, ?, ?)`,
+			planID, day, fromName, start, end)
 		if err != nil {
 			return MoveResult{}, fmt.Errorf("insert meal: %w", err)
 		}

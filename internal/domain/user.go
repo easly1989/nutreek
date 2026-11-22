@@ -53,4 +53,7 @@ type User struct {
 	// KeepAwake asks the phone to keep its screen on while a page is open
 	// (Screen Wake Lock, #249). Off by default.
 	KeepAwake bool
+
+	// ShowMealTimes adds a column with the meal times to the CSV export (#236). Off by default.
+	ShowMealTimes bool
 }

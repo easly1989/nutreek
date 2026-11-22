@@ -32,6 +32,7 @@ type templateEditData struct {
 	NameError  string
 	SlotForm   slotForm
 	SlotError  string
+	MealTimes  db.MealTimes
 }
 
 // slotGroup groups the slots by day for the drag-and-drop UI.
@@ -150,6 +151,8 @@ func (a *App) renderTemplateEdit(
 		SlotForm:     slotF,
 		SlotError:    slotErr,
 	}
+	// The time each slot's meal will get (#236): the one its name has in Settings.
+	data.MealTimes, _ = a.WeeklyPlans.MealTimeDefaults(r.Context(), user.ID)
 	status := http.StatusOK
 	if nameErr != "" || slotErr != "" {
 		status = http.StatusUnprocessableEntity

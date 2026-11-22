@@ -86,8 +86,12 @@
       <input type="hidden" name="day_of_week" value="{{.Day.Index}}">
       <label for="new-meal-name" class="sr-only">{{t "week.new_meal_label"}}</label>
       <input id="new-meal-name" name="name" required maxlength="200" placeholder="{{t "week.new_meal_placeholder"}}" class="field">
+      {{- /* #236: empty takes the time the name has in Settings, if it has one. */}}
+      <label for="new-meal-time" class="sr-only">{{t "meal_times.time_optional"}}</label>
+      <input id="new-meal-time" type="time" name="start_time" title="{{t "meal_times.time_hint"}}" class="field w-[7.5rem] shrink-0 tabular-nums">
       <button class="btn-secondary shrink-0">{{template "icon" "i-plus"}}{{t "week.add"}}</button>
     </form>
+    <button type="button" class="btn-secondary self-start" hx-get="/week/reminder?day={{.Day.Index}}&start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-bell"}}{{t "meal_times.add_reminder"}}</button>
   </div>
 
   {{/* ---- Acqua e allenamenti ---- */}}
@@ -150,10 +154,25 @@
 {{define "meal_card"}}
 {{- /* A meal of the day. View model: web.MealCtx (mealView + context). */ -}}
 {{$m := .Meal}}{{$ws := .WeekStart}}{{$csrf := .CSRFToken}}
+{{- if $m.Meal.IsReminder}}
+{{- /* A reminder (#236): a meal with no food, a dashed card with its time. */}}
+<article class="flex items-center gap-2 min-h-[44px] pl-2 pr-1.5 py-1 rounded-xl border-[1.5px] border-dashed border-border" data-id="{{$m.Meal.ID}}">
+  <span class="w-7 h-7 shrink-0 grid place-items-center rounded-lg bg-surface-2 text-muted" aria-hidden="true">{{template "icon_sm" "i-bell"}}</span>
+  <div class="min-w-0 grow"><b class="block font-semibold">{{$m.Meal.Name}}</b>{{with $m.Meal.Note}}<span class="block text-[12px] text-muted">{{.}}</span>{{end}}</div>
+  {{template "meal_time_pill" .}}
+  <span class="chip hidden sm:inline-flex">{{t "meal_times.reminder_tag"}}</span>
+  <form method="post" action="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}" hx-post="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{$csrf}}">
+    <button class="icon-action hover:text-danger" title="{{t "week.delete"}}" aria-label="{{t "meal_times.delete_named" "Name" $m.Meal.Name}}">{{template "icon" "i-trash"}}</button>
+  </form>
+</article>
+{{- else}}
 <article class="card" data-id="{{$m.Meal.ID}}">
   <header class="flex items-start gap-2 pl-1.5 pr-2 pt-2 pb-1.5">
-    <span data-meal-grip class="w-6 h-8 shrink-0 grid place-items-center text-muted cursor-grab touch-none" title="{{t "week.drag"}}" aria-hidden="true">{{template "icon" "i-grip"}}</span>
+    {{- /* A meal with a time sorts by it, so it has no handle; one without keeps its place by hand. */}}
+    {{if $m.Meal.StartTime}}<span class="w-1.5 shrink-0"></span>{{else}}<span data-meal-grip class="w-6 h-8 shrink-0 grid place-items-center text-muted cursor-grab touch-none" title="{{t "week.drag"}}" aria-hidden="true">{{template "icon" "i-grip"}}</span>{{end}}
     <div class="min-w-0 flex-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1">
+      {{template "meal_time_pill" .}}
       <h3 class="text-[15px] font-bold leading-6 {{if $m.HasCheats}}text-danger{{end}}">{{$m.Meal.Name}}</h3>
       {{if $m.HasCheats}}<span class="chip bg-danger-soft text-danger">{{t "week.cheat"}}</span>{{end}}
       <span class="inline-flex gap-2.5 text-[12.5px] text-muted tabular-nums">
@@ -209,6 +228,30 @@
     {{template "icon" "i-plus"}}{{t "week.add_food"}}
   </a>
 </article>
+{{- end}}
+{{end}}
+
+{{define "meal_time_pill"}}
+{{- /* The time of a meal or a reminder (#236): a pill that opens a small popover to
+       change it (the day re-sorts), or «Add a time» for a meal from before.
+       View model: web.MealCtx. */ -}}
+{{$m := .Meal}}{{$ws := .WeekStart}}{{$id := $m.Meal.ID}}
+<div class="relative inline-flex">
+  <button type="button" data-popover="meal-time-{{$id}}" aria-expanded="false" aria-controls="meal-time-{{$id}}" aria-label="{{if $m.Meal.StartTime}}{{$m.Meal.TimeLabel}}, {{end}}{{t "meal_times.edit_named" "Name" $m.Meal.Name}}"
+          class="inline-flex items-center h-[22px] px-2 rounded-full font-bold text-[12px] tabular-nums whitespace-nowrap {{if $m.Meal.IsReminder}}bg-surface-2 text-muted{{else if $m.Meal.StartTime}}bg-accent-soft text-accent{{else}}border border-dashed border-border text-muted font-semibold{{end}}">
+    {{- if $m.Meal.StartTime}}{{$m.Meal.TimeLabel}}{{else}}{{t "meal_times.set_time"}}{{end -}}
+  </button>
+  <form id="meal-time-{{$id}}" method="post" action="/meals/{{$id}}/time?start={{$ws}}" hx-post="/meals/{{$id}}/time?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
+        class="menu-panel hidden absolute left-0 top-full mt-1 w-64 z-20 p-3 flex flex-col gap-2">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="flex gap-2.5">
+      <label class="flex flex-col gap-1 grow text-[12.5px] font-semibold text-muted">{{t "meal_times.start"}}<input type="time" name="start_time" required value="{{$m.Meal.StartTime}}" class="field text-center tabular-nums font-normal text-text"></label>
+      <label class="flex flex-col gap-1 grow text-[12.5px] font-semibold text-muted">{{t "meal_times.end"}}<input type="time" name="end_time" value="{{$m.Meal.EndTime}}" class="field text-center tabular-nums font-normal text-text"></label>
+    </div>
+    <p class="text-[12.5px] text-muted">{{t "meal_times.change_hint"}}</p>
+    <button class="btn-primary self-end">{{t "meal_times.save"}}</button>
+  </form>
+</div>
 {{end}}
 
 {{define "meal_item_row"}}

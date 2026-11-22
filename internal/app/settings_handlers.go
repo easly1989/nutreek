@@ -22,6 +22,18 @@ type settingsPageData struct {
 	PasswordOK    bool
 	APITokens     []domain.APIToken
 	NewTokenPlain string // set only right after creation
+
+	// MealTimes is the time each meal name gets (#236).
+	MealTimes []db.MealTimeDefault
+}
+
+// fillMealTimes loads the page's «Meal times» list.
+func (a *App) fillMealTimes(r *http.Request, data *settingsPageData) {
+	if u := userFromContext(r.Context()); u != nil {
+		if t, err := a.WeeklyPlans.MealTimeDefaults(r.Context(), u.ID); err == nil {
+			data.MealTimes = t.List
+		}
+	}
 }
 
 // handleSettingsKeepAwake POST /settings/keep-awake
@@ -77,6 +89,7 @@ func (a *App) handleSettingsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data.APITokens = tokens
+	a.fillMealTimes(r, &data)
 	if err := a.Render.Render(w, r, http.StatusOK, "settings", data); err != nil {
 		a.serverError(w, r, err)
 	}
@@ -103,6 +116,7 @@ func (a *App) handleSettingsAPITokenCreate(w http.ResponseWriter, r *http.Reques
 	data.ActiveNav = "/settings"
 	data.APITokens = tokens
 	data.NewTokenPlain = plain
+	a.fillMealTimes(r, &data)
 	if err := a.Render.Render(w, r, http.StatusOK, "settings", data); err != nil {
 		a.serverError(w, r, err)
 	}
@@ -174,6 +188,7 @@ func (a *App) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
 		data.DeleteError = a.t(r, "settings.delete.err_password")
+		a.fillMealTimes(r, &data)
 		if rerr := a.Render.Render(w, r, http.StatusUnprocessableEntity, "settings", data); rerr != nil {
 			a.serverError(w, r, rerr)
 		}
@@ -201,6 +216,7 @@ func (a *App) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
 		data.PasswordError = msg
+		a.fillMealTimes(r, &data)
 		if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "settings", data); err != nil {
 			a.serverError(w, r, err)
 		}

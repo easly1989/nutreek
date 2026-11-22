@@ -20,11 +20,12 @@ func (r *WeeklyPlans) AddCheat(
 ) (int64, error) {
 	// Check the meal's owner with a JOIN on weekly_plans.user_id.
 	var planUser int64
+	var reminder int
 	err := r.db.QueryRowContext(ctx, `
-		SELECT wp.user_id
+		SELECT wp.user_id, m.is_reminder
 		FROM meals m JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
 		WHERE m.id = ?`, mealID,
-	).Scan(&planUser)
+	).Scan(&planUser, &reminder)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, ErrMealNotFound
 	}
@@ -33,6 +34,9 @@ func (r *WeeklyPlans) AddCheat(
 	}
 	if planUser != userID {
 		return 0, ErrPlanNotFound
+	}
+	if reminder == 1 {
+		return 0, ErrMealNotFound // a reminder (#236) has no food, not even a cheat
 	}
 	if (recipeID == nil) == (ingredientID == nil) {
 		return 0, fmt.Errorf("specifica esattamente una fra recipe_id e ingredient_id")

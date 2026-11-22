@@ -21,7 +21,7 @@
   </span>
   <span class="text-[15px] font-bold tabular-nums leading-tight">
     <span class="sm:hidden">{{.Day.Date.Day}}</span>
-    <span class="hidden sm:inline">{{if .Day.Meals}}{{num .Day.DayTotal.Kcal}}{{else}}—{{end}}</span>
+    <span class="hidden sm:inline">{{if .Day.HasFood}}{{num .Day.DayTotal.Kcal}}{{else}}—{{end}}</span>
   </span>
   <span class="day-tab-track" aria-hidden="true"><span class="day-tab-bar" style="width:{{printf "%.0f" .Progress.Kcal.Pct}}%"></span></span>
 </a>

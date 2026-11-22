@@ -1,0 +1,29 @@
+{{define "reminder_form"}}
+{{- /* The «New reminder» dialog (#236): a meal with no food (a supplement, a
+       medicine) at a time. View model: app.reminderFormData. */ -}}
+<form method="post" action="/reminders?start={{.WeekStart}}"
+      hx-post="/reminders?start={{.WeekStart}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog
+      class="flex flex-col gap-3">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <input type="hidden" name="day_of_week" value="{{.Day}}">
+  <p class="text-muted">{{dayTitle .Date}} {{monthName .Date}} · {{t "meal_times.reminder_hint"}}</p>
+  <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "meal_times.name"}}
+    <input name="name" required maxlength="200" autofocus class="field font-normal text-text">
+  </label>
+  <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "meal_times.note"}}
+    <input name="note" maxlength="200" class="field font-normal text-text">
+  </label>
+  <div class="flex gap-2.5">
+    <label class="flex flex-col gap-1 grow text-[12.5px] font-semibold text-muted">{{t "meal_times.start"}}
+      <input type="time" name="start_time" required class="field text-center tabular-nums font-normal text-text">
+    </label>
+    <label class="flex flex-col gap-1 grow text-[12.5px] font-semibold text-muted">{{t "meal_times.end"}}
+      <input type="time" name="end_time" class="field text-center tabular-nums font-normal text-text">
+    </label>
+  </div>
+  <div class="flex items-center justify-end gap-2 pt-1">
+    <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+    <button class="btn-primary">{{t "meal_times.add"}}</button>
+  </div>
+</form>
+{{end}}

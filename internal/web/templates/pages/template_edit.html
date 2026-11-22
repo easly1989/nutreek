@@ -46,7 +46,7 @@
               {{range .Slots}}
                 <div class="flex items-center gap-2 min-h-[42px] pl-2.5 pr-2 bg-surface" data-id="{{.ID}}">
                   <span data-grip class="w-6 h-8 grid place-items-center text-muted cursor-grab touch-none" title="{{t "templates.edit.drag"}}" aria-hidden="true">{{template "icon_sm" "i-grip"}}</span>
-                  <span class="grow">{{.Name}}</span>
+                  <span class="grow">{{.Name}}{{with $.MealTimes.Label .Name}} <span class="chip chip-soft tabular-nums">{{.}}</span>{{end}}</span>
                   <form method="post" action="/templates/{{$.Template.ID}}/slots/{{.ID}}/delete">
                     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                     <button class="icon-action" aria-label="{{t "templates.edit.remove_label" "Name" .Name}}" title="{{t "templates.edit.remove"}}">{{template "icon_sm" "i-trash"}}</button>

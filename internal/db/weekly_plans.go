@@ -94,11 +94,12 @@ func (r *WeeklyPlans) SetSourcePlan(ctx context.Context, weeklyPlanID, sourcePla
 	return nil
 }
 
-// HasMeals reports whether the plan already has at least one meal (to avoid a double apply).
+// HasMeals reports whether the plan already has at least one meal (to avoid a double
+// apply). A reminder (#236) is not one: it is no food, and it must not block a template.
 func (r *WeeklyPlans) HasMeals(ctx context.Context, planID int64) (bool, error) {
 	var n int
 	err := r.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM meals WHERE weekly_plan_id = ?`, planID,
+		`SELECT COUNT(*) FROM meals WHERE weekly_plan_id = ? AND is_reminder = 0`, planID,
 	).Scan(&n)
 	if err != nil {
 		return false, fmt.Errorf("count meals: %w", err)
@@ -113,7 +114,7 @@ func (r *WeeklyPlans) MealCountForWeek(ctx context.Context, userID int64, weekSt
 	var n int
 	err := r.db.QueryRowContext(ctx,
 		`SELECT COUNT(m.id) FROM weekly_plans p JOIN meals m ON m.weekly_plan_id = p.id
-		 WHERE p.user_id = ? AND substr(p.week_start, 1, 10) = ?`,
+		 WHERE p.user_id = ? AND substr(p.week_start, 1, 10) = ? AND m.is_reminder = 0`,
 		userID, MondayOf(weekStart).Format("2006-01-02"),
 	).Scan(&n)
 	if err != nil {
@@ -192,23 +193,29 @@ func (r *WeeklyPlans) ApplyTemplate(ctx context.Context, planID, userID, templat
 		return err
 	}
 
-	// Expand and insert. day=-1 → loop 0..6.
+	// Expand and insert. day=-1 → loop 0..6. Each meal gets the time the user set
+	// for its name (#236).
+	defaults, err := mealTimeDefaults(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
 	stmt, err := tx.PrepareContext(ctx,
-		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)`,
 	)
 	if err != nil {
 		return fmt.Errorf("prepare insert meal: %w", err)
 	}
 	defer stmt.Close()
 	for _, s := range slots {
+		start, end := defaults.For(s.Name)
 		if s.Day == domain.DayOfWeekEvery {
 			for d := 0; d < 7; d++ {
-				if _, err := stmt.ExecContext(ctx, planID, d, s.Name, s.SortOrder); err != nil {
+				if _, err := stmt.ExecContext(ctx, planID, d, s.Name, s.SortOrder, start, end); err != nil {
 					return fmt.Errorf("insert meal: %w", err)
 				}
 			}
 		} else {
-			if _, err := stmt.ExecContext(ctx, planID, s.Day, s.Name, s.SortOrder); err != nil {
+			if _, err := stmt.ExecContext(ctx, planID, s.Day, s.Name, s.SortOrder, start, end); err != nil {
 				return fmt.Errorf("insert meal: %w", err)
 			}
 		}
@@ -274,22 +281,25 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 
 	// 1. Copy the meals, keeping a srcMealID -> dstMealID map.
 	mealRows, err := tx.QueryContext(ctx,
-		`SELECT id, day_of_week, name, sort_order
+		`SELECT id, day_of_week, name, sort_order, start_time, end_time, is_reminder, note
 		 FROM meals WHERE weekly_plan_id = ?
 		 ORDER BY id`, srcPlanID)
 	if err != nil {
 		return fmt.Errorf("load src meals: %w", err)
 	}
 	type srcMeal struct {
-		ID        int64
-		Day       int
-		Name      string
-		SortOrder int
+		ID         int64
+		Day        int
+		Name       string
+		SortOrder  int
+		Start, End sql.NullString
+		Reminder   int
+		Note       string
 	}
 	var meals []srcMeal
 	for mealRows.Next() {
 		var m srcMeal
-		if err := mealRows.Scan(&m.ID, &m.Day, &m.Name, &m.SortOrder); err != nil {
+		if err := mealRows.Scan(&m.ID, &m.Day, &m.Name, &m.SortOrder, &m.Start, &m.End, &m.Reminder, &m.Note); err != nil {
 			mealRows.Close()
 			return fmt.Errorf("scan src meal: %w", err)
 		}
@@ -301,14 +311,14 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 	}
 
 	insMeal, err := tx.PrepareContext(ctx,
-		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`)
+		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order, start_time, end_time, is_reminder, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("prepare insert meal: %w", err)
 	}
 	defer insMeal.Close()
 	idMap := make(map[int64]int64, len(meals))
 	for _, m := range meals {
-		res, err := insMeal.ExecContext(ctx, dstPlanID, m.Day, m.Name, m.SortOrder)
+		res, err := insMeal.ExecContext(ctx, dstPlanID, m.Day, m.Name, m.SortOrder, m.Start, m.End, m.Reminder, m.Note)
 		if err != nil {
 			return fmt.Errorf("insert dst meal: %w", err)
 		}
@@ -538,11 +548,12 @@ func (r *WeeklyPlans) AddItem(
 ) (int64, error) {
 	// Check that the meal belongs to one of the user's plans.
 	var planUser int64
+	var reminder int
 	err := r.db.QueryRowContext(ctx, `
-		SELECT wp.user_id
+		SELECT wp.user_id, m.is_reminder
 		FROM meals m JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
 		WHERE m.id = ?`, mealID,
-	).Scan(&planUser)
+	).Scan(&planUser, &reminder)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, ErrMealNotFound
 	}
@@ -551,6 +562,9 @@ func (r *WeeklyPlans) AddItem(
 	}
 	if planUser != userID {
 		return 0, ErrPlanNotFound
+	}
+	if reminder == 1 {
+		return 0, ErrMealNotFound // a reminder has no food
 	}
 	if (recipeID == nil) == (ingredientID == nil) {
 		return 0, fmt.Errorf("specifica esattamente una fra recipe_id e ingredient_id")
@@ -629,8 +643,12 @@ func (r *WeeklyPlans) CreateMeals(ctx context.Context, planID, userID int64, mea
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	defaults, err := mealTimeDefaults(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
 	mealStmt, err := tx.PrepareContext(ctx,
-		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`)
+		`INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("prepare insert meal: %w", err)
 	}
@@ -643,7 +661,8 @@ func (r *WeeklyPlans) CreateMeals(ctx context.Context, planID, userID int64, mea
 	defer itemStmt.Close()
 
 	for _, m := range meals {
-		res, err := mealStmt.ExecContext(ctx, planID, m.DayOfWeek, m.Name, m.SortOrder)
+		start, end := defaults.For(m.Name)
+		res, err := mealStmt.ExecContext(ctx, planID, m.DayOfWeek, m.Name, m.SortOrder, start, end)
 		if err != nil {
 			return fmt.Errorf("insert meal: %w", err)
 		}
@@ -734,9 +753,10 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 
 	// 1. meals
 	mealRows, err := r.db.QueryContext(ctx,
-		`SELECT id, weekly_plan_id, day_of_week, name, sort_order
+		`SELECT id, weekly_plan_id, day_of_week, name, sort_order,
+		        COALESCE(start_time, ''), COALESCE(end_time, ''), is_reminder, note
 		 FROM meals WHERE weekly_plan_id = ?
-		 ORDER BY day_of_week, sort_order, id`, plan.ID,
+		 ORDER BY day_of_week, (start_time IS NULL), start_time, sort_order, id`, plan.ID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("load meals: %w", err)
@@ -745,10 +765,12 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	var mealIDs []int64
 	for mealRows.Next() {
 		var m domain.Meal
-		if err := mealRows.Scan(&m.ID, &m.WeeklyPlanID, &m.DayOfWeek, &m.Name, &m.SortOrder); err != nil {
+		var reminder int
+		if err := mealRows.Scan(&m.ID, &m.WeeklyPlanID, &m.DayOfWeek, &m.Name, &m.SortOrder, &m.StartTime, &m.EndTime, &reminder, &m.Note); err != nil {
 			mealRows.Close()
 			return nil, fmt.Errorf("scan meal: %w", err)
 		}
+		m.IsReminder = reminder == 1
 		mw := &domain.MealWithItems{Meal: m}
 		mealByID[m.ID] = mw
 		mealIDs = append(mealIDs, m.ID)

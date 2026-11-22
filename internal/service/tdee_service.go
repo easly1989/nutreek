@@ -67,8 +67,11 @@ func (s *TDEEService) Report(ctx context.Context, user *domain.User, numWeeks in
 		weekMacros := macros.ForWeek(full.Days)
 		daysLogged := 0
 		for _, dayMeals := range full.Days {
-			if len(dayMeals) > 0 {
-				daysLogged++
+			for _, m := range dayMeals {
+				if !m.IsReminder { // a reminder is no food (#236)
+					daysLogged++
+					break
+				}
 			}
 		}
 		if daysLogged == 0 || weekMacros.Kcal == 0 {

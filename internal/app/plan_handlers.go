@@ -47,6 +47,17 @@ type dayView struct {
 	DayTotal macros.Macros
 }
 
+// HasFood says whether the day has a meal that is not a reminder (#236): the tab
+// shows its kcal, and a day with only reminders still reads as empty.
+func (d dayView) HasFood() bool {
+	for _, m := range d.Meals {
+		if !m.Meal.IsReminder {
+			return true
+		}
+	}
+	return false
+}
+
 // dayCardData is the view model passed to the day_pill.html partials (the
 // day's card at the top) and day_card.html (the open day). Self-contained so
 // it can be rendered both inline (dashboard) and alone (HTMX swap after a
@@ -72,7 +83,7 @@ type dayCardData struct {
 
 // HasMeals says whether the day has at least one planned meal (to decide
 // whether to show the adherence badge).
-func (d dayCardData) HasMeals() bool { return len(d.Day.Meals) > 0 }
+func (d dayCardData) HasMeals() bool { return d.Day.HasFood() }
 
 // waterWidgetData feeds the water_widget.html partial, renderable both inside
 // the day card and alone (HTMX swap after a quick log).
@@ -320,8 +331,11 @@ func (s weekSummary) AvgKcal() float64 {
 func summarizeWeek(full *domain.WeeklyPlanFull) weekSummary {
 	s := weekSummary{Total: macros.ForWeek(full.Days)}
 	for _, meals := range full.Days {
-		if len(meals) > 0 {
-			s.PlannedDays++
+		for _, m := range meals {
+			if !m.IsReminder { // a reminder alone does not make a planned day
+				s.PlannedDays++
+				break
+			}
 		}
 	}
 	return s
@@ -752,7 +766,15 @@ func (a *App) handleAddMeal(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	if _, err := a.WeeklyPlans.AddMeal(r.Context(), plan.ID, user.ID, day, name); err != nil {
+	// The time (#236): the form sends the one the name has in Settings, or what the
+	// user typed; with none the server takes the name's own, and a meal with no
+	// time stays possible for the ones from before.
+	start, end := strings.TrimSpace(r.PostFormValue("start_time")), strings.TrimSpace(r.PostFormValue("end_time"))
+	if _, err := a.WeeklyPlans.AddMealAt(r.Context(), plan.ID, user.ID, day, name, start, end); err != nil {
+		if errors.Is(err, db.ErrInvalidTime) {
+			a.flashAndBack(w, r, weekStart, "meal_times.flash.invalid_time")
+			return
+		}
 		a.serverError(w, r, err)
 		return
 	}
