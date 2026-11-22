@@ -603,6 +603,17 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 		return nil, "", err
 	}
 	maps.Copy(knownBarcodes, hidden)
+	// A product the viewer already has as an ingredient is shown once, as that
+	// ingredient, even when it is not among the local rows above (#225).
+	codes := make([]string, 0, len(products))
+	for _, p := range products {
+		codes = append(codes, p.Code)
+	}
+	have, err := a.Ingredients.CatalogBarcodes(ctx, viewer, codes)
+	if err != nil {
+		return nil, "", err
+	}
+	maps.Copy(knownBarcodes, have)
 	// FTS5 does a native AND across tokens + prefix match: no extra filter needed.
 	for i := range products {
 		p := products[i]
@@ -1003,6 +1014,7 @@ type ingredientEditData struct {
 	Error             string
 	IngredientID      int64
 	IsOFF             bool
+	OFFAligned        bool // an OpenFoodFacts import not edited since (#225)
 	Categories        []domain.IngredientCategory
 	Allergens         []domain.AllergenTag
 	SelectedAllergens map[int64]bool
@@ -1044,6 +1056,7 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 		Form:              form,
 		IngredientID:      id,
 		IsOFF:             ing.Source == domain.IngredientSourceOFF,
+		OFFAligned:        ing.OFFAligned,
 		Categories:        cats,
 		Allergens:         allergens,
 		SelectedAllergens: selected,
@@ -1142,6 +1155,7 @@ func (a *App) handleIngredientUpdate(w http.ResponseWriter, r *http.Request) {
 			Error:             msg,
 			IngredientID:      id,
 			IsOFF:             ing.Source == domain.IngredientSourceOFF,
+			OFFAligned:        ing.OFFAligned,
 			Categories:        cats,
 			Allergens:         allergens,
 			SelectedAllergens: allergenIDSet(form.AllergenIDs),
@@ -1208,6 +1222,7 @@ func (a *App) saveIngredientCategoryOnly(w http.ResponseWriter, r *http.Request,
 			Error:             a.t(r, "ingredients.error.category"),
 			IngredientID:      ing.ID,
 			IsOFF:             ing.Source == domain.IngredientSourceOFF,
+			OFFAligned:        ing.OFFAligned,
 			Categories:        cats,
 			Allergens:         allergens,
 			SelectedAllergens: selected,

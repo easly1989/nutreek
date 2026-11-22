@@ -98,13 +98,26 @@ func (r *Ingredients) Update(
 			}
 		}
 	}
+	// off_aligned stays on only when nothing of what OpenFoodFacts gave changes
+	// (the right-hand sides read the row as it was). The numbers compare within
+	// 0.01, so saving a form that shows rounded values changes nothing.
+	same := func(col string) string { return "(" + col + " IS NULL AND ? IS NULL OR abs(" + col + " - ?) < 0.01)" }
 	_, err = tx.ExecContext(ctx, `
 		UPDATE ingredients SET
+			off_aligned = CASE WHEN off_aligned = 1 AND name = ? AND coalesce(brand, '') = coalesce(?, '') AND unit = ?
+				AND `+same("kcal_per_100")+` AND `+same("protein_per_100")+` AND `+same("carbs_per_100")+` AND `+same("fat_per_100")+`
+				AND `+same("unit_weight_g")+`
+				AND `+same("fiber_per_100")+` AND `+same("sugars_per_100")+` AND `+same("saturated_fat_per_100")+` AND `+same("sodium_per_100")+`
+				THEN 1 ELSE 0 END,
 			name=?, brand=?, unit=?,
 			kcal_per_100=?, protein_per_100=?, carbs_per_100=?, fat_per_100=?,
 			unit_weight_g=?, default_quantity=?,
 			fiber_per_100=?, sugars_per_100=?, saturated_fat_per_100=?, sodium_per_100=?
 		WHERE id=?`,
+		strings.TrimSpace(name), brand, string(unit),
+		kcal, kcal, protein, protein, carbs, carbs, fat, fat,
+		unitWeightG, unitWeightG,
+		fiber, fiber, sugars, sugars, saturatedFat, saturatedFat, sodium, sodium,
 		strings.TrimSpace(name), brand, string(unit),
 		kcal, protein, carbs, fat,
 		unitWeightG, defaultQuantity,
@@ -201,8 +214,9 @@ func (r *Ingredients) CreateOFF(
 			source, off_barcode, name, brand, unit,
 			kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
 			created_by, unit_weight_g, default_quantity, last_verified_at,
-			fiber_per_100, sugars_per_100, saturated_fat_per_100, sodium_per_100
-		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
+			fiber_per_100, sugars_per_100, saturated_fat_per_100, sodium_per_100,
+			off_aligned
+		) VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, 1)
 	`,
 		strings.TrimSpace(barcode), name, brand, string(unit),
 		kcal, protein, carbs, fat, createdBy, unitWeightG, servingG,
@@ -248,13 +262,21 @@ func searchTokens(q string) []string {
 // the name, the brand or the name of the category the viewer put the ingredient
 // in. So «yogurt fage» finds Fage yogurt, and «fage yogurt» too. An ingredient
 // whose name is exactly q comes first, so a caller that looks for one by name
-// finds it among the first rows; then the OpenFoodFacts ones, then by name.
+// finds it among the first rows. Then what the viewer used before (#225): the
+// ingredients in their weekly plans and recipes, the most used first and, among
+// those as much used, the most recent; then the other ingredients they made by
+// hand; then the ones imported from OpenFoodFacts; each group by name.
 func (r *Ingredients) SearchActive(ctx context.Context, viewerID int64, q string, limit int) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	scope, args := inCatalog(r.db, "created_by", viewerID)
+	// Uses are counted in the viewer's plans (one per row of a meal) and in
+	// their recipes; the date of the last use is the week of the plan or the
+	// day the recipe was last saved.
+	args := []any{viewerID, viewerID}
+	scope, scopeArgs := inCatalog(r.db, "created_by", viewerID)
 	shown, hideArgs := notHidden(r.db, viewerID)
+	args = append(args, scopeArgs...)
 	args = append(args, hideArgs...)
 	var words strings.Builder
 	for _, t := range searchTokens(q) {
@@ -266,9 +288,24 @@ func (r *Ingredients) SearchActive(ctx context.Context, viewerID int64, q string
 	}
 	rows, err := r.db.QueryContext(ctx, selectIngredientCols+`
 		FROM ingredients
+		LEFT JOIN (
+			SELECT ingredient_id AS used_id, COUNT(*) AS uses, MAX(used_at) AS last_used FROM (
+				SELECT mi.ingredient_id, p.week_start AS used_at
+				FROM meal_items mi
+				JOIN meals m ON m.id = mi.meal_id
+				JOIN weekly_plans p ON p.id = m.weekly_plan_id
+				WHERE p.user_id = ? AND mi.ingredient_id IS NOT NULL
+				UNION ALL
+				SELECT ri.ingredient_id, date(rc.updated_at)
+				FROM recipe_ingredients ri
+				JOIN recipes rc ON rc.id = ri.recipe_id
+				WHERE rc.user_id = ?
+			) GROUP BY ingredient_id
+		) u ON u.used_id = ingredients.id
 		WHERE superseded_by IS NULL
 		  AND (source = 'openfoodfacts' OR `+scope+`) AND `+shown+words.String()+`
-		ORDER BY (lower(name) = ?) DESC, (source = 'openfoodfacts') DESC, name COLLATE NOCASE
+		ORDER BY (lower(name) = ?) DESC, (u.uses IS NOT NULL) DESC, u.uses DESC, u.last_used DESC,
+		         (source = 'openfoodfacts') ASC, name COLLATE NOCASE
 		LIMIT ?`,
 		append(args, strings.ToLower(strings.TrimSpace(q)), limit)...,
 	)
@@ -277,6 +314,39 @@ func (r *Ingredients) SearchActive(ctx context.Context, viewerID int64, q string
 	}
 	defer rows.Close()
 	return collectIngredients(rows)
+}
+
+// CatalogBarcodes returns which of the barcodes belong to an ingredient in
+// viewerID's catalog (an OpenFoodFacts import, or one made by hand and linked to
+// the code): the OpenFoodFacts search leaves those products out, so a product
+// and the ingredient made from it appear once (#225).
+func (r *Ingredients) CatalogBarcodes(ctx context.Context, viewerID int64, codes []string) (map[string]bool, error) {
+	out := map[string]bool{}
+	if len(codes) == 0 {
+		return out, nil
+	}
+	scope, scopeArgs := inCatalog(r.db, "created_by", viewerID)
+	args := make([]any, 0, len(codes)+len(scopeArgs))
+	for _, c := range codes {
+		args = append(args, c)
+	}
+	args = append(args, scopeArgs...)
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT off_barcode FROM ingredients
+		WHERE off_barcode IN (`+strings.TrimSuffix(strings.Repeat("?,", len(codes)), ",")+`)
+		  AND superseded_by IS NULL AND (source = 'openfoodfacts' OR `+scope+`)`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("catalog barcodes: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err != nil {
+			return nil, fmt.Errorf("scan barcode: %w", err)
+		}
+		out[code] = true
+	}
+	return out, rows.Err()
 }
 
 // ListActive returns the non-superseded ingredients in viewerID's catalog
@@ -396,7 +466,8 @@ const selectIngredientCols = `SELECT
 	kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
 	created_by, created_at, last_verified_at, superseded_by,
 	unit_weight_g, default_quantity,
-	fiber_per_100, sugars_per_100, saturated_fat_per_100, sodium_per_100`
+	fiber_per_100, sugars_per_100, saturated_fat_per_100, sodium_per_100,
+	off_aligned`
 
 func collectIngredients(rows *sql.Rows) ([]*domain.Ingredient, error) {
 	out := make([]*domain.Ingredient, 0, 16)
@@ -419,12 +490,14 @@ type scanFn func(dest ...any) error
 func scanIngredient(scan scanFn) (*domain.Ingredient, error) {
 	var ing domain.Ingredient
 	var srcStr, unitStr string
+	var aligned int
 	err := scan(
 		&ing.ID, &srcStr, &ing.OFFBarcode, &ing.Name, &ing.Brand, &unitStr,
 		&ing.KcalPer100, &ing.ProteinPer100, &ing.CarbsPer100, &ing.FatPer100,
 		&ing.CreatedBy, &ing.CreatedAt, &ing.LastVerifiedAt, &ing.SupersededBy,
 		&ing.UnitWeightG, &ing.DefaultQuantity,
 		&ing.FiberPer100, &ing.SugarsPer100, &ing.SaturatedFatPer100, &ing.SodiumPer100,
+		&aligned,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrIngredientNotFound
@@ -434,5 +507,6 @@ func scanIngredient(scan scanFn) (*domain.Ingredient, error) {
 	}
 	ing.Source = domain.IngredientSource(srcStr)
 	ing.Unit = domain.IngredientUnit(unitStr)
+	ing.OFFAligned = aligned == 1
 	return &ing, nil
 }

@@ -68,6 +68,14 @@ both find the Fage yogurt.
   size on a local ingredient. At most 8 words count; a query with no letter or
   digit (such as «%») is matched whole, as text, and `%` and `_` are always
   literal.
+- **Order of the local results (#225)**: an ingredient whose name is exactly the
+  query, then what the viewer used before (rows of their weekly plans and their
+  recipes; the most used first, then the most recent), then the other
+  ingredients they made, then the ones imported from OpenFoodFacts, each group
+  by name. Someone else's use does not count. The picker lists the products of
+  the OFF index after these, and leaves out any product the viewer already has as
+  an ingredient (matched by barcode, not only among the rows shown), so a
+  product and its ingredient appear once.
 - Both searches use the same word rule and stay a single indexed query, so the
   latency is the one of a single-word search.
 
@@ -85,3 +93,15 @@ from then on without OFF. `Ingredients.CreateOFF` normalises the text with
 5. names are cut to 200 runes; a brand list keeps its first brand.
 
 Nutrients and the barcode are never altered.
+
+## Aligned imports (#225)
+
+`ingredients.off_aligned` is 1 while an import is as it was imported: nobody
+changed its name, brand, unit, weight per piece or nutrients. `CreateOFF` sets
+it and `Ingredients.Update` clears it when a saved value differs (numbers
+within 0.01 count as the same, so a form that shows rounded values does not clear
+it). A row made by hand never has it. An aligned import is safe to refresh from
+its product; a changed one must not be overwritten. Migration 0043 sets it for
+existing imports whose product is still in `off_products` with the same four
+macros; any other import starts off, the safe side. The ingredient page tells
+the two apart.
