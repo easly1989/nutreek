@@ -11,6 +11,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Added
+- Shopping list: the progress bar fills smoothly each time you tick an item, and when the last item goes into the cart a shine crosses the bar, a «Spesa completata» line appears and confetti leaves the end of the bar. With «reduce motion» nothing moves and the line shows at once (#248)
 - On a phone, swipe the open day of the week left or right to move to the next or the previous day, like tapping its tab. The day follows your finger and the name of the day that comes in shows at the edge; the end of the week does not wrap. A swipe that starts on a button, on the drag grip or in an area that scrolls sideways is left alone (#250)
 - A setting to keep the phone screen on while Nutreek is open («In the kitchen and at the shop» in Settings), off by default and shown only on a phone or tablet whose browser supports it. The page asks for the screen lock while it is visible and again when you come back to it (migration 0044) (#249)
 - A «Check before shopping» on the shopping list: each row still to buy gets «Have it», «Some» or «Need it». «Have it» sets the row aside, «Some» lowers its quantity by what you have (in g, ml or pieces), and «Done» applies it all and goes back to the list. Nothing is deleted (#235)

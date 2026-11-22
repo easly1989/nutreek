@@ -12,6 +12,7 @@
   "shopping.progress": "{{.Done}} of {{.Total}}",
   "shopping.in_cart": "in the cart",
   "shopping.progress_label": "Items in the cart",
+  "shopping.complete": "Shopping done",
   "shopping.other": "Other",
   "shopping.all_in_cart": "Everything is in the cart.",
   "shopping.cart_group": "In the cart",

@@ -12,6 +12,7 @@
   "shopping.progress": "{{.Done}} di {{.Total}}",
   "shopping.in_cart": "nel carrello",
   "shopping.progress_label": "Voci nel carrello",
+  "shopping.complete": "Spesa completata",
   "shopping.other": "Altro",
   "shopping.all_in_cart": "Tutto nel carrello.",
   "shopping.cart_group": "Nel carrello",
