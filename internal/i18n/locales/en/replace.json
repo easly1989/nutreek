@@ -1,0 +1,16 @@
+{
+  "replace.title": "Replace",
+  "replace.button": "Replace ingredient",
+  "replace.button_named": "Replace {{.Name}}",
+  "replace.in_meal": "in {{.Meal}}",
+  "replace.keeps": "Quantity stays {{.Qty}} {{.Unit}}",
+  "replace.search_placeholder": "Search another ingredient",
+  "replace.search_label": "Search an ingredient to put in its place",
+  "replace.close_to": "Close in kcal and macros",
+  "replace.results": "Results",
+  "replace.difference": "Difference",
+  "replace.same_category": "same category",
+  "replace.no_suggestions": "No suggestions yet: search for an ingredient.",
+  "replace.confirm": "Replace",
+  "replace.confirm_with": "Replace with {{.Name}}"
+}

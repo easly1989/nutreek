@@ -1,0 +1,16 @@
+{
+  "replace.title": "Sostituisci",
+  "replace.button": "Sostituisci ingrediente",
+  "replace.button_named": "Sostituisci {{.Name}}",
+  "replace.in_meal": "in {{.Meal}}",
+  "replace.keeps": "La quantità resta {{.Qty}} {{.Unit}}",
+  "replace.search_placeholder": "Cerca un altro ingrediente",
+  "replace.search_label": "Cerca un ingrediente da mettere al suo posto",
+  "replace.close_to": "Vicini per kcal e macro",
+  "replace.results": "Risultati",
+  "replace.difference": "Differenza",
+  "replace.same_category": "stessa categoria",
+  "replace.no_suggestions": "Nessun suggerimento: cerca un ingrediente.",
+  "replace.confirm": "Sostituisci",
+  "replace.confirm_with": "Sostituisci con {{.Name}}"
+}

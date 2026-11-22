@@ -1,0 +1,78 @@
+{{define "replace_dialog"}}
+{{- /* The dialog that replaces the ingredient of a row (#227, variant A). View
+       model: app.replaceDialogData. The search is outside the form: Enter in it
+       must not submit. replace.js enables the button when a row is chosen. */ -}}
+<dialog data-modal class="dialog-panel lg:w-[580px]" aria-label="{{t "replace.title"}}">
+  <div class="flex items-start gap-3 pl-4 lg:pl-5 pr-4 pt-4 pb-3">
+    <div class="grow min-w-0">
+      <h2 class="text-[17px] font-bold">{{t "replace.title"}}</h2>
+      <p class="text-muted">{{.Context}} · {{t "replace.keeps" "Qty" (num .Qty) "Unit" .Unit}}</p>
+    </div>
+    <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
+  </div>
+  <div class="mx-4 lg:mx-5 mb-3 flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
+    <span class="grow min-w-0">
+      <b class="block font-semibold truncate">{{.Name}}</b>
+      {{with .Brand}}<span class="block text-[12.5px] text-muted truncate">{{.}}</span>{{end}}
+      <span class="block mt-0.5">{{template "macros_inline" .Cur}}</span>
+    </span>
+    <span class="text-right tabular-nums whitespace-nowrap"><b>{{num .Cur.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal</span></span>
+  </div>
+  <div class="flex flex-col gap-1.5 px-4 lg:px-5 pb-3">
+    <label class="field-ico">
+      {{template "icon" "i-search"}}
+      <input id="replace-search" type="search" name="q" autocomplete="off" class="field"
+             placeholder="{{t "replace.search_placeholder"}}" aria-label="{{t "replace.search_label"}}"
+             data-ingredient-search data-search-url="{{.ResultsURL}}"{{with .Extra}} data-search-extra="{{.}}"{{end}}
+             data-search-target="#replace-results" data-search-spinner="#replace-spinner">
+    </label>
+    <p id="replace-spinner" class="hidden text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>{{t "picker.searching_off"}}</p>
+  </div>
+  <form method="post" action="{{.Action}}" class="flex flex-col min-h-0 grow" data-replace-form
+        {{if .HTMX}}hx-post="{{.Action}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog{{end}}>
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div id="replace-results" aria-live="polite" class="overflow-y-auto min-h-0 grow border-t border-border"
+         hx-get="{{.ResultsURL}}?q={{with .Extra}}&{{.}}{{end}}" hx-trigger="load" hx-target="this" hx-swap="innerHTML">
+      <p class="px-5 py-8 text-center text-muted animate-pulse">{{t "picker.loading"}}</p>
+    </div>
+    <div class="flex items-center justify-end gap-2 px-4 lg:px-5 py-3 border-t border-border">
+      <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+      <button type="submit" data-replace-submit data-label="{{t "replace.confirm"}}" disabled class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{{t "replace.confirm"}}</button>
+    </div>
+  </form>
+</dialog>
+{{end}}
+
+{{define "replace_results"}}
+{{- /* The suggestions or the search results of the dialog. View model:
+       app.replaceResultsData. */ -}}
+{{if .OFFWarning}}
+  <p class="mx-4 lg:mx-5 my-2 rounded-xl bg-warn-bg text-warn-fg px-3 py-2 text-[13px]">{{.OFFWarning}}</p>
+{{end}}
+{{if .Rows}}
+  <div class="flex items-center justify-between gap-2 px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">
+    <span>{{if .Suggested}}{{t "replace.close_to"}}{{else}}{{t "replace.results"}}{{end}}</span>
+    <span>{{t "replace.difference"}}</span>
+  </div>
+  <div class="divide-y divide-border" role="radiogroup" aria-label="{{if .Suggested}}{{t "replace.close_to"}}{{else}}{{t "replace.results"}}{{end}}">
+    {{range .Rows}}
+    <label class="flex items-center gap-3 px-4 lg:px-5 py-2.5 cursor-pointer hover:bg-surface-2 has-[:checked]:bg-accent-soft has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-accent">
+      <input type="radio" name="choice" value="{{.Choice}}" data-confirm="{{.Confirm}}" class="check !rounded-full">
+      <span class="grow min-w-0">
+        <b class="block font-semibold truncate">{{.Name}}</b>
+        {{with .Sub}}<span class="block text-[12.5px] text-muted truncate">{{.}}</span>{{end}}
+        <span class="flex flex-wrap gap-x-2.5 mt-0.5 text-[12px] font-semibold tabular-nums">
+          {{- $k := deltaTone .Diff.Kcal false 0}}<span class="{{if eq $k "good"}}text-accent{{else if eq $k "bad"}}text-danger{{else}}text-muted{{end}}">{{delta .Diff.Kcal 0}} kcal</span>
+          {{- $p := deltaTone .Diff.Protein true 1}}<span class="{{if eq $p "good"}}text-accent{{else if eq $p "bad"}}text-danger{{else}}text-muted{{end}}">{{delta .Diff.Protein 1}} {{t "common.protein_short"}}</span>
+          {{- $c := deltaTone .Diff.Carbs false 1}}<span class="{{if eq $c "good"}}text-accent{{else if eq $c "bad"}}text-danger{{else}}text-muted{{end}}">{{delta .Diff.Carbs 1}} {{t "common.carbs_short"}}</span>
+          {{- $f := deltaTone .Diff.Fat false 1}}<span class="{{if eq $f "good"}}text-accent{{else if eq $f "bad"}}text-danger{{else}}text-muted{{end}}">{{delta .Diff.Fat 1}} {{t "common.fat_short"}}</span>
+        </span>
+      </span>
+      <span class="text-right tabular-nums whitespace-nowrap"><b>{{num .Macros.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal</span></span>
+    </label>
+    {{end}}
+  </div>
+{{else}}
+  <p class="px-5 py-8 text-center text-muted">{{if .Query}}{{t "picker.none_for" "Query" .Query}}{{else}}{{t "replace.no_suggestions"}}{{end}}</p>
+{{end}}
+{{end}}

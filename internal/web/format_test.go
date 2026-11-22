@@ -62,6 +62,34 @@ func TestFormatDec(t *testing.T) {
 	}
 }
 
+// A difference shows its sign, with a real minus and «±0» when it rounds to
+// nothing; more protein is good, more of anything else is not (#227).
+func TestFormatDelta(t *testing.T) {
+	cases := []struct {
+		v      float64
+		digits int
+		want   string
+		up     string // tone when more is good
+		down   string // tone when more is bad
+	}{
+		{17.2, 0, "+17", "good", "bad"},
+		{-1.54, 1, "−1,5", "bad", "good"},
+		{0.04, 1, "±0", "even", "even"},
+		{-0.3, 0, "±0", "even", "even"},
+	}
+	for _, tc := range cases {
+		if got := formatDelta("it", tc.v, tc.digits); got != tc.want {
+			t.Errorf("formatDelta(%v, %d) = %q, want %q", tc.v, tc.digits, got, tc.want)
+		}
+		if got := deltaTone(tc.v, true, tc.digits); got != tc.up {
+			t.Errorf("deltaTone(%v, goodUp) = %q, want %q", tc.v, got, tc.up)
+		}
+		if got := deltaTone(tc.v, false, tc.digits); got != tc.down {
+			t.Errorf("deltaTone(%v, bad up) = %q, want %q", tc.v, got, tc.down)
+		}
+	}
+}
+
 // The exported helpers are what handlers use for HTML written by hand.
 func TestExportedFormatters(t *testing.T) {
 	if got := FormatNum("en", 1894); got != "1,894" {
