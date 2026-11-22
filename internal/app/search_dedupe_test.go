@@ -50,10 +50,48 @@ func TestSearchShowsAnImportedProductOnce(t *testing.T) {
 		t.Errorf("products shown from OpenFoodFacts: %v, want only the one not imported yet", offs)
 	}
 
+	// The ingredient is beyond the 20 local rows, yet it is shown once as the
+	// ingredient and not as the product: it is not lost.
+	if n := countRows(rows, "Zeta zz importato", "8000000000041"); n != 1 {
+		t.Errorf("the imported ingredient and its product show %d times, want 1", n)
+	}
+	// Renamed so that it no longer matches the query: the product still finds it.
+	var id int64
+	if err := a.Store.DB.QueryRow(`SELECT id FROM ingredients WHERE off_barcode = '8000000000041'`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Ingredients.Update(ctx, id, "Altro nome", nil, domain.UnitGram, 100, 5, 20, 1, nil, nil, nil, nil, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	rows, _, err = a.searchMixed(contextWithUser(ctx, user), "zeta", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := countRows(rows, "Altro nome", "8000000000041"); n != 1 {
+		t.Errorf("a renamed import shows %d times, want 1 (as the ingredient)", n)
+	}
+	for _, r := range rows {
+		if r.IsOFF() && r.OFF.Code == "8000000000041" {
+			t.Error("the product of an ingredient the viewer has is offered to import")
+		}
+	}
+
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/ingredients/search?q=zeta&off=1", nil)
 	a.handleIngredientsSearchPartial(rec, requestWithUser(req, user))
-	if n := strings.Count(rec.Body.String(), "Zeta zz importato"); n > 1 {
-		t.Errorf("the imported product appears %d times", n)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Altro nome") {
+		t.Errorf("the page does not show the renamed import: code %d", rec.Code)
 	}
+}
+
+// countRows counts how many rows stand for an ingredient: the local row with the
+// name, or the OpenFoodFacts row with the barcode.
+func countRows(rows []ingredientRow, name, code string) int {
+	n := 0
+	for _, r := range rows {
+		if (r.Local != nil && r.Local.Name == name) || (r.IsOFF() && r.OFF.Code == code) {
+			n++
+		}
+	}
+	return n
 }

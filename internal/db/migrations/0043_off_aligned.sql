@@ -6,7 +6,9 @@
 --
 -- Rows imported before this migration: aligned when the product is still in
 -- off_products with the same four macros (a row we cannot compare stays not
--- aligned, which is the safe side: it is never overwritten).
+-- aligned, which is the safe side: it is never overwritten). Only the macros are
+-- compared, so a row whose name, brand or unit was edited but not its macros
+-- counts as aligned.
 ALTER TABLE ingredients ADD COLUMN off_aligned INTEGER NOT NULL DEFAULT 0 CHECK (off_aligned IN (0, 1));
 
 UPDATE ingredients SET off_aligned = 1

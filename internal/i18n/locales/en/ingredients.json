@@ -67,7 +67,7 @@
   "ingredients.edit.readonly_admin": "Only the administrator can change its name, macros and allergens.",
   "ingredients.edit.choose_category": "Here you choose which of your categories to keep it in.",
   "ingredients.edit.create_category_first": "To keep it in one of your categories, first create one in",
-  "ingredients.edit.off_note": "Imported from OpenFoodFacts and changed since: it no longer matches the product, and changes stay here and are not synced.",
+  "ingredients.edit.off_note": "Imported from OpenFoodFacts. It may differ from the product (edited here, or the product changed), and changes stay here and are not synced.",
   "ingredients.edit.off_aligned": "Imported from OpenFoodFacts and not changed since: it still matches the product. Changes you make stay here and are not synced.",
   "ingredients.edit.save": "Save changes",
   "ingredients.edit.save_category": "Save category",

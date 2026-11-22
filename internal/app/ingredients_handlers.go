@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"html/template"
-	"maps"
 	"math"
 	"net/http"
 	"net/url"
@@ -602,9 +601,10 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 	if err != nil {
 		return nil, "", err
 	}
-	maps.Copy(knownBarcodes, hidden)
 	// A product the viewer already has as an ingredient is shown once, as that
-	// ingredient, even when it is not among the local rows above (#225).
+	// ingredient. When the ingredient is not among the local rows above (more
+	// than the limit match, or it was renamed), it is added after them instead
+	// of the product, so the result never loses it (#225).
 	codes := make([]string, 0, len(products))
 	for _, p := range products {
 		codes = append(codes, p.Code)
@@ -613,15 +613,24 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 	if err != nil {
 		return nil, "", err
 	}
-	maps.Copy(knownBarcodes, have)
+	var extra, offRows []ingredientRow
 	// FTS5 does a native AND across tokens + prefix match: no extra filter needed.
 	for i := range products {
 		p := products[i]
-		if knownBarcodes[p.Code] {
-			continue // already imported
+		switch {
+		case hidden[p.Code], knownBarcodes[p.Code]:
+			continue // hidden from this viewer, or already shown as an ingredient
+		case have[p.Code]:
+			if ing, gerr := a.Ingredients.GetByBarcode(ctx, p.Code); gerr == nil {
+				extra = append(extra, ingredientRow{Local: ing})
+				continue
+			}
 		}
-		rows = append(rows, ingredientRow{OFF: &p})
+		offRows = append(offRows, ingredientRow{OFF: &p})
 	}
+	a.attachTags(ctx, extra)
+	rows = append(rows, extra...)
+	rows = append(rows, offRows...)
 	return rows, "", nil
 }
 

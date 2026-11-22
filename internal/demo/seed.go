@@ -451,8 +451,8 @@ func product(ctx context.Context, tx *sql.Tx, w vocabulary, f food, now time.Tim
 		return 0, fmt.Errorf("product %s: %w", f.key, err)
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO ingredients (source, off_barcode, name, brand, unit, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100,
-		unit_weight_g, default_quantity, last_verified_at)
-		VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		unit_weight_g, default_quantity, last_verified_at, off_aligned)
+		VALUES ('openfoodfacts', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
 		ON CONFLICT (off_barcode) DO NOTHING`,
 		code, name, demoBrand, f.unit, f.kcal, f.protein, f.carbs, f.fat, pieceG, f.servingG); err != nil {
 		return 0, fmt.Errorf("product %s: %w", f.key, err)

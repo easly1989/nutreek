@@ -103,5 +103,8 @@ within 0.01 count as the same, so a form that shows rounded values does not clea
 it). A row made by hand never has it. An aligned import is safe to refresh from
 its product; a changed one must not be overwritten. Migration 0043 sets it for
 existing imports whose product is still in `off_products` with the same four
-macros; any other import starts off, the safe side. The ingredient page tells
-the two apart.
+macros (so a name, brand or unit edited without touching the macros still counts
+as aligned); any other import starts off, the safe side. The ingredient page
+tells the two apart: an aligned import says it is unchanged, any other says it
+may differ from the product (edited here, or the product changed). The
+tolerance is 0.01 for kcal, macros and weight, and 0.0005 for the micronutrients.

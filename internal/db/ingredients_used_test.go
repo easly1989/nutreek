@@ -79,6 +79,24 @@ func TestSearchActiveUsedFirst(t *testing.T) {
 	}
 	_ = offUnused
 
+	// Used as much, the more recent first.
+	older := mkLocal("Riso vecchio")
+	newer := mkLocal("Riso nuovo")
+	for _, c := range []struct {
+		id   int64
+		week string
+	}{{older, "2026-01-05"}, {newer, "2026-11-02"}} {
+		wk, _ := time.Parse("2006-01-02", c.week)
+		p, _ := plans.GetOrCreateForWeek(ctx, alice, wk)
+		m, _ := plans.AddMeal(ctx, p.ID, alice, 0, "Pranzo")
+		if _, err := plans.AddItem(ctx, m, alice, nil, &c.id, 100, "g"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, _ := ings.SearchActive(ctx, alice, "riso", 20); !slices.Equal(names(got), []string{"Riso nuovo", "Riso vecchio"}) {
+		t.Errorf("same uses: %v, want the more recent first", names(got))
+	}
+
 	// An exact name still comes first, used or not.
 	if got, _ := ings.SearchActive(ctx, alice, "Pasta D", 20); len(got) == 0 || got[0].Name != "Pasta D" {
 		t.Errorf("exact name: %v", names(got))

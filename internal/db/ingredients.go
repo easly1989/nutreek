@@ -100,14 +100,18 @@ func (r *Ingredients) Update(
 	}
 	// off_aligned stays on only when nothing of what OpenFoodFacts gave changes
 	// (the right-hand sides read the row as it was). The numbers compare within
-	// 0.01, so saving a form that shows rounded values changes nothing.
-	same := func(col string) string { return "(" + col + " IS NULL AND ? IS NULL OR abs(" + col + " - ?) < 0.01)" }
+	// a tolerance, so saving a form that shows rounded values changes nothing:
+	// 0.01 for kcal, macros and weight, 0.0005 for the micronutrients, which
+	// are small (sodium is in grams).
+	same := func(col string, tol string) string {
+		return "(" + col + " IS NULL AND ? IS NULL OR abs(" + col + " - ?) < " + tol + ")"
+	}
 	_, err = tx.ExecContext(ctx, `
 		UPDATE ingredients SET
 			off_aligned = CASE WHEN off_aligned = 1 AND name = ? AND coalesce(brand, '') = coalesce(?, '') AND unit = ?
-				AND `+same("kcal_per_100")+` AND `+same("protein_per_100")+` AND `+same("carbs_per_100")+` AND `+same("fat_per_100")+`
-				AND `+same("unit_weight_g")+`
-				AND `+same("fiber_per_100")+` AND `+same("sugars_per_100")+` AND `+same("saturated_fat_per_100")+` AND `+same("sodium_per_100")+`
+				AND `+same("kcal_per_100", "0.01")+` AND `+same("protein_per_100", "0.01")+` AND `+same("carbs_per_100", "0.01")+` AND `+same("fat_per_100", "0.01")+`
+				AND `+same("unit_weight_g", "0.01")+`
+				AND `+same("fiber_per_100", "0.0005")+` AND `+same("sugars_per_100", "0.0005")+` AND `+same("saturated_fat_per_100", "0.0005")+` AND `+same("sodium_per_100", "0.0005")+`
 				THEN 1 ELSE 0 END,
 			name=?, brand=?, unit=?,
 			kcal_per_100=?, protein_per_100=?, carbs_per_100=?, fat_per_100=?,
