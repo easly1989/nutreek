@@ -7,9 +7,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/amon2126/nutreek/internal/domain"
 )
+
+// likeEscaper makes text literal in a LIKE pattern that uses ESCAPE '\'.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 // ErrIngredientNotFound is returned by the Get methods when the row does not exist.
 var ErrIngredientNotFound = errors.New("ingrediente non trovato")
@@ -217,26 +221,56 @@ func (r *Ingredients) CreateOFF(
 	return id, nil
 }
 
-// SearchActive finds the non-superseded ingredients in viewerID's catalog
-// with q as a substring of the name or brand (case-insensitive). Limit
-// hard-coded to 20 for HTMX.
+// maxSearchTokens bounds the words of a query that count, so a pasted text
+// cannot make a query with dozens of conditions.
+const maxSearchTokens = 8
+
+// searchTokens splits a query into lowercase words (letters and digits, as the
+// OFF search does). A query with none, such as «%» or «...», is kept whole so it
+// still matches as text.
+func searchTokens(q string) []string {
+	tokens := strings.FieldsFunc(strings.ToLower(q), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+	if len(tokens) == 0 {
+		if t := strings.ToLower(strings.TrimSpace(q)); t != "" {
+			tokens = []string{t}
+		}
+	}
+	if len(tokens) > maxSearchTokens {
+		tokens = tokens[:maxSearchTokens]
+	}
+	return tokens
+}
+
+// SearchActive finds the non-superseded ingredients in viewerID's catalog that
+// match every word of q (#224): each word is a substring, case-insensitive, of
+// the name, the brand or the name of the category the viewer put the ingredient
+// in. So «yogurt fage» finds Fage yogurt, and «fage yogurt» too. An ingredient
+// whose name is exactly q comes first, so a caller that looks for one by name
+// finds it among the first rows; then the OpenFoodFacts ones, then by name.
 func (r *Ingredients) SearchActive(ctx context.Context, viewerID int64, q string, limit int) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	q = strings.TrimSpace(q)
-	pattern := "%" + strings.ToLower(q) + "%"
 	scope, args := inCatalog(r.db, "created_by", viewerID)
 	shown, hideArgs := notHidden(r.db, viewerID)
 	args = append(args, hideArgs...)
+	var words strings.Builder
+	for _, t := range searchTokens(q) {
+		pattern := "%" + likeEscaper.Replace(t) + "%"
+		words.WriteString(` AND (lower(name) LIKE ? ESCAPE '\' OR lower(coalesce(brand, '')) LIKE ? ESCAPE '\'
+		    OR EXISTS (SELECT 1 FROM ingredient_user_categories uc JOIN ingredient_categories c ON c.id = uc.category_id
+		               WHERE uc.ingredient_id = ingredients.id AND uc.user_id = ? AND lower(c.name) LIKE ? ESCAPE '\'))`)
+		args = append(args, pattern, pattern, viewerID, pattern)
+	}
 	rows, err := r.db.QueryContext(ctx, selectIngredientCols+`
 		FROM ingredients
 		WHERE superseded_by IS NULL
-		  AND (source = 'openfoodfacts' OR `+scope+`) AND `+shown+`
-		  AND (lower(name) LIKE ? OR lower(coalesce(brand, '')) LIKE ?)
-		ORDER BY (source = 'openfoodfacts') DESC, name COLLATE NOCASE
+		  AND (source = 'openfoodfacts' OR `+scope+`) AND `+shown+words.String()+`
+		ORDER BY (lower(name) = ?) DESC, (source = 'openfoodfacts') DESC, name COLLATE NOCASE
 		LIMIT ?`,
-		append(args, pattern, pattern, limit)...,
+		append(args, strings.ToLower(strings.TrimSpace(q)), limit)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("search ingredients: %w", err)

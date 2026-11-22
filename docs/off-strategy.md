@@ -47,6 +47,30 @@ Manual trigger: `POST /admin/refresh-off-dump` (needs
 bootstrap in the background. Searches return nothing until it
 completes (~10 min, ~0.8 GB of bandwidth).
 
+## Search rules (#224)
+
+A query is split into words (letters and digits; spaces, punctuation and
+apostrophes only separate). **Every word must match**, in any order, and a word
+may match a different field than the others: «yogurt fage» and «fage yogurt»
+both find the Fage yogurt.
+
+- **OFF (`off_products_fts`)**: the index has the product name, the brand and
+  the package size (`quantity`, as «500 g»). Each word is a prefix of a word in
+  any of them, so «fage 150» finds the 150 g products of Fage. Ranking is bm25
+  with the name and brand at weight 1 and the size at 0.5. The same product in
+  several sizes is one result unless the query names a size. The index is made
+  by migration 0042, which rebuilds it from `off_products` on upgrade (0.6 s
+  for 250k rows in a test); the table's triggers keep it in step afterwards.
+  The category is not searched here: the dump import does not keep it.
+- **Local ingredients (`Ingredients.SearchActive`)**: each word is a substring,
+  case-insensitive, of the name, the brand or the name of the category the
+  viewer put the ingredient in (categories are per user). There is no package
+  size on a local ingredient. At most 8 words count; a query with no letter or
+  digit (such as «%») is matched whole, as text, and `%` and `_` are always
+  literal.
+- Both searches use the same word rule and stay a single indexed query, so the
+  latency is the one of a single-word search.
+
 ## Imported names
 
 An OFF product is saved as a local ingredient (`source='openfoodfacts'`,
