@@ -11,6 +11,8 @@
   "replace.difference": "Differenza",
   "replace.same_category": "stessa categoria",
   "replace.no_suggestions": "Nessun suggerimento: cerca un ingrediente.",
+  "replace.count": "{{.Count}} risultati",
+  "replace.identical": "Con questo ingrediente la ricetta diventerebbe identica a \"{{.Other}}\". Scegline un altro.",
   "replace.confirm": "Sostituisci",
   "replace.confirm_with": "Sostituisci con {{.Name}}"
 }

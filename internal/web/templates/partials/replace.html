@@ -6,7 +6,7 @@
   <div class="flex items-start gap-3 pl-4 lg:pl-5 pr-4 pt-4 pb-3">
     <div class="grow min-w-0">
       <h2 class="text-[17px] font-bold">{{t "replace.title"}}</h2>
-      <p class="text-muted">{{.Context}} · {{t "replace.keeps" "Qty" (num .Qty) "Unit" .Unit}}</p>
+      <p class="text-muted">{{.Context}} · {{t "replace.keeps" "Qty" (dec .Qty 2) "Unit" .Unit}}</p>
     </div>
     <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
   </div>
@@ -28,10 +28,12 @@
     </label>
     <p id="replace-spinner" class="hidden text-[12.5px] text-muted"><span class="htmx-spinner mr-1.5" aria-hidden="true"></span>{{t "picker.searching_off"}}</p>
   </div>
+  {{- /* The list is announced by a short line in this region, not by the list itself: replace.js fills it. */}}
+  <p id="replace-live" role="status" class="sr-only"></p>
   <form method="post" action="{{.Action}}" class="flex flex-col min-h-0 grow" data-replace-form
         {{if .HTMX}}hx-post="{{.Action}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog{{end}}>
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <div id="replace-results" aria-live="polite" class="overflow-y-auto min-h-0 grow border-t border-border"
+    <div id="replace-results" class="overflow-y-auto min-h-0 grow border-t border-border"
          hx-get="{{.ResultsURL}}?q={{with .Extra}}&{{.}}{{end}}" hx-trigger="load" hx-target="this" hx-swap="innerHTML">
       <p class="px-5 py-8 text-center text-muted animate-pulse">{{t "picker.loading"}}</p>
     </div>
@@ -50,6 +52,7 @@
   <p class="mx-4 lg:mx-5 my-2 rounded-xl bg-warn-bg text-warn-fg px-3 py-2 text-[13px]">{{.OFFWarning}}</p>
 {{end}}
 {{if .Rows}}
+  <span data-result-count hidden>{{t "replace.count" "Count" (len .Rows)}}</span>
   <div class="flex items-center justify-between gap-2 px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">
     <span>{{if .Suggested}}{{t "replace.close_to"}}{{else}}{{t "replace.results"}}{{end}}</span>
     <span>{{t "replace.difference"}}</span>

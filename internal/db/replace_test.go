@@ -90,10 +90,8 @@ func TestReplaceIngredient(t *testing.T) {
 	if ingID != apple || unit != "g" {
 		t.Errorf("row = ingredient %d in %s, want Apple in g", ingID, unit)
 	}
-	if err := plans.ReplaceItemIngredient(ctx, row, alice, 999999, 150, "g"); err == nil {
-		// Without a catalog scope an unknown id is not caught by visibility; the
-		// foreign key refuses it.
-		t.Error("an unknown ingredient must be refused")
+	if err := plans.ReplaceItemIngredient(ctx, row, alice, 999999, 150, "g"); !errors.Is(err, ErrIngredientNotFound) {
+		t.Errorf("an unknown ingredient: %v, want ErrIngredientNotFound", err)
 	}
 	if untouched, _ := plans.IngredientItem(ctx, first, alice); untouched == nil || *untouched.IngredientID != apple || untouched.Quantity != 100 {
 		t.Error("the other rows of the meal must not change")
@@ -130,6 +128,14 @@ func TestReplaceIngredient(t *testing.T) {
 	}
 	if none, _ := cats.SameCategoryIDs(ctx, alice, apple); len(none) != 0 {
 		t.Errorf("an ingredient with no category has no neighbours: %v", none)
+	}
+
+	// An ingredient the reconciler replaced while a dialog was open is refused.
+	if err := ings.MarkSuperseded(ctx, apple, greek); err != nil {
+		t.Fatal(err)
+	}
+	if err := recipes.ReplaceItem(ctx, rec, recipeRow, alice, apple, 150, "g"); !errors.Is(err, ErrIngredientNotFound) {
+		t.Errorf("a superseded ingredient: %v, want ErrIngredientNotFound", err)
 	}
 }
 

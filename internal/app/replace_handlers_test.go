@@ -82,7 +82,9 @@ func TestReplaceIngredientHandlers(t *testing.T) {
 		!strings.Contains(form.Body.String(), "/meal-items/"+itemKey+"/replace?start=2026-10-12") || !strings.Contains(form.Body.String(), "Yogurt greco 0%") ||
 		!strings.Contains(form.Body.String(), "150 g") ||
 		// The list sits in a form that targets the day: it must not inherit that.
-		!strings.Contains(form.Body.String(), `hx-trigger="load" hx-target="this"`) {
+		!strings.Contains(form.Body.String(), `hx-trigger="load" hx-target="this"`) ||
+		// ...nor hx-disabled-elt: the list inherits it, and with nothing to find htmx never ends its request.
+		strings.Contains(form.Body.String(), "hx-disabled-elt") {
 		t.Fatalf("dialog: %d %s", form.Code, form.Body.String())
 	}
 
@@ -144,8 +146,30 @@ func TestReplaceIngredientHandlers(t *testing.T) {
 	post := func(u int) *httptest.ResponseRecorder {
 		return call(a.handleRecipeReplaceItem, http.MethodPost, "/x", url.Values{"choice": {"ing:" + strconv.FormatInt(ricotta, 10)}}, u, "id", recKey, "itemID", rowKey)
 	}
-	if w := post(2); w.Code == http.StatusSeeOther || w.Code == http.StatusOK {
-		t.Errorf("another user replaced a recipe row: %d", w.Code)
+	if w := post(2); w.Code != http.StatusForbidden && w.Code != http.StatusNotFound {
+		t.Errorf("another user's post on a recipe row: %d, want 403 or 404", w.Code)
+	}
+	// A recipe that would become identical to another of the author's is refused
+	// with its own message, and the row stays as it was.
+	other, _ := a.Recipes.Create(ctx, alice.ID, "Twin", nil, 1, false)
+	if _, err := a.Recipes.AddItem(ctx, other, alice.ID, ricotta, 150, "g"); err != nil {
+		t.Fatal(err)
+	}
+	if w := post(1); w.Code == http.StatusSeeOther || !strings.Contains(w.Body.String(), "Twin") {
+		t.Fatalf("identical recipe: %d, want the page back with the message naming Twin", w.Code)
+	}
+	if untouched, _ := a.Recipes.GetWithItems(ctx, rec, alice.ID); untouched.Items[0].IngredientID != greek {
+		t.Error("a refused replace must leave the row as it was")
+	}
+	// Choosing the ingredient the row already has writes nothing.
+	if w := call(a.handleRecipeReplaceItem, http.MethodPost, "/x", url.Values{"choice": {"ing:" + strconv.FormatInt(greek, 10)}}, 1, "id", recKey, "itemID", rowKey); w.Code != http.StatusSeeOther {
+		t.Errorf("same ingredient: %d, want a redirect", w.Code)
+	}
+	if err := a.Recipes.RemoveItem(ctx, func() int64 {
+		g, _ := a.Recipes.GetWithItems(ctx, other, alice.ID)
+		return g.Items[0].ID
+	}(), alice.ID); err != nil {
+		t.Fatal(err)
 	}
 	if w := post(1); w.Code != http.StatusSeeOther || !strings.Contains(w.Header().Get("Location"), "saved="+rowKey) {
 		t.Fatalf("recipe replace: %d %q", w.Code, w.Header().Get("Location"))

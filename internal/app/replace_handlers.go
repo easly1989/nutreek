@@ -403,7 +403,7 @@ func (a *App) handleRecipeReplaceItem(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	} else if other != "" {
-		a.reRenderEdit(w, r, rec.ID, "", a.t(r, "recipes.error.identical_on_edit", "Other", other))
+		a.reRenderEdit(w, r, rec.ID, "", a.t(r, "replace.identical", "Other", other))
 		return
 	}
 	if err := a.Recipes.ReplaceItem(r.Context(), rec.ID, item.ID, user.ID, newID, t.qty, t.unit); err != nil {

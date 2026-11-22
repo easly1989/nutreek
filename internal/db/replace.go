@@ -9,6 +9,20 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
+// ingredientExists is ErrIngredientNotFound for an id that is not an active
+// ingredient: a deleted one, or one the reconciler replaced while a dialog was open.
+func ingredientExists(ctx context.Context, d *sql.DB, id int64) error {
+	var one int
+	err := d.QueryRowContext(ctx, `SELECT 1 FROM ingredients WHERE id = ? AND superseded_by IS NULL`, id).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrIngredientNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("ingredient exists: %w", err)
+	}
+	return nil
+}
+
 // MealIngredientItem is a plain-ingredient row of a meal with the name of the
 // meal, for the dialog that replaces its ingredient (#227).
 type MealIngredientItem struct {
@@ -49,6 +63,9 @@ func (r *WeeklyPlans) ReplaceItemIngredient(ctx context.Context, itemID, userID,
 	if _, err := r.IngredientItem(ctx, itemID, userID); err != nil {
 		return err
 	}
+	if err := ingredientExists(ctx, r.db, ingredientID); err != nil {
+		return err
+	}
 	if err := ingredientVisibleTo(ctx, r.db, ingredientID, userID); err != nil {
 		return err
 	}
@@ -77,6 +94,9 @@ func (r *Recipes) ReplaceItem(ctx context.Context, recipeID, itemID, userID, ing
 		return fmt.Errorf("quantita' deve essere > 0")
 	}
 	if err := r.assertOwner(ctx, recipeID, userID); err != nil {
+		return err
+	}
+	if err := ingredientExists(ctx, r.db, ingredientID); err != nil {
 		return err
 	}
 	if err := ingredientVisibleTo(ctx, r.db, ingredientID, userID); err != nil {
