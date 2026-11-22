@@ -430,6 +430,16 @@
   .settings-sec { @apply grid gap-2.5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5 px-4 py-[18px]; }
   .settings-sec + .settings-sec { @apply border-t border-border; }
   .settings-d { @apply text-[12.5px] text-muted mt-1; }
+  /* Swiping the open day to change day (#250): sideways is ours, vertical scrolling is the browser's. */
+  #day-panel { touch-action: pan-y pinch-zoom; }
+  .day-swipe-hint { @apply fixed z-40 pointer-events-none rounded-full bg-text text-bg font-bold text-[12px] px-3 py-1.5 shadow-lg whitespace-nowrap; top: 55%; opacity: 0; }
+  .day-swipe-hint[data-side="next"] { right: 12px; }
+  .day-swipe-hint[data-side="prev"] { left: 12px; }
+  @keyframes day-in-next { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes day-in-prev { from { transform: translateX(-28px); opacity: 0; } to { transform: none; opacity: 1; } }
+  #day-panel section[data-day].day-in-next { animation: day-in-next 180ms ease-out; }
+  #day-panel section[data-day].day-in-prev { animation: day-in-prev 180ms ease-out; }
+  @media (prefers-reduced-motion: reduce) { #day-panel section[data-day].day-in-next, #day-panel section[data-day].day-in-prev { animation: none; } }
   .mode-card { @apply flex flex-col gap-2 p-2.5 rounded-xl border border-border text-left text-[13px] font-semibold text-text hover:bg-surface-2; }
   .mode-card[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .mode-pv { @apply grid grid-cols-[30%_1fr] h-[52px] rounded-lg border border-border overflow-hidden; }
