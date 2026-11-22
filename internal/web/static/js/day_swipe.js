@@ -76,7 +76,8 @@
 
   panel.addEventListener("pointerdown", function (e) {
     if (e.pointerType === "mouse" || !e.isPrimary || !(e.target instanceof Element)) return;
-    if (blocked(e.target) || !section()) return;
+    // A day is loading: the open tab is not the new one yet.
+    if (pendingSide || blocked(e.target) || !section()) return;
     start = { x: e.clientX, y: e.clientY, id: e.pointerId, on: false, dx: 0, sec: section() };
   });
 
@@ -105,7 +106,7 @@
     if (!s.on) return;
     // The swipe must not count as a tap on what is under the finger.
     var swallow = function (ev) { ev.preventDefault(); ev.stopPropagation(); };
-    panel.addEventListener("click", swallow, true);
+    panel.addEventListener("click", swallow, { capture: true, once: true });
     setTimeout(function () { panel.removeEventListener("click", swallow, true); }, 350);
     hideHint();
     var side = s.dx < 0 ? "next" : "prev";
@@ -141,4 +142,9 @@
   }
   document.addEventListener("htmx:responseError", failed);
   document.addEventListener("htmx:sendError", failed);
+  // The tab's request ended with no swap (a timeout, an abort, an empty answer):
+  // afterRequest comes after afterSwap, which clears pendingSide when there was one.
+  document.addEventListener("htmx:afterRequest", function (e) {
+    if (pendingSide && e.detail.elt && e.detail.elt.matches && e.detail.elt.matches("#timeline-pills [role=tab]")) failed();
+  });
 })();
