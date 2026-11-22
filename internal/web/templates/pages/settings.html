@@ -72,6 +72,55 @@
         </form>
       </section>
 
+      {{/* Meal times (#236): the time each meal name gets when it is created, and
+           whether the CSV export has a column for them. */}}
+      <section id="orari" class="card scroll-mt-6">
+        <div class="settings-sec">
+          <div><h2 class="h2">{{t "meal_times.settings.title"}}</h2><p class="settings-d">{{t "meal_times.settings.desc"}}</p></div>
+          {{if .MealTimes}}
+          <ul class="divide-y divide-border -mx-1">
+            {{range .MealTimes}}
+            <li class="flex flex-wrap items-center gap-2 py-2 px-1">
+              <form method="post" action="/settings/meal-times" class="flex flex-wrap items-center gap-2 grow min-w-0">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="name" value="{{.Name}}">
+                <b class="grow min-w-[7rem]">{{.Name}}</b>
+                <input type="time" name="start_time" required value="{{.Start}}" aria-label="{{t "meal_times.settings.start"}}: {{.Name}}" class="field w-[6.5rem] text-center tabular-nums">
+                <span class="text-muted" aria-hidden="true">–</span>
+                <input type="time" name="end_time" value="{{.End}}" aria-label="{{t "meal_times.settings.end"}}: {{.Name}}" class="field w-[6.5rem] text-center tabular-nums">
+                <button class="btn-secondary btn-icon" title="{{t "meal_times.save"}}" aria-label="{{t "meal_times.save"}}: {{.Name}}">{{template "icon_sm" "i-check"}}</button>
+              </form>
+              <form method="post" action="/settings/meal-times/delete">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="name" value="{{.Name}}">
+                <button class="icon-action hover:text-danger" title="{{t "week.delete"}}" aria-label="{{t "meal_times.settings.delete_named" "Name" .Name}}">{{template "icon" "i-trash"}}</button>
+              </form>
+            </li>
+            {{end}}
+          </ul>
+          {{else}}
+          <p class="settings-d">{{t "meal_times.settings.empty"}}</p>
+          {{end}}
+          <form method="post" action="/settings/meal-times" class="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input name="name" required maxlength="200" placeholder="{{t "meal_times.settings.name_placeholder"}}" aria-label="{{t "meal_times.name"}}" class="field grow min-w-[9rem]">
+            <input type="time" name="start_time" required aria-label="{{t "meal_times.settings.start"}}" class="field w-[6.5rem] text-center tabular-nums">
+            <span class="text-muted" aria-hidden="true">–</span>
+            <input type="time" name="end_time" aria-label="{{t "meal_times.settings.end"}}" class="field w-[6.5rem] text-center tabular-nums">
+            <button class="btn-secondary shrink-0">{{template "icon" "i-plus"}}{{t "meal_times.add"}}</button>
+          </form>
+          <form method="post" action="/settings/show-meal-times" class="border-t border-border pt-3">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <span class="grow min-w-0"><b class="block">{{t "meal_times.settings.csv_label"}}</b><span class="block settings-d">{{t "meal_times.settings.csv_hint"}}</span></span>
+              <input type="hidden" name="show_meal_times" value="0">
+              <input type="checkbox" role="switch" name="show_meal_times" value="1" class="toggle"{{if .User.ShowMealTimes}} checked{{end}} aria-label="{{t "meal_times.settings.csv_label"}}">
+            </label>
+            <button class="btn-secondary mt-2">{{t "meal_times.save"}}</button>
+          </form>
+        </div>
+      </section>
+
       {{/* Installable app (#59). A single visible block, picked by
            static/js/pwa.js; without JS the generic one stays. */}}
       <section id="app" class="card scroll-mt-6">

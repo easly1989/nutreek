@@ -84,6 +84,7 @@ func fill(t *testing.T, d *sql.DB, userID int64) int64 {
 	ing := exec(`INSERT INTO ingredients (source, name, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, created_by, category_id)
 		VALUES ('local', 'Oats', 380, 13, 60, 7, ?, ?)`, userID, cat)
 	exec(`INSERT INTO ingredient_user_categories (user_id, ingredient_id, category_id) VALUES (?, ?, ?)`, userID, ing, cat)
+	exec(`INSERT INTO meal_time_defaults (user_id, name, start_time) VALUES (?, 'Brunch', '10:00')`, userID)
 	exec(`INSERT INTO ingredient_allergens (ingredient_id, allergen_id) SELECT ?, id FROM allergen_tags LIMIT 1`, ing)
 	recipe := exec(`INSERT INTO recipes (user_id, name) VALUES (?, 'Porridge')`, userID)
 	exec(`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity) VALUES (?, ?, 80)`, recipe, ing)

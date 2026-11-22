@@ -19,6 +19,25 @@ type Meal struct {
 	DayOfWeek    int // 0 = lunedi', 6 = domenica
 	Name         string
 	SortOrder    int
+	// StartTime and EndTime are wall-clock "HH:MM" (no time zone), "" when unset:
+	// meals from before #236 have no start; the end is always optional.
+	StartTime string
+	EndTime   string
+	// IsReminder marks a meal with no food (a supplement, a medicine): it takes no
+	// rows and counts for nothing in the totals, the planned days or the adherence.
+	IsReminder bool
+	Note       string // a reminder's note («1 compressa»)
+}
+
+// TimeLabel is the meal's time as shown: «12:30», «12:30–13:30», "" with none.
+func (m Meal) TimeLabel() string {
+	switch {
+	case m.StartTime == "":
+		return ""
+	case m.EndTime == "":
+		return m.StartTime
+	}
+	return m.StartTime + "–" + m.EndTime
 }
 
 // MealItem is a meal row: either a recipe (Quantity = servings) or a plain

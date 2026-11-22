@@ -11,7 +11,8 @@ import (
 // noCheats keeps the meals that have no cheats (what was eaten instead): their
 // rows are shown struck and count for nothing, so a row moved there would vanish
 // from the day's totals.
-const noCheats = `NOT EXISTS (SELECT 1 FROM meal_cheat_items c WHERE c.meal_id = meals.id)`
+// A reminder (#236) has no food: it takes no rows either.
+const noCheats = `meals.is_reminder = 0 AND NOT EXISTS (SELECT 1 FROM meal_cheat_items c WHERE c.meal_id = meals.id)`
 
 // MoveContext is what the «Move to…» menu of a row needs (#228): where the row
 // is, and the other meals of its day.

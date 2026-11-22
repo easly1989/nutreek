@@ -357,11 +357,27 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, p person,
 	for _, c := range p.cheats {
 		cheatOn[c.daysAgo] = c
 	}
-	insMeal, err := tx.PrepareContext(ctx, `INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order) VALUES (?, ?, ?, ?)`)
+	insMeal, err := tx.PrepareContext(ctx, `INSERT INTO meals (weekly_plan_id, day_of_week, name, sort_order, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, err
 	}
 	defer insMeal.Close()
+	// The time of each meal name (#236): the meals take it, and Settings lists it.
+	mealTimes := map[string][2]string{
+		"breakfast": {"07:30", ""}, "lunch": {"12:30", "13:30"}, "snack": {"16:30", ""}, "dinner": {"20:00", ""},
+	}
+	for _, mt := range mealTypes {
+		if t, ok := mealTimes[mt.key]; ok {
+			var end any
+			if t[1] != "" {
+				end = t[1]
+			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO meal_time_defaults (user_id, name, start_time, end_time) VALUES (?, ?, ?, ?)`,
+				userID, w.text["meal."+mt.key], t[0], end); err != nil {
+				return nil, fmt.Errorf("meal time: %w", err)
+			}
+		}
+	}
 	insItem, err := tx.PrepareContext(ctx, `INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, err
@@ -386,7 +402,14 @@ func seed(ctx context.Context, tx *sql.Tx, userID int64, w vocabulary, p person,
 			date := start.AddDate(0, 0, d)
 			daysAgo := int(math.Round(today.Sub(date).Hours() / 24))
 			for i, mt := range mealTypes {
-				res, err := insMeal.ExecContext(ctx, weekID, d, w.text["meal."+mt.key], i)
+				var start, end any
+				if t, ok := mealTimes[mt.key]; ok {
+					start = t[0]
+					if t[1] != "" {
+						end = t[1]
+					}
+				}
+				res, err := insMeal.ExecContext(ctx, weekID, d, w.text["meal."+mt.key], i, start, end)
 				if err != nil {
 					return nil, fmt.Errorf("meal: %w", err)
 				}

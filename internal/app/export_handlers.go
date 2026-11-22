@@ -42,16 +42,31 @@ func (a *App) handleWeekExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 
 	cw := csv.NewWriter(w)
-	_ = cw.Write([]string{"giorno", "pasto", "tipo", "nome", "quantita", "unita", "kcal", "proteine", "carbs", "grassi"})
+	header := []string{"giorno", "pasto", "tipo", "nome", "quantita", "unita", "kcal", "proteine", "carbs", "grassi"}
+	// #236: the times go in a last column, so the import (which reads by position)
+	// is not affected; reminders have no food and come as rows of their own.
+	if user.ShowMealTimes {
+		header = append(header, "ora")
+	}
+	_ = cw.Write(header)
 
 	for d, meals := range full.Days {
 		for _, m := range meals {
+			if m.IsReminder {
+				if user.ShowMealTimes {
+					_ = cw.Write([]string{dayNamesExport[d], m.Name, "promemoria", m.Name, "", "", "", "", "", "", m.TimeLabel()})
+				}
+				continue
+			}
 			items := m.Items
 			if m.HasCheats() {
 				items = m.Cheats
 			}
 			for _, it := range items {
 				row := exportRow(dayNamesExport[d], m.Name, it)
+				if user.ShowMealTimes {
+					row = append(row, m.TimeLabel())
+				}
 				_ = cw.Write(row)
 			}
 		}

@@ -177,6 +177,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/week/reset", a.handleResetWeek)
 		r.Get("/days/{date}", a.handleDayCard) // HTMX partial for a single card
 		r.Post("/meals", a.handleAddMeal)
+		r.Get("/week/reminder", a.handleReminderForm)
+		r.Post("/reminders", a.handleAddReminder)
+		r.Post("/meals/{mealID}/time", a.handleMealTime)
 		r.Post("/meals/reorder", a.handleReorderMeals)
 		r.Post("/meals/{mealID}/delete", a.handleRemoveMeal)
 		r.Get("/meals/{mealID}/items/new", a.handleAddItemForm)
@@ -268,6 +271,9 @@ func (a *App) Router() http.Handler {
 		// Account settings (GDPR export, password change, deletion, API tokens).
 		r.Get("/settings", a.handleSettingsPage)
 		r.Post("/settings/keep-awake", a.handleSettingsKeepAwake)
+		r.Post("/settings/meal-times", a.handleSettingsMealTime)
+		r.Post("/settings/meal-times/delete", a.handleSettingsMealTimeDelete)
+		r.Post("/settings/show-meal-times", a.handleSettingsShowMealTimes)
 		r.Get("/settings/export", a.handleUserDataExport)
 		if a.Demo == nil { // both ask for the password a demo account does not have
 			r.Post("/settings/password", a.handleChangePassword)
