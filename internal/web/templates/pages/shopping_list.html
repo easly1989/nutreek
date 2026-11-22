@@ -52,13 +52,14 @@
       {{template "shop_precheck" .}}
       {{else if or .View.Total .View.Rows .View.Cart}}
       {{if .View.Total}}
-      {{/* shop_progress.js animates the fill (clip-path) when the number of items in the cart changes, and celebrates when it reaches the total. */}}
-      <div id="shop-progress" class="card p-4 flex flex-col gap-2 relative" data-list="{{.List.ID}}" data-done="{{.View.Done}}" data-total="{{.View.Total}}">
+      {{/* shop_progress.js animates the fill (clip-path) when the items in the cart change, and celebrates when it reaches the total.
+           It reads the list and the counts from the progressbar: htmx keeps the old attributes of a swapped element that has an id until it settles. */}}
+      <div id="shop-progress" class="card p-4 flex flex-col gap-2 relative">
         <div class="flex items-baseline gap-1">
           <b class="tabular-nums">{{t "shopping.progress" "Done" .View.Done "Total" .View.Total}}</b><span class="text-muted">{{t "shopping.in_cart"}}</span>
           <span class="ml-auto text-[12.5px] text-muted tabular-nums">{{.View.Percent}}%</span>
         </div>
-        <div class="relative h-1.5 rounded-full bg-track overflow-hidden" role="progressbar" aria-label="{{t "shopping.progress_label"}}" aria-valuemin="0" aria-valuemax="{{.View.Total}}" aria-valuenow="{{.View.Done}}">
+        <div class="relative h-1.5 rounded-full bg-track overflow-hidden" role="progressbar" data-list="{{.List.ID}}" aria-label="{{t "shopping.progress_label"}}" aria-valuemin="0" aria-valuemax="{{.View.Total}}" aria-valuenow="{{.View.Done}}">
           <span data-progress-fill class="block h-full bg-accent" style="clip-path: inset(0 {{.View.Rest}}% 0 0 round 9999px)"></span>
         </div>
         {{if eq .View.Done .View.Total}}<p data-progress-done class="flex items-center gap-1.5 text-[13px] font-bold text-accent">{{template "icon_sm" "i-check"}}{{t "shopping.complete"}}</p>{{end}}

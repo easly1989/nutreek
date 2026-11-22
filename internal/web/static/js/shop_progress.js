@@ -18,15 +18,32 @@
   // Mid tones, readable on the light and on the dark theme, next to the accent.
   var COLORS = ["#E9B851", "#A99DF0", "#5CC9BB", "#FF8A80"];
 
+  // read takes the numbers from the progressbar, not from the card: htmx gives a
+  // swapped element that has an id its old attributes until it settles.
   function read() {
     var card = document.getElementById("shop-progress");
-    if (!card) return null;
+    var bar = card && card.querySelector("[role=progressbar]");
+    if (!bar) return null;
     return {
       card: card,
-      list: card.dataset.list,
-      done: parseInt(card.dataset.done, 10) || 0,
-      total: parseInt(card.dataset.total, 10) || 0
+      list: bar.dataset.list,
+      done: parseInt(bar.getAttribute("aria-valuenow"), 10) || 0,
+      total: parseInt(bar.getAttribute("aria-valuemax"), 10) || 0
     };
+  }
+
+  // A polite live region, filled when the cart gets everything: the card is new
+  // on every tick, so a line inside it is not announced.
+  var live = null;
+  function announce(text) {
+    if (!live) {
+      live = document.createElement("div");
+      live.setAttribute("role", "status");
+      live.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap";
+      document.body.appendChild(live);
+    }
+    live.textContent = "";
+    setTimeout(function () { live.textContent = text; }, 50);
   }
 
   function clip(done, total) {
@@ -74,6 +91,8 @@
     if (!track || !card.animate) return;
     var cr = card.getBoundingClientRect(), tr = track.getBoundingClientRect();
     var ox = tr.right - cr.left - 4, oy = tr.top - cr.top + tr.height / 2;
+    // Keep the pieces inside the screen: a piece past the edge would widen the page.
+    var minX = -(tr.right - 8), maxX = document.documentElement.clientWidth - tr.right - 8;
     var colors = [getComputedStyle(card).getPropertyValue("--accent").trim() || "#2F7A55"].concat(COLORS);
     var layer = document.createElement("div");
     layer.setAttribute("aria-hidden", "true");
@@ -85,7 +104,7 @@
       p.style.cssText = "position:absolute;left:" + ox + "px;top:" + oy + "px;width:6px;height:4px;border-radius:1px;background:" + colors[i % colors.length];
       layer.appendChild(p);
       var spread = (Math.random() - 0.5) * 2; // -1 (left) .. 1 (right)
-      var dx = spread * 130 - 40;
+      var dx = Math.min(maxX, Math.max(minX, spread * 130 - 40));
       var up = 50 + Math.random() * 70;
       var down = 40 + Math.random() * 60;
       var turn = (Math.random() * 720 - 360) + "deg";
@@ -93,21 +112,29 @@
         { transform: "translate(0,0) rotate(0)", opacity: 1, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },
         { transform: "translate(" + dx * 0.7 + "px," + -up + "px) rotate(" + turn + ")", opacity: 1, offset: 0.4, easing: "cubic-bezier(0.55, 0, 1, 0.45)" },
         { transform: "translate(" + dx + "px," + down + "px) rotate(" + turn + ")", opacity: 0 }
-      ], { duration: 1100 + Math.random() * 500, delay: Math.random() * 120, fill: "backwards" });
+      ], { duration: 1100 + Math.random() * 500, delay: Math.random() * 120, fill: "both" });
       anim.onfinish = function () { if (--pending === 0) layer.remove(); };
     }
   }
 
   var last = read();
 
-  document.addEventListener("htmx:afterSettle", function () {
+  // afterSwap, not afterSettle: the settle comes 20 ms later and the new card
+  // would show its final state for a frame before the animation starts.
+  document.addEventListener("htmx:afterSwap", function () {
     var now = read();
     var prev = last;
     last = now;
-    if (!now || !prev || now.list !== prev.list || now.done === prev.done) return;
+    if (!now || !prev || now.list !== prev.list) return;
+    if (now.done === prev.done && now.total === prev.total) return;
+    var finished = now.done > prev.done && now.done === now.total && prev.done < prev.total;
+    if (finished) {
+      var line = now.card.querySelector("[data-progress-done]");
+      if (line) announce(line.textContent.trim());
+    }
     if (calm && calm.matches) return;
     fill(prev, now);
-    if (now.done > prev.done && now.done === now.total && prev.done < prev.total) {
+    if (finished) {
       sheen(now.card);
       popIn(now.card);
       confetti(now.card);
