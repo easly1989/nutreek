@@ -246,8 +246,9 @@ func searchTokens(q string) []string {
 // SearchActive finds the non-superseded ingredients in viewerID's catalog that
 // match every word of q (#224): each word is a substring, case-insensitive, of
 // the name, the brand or the name of the category the viewer put the ingredient
-// in. So «yogurt fage» finds Fage yogurt, and «fage yogurt» too. Limit
-// hard-coded to 20 for HTMX.
+// in. So «yogurt fage» finds Fage yogurt, and «fage yogurt» too. An ingredient
+// whose name is exactly q comes first, so a caller that looks for one by name
+// finds it among the first rows; then the OpenFoodFacts ones, then by name.
 func (r *Ingredients) SearchActive(ctx context.Context, viewerID int64, q string, limit int) ([]*domain.Ingredient, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
@@ -267,9 +268,9 @@ func (r *Ingredients) SearchActive(ctx context.Context, viewerID int64, q string
 		FROM ingredients
 		WHERE superseded_by IS NULL
 		  AND (source = 'openfoodfacts' OR `+scope+`) AND `+shown+words.String()+`
-		ORDER BY (source = 'openfoodfacts') DESC, name COLLATE NOCASE
+		ORDER BY (lower(name) = ?) DESC, (source = 'openfoodfacts') DESC, name COLLATE NOCASE
 		LIMIT ?`,
-		append(args, limit)...,
+		append(args, strings.ToLower(strings.TrimSpace(q)), limit)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("search ingredients: %w", err)

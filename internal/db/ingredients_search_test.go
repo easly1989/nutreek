@@ -69,8 +69,17 @@ func TestSearchActiveEveryWord(t *testing.T) {
 	if got := search(bob, "latticini"); len(got) != 0 {
 		t.Errorf("Bob found Alice's category: %v", got)
 	}
-	// More words than count are cut, not an error.
-	if got := search(alice, "yogurt greco fage a b c d e f g h i j"); len(got) != 0 && len(got) != 1 {
-		t.Errorf("many words: %v", got)
+	// Eight words count; a ninth, which matches nothing, is dropped.
+	if got := search(alice, "yogurt greco fage latticini yo gre fa lat zzzz"); len(got) != 1 {
+		t.Errorf("a ninth word must be dropped: %v", got)
+	}
+	if got := search(alice, "yogurt greco fage latticini yo gre fa zzzz lat"); len(got) != 0 {
+		t.Errorf("a word among the first eight that matches nothing must exclude: %v", got)
+	}
+	// An exact name comes first, whatever the alphabet says.
+	mk("Banana pane", nil)
+	mk("Pane", nil)
+	if got := search(alice, "pane"); len(got) < 2 || got[0] != "Pane" {
+		t.Errorf("exact name first: %v", got)
 	}
 }
