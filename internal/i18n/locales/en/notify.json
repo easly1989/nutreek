@@ -1,0 +1,8 @@
+{
+  "notify.water.title": "Time for some water",
+  "notify.water.body": "{{.Done}} of {{.Target}} ml so far",
+  "notify.gym.title": "Training today",
+  "notify.at": "At {{.Time}}",
+  "notify.test.title": "Nutreek",
+  "notify.test.body": "Notifications work on this device."
+}

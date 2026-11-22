@@ -95,10 +95,42 @@ self.addEventListener("fetch", (event) => {
 });
 `
 
+// The push handlers of the service worker (#237): a push shows its notification,
+// a tap opens (or focuses) the app at the page the message names. It is plain
+// text added to serviceWorkerJS in init, so it has no % in it.
+const pushWorkerJS = `
+self.addEventListener("push", (event) => {
+  let msg = {};
+  try { msg = event.data ? event.data.json() : {}; } catch (e) { msg = { title: "Nutreek", body: event.data ? event.data.text() : "" }; }
+  event.waitUntil(self.registration.showNotification(msg.title || "Nutreek", {
+    body: msg.body || "",
+    tag: msg.tag || undefined,
+    icon: msg.icon || undefined,
+    badge: msg.icon || undefined,
+    data: { url: msg.url || "/" },
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin).href;
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((all) => {
+    for (const c of all) {
+      if (c.url === url && "focus" in c) return c.focus();
+    }
+    for (const c of all) {
+      if ("navigate" in c && "focus" in c) return c.navigate(url).then((w) => w && w.focus());
+    }
+    return self.clients.openWindow(url);
+  }));
+});
+`
+
 // handleServiceWorker GET /sw.js.
 func (a *App) handleServiceWorker(w http.ResponseWriter, r *http.Request) {
 	h := w.Header()
 	h.Set("Content-Type", "text/javascript; charset=utf-8")
 	h.Set("Cache-Control", "no-cache")
 	fmt.Fprintf(w, serviceWorkerJS, "nutreek-static-"+web.StaticVersion())
+	fmt.Fprint(w, pushWorkerJS)
 }

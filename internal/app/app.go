@@ -11,6 +11,7 @@ import (
 	"github.com/amon2126/nutreek/internal/config"
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/notify"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/service"
 	"github.com/amon2126/nutreek/internal/updates"
@@ -48,6 +49,12 @@ type App struct {
 	// Updates tells the owner a newer Nutreek is out (#167); nil in tests and
 	// in the demo build.
 	Updates *updates.Service
+
+	// Notifications (#237): the reminders and devices, the sender that ticks every
+	// minute (nil in the demo build) and the VAPID public key the browser needs.
+	Notifications   *db.Notifications
+	Notify          *notify.Service
+	NotifyPublicKey string
 
 	// Demo is set only in the demo build (#137, cmd/nutreek/demo_on.go).
 	Demo       Demo

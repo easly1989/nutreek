@@ -271,6 +271,13 @@ func (a *App) Router() http.Handler {
 		// Account settings (GDPR export, password change, deletion, API tokens).
 		r.Get("/settings", a.handleSettingsPage)
 		r.Post("/settings/keep-awake", a.handleSettingsKeepAwake)
+		r.Get("/settings/notifications", a.handleNotificationsPage)
+		r.Post("/settings/notifications/reminder", a.handleNotificationsReminder)
+		r.Post("/settings/notifications/delete", a.handleNotificationsCustomDelete)
+		r.Post("/settings/notifications/quiet", a.handleNotificationsQuiet)
+		r.Post("/notifications/subscribe", a.handleNotificationsSubscribe)
+		r.Post("/notifications/unsubscribe", a.handleNotificationsUnsubscribe)
+		r.Post("/notifications/test", a.handleNotificationsTest)
 		r.Post("/settings/meal-times", a.handleSettingsMealTime)
 		r.Post("/settings/meal-times/delete", a.handleSettingsMealTimeDelete)
 		r.Post("/settings/show-meal-times", a.handleSettingsShowMealTimes)

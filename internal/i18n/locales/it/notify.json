@@ -1,0 +1,8 @@
+{
+  "notify.water.title": "Un po' d'acqua",
+  "notify.water.body": "Finora {{.Done}} di {{.Target}} ml",
+  "notify.gym.title": "Oggi ti alleni",
+  "notify.at": "Alle {{.Time}}",
+  "notify.test.title": "Nutreek",
+  "notify.test.body": "Le notifiche funzionano su questo dispositivo."
+}

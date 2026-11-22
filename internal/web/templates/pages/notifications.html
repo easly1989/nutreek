@@ -1,0 +1,172 @@
+{{define "title"}}{{t "notifications.title"}} — Nutreek{{end}}
+{{define "content"}}
+{{- /* The notifications page (#237, variant A): the device, a block per reminder
+       type, the quiet hours. notifications.js runs the device card and submits a
+       switch when it is changed. View model: app.notificationsPageData. */}}
+<div class="flex flex-col gap-4 lg:gap-[18px] max-w-[640px]">
+  <div>
+    <a href="/settings" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "notifications.back"}}</a>
+    <h1 class="h1">{{t "notifications.title"}}</h1>
+    <p class="text-muted mt-1">{{t "notifications.desc"}}</p>
+  </div>
+
+  {{/* The device: the state is picked by notifications.js; without it, the last block. */}}
+  <section class="card" id="dispositivo" data-notify data-available="{{.Available}}" data-vapid="{{.PublicKey}}" data-csrf="{{.CSRFToken}}" data-devices="{{.Devices}}"
+           data-msg-denied="{{t "notifications.js.denied"}}" data-msg-failed="{{t "notifications.js.failed"}}" data-msg-sent="{{t "notifications.js.sent"}}">
+    {{if not .Available}}
+    <div class="flex items-center gap-3 p-4"><span class="w-2.5 h-2.5 rounded-full bg-muted shrink-0"></span><div class="grow"><b class="block">{{t "notifications.state.demo"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.state.demo_hint"}}</span></div></div>
+    {{else}}
+    <div data-notify-state="ok" class="hidden flex items-center gap-3 p-4"><span class="w-2.5 h-2.5 rounded-full bg-accent shrink-0"></span><div class="grow min-w-0"><b class="block">{{t "notifications.state.ok"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.state.ok_hint"}}</span></div>
+      <button type="button" class="btn-secondary" data-notify-test>{{t "notifications.test"}}</button><button type="button" class="btn-ghost" data-notify-disable>{{t "notifications.disable"}}</button></div>
+    <div data-notify-state="todo" class="hidden flex items-center gap-3 p-4"><span class="w-2.5 h-2.5 rounded-full bg-muted shrink-0"></span><div class="grow min-w-0"><b class="block">{{t "notifications.state.todo"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.state.todo_hint"}}</span></div>
+      <button type="button" class="btn-primary" data-notify-enable>{{t "notifications.enable"}}</button></div>
+    <div data-notify-state="ios" class="hidden flex items-center gap-3 p-4"><span class="w-2.5 h-2.5 rounded-full bg-warn-fg shrink-0"></span><div class="grow"><b class="block">{{t "notifications.state.ios"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.state.ios_hint"}}</span></div></div>
+    <div data-notify-state="blocked" class="hidden flex items-center gap-3 p-4"><span class="w-2.5 h-2.5 rounded-full bg-muted shrink-0"></span><div class="grow"><b class="block">{{t "notifications.state.blocked"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.state.blocked_hint"}}</span></div></div>
+    <div data-notify-state="unsupported" class="flex items-center gap-3 p-4"><span class="w-2.5 h-2.5 rounded-full bg-muted shrink-0"></span><div class="grow"><b class="block">{{t "notifications.state.unsupported"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.state.unsupported_hint"}}</span></div></div>
+    <p data-notify-error hidden role="alert" class="mx-4 mb-4 rounded-xl bg-danger-soft text-danger px-3 py-2"></p>
+    {{end}}
+  </section>
+
+  <section class="card divide-y divide-border">
+    {{/* Water */}}
+    <form id="water" method="post" action="/settings/notifications/reminder" class="flex flex-col">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="kind" value="water">
+      <div class="flex items-center gap-3 px-4 py-3">
+        <span class="w-9 h-9 shrink-0 grid place-items-center rounded-[10px] {{if .Water.Enabled}}bg-accent-soft text-accent{{else}}bg-surface-2 text-muted{{end}}">{{template "icon" "i-drop"}}</span>
+        <div class="grow min-w-0"><b class="block">{{t "notifications.water.title"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.water.summary" "Every" .Water.EveryMin "Start" .Water.Start "End" .Water.End}}</span></div>
+        <input type="hidden" name="enabled" value="0"><input type="checkbox" role="switch" name="enabled" value="1" class="toggle notify-switch"{{if .Water.Enabled}} checked{{end}} aria-label="{{t "notifications.water.title"}}">
+      </div>
+      <details class="bg-surface-2"{{if .Water.Enabled}} open{{end}}>
+        <summary class="px-4 py-2 cursor-pointer text-accent font-semibold text-[13px] list-none">{{t "notifications.edit"}}</summary>
+        <div class="flex flex-col gap-3 px-4 pb-4">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.every"}}
+              <select name="every_min" class="field w-auto font-normal text-text">{{range list "30" "60" "90" "120" "180" "240"}}<option value="{{.}}"{{if eq (printf "%d" $.Water.EveryMin) .}} selected{{end}}>{{.}} min</option>{{end}}</select></label>
+            <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.from"}}<input type="time" name="start_time" value="{{.Water.Start}}" required class="field w-[6.5rem] text-center tabular-nums font-normal text-text"></label>
+            <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.to"}}<input type="time" name="end_time" value="{{.Water.End}}" required class="field w-[6.5rem] text-center tabular-nums font-normal text-text"></label>
+          </div>
+          <label class="flex items-start gap-2.5"><input type="checkbox" name="skip_done" value="1" class="check mt-0.5"{{if .Water.SkipDone}} checked{{end}}>{{t "notifications.water.skip"}}</label>
+          {{template "days_field" .Water}}
+          <button class="btn-primary self-end">{{t "notifications.save"}}</button>
+        </div>
+      </details>
+    </form>
+
+    {{/* Gym */}}
+    <form id="gym" method="post" action="/settings/notifications/reminder" class="flex flex-col">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="kind" value="gym">
+      <div class="flex items-center gap-3 px-4 py-3">
+        <span class="w-9 h-9 shrink-0 grid place-items-center rounded-[10px] {{if .Gym.Enabled}}bg-accent-soft text-accent{{else}}bg-surface-2 text-muted{{end}}">{{template "icon" "i-gym"}}</span>
+        <div class="grow min-w-0"><b class="block">{{t "notifications.gym.title"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.gym.summary" "Time" .Gym.Start "Lead" .Gym.LeadMin}}</span></div>
+        <input type="hidden" name="enabled" value="0"><input type="checkbox" role="switch" name="enabled" value="1" class="toggle notify-switch"{{if .Gym.Enabled}} checked{{end}} aria-label="{{t "notifications.gym.title"}}">
+      </div>
+      <details class="bg-surface-2"{{if .Gym.Enabled}} open{{end}}>
+        <summary class="px-4 py-2 cursor-pointer text-accent font-semibold text-[13px] list-none">{{t "notifications.edit"}}</summary>
+        <div class="flex flex-col gap-3 px-4 pb-4">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.at"}}<input type="time" name="start_time" value="{{.Gym.Start}}" required class="field w-[6.5rem] text-center tabular-nums font-normal text-text"></label>
+            <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.lead"}}
+              <select name="lead_min" class="field w-auto font-normal text-text">{{range list "0" "15" "30" "60" "90"}}<option value="{{.}}"{{if eq (printf "%d" $.Gym.LeadMin) .}} selected{{end}}>{{.}} min</option>{{end}}</select></label>
+          </div>
+          {{template "days_field" .Gym}}
+          <button class="btn-primary self-end">{{t "notifications.save"}}</button>
+        </div>
+      </details>
+    </form>
+
+    {{/* Meals: the times of the meals (#236) */}}
+    <form id="meals" method="post" action="/settings/notifications/reminder" class="flex flex-col">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="kind" value="meals">
+      <div class="flex items-center gap-3 px-4 py-3">
+        <span class="w-9 h-9 shrink-0 grid place-items-center rounded-[10px] {{if .Meals.Enabled}}bg-accent-soft text-accent{{else}}bg-surface-2 text-muted{{end}}">{{template "icon" "i-meal"}}</span>
+        <div class="grow min-w-0"><b class="block">{{t "notifications.meals.title"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.meals.summary" "Lead" .Meals.LeadMin}}</span></div>
+        <input type="hidden" name="enabled" value="0"><input type="checkbox" role="switch" name="enabled" value="1" class="toggle notify-switch"{{if .Meals.Enabled}} checked{{end}} aria-label="{{t "notifications.meals.title"}}">
+      </div>
+      <details class="bg-surface-2"{{if .Meals.Enabled}} open{{end}}>
+        <summary class="px-4 py-2 cursor-pointer text-accent font-semibold text-[13px] list-none">{{t "notifications.edit"}}</summary>
+        <div class="flex flex-col gap-3 px-4 pb-4">
+          <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.lead"}}
+            <select name="lead_min" class="field w-auto font-normal text-text">{{range list "0" "5" "10" "15" "30"}}<option value="{{.}}"{{if eq (printf "%d" $.Meals.LeadMin) .}} selected{{end}}>{{.}} min</option>{{end}}</select></label>
+          {{if .MealNames}}
+          <div class="flex flex-col gap-1.5">
+            {{range .MealNames}}<label class="flex items-center gap-2.5"><input type="checkbox" name="meal" value="{{.Name}}" class="check"{{if .On}} checked{{end}}><span class="grow">{{.Name}}</span><span class="text-muted tabular-nums">{{.Time}}</span></label>{{end}}
+          </div>
+          {{end}}
+          <p class="text-[12.5px] text-muted">{{t "notifications.meals.hint"}} <a href="/settings#orari" class="text-accent font-semibold">{{t "notifications.meals.times"}}</a></p>
+          <button class="btn-primary self-end">{{t "notifications.save"}}</button>
+        </div>
+      </details>
+    </form>
+
+    {{/* Custom reminders */}}
+    {{range .Customs}}
+    <div id="custom" class="flex flex-col">
+      <form method="post" action="/settings/notifications/reminder" class="flex flex-col">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="kind" value="custom"><input type="hidden" name="id" value="{{.ID}}">
+        <div class="flex items-center gap-3 px-4 py-3">
+          <span class="w-9 h-9 shrink-0 grid place-items-center rounded-[10px] {{if .Enabled}}bg-accent-soft text-accent{{else}}bg-surface-2 text-muted{{end}}">{{template "icon" "i-bell"}}</span>
+          <div class="grow min-w-0"><b class="block truncate">{{.Title}}</b><span class="text-[12.5px] text-muted tabular-nums">{{.Start}}</span></div>
+          <input type="hidden" name="enabled" value="0"><input type="checkbox" role="switch" name="enabled" value="1" class="toggle notify-switch"{{if .Enabled}} checked{{end}} aria-label="{{.Title}}">
+        </div>
+        <details class="bg-surface-2">
+          <summary class="px-4 py-2 cursor-pointer text-accent font-semibold text-[13px] list-none">{{t "notifications.edit"}}</summary>
+          <div class="flex flex-col gap-3 px-4 pb-4">
+            <div class="flex flex-wrap items-center gap-2.5">
+              <label class="flex grow items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.custom.name"}}<input name="title" value="{{.Title}}" required maxlength="200" class="field grow font-normal text-text"></label>
+              <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.at"}}<input type="time" name="start_time" value="{{.Start}}" required class="field w-[6.5rem] text-center tabular-nums font-normal text-text"></label>
+            </div>
+            {{template "days_field" .}}
+            <button class="btn-primary self-end">{{t "notifications.save"}}</button>
+          </div>
+        </details>
+      </form>
+      <form method="post" action="/settings/notifications/delete" class="px-4 pb-2 -mt-1 bg-surface-2 flex justify-end">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="id" value="{{.ID}}">
+        <button class="btn-ghost text-danger h-8 px-2 text-[12.5px]" aria-label="{{t "notifications.custom.delete_named" "Name" .Title}}">{{template "icon_sm" "i-trash"}}{{t "week.delete"}}</button>
+      </form>
+    </div>
+    {{end}}
+
+    <form method="post" action="/settings/notifications/reminder" class="flex flex-col">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="kind" value="custom"><input type="hidden" name="enabled" value="1">
+      <details>
+        <summary class="px-4 py-3 cursor-pointer text-accent font-semibold list-none flex items-center gap-1.5">{{template "icon_sm" "i-plus"}}{{t "notifications.custom.new"}}</summary>
+        <div class="flex flex-col gap-3 px-4 pb-4">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <label class="flex grow items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.custom.name"}}<input name="title" required maxlength="200" class="field grow font-normal text-text"></label>
+            <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.at"}}<input type="time" name="start_time" required class="field w-[6.5rem] text-center tabular-nums font-normal text-text"></label>
+          </div>
+          {{template "days_field" .NewCustom}}
+          <button class="btn-primary self-end">{{t "notifications.custom.add"}}</button>
+        </div>
+      </details>
+    </form>
+  </section>
+
+  {{/* Quiet hours */}}
+  <section id="silenzio" class="card">
+    <form method="post" action="/settings/notifications/quiet" class="flex flex-col">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <div class="flex items-center gap-3 px-4 py-3">
+        <span class="w-9 h-9 shrink-0 grid place-items-center rounded-[10px] bg-surface-2 text-muted">{{template "icon" "i-moon"}}</span>
+        <div class="grow min-w-0"><b class="block">{{t "notifications.quiet.title"}}</b><span class="text-[12.5px] text-muted">{{t "notifications.quiet.desc"}}</span></div>
+        <input type="hidden" name="quiet_on" value="0"><input type="checkbox" role="switch" name="quiet_on" value="1" class="toggle notify-switch"{{if .Quiet.QuietOn}} checked{{end}} aria-label="{{t "notifications.quiet.title"}}">
+      </div>
+      <div class="flex flex-wrap items-center gap-2.5 px-4 py-3 bg-surface-2">
+        <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.from"}}<input type="time" name="quiet_from" value="{{.Quiet.QuietFrom}}" required class="field w-[6.5rem] text-center tabular-nums font-normal text-text"></label>
+        <label class="flex items-center gap-2 text-[12.5px] font-semibold text-muted">{{t "notifications.to"}}<input type="time" name="quiet_to" value="{{.Quiet.QuietTo}}" required class="field w-[6.5rem] text-center tabular-nums font-normal text-text"></label>
+        <button class="btn-primary ml-auto">{{t "notifications.save"}}</button>
+      </div>
+    </form>
+  </section>
+</div>
+{{end}}
+
+{{define "days_field"}}
+{{- /* The days of a reminder as round toggles. . is a db.Reminder. */ -}}
+<div class="flex items-center gap-2" role="group" aria-label="{{t "notifications.days"}}">
+  {{range $i, $_ := list "0" "1" "2" "3" "4" "5" "6"}}
+  <label><input type="checkbox" name="day" value="{{$i}}" class="peer sr-only"{{if $.OnDay $i}} checked{{end}}><span class="min-w-[2.25rem] h-8 px-1.5 grid place-items-center rounded-full border border-border bg-surface text-[12px] font-semibold text-muted cursor-pointer peer-checked:bg-accent peer-checked:border-accent peer-checked:text-accent-fg peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-accent">{{dayLabel $i}}</span></label>
+  {{end}}
+</div>
+{{end}}

@@ -57,6 +57,7 @@ func newTestApp(t *testing.T) *App {
 		WorkoutLogs:            db.NewWorkoutLogs(store.DB),
 		WaterLogs:              db.NewWaterLogs(store.DB),
 		Categories:             db.NewCategories(store.DB),
+		Notifications:          db.NewNotifications(store.DB),
 		NutritionistPlans:      nutritionistRepo,
 		Features:               db.NewFeatures(store.DB),
 		Subscriptions:          db.NewSubscriptions(store.DB),
