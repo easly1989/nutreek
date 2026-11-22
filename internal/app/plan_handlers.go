@@ -334,12 +334,23 @@ func summarizeWeek(full *domain.WeeklyPlanFull) weekSummary {
 type dayMutationResponse struct {
 	Card dayCardData
 	Week weekSummary
+	// Extra is the tab of another day the mutation changed (a row moved to it, #228),
+	// sent OOB as well; nil for every other mutation.
+	Extra *dayCardData
 }
 
 // renderDayCard writes the day_card partial plus the matching card and the
 // weekly summary with HX-OOB swaps, in a single response. The rendered day
 // becomes the selected one.
 func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, week weekSummary, weekStart time.Time, state string) {
+	resp := a.buildDayMutation(r, dv, week, weekStart, state)
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "dashboard", "day_card_with_pill_oob", resp); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
+// buildDayMutation is the view model of day_card_with_pill_oob for the day dv.
+func (a *App) buildDayMutation(r *http.Request, dv dayView, week weekSummary, weekStart time.Time, state string) dayMutationResponse {
 	user := userFromContext(r.Context())
 	var progress profile.MacroProgress
 	if user != nil {
@@ -362,10 +373,7 @@ func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, 
 		card.Water = waterWidgetData{DateStr: card.DateStr, WaterML: ml, WaterTargetML: waterTargetFor(user), CSRFToken: card.CSRFToken}
 	}
 	week.OOB = true
-	resp := dayMutationResponse{Card: card, Week: week}
-	if err := a.Render.RenderPartial(w, r, http.StatusOK, "dashboard", "day_card_with_pill_oob", resp); err != nil {
-		a.serverError(w, r, err)
-	}
+	return dayMutationResponse{Card: card, Week: week}
 }
 
 // loadDayCard loads the user's plan for the given week, builds the dayView of

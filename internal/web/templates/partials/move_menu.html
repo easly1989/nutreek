@@ -1,0 +1,26 @@
+{{define "move_menu"}}
+{{- /* The «Move to…» menu of a row (#228): the other meals of the day and, under
+       «Another day…», the other days of the week. Each choice posts to the move
+       route and swaps the day. View model: app.moveMenuData. */ -}}
+{{- $post := printf "/meal-items/%d/move?start=%s" .ItemID .WeekStart -}}
+<p class="px-3 pt-1 pb-1 text-[11.5px] font-bold uppercase tracking-wide text-muted">{{t "move.title"}}</p>
+{{range .Meals}}
+<form method="post" action="{{$post}}" hx-post="{{$post}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
+  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+  <input type="hidden" name="meal_id" value="{{.ID}}">
+  <button class="nav-link w-full">{{.Name}}</button>
+</form>
+{{end}}
+<details class="group">
+  <summary class="nav-link cursor-pointer list-none justify-between [&::-webkit-details-marker]:hidden">
+    <span>{{t "move.other_day"}}</span>{{template "icon_sm" "i-chevron-down"}}
+  </summary>
+  {{range .Days}}
+  <form method="post" action="{{$post}}" hx-post="{{$post}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+    <input type="hidden" name="to_day" value="{{.Index}}">
+    <button class="nav-link w-full pl-5">{{dayTitle .Date}} {{monthName .Date}}</button>
+  </form>
+  {{end}}
+</details>
+{{end}}

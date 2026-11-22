@@ -11,6 +11,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Added
+- Move an ingredient or a recipe to another meal: drag it by its handle into another meal of the day (the meal under it shows as the destination, and an empty meal takes it too), or use the new «Move to…» menu on the row, which lists the other meals and, under «Another day…», the other days of the week. The totals of the days recalculate. The handle now shows on a phone too (#228)
 - Replace the ingredient of a row, in a day of the week or in a recipe: a new button on the row opens a dialog with the ingredients closest in kcal and macros (the ones you put in the same category first) and a search. Each answer shows the difference in kcal, protein, carbs and fat at the row's weight before you confirm; the row keeps its place and its weight (#227)
 - Shopping list: the progress bar fills smoothly each time you tick an item, and when the last item goes into the cart a shine crosses the bar, a «Spesa completata» line appears and confetti leaves the end of the bar. With «reduce motion» nothing moves and the line shows at once (#248)
 - On a phone, swipe the open day of the week left or right to move to the next or the previous day, like tapping its tab. The day follows your finger and the name of the day that comes in shows at the edge; the end of the week does not wrap. A swipe that starts on a button, on the drag grip or in an area that scrolls sideways is left alone (#250)
@@ -26,6 +27,7 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 - Resting the mouse on a product photo in the ingredient picker, or on a recipe thumbnail in the recipe list, shows a larger preview next to it. Touch screens are unchanged (#223)
 
 ### Fixed
+- Dragging a meal, or a row inside its meal, on a day of the week answered 403 and changed nothing: the lists posted without the CSRF token (#228)
 - A shopping item from the meals can be changed in pieces, grams or ml: the editor offers the units the ingredient has and converts the number when you switch (#246)
 - Items added by hand can be edited, name, quantity and unit, instead of being removed and added again (#247)
 - The shopping list and the other pages with a side column no longer scroll sideways on a phone when a name has no spaces (#244)

@@ -369,6 +369,7 @@ func TestEnglishEveryPage(t *testing.T) {
 		{target: pickerQ(breakfast, "kind=recipe&q=zzz")},
 		{route: "/meal-items/{itemID}/customize", target: "/meal-items/" + idOf(soupItem) + "/customize?start=" + thisWeek, htmx: true},
 		{target: "/meal-items/" + idOf(customItem) + "/customize?start=" + thisWeek, htmx: true},
+		{route: "/meal-items/{itemID}/move", target: "/meal-items/" + idOf(oatItem) + "/move?start=" + thisWeek, htmx: true},
 		{route: "/meal-items/{itemID}/replace", target: "/meal-items/" + idOf(oatItem) + "/replace?start=" + thisWeek, htmx: true},
 		{route: "/meal-items/{itemID}/replace/results", target: "/meal-items/" + idOf(oatItem) + "/replace/results?q=&start=" + thisWeek, htmx: true},
 		{target: "/meal-items/" + idOf(oatItem) + "/replace/results?q=zzz&start=" + thisWeek, htmx: true},

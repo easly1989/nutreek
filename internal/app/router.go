@@ -185,6 +185,8 @@ func (a *App) Router() http.Handler {
 		r.Post("/meals/{mealID}/items/reorder", a.handleReorderMealItems)
 		r.Post("/meal-items/{itemID}", a.handleUpdateMealItem)
 		r.Post("/meal-items/{itemID}/delete", a.handleRemoveMealItem)
+		r.Get("/meal-items/{itemID}/move", a.handleMealItemMoveMenu)
+		r.Post("/meal-items/{itemID}/move", a.handleMealItemMove)
 		r.Get("/meal-items/{itemID}/replace", a.handleMealItemReplaceForm)
 		r.Get("/meal-items/{itemID}/replace/results", a.handleMealItemReplaceResults)
 		r.Post("/meal-items/{itemID}/replace", a.handleMealItemReplace)
