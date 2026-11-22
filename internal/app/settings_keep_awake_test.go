@@ -45,7 +45,7 @@ func TestSettingsKeepAwake(t *testing.T) {
 	if !u.KeepAwake {
 		t.Fatal("the setting was not saved")
 	}
-	if body := page(); !strings.Contains(body, `data-keep-awake="1"`) || !strings.Contains(body, `class="switch" checked`) {
+	if body := page(); !strings.Contains(body, `data-keep-awake="1"`) || !strings.Contains(body, `class="toggle" checked`) {
 		t.Error("on: the body must be marked and the switch checked")
 	}
 	// Off: only the hidden 0 is posted.

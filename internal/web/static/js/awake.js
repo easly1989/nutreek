@@ -22,13 +22,17 @@
 
   if (!supported || !touch || document.body.dataset.keepAwake !== "1") return;
 
+  // lock holds the request itself, so a second call while the first is pending
+  // does not make a second lock.
   var lock = null;
   function acquire() {
     if (lock || document.visibilityState !== "visible") return;
-    navigator.wakeLock.request("screen").then(function (l) {
-      lock = l;
+    lock = navigator.wakeLock.request("screen").then(function (l) {
       l.addEventListener("release", function () { lock = null; });
-    }).catch(function () { /* refused (battery saver, no HTTPS): the screen sleeps as usual */ });
+      return l;
+    }).catch(function () {
+      lock = null; // refused (battery saver, no HTTPS): the screen sleeps as usual
+    });
   }
   document.addEventListener("visibilitychange", acquire);
   acquire();
