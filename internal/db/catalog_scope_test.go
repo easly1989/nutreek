@@ -62,7 +62,7 @@ func TestCatalogScope(t *testing.T) {
 	ScopeCatalog(d, `SELECT user_id FROM peers WHERE grp = (SELECT grp FROM peers WHERE user_id = ?)`)
 	t.Cleanup(func() { catalogScopes.Delete(d) })
 
-	if i, r := names(ann); !slices.Equal(i, []string{"Zesty bar", "Zesty paste"}) || !slices.Equal(r, []string{"Zesty bowl"}) {
+	if i, r := names(ann); !slices.Equal(i, []string{"Zesty paste", "Zesty bar"}) /* made by hand before imported (#225) */ || !slices.Equal(r, []string{"Zesty bowl"}) {
 		t.Errorf("Ann sees %v and %v", i, r)
 	}
 	if i, r := names(bob); !slices.Equal(i, []string{"Zesty bar"}) || len(r) != 0 {

@@ -11,7 +11,7 @@
   <p class="rounded-xl bg-accent-soft px-4 py-2.5">
     {{- if .Author}}{{t "ingredients.edit.readonly_author" "Author" .Author}}{{else}}{{t "ingredients.edit.readonly_admin"}}{{end}}
     {{if .Categories}}{{t "ingredients.edit.choose_category"}}{{else}}{{t "ingredients.edit.create_category_first"}} <a href="/ingredients" class="text-accent font-semibold underline">{{t "ingredients.title"}}</a>.{{end}}</p>
-  {{else if .IsOFF}}<p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">{{t "ingredients.edit.off_note"}}</p>{{end}}
+  {{else if .IsOFF}}{{if .OFFAligned}}<p class="rounded-xl bg-accent-soft px-4 py-2.5">{{t "ingredients.edit.off_aligned"}}</p>{{else}}<p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">{{t "ingredients.edit.off_note"}}</p>{{end}}{{end}}
   {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-4 py-2.5" role="alert">{{.Error}}</p>{{end}}
   {{template "ingredient_fields" .}}
   <div class="flex justify-end gap-2">

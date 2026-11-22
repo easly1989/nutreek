@@ -49,6 +49,10 @@ type Ingredient struct {
 	SugarsPer100       *float64
 	SaturatedFatPer100 *float64
 	SodiumPer100       *float64
+	// OFFAligned is true for an ingredient imported from OpenFoodFacts that has
+	// not been edited since (name, brand, unit, nutrients): it still is its
+	// product, so it is safe to refresh from it (#225).
+	OFFAligned bool
 }
 
 // PieceWeight is UnitWeightG, 0 when unknown: above 0 the ingredient can be
