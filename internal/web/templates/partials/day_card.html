@@ -273,6 +273,10 @@
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>
     </button>
     {{end}}
+    {{if and $it.Ingredient (not .Struck) (not .Cheat)}}
+    <button type="button" hx-get="/meal-items/{{$it.ID}}/replace?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
+            class="icon-action" title="{{t "replace.button"}}" aria-label="{{t "replace.button_named" "Name" $nm}}">{{template "icon" "i-swap"}}</button>
+    {{end}}
     <form method="post" action="/{{if .Cheat}}meal-cheat-items{{else}}meal-items{{end}}/{{$it.ID}}/delete?start={{.WeekStart}}"
           hx-post="/{{if .Cheat}}meal-cheat-items{{else}}meal-items{{end}}/{{$it.ID}}/delete?start={{.WeekStart}}"
           hx-target="closest section[data-day]" hx-swap="outerHTML">

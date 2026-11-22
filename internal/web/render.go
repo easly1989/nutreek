@@ -154,6 +154,10 @@ func funcMap(lang string) template.FuncMap {
 		},
 		"num": func(v float64) string { return formatNum(lang, v) },
 		"dec": func(v float64, digits int) string { return formatDec(lang, v, digits) },
+		// delta writes a difference with its sign, deltaTone says whether it is
+		// good, bad or even (more of the thing is good when goodUp).
+		"delta":     func(v float64, digits int) string { return formatDelta(lang, v, digits) },
+		"deltaTone": deltaTone,
 		// list builds a list of strings to use in a range.
 		"list": func(v ...string) []string { return v },
 		"liters": func(ml int) string {

@@ -195,6 +195,7 @@ func TestEnglishEveryPage(t *testing.T) {
 	id(a.Recipes.AddItem(ctx, duo, ada.ID, oats, 100, "g"))
 	id(a.Recipes.AddItem(ctx, duo, ada.ID, rice, 50, "g"))
 	bowl := id(a.Recipes.Create(ctx, ada.ID, "Bowl", nil, 1, false))
+	bowlRow := id(a.Recipes.AddItem(ctx, bowl, ada.ID, oats, 80, "g"))
 	draft := id(a.Recipes.Duplicate(ctx, duo, ada.ID, "Duo copy"))
 	theirs := id(a.Recipes.Create(ctx, bob.ID, "Pasta", &desc, 4, true))
 
@@ -234,7 +235,7 @@ func TestEnglishEveryPage(t *testing.T) {
 	todayStr := formatDate(mon.AddDate(0, 0, today))
 	otherStr := formatDate(mon.AddDate(0, 0, (today+1)%7))
 	thisWeek, nextWeek := formatDate(mon), formatDate(mon.AddDate(0, 0, 7))
-	var breakfast, lunch, soupItem, customItem int64
+	var breakfast, lunch, soupItem, customItem, oatItem int64
 	for w := 0; w < 4; w++ {
 		wp, err := a.WeeklyPlans.GetOrCreateForWeek(ctx, ada.ID, mon.AddDate(0, 0, -7*w))
 		must(err)
@@ -255,7 +256,7 @@ func TestEnglishEveryPage(t *testing.T) {
 			id(a.WeeklyPlans.AddItem(ctx, lunch, ada.ID, nil, &rice, 100, "g"))
 			id(a.WeeklyPlans.AddCheat(ctx, lunch, ada.ID, &porridge, nil, 1))
 			breakfast = id(a.WeeklyPlans.AddMeal(ctx, wp.ID, ada.ID, today, "Breakfast"))
-			id(a.WeeklyPlans.AddItem(ctx, breakfast, ada.ID, nil, &oats, 80, "g"))
+			oatItem = id(a.WeeklyPlans.AddItem(ctx, breakfast, ada.ID, nil, &oats, 80, "g"))
 			id(a.WeeklyPlans.AddItem(ctx, breakfast, ada.ID, nil, &eggs, 2, "pz"))
 			soupItem = id(a.WeeklyPlans.AddItem(ctx, breakfast, ada.ID, &porridge, nil, 2, "g"))
 			dinner := id(a.WeeklyPlans.AddMeal(ctx, wp.ID, ada.ID, today, "Dinner"))
@@ -368,6 +369,9 @@ func TestEnglishEveryPage(t *testing.T) {
 		{target: pickerQ(breakfast, "kind=recipe&q=zzz")},
 		{route: "/meal-items/{itemID}/customize", target: "/meal-items/" + idOf(soupItem) + "/customize?start=" + thisWeek, htmx: true},
 		{target: "/meal-items/" + idOf(customItem) + "/customize?start=" + thisWeek, htmx: true},
+		{route: "/meal-items/{itemID}/replace", target: "/meal-items/" + idOf(oatItem) + "/replace?start=" + thisWeek, htmx: true},
+		{route: "/meal-items/{itemID}/replace/results", target: "/meal-items/" + idOf(oatItem) + "/replace/results?q=&start=" + thisWeek, htmx: true},
+		{target: "/meal-items/" + idOf(oatItem) + "/replace/results?q=zzz&start=" + thisWeek, htmx: true},
 
 		// Ingredients.
 		{route: "/ingredients", target: "/ingredients"},
@@ -400,6 +404,8 @@ func TestEnglishEveryPage(t *testing.T) {
 		{target: "/recipes/" + idOf(theirs)},
 		{route: "/recipes/{id}/picker", target: "/recipes/" + idOf(bowl) + "/picker?q=oat&off=1"},
 		{target: "/recipes/" + idOf(theirs) + "/picker", status: http.StatusForbidden},
+		{route: "/recipes/{id}/items/{itemID}/replace", target: "/recipes/" + idOf(bowl) + "/items/" + idOf(bowlRow) + "/replace", htmx: true},
+		{route: "/recipes/{id}/items/{itemID}/replace/results", target: "/recipes/" + idOf(bowl) + "/items/" + idOf(bowlRow) + "/replace/results?q=", htmx: true},
 		{route: "/recipes/{id}/duplicate", target: "/recipes/" + idOf(porridge) + "/duplicate", htmx: true},
 
 		// The nutrition plan and the templates.

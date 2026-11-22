@@ -111,6 +111,35 @@ func formatDec(lang string, v float64, digits int) string {
 	return strings.Replace(s, ".", decimal, 1)
 }
 
+// roundsToZero says whether v shows as 0 with `digits` decimals.
+func roundsToZero(v float64, digits int) bool {
+	return math.Abs(v) < 0.5/math.Pow(10, float64(digits))
+}
+
+// formatDelta writes a difference with its sign: «+17», «−1,5» (a real minus
+// sign) and «±0» when it rounds to zero (#227).
+func formatDelta(lang string, v float64, digits int) string {
+	switch {
+	case roundsToZero(v, digits):
+		return "±0"
+	case v > 0:
+		return "+" + formatDec(lang, v, digits)
+	}
+	return "−" + formatDec(lang, -v, digits)
+}
+
+// deltaTone says how a difference reads: «good», «bad» or «even». More of a
+// macro is good when goodUp (protein), bad otherwise (energy, carbs, fat).
+func deltaTone(v float64, goodUp bool, digits int) string {
+	switch {
+	case roundsToZero(v, digits):
+		return "even"
+	case (v > 0) == goodUp:
+		return "good"
+	}
+	return "bad"
+}
+
 // weekRange describes the week starting on Monday start:
 // "12–18 ottobre" / "October 12–18", "29 settembre – 5 ottobre" /
 // "September 29 – October 5", "29 dicembre 2025 – 4 gennaio 2026" /
