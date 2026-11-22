@@ -559,6 +559,17 @@ func includeOFFParam(r *http.Request) bool {
 // `warn` stays in the interface to handle any SQL errors but in practice it
 // is always empty.
 func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ingredientRow, string, error) {
+	return a.searchIngredients(ctx, q, includeOFF, false)
+}
+
+// searchPicker is searchMixed for the pickers that add an ingredient to a day, a
+// recipe or a nutritionist plan: with no text it lists what the viewer used
+// before first (#266), where the ingredients page keeps its alphabetical list.
+func (a *App) searchPicker(ctx context.Context, q string, includeOFF bool) ([]ingredientRow, string, error) {
+	return a.searchIngredients(ctx, q, includeOFF, true)
+}
+
+func (a *App) searchIngredients(ctx context.Context, q string, includeOFF, usedFirst bool) ([]ingredientRow, string, error) {
 	if code, ok := off.NormalizeBarcode(q); ok {
 		return a.searchBarcode(ctx, code, includeOFF)
 	}
@@ -567,10 +578,14 @@ func (a *App) searchMixed(ctx context.Context, q string, includeOFF bool) ([]ing
 		err    error
 		viewer = viewerID(ctx)
 	)
-	if q == "" {
+	if q == "" && !usedFirst {
 		locals, err = a.Ingredients.ListActive(ctx, viewer, 0, 50)
 	} else {
-		locals, err = a.Ingredients.SearchActive(ctx, viewer, q, 20)
+		limit := 20
+		if q == "" {
+			limit = 50
+		}
+		locals, err = a.Ingredients.SearchActive(ctx, viewer, q, limit)
 	}
 	if err != nil {
 		return nil, "", err

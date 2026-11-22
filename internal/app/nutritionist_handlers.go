@@ -291,7 +291,7 @@ func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
 
 	switch kind {
 	case "ingredient":
-		rows, warn, err := a.searchMixed(r.Context(), q, includeOFFParam(r))
+		rows, warn, err := a.searchPicker(r.Context(), q, includeOFFParam(r))
 		if err != nil {
 			a.serverError(w, r, err)
 			return

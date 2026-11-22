@@ -72,7 +72,9 @@ both find the Fage yogurt.
   query, then what the viewer used before (rows of their weekly plans and their
   recipes; the most used first, then the most recent), then the other
   ingredients they made, then the ones imported from OpenFoodFacts, each group
-  by name. Someone else's use does not count. The picker lists the products of
+  by name. Someone else's use does not count. The pickers (day, recipe,
+  nutritionist plan) use the same order with no text, listing 50 rows (#266); the
+  ingredients page lists the catalog alphabetically. The picker lists the products of
   the OFF index after these, and leaves out any product the viewer already has as
   an ingredient (matched by barcode, not only among the rows shown), so a
   product and its ingredient appear once.
