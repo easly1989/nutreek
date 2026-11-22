@@ -24,6 +24,26 @@ type settingsPageData struct {
 	NewTokenPlain string // set only right after creation
 }
 
+// handleSettingsKeepAwake POST /settings/keep-awake
+// Body: keep_awake (repeated: a hidden 0 and, when the switch is on, a 1).
+// Saves whether the phone screen stays on while a page is open (#249).
+func (a *App) handleSettingsKeepAwake(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, a.t(r, "week.error.invalid_ids"), http.StatusBadRequest)
+		return
+	}
+	on := false
+	for _, v := range r.PostForm["keep_awake"] {
+		on = on || v == "1"
+	}
+	if err := a.Users.SetKeepAwake(r.Context(), user.ID, on); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/settings#schermo", http.StatusSeeOther)
+}
+
 // userProfileExport is the sanitized user profile for the export (no hash).
 type userProfileExport struct {
 	ID          int64   `json:"id"`

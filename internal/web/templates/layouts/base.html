@@ -24,6 +24,7 @@
   <script src="{{asset "js/sheet.js"}}" defer></script>
   <script src="{{asset "js/manual.js"}}" defer></script>
   <script src="{{asset "js/precheck.js"}}" defer></script>
+  <script src="{{asset "js/awake.js"}}" defer></script>
   <script src="{{asset "js/zoom.js"}}" defer></script>
   <script src="{{asset "js/reorder.js"}}" defer></script>
   <script src="{{asset "js/marquee.js"}}" defer></script>
@@ -37,7 +38,7 @@
   <script src="{{asset "js/tour.js"}}" defer></script>
   {{end}}
 </head>
-<body class="bg-bg text-text min-h-screen" data-build="{{build}}"{{if .ShowTour}} data-show-tour="1"{{end}}
+<body class="bg-bg text-text min-h-screen" data-build="{{build}}"{{if .ShowTour}} data-show-tour="1"{{end}}{{if .User}}{{if .User.KeepAwake}} data-keep-awake="1"{{end}}{{end}}
       data-confirm-ok="{{t "common.confirm"}}" data-confirm-cancel="{{t "common.cancel"}}">
   {{template "icon_sprite"}}
 

@@ -430,6 +430,13 @@
   .settings-sec { @apply grid gap-2.5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5 px-4 py-[18px]; }
   .settings-sec + .settings-sec { @apply border-t border-border; }
   .settings-d { @apply text-[12.5px] text-muted mt-1; }
+  /* An on/off switch (a checkbox with role="switch"), as in the setting to keep the screen on (#249). */
+  .switch { @apply relative shrink-0 w-[46px] h-7 rounded-full bg-border cursor-pointer transition-colors; appearance: none; }
+  .switch::after { content: ""; @apply absolute left-[3px] top-[3px] w-[22px] h-[22px] rounded-full bg-white transition-transform; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .switch:checked { background: var(--accent); }
+  .switch:checked::after { transform: translateX(18px); }
+  .switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .switch, .switch::after { transition: none; } }
   .mode-card { @apply flex flex-col gap-2 p-2.5 rounded-xl border border-border text-left text-[13px] font-semibold text-text hover:bg-surface-2; }
   .mode-card[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .mode-pv { @apply grid grid-cols-[30%_1fr] h-[52px] rounded-lg border border-border overflow-hidden; }
