@@ -135,12 +135,22 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	people, err := a.Household.List(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	shares, err := a.ShoppingLists.Shares(r.Context(), list.ID, user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	data := shoppingListData{
 		authPageData: a.baseData(r),
 		List:         full,
 		Past:         pastCopyLists(past, full.UserItems),
 		Check:        r.URL.Query().Get("check") == "1",
-		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order).withSimilar(full.Dismissed, usage),
+		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order).withSimilar(full.Dismissed, usage).withShares(people, user.DisplayName, shares),
 		CanUndo:      a.showMergeToast(r, list.ID),
 		WeekStart:    weekStart.Format("2006-01-02"),
 		WeekCount:    weeks,

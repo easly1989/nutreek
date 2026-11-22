@@ -45,6 +45,9 @@ type dayView struct {
 	Date     time.Time // data effettiva
 	Meals    []mealView
 	DayTotal macros.Macros
+	// People is the household's day (#238): a bar per person, the owner first. Nil
+	// when the account has no household.
+	People []hhPerson
 }
 
 // HasFood says whether the day has a meal that is not a reminder (#236): the tab
@@ -117,6 +120,8 @@ type mealView struct {
 	ItemViews  []mealItemView
 	CheatViews []mealItemView // filled when HasCheats
 	HasCheats  bool
+	// Skips is, for each person of the household, whether they eat the meal (#238).
+	Skips []hhSkip
 }
 
 // scaledIngredient is an ingredient of a recipe with its quantity scaled to
@@ -139,6 +144,8 @@ type mealItemView struct {
 	// (quantity * UnitWeightG). Precomputed because Go templates cannot
 	// multiply two values.
 	EffectiveGrams float64
+	// People is what each person of the household eats of the row (#238).
+	People []hhShare
 }
 
 // effectiveGramsFor returns the actual grams/ml of a meal item:
@@ -406,6 +413,9 @@ func (a *App) loadDayCard(r *http.Request, userID int64, weekStart time.Time, da
 		return nil, weekSummary{}, err
 	}
 	days := buildDayViews(full, weekStart)
+	if err := a.attachHousehold(r, userFromContext(r.Context()), full, days); err != nil {
+		return nil, weekSummary{}, err
+	}
 	dv := days[dayIndex]
 	return &dv, summarizeWeek(full), nil
 }
@@ -499,6 +509,10 @@ func (a *App) renderDashboard(
 	user := userFromContext(r.Context())
 	base := a.baseData(r)
 	days := buildDayViews(full, weekStart)
+	if err := a.attachHousehold(r, user, full, days); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	hasMeals := false
 	for _, dv := range days {
 		if len(dv.Meals) > 0 {

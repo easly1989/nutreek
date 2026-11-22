@@ -1,0 +1,68 @@
+{{define "title"}}{{t "household.title"}} — Nutreek{{end}}
+{{define "content"}}
+{{- /* The household (#238): the people who share the week. The owner is the base,
+       the others are scaled to their goal. View model: app.householdPageData. */}}
+<div class="flex flex-col gap-4 lg:gap-[18px] max-w-[640px]">
+  <div>
+    <a href="/settings" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "household.back"}}</a>
+    <h1 class="h1">{{t "household.title"}}</h1>
+    <p class="text-muted mt-1">{{t "household.desc"}}</p>
+  </div>
+
+  {{if not .OwnerTarget}}
+  <p class="rounded-xl bg-warn-bg text-warn-fg px-3 py-2.5">{{t "household.no_owner_goal"}} <a href="/profile" class="font-semibold underline">{{t "household.set_goal"}}</a></p>
+  {{end}}
+
+  <section class="card" aria-labelledby="hh-people">
+    <h2 id="hh-people" class="sr-only">{{t "household.people"}}</h2>
+    <div class="flex items-center gap-3 px-4 py-3">
+      <span class="hh-av" style="--hh-c:var(--hh0)" aria-hidden="true">{{initial .OwnerName}}</span>
+      <div class="grow min-w-0">
+        <b class="block font-semibold truncate">{{.OwnerName}} <span class="chip bg-surface-2 text-muted ml-1">{{t "household.you"}}</span></b>
+        <span class="text-[12.5px] text-muted">{{if .OwnerTarget}}{{t "household.goal_base" "Kcal" (num .OwnerTarget)}}{{else}}{{t "household.goal_unset"}}{{end}}</span>
+      </div>
+      <a href="/profile" class="text-accent font-semibold text-[13px]">{{t "household.edit_profile"}}</a>
+    </div>
+
+    {{range .People}}
+    <div class="border-t border-border">
+      <div class="flex items-center gap-3 px-4 py-3">
+        <span class="hh-av" style="--hh-c:var(--hh{{.Color}})" aria-hidden="true">{{initial .Name}}</span>
+        <div class="grow min-w-0">
+          <b class="block font-semibold truncate">{{.Name}}</b>
+          <span class="text-[12.5px] text-muted tabular-nums">{{t "household.goal" "Kcal" (num .TargetKcal)}}{{if .Ratio}} · ×{{dec .Ratio 2}}{{end}}</span>
+        </div>
+      </div>
+      <details class="bg-surface-2">
+        <summary class="px-4 py-2 cursor-pointer text-accent font-semibold text-[13px] list-none">{{t "household.edit"}}</summary>
+        <div class="flex flex-col gap-3 px-4 pb-4">
+          <form method="post" action="/settings/household/{{.ID}}" class="flex flex-wrap items-end gap-2.5">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <label class="flex flex-col gap-1 grow text-[12.5px] font-semibold text-muted">{{t "household.name"}}<input name="name" value="{{.Name}}" required maxlength="60" class="field font-normal text-text"></label>
+            <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "household.kcal"}}<input name="target_kcal" type="number" inputmode="numeric" min="500" max="6000" step="10" value="{{printf "%.0f" .TargetKcal}}" required class="field w-28 text-center tabular-nums font-normal text-text"></label>
+            <button class="btn-primary">{{t "household.save"}}</button>
+          </form>
+          <form method="post" action="/settings/household/{{.ID}}/delete" data-confirm="{{t "household.delete_confirm" "Name" .Name}}" class="self-start">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button class="btn-ghost text-danger h-8 px-2 text-[12.5px]" aria-label="{{t "household.delete_named" "Name" .Name}}">{{template "icon_sm" "i-trash"}}{{t "household.delete"}}</button>
+          </form>
+        </div>
+      </details>
+    </div>
+    {{end}}
+  </section>
+
+  {{if .CanAdd}}
+  <section class="card p-4 flex flex-col gap-3" aria-labelledby="hh-add">
+    <h2 id="hh-add" class="h2">{{t "household.add"}}</h2>
+    <form method="post" action="/settings/household" class="flex flex-wrap items-end gap-2.5">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <label class="flex flex-col gap-1 grow text-[12.5px] font-semibold text-muted">{{t "household.name"}}<input name="name" required maxlength="60" class="field font-normal text-text"></label>
+      <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "household.kcal"}}<input name="target_kcal" type="number" inputmode="numeric" min="500" max="6000" step="10" required class="field w-28 text-center tabular-nums font-normal text-text"></label>
+      <button class="btn-primary">{{template "icon_sm" "i-plus"}}{{t "household.add_button"}}</button>
+    </form>
+    <p class="text-[12.5px] text-muted">{{t "household.add_hint"}}</p>
+  </section>
+  {{end}}
+</div>
+{{end}}

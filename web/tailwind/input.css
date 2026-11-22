@@ -74,6 +74,9 @@
   --ch-prot: #6B5BD2;
   --ch-carb: #B47A0C;
   --ch-fat: #0A8F7E;
+  /* The people of a household (#238): 0 is the account owner (the accent), then six. */
+  --hh0: var(--accent);
+  --hh1: #B8661A; --hh2: #3B6FB6; --hh3: #8A4FB0; --hh4: #B23A6B; --hh5: #2A8C93; --hh6: #7C7C1E;
 }
 
 /* Dark: a neutral blue-grey, not near-black. Repeated for "sistema" below. */
@@ -100,6 +103,8 @@
   --ch-prot: #8576DC;
   --ch-carb: #BE8A26;
   --ch-fat: #289C8E;
+  --hh0: var(--accent);
+  --hh1: #E8A15B; --hh2: #7FAEE8; --hh3: #C79AE6; --hh4: #E88AB0; --hh5: #5CC9C9; --hh6: #C9C95C;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-mode="sistema"] {
@@ -125,6 +130,8 @@
   --ch-prot: #8576DC;
   --ch-carb: #BE8A26;
   --ch-fat: #289C8E;
+    --hh0: var(--accent);
+    --hh1: #E8A15B; --hh2: #7FAEE8; --hh3: #C79AE6; --hh4: #E88AB0; --hh5: #5CC9C9; --hh6: #C9C95C;
   }
 }
 
@@ -168,6 +175,12 @@
   }
 
   .chip { @apply inline-flex items-center h-6 px-2 rounded-full text-[12px] font-semibold whitespace-nowrap; }
+  /* A person of the household (#238): the colour comes from --hh-c, set inline as
+     style="--hh-c:var(--hh3)" (a class per colour would be purged unseen). */
+  .hh-dot { @apply inline-block w-2 h-2 rounded-full shrink-0; background: var(--hh-c, var(--accent)); }
+  .hh-av { @apply inline-grid place-items-center w-[30px] h-[30px] rounded-full shrink-0 text-[12.5px] font-bold text-accent-fg; background: var(--hh-c, var(--accent)); }
+  .hh-chip { @apply inline-flex items-center gap-1.5 h-6 px-2 rounded-full text-[12.5px] font-bold tabular-nums text-text whitespace-nowrap; background: color-mix(in srgb, var(--hh-c, var(--accent)) 16%, var(--surface)); }
+  .hh-fill { @apply block h-full rounded-full; background: var(--hh-c, var(--accent)); }
   .icon-action {
     @apply w-8 h-8 grid place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-text transition-colors;
   }

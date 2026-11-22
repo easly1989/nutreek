@@ -53,6 +53,7 @@ type shoppingRow struct {
 	Ignored     bool             // greyed out and not counted (#230)
 	Similar     *shoppingSimilar // the notice under the row: it looks like another row (#233)
 	Key         string           // the row's key in the stored order: «i<ingredient id>» or «u<id>»
+	Shares      []shoppingShare  // who needs how much of it, when the account has a household (#238)
 	name        string
 	id          int64
 	catOrder    int
@@ -60,6 +61,47 @@ type shoppingRow struct {
 
 type shoppingItemView struct {
 	Item domain.ShoppingListItem
+}
+
+// shoppingShare is what one person needs of an ingredient.
+type shoppingShare struct {
+	Name  string
+	Color int
+	Qty   float64
+	Unit  string
+}
+
+// withShares fills the per-person detail of the rows computed from the meals: the
+// account owner first, then the household in order; people who need none are left out.
+func (v shoppingView) withShares(people []db.HouseholdPerson, ownerName string, shares map[int64]map[int64]float64) shoppingView {
+	if len(people) == 0 || len(shares) == 0 {
+		return v
+	}
+	fill := func(rows []shoppingRow) {
+		for i := range rows {
+			if rows[i].Auto == nil || rows[i].Auto.Item.Ingredient == nil {
+				continue
+			}
+			byPerson := shares[rows[i].Auto.Item.IngredientID]
+			unit := string(rows[i].Auto.Item.Ingredient.Unit)
+			rows[i].Shares = rows[i].Shares[:0:0]
+			if q := byPerson[0]; q > 0 {
+				rows[i].Shares = append(rows[i].Shares, shoppingShare{Name: ownerName, Qty: q, Unit: unit})
+			}
+			for k, p := range people {
+				if q := byPerson[p.ID]; q > 0 {
+					rows[i].Shares = append(rows[i].Shares, shoppingShare{Name: p.Name, Color: k + 1, Qty: q, Unit: unit})
+				}
+			}
+		}
+	}
+	fill(v.Rows)
+	fill(v.Cart)
+	fill(v.Print)
+	for g := range v.Groups {
+		fill(v.Groups[g].Rows)
+	}
+	return v
 }
 
 // buildShoppingView merges the computed and the manual items in one list

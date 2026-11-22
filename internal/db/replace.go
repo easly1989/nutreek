@@ -82,6 +82,10 @@ func (r *WeeklyPlans) ReplaceItemIngredient(ctx context.Context, itemID, userID,
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrMealItemNotFound
 	}
+	// What a person of the household set by hand (#238) was for the old ingredient.
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM household_item_quantities WHERE meal_item_id = ?`, itemID); err != nil {
+		return fmt.Errorf("clear household quantities: %w", err)
+	}
 	return nil
 }
 

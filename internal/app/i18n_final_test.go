@@ -262,6 +262,10 @@ func TestEnglishEveryPage(t *testing.T) {
 			dinner := id(a.WeeklyPlans.AddMeal(ctx, wp.ID, ada.ID, today, "Dinner"))
 			customItem = id(a.WeeklyPlans.AddItem(ctx, dinner, ada.ID, &duo, nil, 1, "g"))
 			must(a.MealItemCustomizations.Replace(ctx, customItem, ada.ID, []db.CustomizationInput{{IngredientID: oats, Quantity: 50}}))
+			// A household (#238): a person who skips dinner and has their own oats.
+			leo := id(a.Household.Add(ctx, ada.ID, "Leo", 1400))
+			must(a.Household.SetSkip(ctx, ada.ID, leo, dinner, true))
+			must(a.Household.SetQuantity(ctx, ada.ID, leo, oatItem, 45))
 		}
 	}
 	for _, ago := range []int{0, 8, 15, 22, 29, 36, 43} {
@@ -287,7 +291,7 @@ func TestEnglishEveryPage(t *testing.T) {
 
 	// What users typed, the names of reference data (#158) and of months and
 	// days (#157), and the OpenFoodFacts products are not interface text.
-	data := []string{"Ada", "Eve", "Cat", "Bob", "Dan", "Oats", "Eggs", "Rice", "Mill", "Oat flakes", "Oat bran", "Farm",
+	data := []string{"Ada", "Eve", "Cat", "Bob", "Dan", "Leo", "Oats", "Eggs", "Rice", "Mill", "Oat flakes", "Oat bran", "Farm",
 		"Breakfast", "Lunch", "Dinner", "Snack", "Porridge", "Duo copy", "Duo", "Bowl", "Pasta", "Soak the oats.",
 		"Standard week", "Away from home", "Light", "Coach plan", "Candles", "Home Assistant", "Utente Test",
 		"Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica",
@@ -370,6 +374,8 @@ func TestEnglishEveryPage(t *testing.T) {
 		{route: "/meal-items/{itemID}/customize", target: "/meal-items/" + idOf(soupItem) + "/customize?start=" + thisWeek, htmx: true},
 		{target: "/meal-items/" + idOf(customItem) + "/customize?start=" + thisWeek, htmx: true},
 		{route: "/settings/notifications", target: "/settings/notifications"},
+		{route: "/settings/household", target: "/settings/household"},
+		{route: "/meal-items/{itemID}/people", target: "/meal-items/" + idOf(oatItem) + "/people?start=" + thisWeek, htmx: true},
 		{route: "/week/reminder", target: "/week/reminder?day=2&start=" + thisWeek, htmx: true},
 		{route: "/meal-items/{itemID}/move", target: "/meal-items/" + idOf(oatItem) + "/move?start=" + thisWeek, htmx: true},
 		{route: "/meal-items/{itemID}/replace", target: "/meal-items/" + idOf(oatItem) + "/replace?start=" + thisWeek, htmx: true},

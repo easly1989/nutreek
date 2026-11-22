@@ -333,7 +333,18 @@
   </form>
   </div>
   {{template "shop_similar" .}}
+  {{template "shop_shares" $r}}
 </li>{{end}}
+
+{{/* Household (#238): who needs how much of a row; opens under it. */}}
+{{define "shop_shares"}}{{if .Shares}}
+<details class="group px-4 pb-2 pl-[3.25rem] text-[13px]">
+  <summary class="inline-flex items-center gap-1 cursor-pointer list-none text-muted font-semibold [&::-webkit-details-marker]:hidden">{{t "household.shopping.detail"}}<span class="transition-transform group-open:rotate-180" aria-hidden="true">{{template "icon_sm" "i-chevron-down"}}</span></summary>
+  <ul class="mt-1 flex flex-col gap-1">
+    {{range .Shares}}<li class="flex items-center gap-2" style="--hh-c:var(--hh{{.Color}})"><span class="hh-dot" aria-hidden="true"></span><span class="grow truncate">{{.Name}}</span><span class="tabular-nums font-semibold">{{template "shop_n" .Qty}} {{.Unit}}</span></li>{{end}}
+  </ul>
+</details>
+{{end}}{{end}}
 
 {{/* An item added by hand: the same row, marked with a pencil, plus the button to remove it. */}}
 {{define "shop_user_item"}}{{$r := .Row}}{{$it := $r.User.Item}}{{$p := .Page}}
