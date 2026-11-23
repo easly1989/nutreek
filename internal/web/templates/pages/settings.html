@@ -9,6 +9,7 @@
   <div class="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] items-start">
     <nav class="hidden lg:flex sticky top-6 flex-col gap-0.5" aria-label="{{t "settings.toc_label"}}">
       <a href="#aspetto" class="settings-toc" aria-current="true">{{t "settings.toc.appearance"}}</a>
+      <a href="#allenamenti" class="settings-toc">{{t "settings.toc.workouts"}}</a>
       <a href="#app" class="settings-toc">{{t "settings.toc.app"}}</a>
       {{if not .Demo}}<a href="#account" class="settings-toc">{{t "settings.toc.account"}}</a>{{end}}
       <a href="#dati" class="settings-toc">{{t "settings.toc.data"}}</a>
@@ -143,6 +144,21 @@
               <input type="checkbox" role="switch" name="show_meal_times" value="1" class="toggle"{{if .User.ShowMealTimes}} checked{{end}} aria-label="{{t "meal_times.settings.csv_label"}}">
             </label>
             <button class="btn-secondary mt-2">{{t "meal_times.save"}}</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="allenamenti" class="card scroll-mt-6">
+        <div class="settings-sec">
+          <div><h2 class="h2">{{t "settings.workouts.title"}}</h2><p class="settings-d">{{t "settings.workouts.desc"}}</p></div>
+          <form method="post" action="/settings/workouts-in-goal">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <span class="grow min-w-0"><b class="block">{{t "settings.workouts.goal_label"}}</b><span class="block settings-d">{{t "settings.workouts.goal_hint"}}</span></span>
+              <input type="hidden" name="workouts_in_goal" value="0">
+              <input type="checkbox" role="switch" name="workouts_in_goal" value="1" class="toggle"{{if .User.WorkoutsInGoal}} checked{{end}} aria-label="{{t "settings.workouts.goal_label"}}">
+            </label>
+            <button class="btn-secondary mt-2">{{t "settings.workouts.save"}}</button>
           </form>
         </div>
       </section>

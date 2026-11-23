@@ -134,8 +134,9 @@ func (a *App) handleMealItemMove(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, err)
 			return
 		}
-		progress := profile.BuildMacroProgress(to.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
-		tab := makeDayCard(*to, dayState(to.Date, todayDate()), false, formatDate(weekStart), nosurf.Token(r), progress, 0, nil, nil)
+		wkcal, _ := a.WorkoutLogs.WorkoutKcalForDay(r.Context(), user.ID, to.Date)
+		progress := profile.BuildMacroProgress(to.DayTotal, goalKcalFor(user, wkcal), user.TargetProtein, user.TargetCarbs, user.TargetFat)
+		tab := makeDayCard(*to, dayState(to.Date, todayDate()), false, formatDate(weekStart), nosurf.Token(r), progress, wkcal, nil, nil)
 		tab.OOB = true
 		resp.Extra = &tab
 	}

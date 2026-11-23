@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -253,7 +254,11 @@ func (a *App) handleAPILogWorkout(w http.ResponseWriter, r *http.Request) {
 		writeJSONErr(w, http.StatusBadRequest, "duration_minutes must be positive")
 		return
 	}
-	id, err := a.WorkoutLogs.CreateWorkoutLog(r.Context(), user.ID, body.ActivityID, date, body.DurationMinutes, nil)
+	id, err := a.WorkoutLogs.CreateWorkoutLog(r.Context(), user.ID, body.ActivityID, date, body.DurationMinutes, "", nil)
+	if errors.Is(err, db.ErrActivityNotFound) {
+		writeJSONErr(w, http.StatusBadRequest, "unknown activity_id")
+		return
+	}
 	if err != nil {
 		writeJSONErr(w, http.StatusInternalServerError, "could not save the workout")
 		return
@@ -264,7 +269,7 @@ func (a *App) handleAPILogWorkout(w http.ResponseWriter, r *http.Request) {
 // ---- handler GET /api/v1/activities -----------------------------------------
 
 func (a *App) handleAPIActivities(w http.ResponseWriter, r *http.Request) {
-	activities, err := a.WorkoutLogs.ListActivities(r.Context())
+	activities, err := a.WorkoutLogs.ListActivitiesFor(r.Context(), userFromContext(r.Context()).ID)
 	if err != nil {
 		writeJSONErr(w, http.StatusInternalServerError, "could not load the activities")
 		return

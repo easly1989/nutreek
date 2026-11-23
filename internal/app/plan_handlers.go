@@ -300,7 +300,7 @@ func buildDayCards(days []dayView, today time.Time, selected, weekStartStr, csrf
 		state := dayState(dv.Date, today)
 		var progress profile.MacroProgress
 		if user != nil {
-			progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
+			progress = profile.BuildMacroProgress(dv.DayTotal, goalKcalFor(user, workoutKcals[i]), user.TargetProtein, user.TargetCarbs, user.TargetFat)
 		}
 		card := makeDayCard(dv, state, formatDate(dv.Date) == selected, weekStartStr, csrfToken, progress, workoutKcals[i], workoutLogs[i], activities)
 		card.Water = waterWidgetData{DateStr: card.DateStr, WaterML: waterMLs[i], WaterTargetML: target, CSRFToken: csrfToken}
@@ -308,6 +308,19 @@ func buildDayCards(days []dayView, today time.Time, selected, weekStartStr, csrf
 		out = append(out, card)
 	}
 	return out
+}
+
+// goalKcalFor is the kcal goal of a day on which workouts burned workoutKcal: the
+// profile's goal, raised by those kcal when the user asked for it (#251).
+func goalKcalFor(user *domain.User, workoutKcal float64) *float64 {
+	if user == nil {
+		return nil
+	}
+	if user.TargetKcal == nil || !user.WorkoutsInGoal || workoutKcal <= 0 {
+		return user.TargetKcal
+	}
+	g := *user.TargetKcal + workoutKcal
+	return &g
 }
 
 // waterTargetFor returns the user's hydration target, falling back to
@@ -373,10 +386,6 @@ func (a *App) renderDayCard(w http.ResponseWriter, r *http.Request, dv dayView, 
 // buildDayMutation is the view model of day_card_with_pill_oob for the day dv.
 func (a *App) buildDayMutation(r *http.Request, dv dayView, week weekSummary, weekStart time.Time, state string) dayMutationResponse {
 	user := userFromContext(r.Context())
-	var progress profile.MacroProgress
-	if user != nil {
-		progress = profile.BuildMacroProgress(dv.DayTotal, user.TargetKcal, user.TargetProtein, user.TargetCarbs, user.TargetFat)
-	}
 	// Load the workouts for the day (bug fix: it was always 0 after an HTMX mutation).
 	var wkcal float64
 	var wlogs []domain.WorkoutLog
@@ -384,7 +393,11 @@ func (a *App) buildDayMutation(r *http.Request, dv dayView, week weekSummary, we
 	if a.WorkoutLogs != nil && user != nil {
 		wkcal, _ = a.WorkoutLogs.WorkoutKcalForDay(r.Context(), user.ID, dv.Date)
 		wlogs, _ = a.WorkoutLogs.ListWorkoutLogs(r.Context(), user.ID, dv.Date, dv.Date)
-		acts, _ = a.WorkoutLogs.ListActivities(r.Context())
+		acts, _ = a.WorkoutLogs.ListActivitiesFor(r.Context(), user.ID)
+	}
+	var progress profile.MacroProgress
+	if user != nil {
+		progress = profile.BuildMacroProgress(dv.DayTotal, goalKcalFor(user, wkcal), user.TargetProtein, user.TargetCarbs, user.TargetFat)
 	}
 	card := makeDayCard(dv, state, true, formatDate(weekStart), nosurfTokenOrEmpty(r), progress, wkcal, wlogs, acts)
 	card.Adherence = adherenceForDay(dv)
@@ -526,7 +539,7 @@ func (a *App) renderDashboard(
 	var workoutLogs [7][]domain.WorkoutLog
 	var activities []domain.WorkoutActivity
 	if a.WorkoutLogs != nil && user != nil {
-		activities, _ = a.WorkoutLogs.ListActivities(r.Context())
+		activities, _ = a.WorkoutLogs.ListActivitiesFor(r.Context(), user.ID)
 		for i := 0; i < 7; i++ {
 			d := weekStart.AddDate(0, 0, i)
 			workoutKcals[i], _ = a.WorkoutLogs.WorkoutKcalForDay(r.Context(), user.ID, d)

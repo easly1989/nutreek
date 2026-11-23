@@ -68,5 +68,11 @@
   "settings.delete.confirm": "Eliminare l'account e tutti i dati? Non si può annullare.",
   "settings.delete.password": "Conferma con la password",
   "settings.delete.submit": "Elimina account",
-  "settings.delete.err_password": "Password non corretta."
+  "settings.delete.err_password": "Password non corretta.",
+  "settings.toc.workouts": "Allenamenti",
+  "settings.workouts.title": "Allenamenti",
+  "settings.workouts.desc": "Cosa fa un allenamento all'obiettivo del giorno.",
+  "settings.workouts.goal_label": "Gli allenamenti alzano l'obiettivo del giorno",
+  "settings.workouts.goal_hint": "Spento: le kcal bruciate restano una stima accanto al giorno. Acceso: l'obiettivo di un giorno con un allenamento sale di quelle kcal.",
+  "settings.workouts.save": "Salva"
 }

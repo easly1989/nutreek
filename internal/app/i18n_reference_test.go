@@ -71,7 +71,7 @@ func TestReferenceDataByCode(t *testing.T) {
 	day := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)
 	for _, act := range acts {
 		if act.Code == "running" || act.Name == "Sci" {
-			if _, err := a.WorkoutLogs.CreateWorkoutLog(ctx, userID, act.ID, day, 30, nil); err != nil {
+			if _, err := a.WorkoutLogs.CreateWorkoutLog(ctx, userID, act.ID, day, 30, "", nil); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -126,8 +126,8 @@ func TestReferenceDataByCode(t *testing.T) {
 				r.Header.Set("HX-Request", "true") // the dialog is a fragment
 				a.handleAddWorkoutForm(w, r)
 			},
-			en:    []string{"Gym (300 kcal/h)", "Sci (400 kcal/h)"},
-			it:    []string{"Palestra (300 kcal/h)", "Sci (400 kcal/h)"},
+			en:    []string{">Gym</span>", "300 kcal/h", ">Sci</span>", "400 kcal/h"},
+			it:    []string{">Palestra</span>", "300 kcal/h", ">Sci</span>", "400 kcal/h"},
 			notEn: []string{"Palestra"},
 		},
 		{

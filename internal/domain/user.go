@@ -56,4 +56,7 @@ type User struct {
 
 	// ShowMealTimes adds a column with the meal times to the CSV export (#236). Off by default.
 	ShowMealTimes bool
+
+	// WorkoutsInGoal raises a day's kcal goal by the kcal its workouts burned (#251). Off by default.
+	WorkoutsInGoal bool
 }

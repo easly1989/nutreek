@@ -29,6 +29,8 @@ type addFormData struct {
 	Recents    []db.WorkoutRecent
 	ActivityID int64
 	Minutes    int
+	AtTime     string  // "HH:MM" or ""
+	WeightKg   float64 // the profile's, for the estimate shown while typing (0 = unknown)
 	YesterdayN int
 	EditID     int64
 }
@@ -95,12 +97,13 @@ func (a *App) handleAddMealForm(w http.ResponseWriter, r *http.Request) {
 // activity and minutes of a recent workout (activity, minutes) to start from.
 func (a *App) handleAddWorkoutForm(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
-	acts, _ := a.WorkoutLogs.ListActivities(r.Context())
+	acts, _ := a.WorkoutLogs.ListActivitiesFor(r.Context(), user.ID)
 	recents, _ := a.WorkoutLogs.RecentWorkouts(r.Context(), user.ID, 3)
 	activityID, _ := strconv.ParseInt(r.URL.Query().Get("activity"), 10, 64)
 	minutes, _ := strconv.Atoi(r.URL.Query().Get("minutes"))
 	a.renderAddDialog(w, r, "week.add_workout_title", "workout_form", func(d *addFormData) {
 		d.Activities, d.Recents, d.ActivityID, d.Minutes = acts, recents, activityID, minutes
+		d.WeightKg = weightKgOf(user)
 		yesterday := d.Date.AddDate(0, 0, -1)
 		if logs, err := a.WorkoutLogs.ListWorkoutLogs(r.Context(), user.ID, yesterday, yesterday); err == nil {
 			d.YesterdayN = len(logs)
