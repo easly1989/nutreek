@@ -188,10 +188,12 @@ func TestEnglishWeekAndPicker(t *testing.T) {
 
 	calls := []weekCall{
 		// The week.
-		{name: "week with meals", target: "/?start=" + wkStr(0), want: "Add meal", handler: a.handleDashboard},
+		{name: "week with meals", target: "/?start=" + wkStr(0), want: "hx-get=\"/week/add?start=", handler: a.handleDashboard},
+		{name: "add chooser", target: "/week/add?date=" + todayStr + "&start=" + wkStr(0), htmx: true, want: "A reminder", handler: a.handleAddChooser},
+		{name: "add meal dialog", target: "/week/meal?day=1&start=" + wkStr(0), htmx: true, want: "New meal", handler: a.handleAddMealForm},
 		{name: "week, another day", target: "/?start=" + wkStr(0) + "&day=" + otherStr, want: "No meals on this day", handler: a.handleDashboard},
 		{name: "week, empty", target: "/?start=" + wkStr(1), want: "Start from a template", handler: a.handleDashboard},
-		{name: "week, empty, without a template", target: "/?start=" + wkStr(1), as: bea, want: "Add meal", handler: a.handleDashboard},
+		{name: "week, empty, without a template", target: "/?start=" + wkStr(1), as: bea, want: "hx-get=\"/week/add?start=", handler: a.handleDashboard},
 		{name: "week, no goals set", target: "/?start=" + wkStr(1), as: bea, handler: a.handleDashboard},
 		{name: "day card", target: "/days/" + todayStr, params: map[string]string{"date": todayStr}, htmx: true, want: "Log a cheat", handler: a.handleDayCard},
 		{name: "day card, empty day", target: "/days/" + otherStr, params: map[string]string{"date": otherStr}, htmx: true, handler: a.handleDayCard},

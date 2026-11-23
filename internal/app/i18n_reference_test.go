@@ -116,9 +116,19 @@ func TestReferenceDataByCode(t *testing.T) {
 		},
 		{
 			name: "week workouts", target: "/?start=2026-10-12&day=2026-10-12", handler: a.handleDashboard,
-			en:    []string{"Running <span", "Delete workout Running", "Gym (300 kcal/h)", "Sci <span", "Sci (400 kcal/h)"},
-			it:    []string{"Corsa <span", "Palestra (300 kcal/h)", "Sci <span", "Sci (400 kcal/h)"},
+			en:    []string{"Running <span", "Delete workout Running"},
+			it:    []string{"Corsa <span"},
 			notEn: []string{"Corsa", "Palestra"},
+		},
+		{
+			name: "workout dialog", target: "/week/workout?day=0&start=2026-10-12",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				r.Header.Set("HX-Request", "true") // the dialog is a fragment
+				a.handleAddWorkoutForm(w, r)
+			},
+			en:    []string{"Gym (300 kcal/h)", "Sci (400 kcal/h)"},
+			it:    []string{"Palestra (300 kcal/h)", "Sci (400 kcal/h)"},
+			notEn: []string{"Palestra"},
 		},
 		{
 			name: "upgrade", target: "/upgrade?da=auto_plan", handler: a.handleUpgradePage,

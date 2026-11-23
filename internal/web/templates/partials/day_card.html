@@ -85,35 +85,20 @@
   {{/* ---- Pasti ---- */}}
   <div class="flex flex-col gap-3 min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
     {{if .Day.Meals}}
-    <div class="flex flex-col gap-3" data-sortable="meals" data-sortable-handle="[data-meal-grip]" data-csrf="{{.CSRFToken}}"
-         data-sort-url="/meals/reorder?day_of_week={{.Day.Index}}&start={{.WeekStart}}">
+    <div class="flex flex-col gap-3">
       {{range .Day.Meals}}{{template "meal_card" (mealCtx . $.WeekStart $.CSRFToken)}}{{end}}
     </div>
     {{else}}
     <div class="card px-4 py-6 text-center text-muted">{{t "week.no_meals_day"}}</div>
     {{end}}
 
-    <form method="post" action="/meals?start={{.WeekStart}}"
-          hx-post="/meals?start={{.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
-          class="flex items-center gap-2">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <input type="hidden" name="start" value="{{.WeekStart}}">
-      <input type="hidden" name="day_of_week" value="{{.Day.Index}}">
-      <label for="new-meal-name" class="sr-only">{{t "week.new_meal_label"}}</label>
-      <input id="new-meal-name" name="name" required maxlength="200" placeholder="{{t "week.new_meal_placeholder"}}" class="field">
-      {{- /* #236: empty takes the time the name has in Settings, if it has one. */}}
-      <label for="new-meal-time" class="sr-only">{{t "meal_times.time_optional"}}</label>
-      <input id="new-meal-time" type="time" name="start_time" title="{{t "meal_times.time_hint"}}" class="field w-[7.5rem] shrink-0 tabular-nums">
-      <button class="btn-secondary shrink-0">{{template "icon" "i-plus"}}{{t "week.add"}}</button>
-    </form>
-    <button type="button" class="btn-secondary self-start" hx-get="/week/reminder?day={{.Day.Index}}&start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-bell"}}{{t "meal_times.add_reminder"}}</button>
   </div>
 
   {{/* ---- Acqua e allenamenti ---- */}}
   <div class="flex flex-col gap-3 lg:col-start-2 lg:row-start-2">
     {{template "water_widget" .Water}}
 
-    {{if or .Workouts .Activities}}
+    {{if .Workouts}}
     <div class="card px-4 py-3 flex flex-col gap-2">
       <div class="flex items-baseline justify-between gap-2">
         <h3 class="font-semibold">{{t "week.workout"}}</h3>
@@ -128,22 +113,6 @@
           <button type="submit" class="icon-action hover:text-danger" title="{{t "week.workout_delete"}}" aria-label="{{t "week.workout_delete_named" "Name" (ref "activity" .ActivityCode .ActivityName)}}">{{template "icon" "i-trash"}}</button>
         </form>
       </div>
-      {{end}}
-      {{if .Activities}}
-      <details class="group">
-        <summary class="list-none cursor-pointer inline-flex items-center gap-1.5 text-accent font-semibold text-[13px] select-none">{{template "icon" "i-plus"}}{{t "week.workout_add"}}</summary>
-        <form method="post" action="/allenamento?start={{$.WeekStart}}"
-              hx-post="/allenamento?start={{$.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
-              class="mt-2 flex flex-wrap gap-2">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <input type="hidden" name="logged_at" value="{{.DateStr}}">
-          <select name="activity_id" aria-label="{{t "week.activity"}}" class="field flex-1 min-w-[10rem]">
-            {{range .Activities}}<option value="{{.ID}}">{{ref "activity" .Code .Name}} ({{num .KcalPerHour}} kcal/h)</option>{{end}}
-          </select>
-          <input name="duration_minutes" type="number" min="1" max="720" required placeholder="{{t "week.min"}}" aria-label="{{t "week.duration"}}" class="field w-20">
-          <button type="submit" class="btn-secondary">{{t "week.save"}}</button>
-        </form>
-      </details>
       {{end}}
     </div>
     {{end}}
@@ -185,7 +154,7 @@
 <article class="card" data-id="{{$m.Meal.ID}}">
   <header class="flex items-start gap-2 pl-1.5 pr-2 pt-2 pb-1.5">
     {{- /* A meal with a time sorts by it, so it has no handle; one without keeps its place by hand. */}}
-    {{if $m.Meal.StartTime}}<span class="w-1.5 shrink-0"></span>{{else}}<span data-meal-grip class="w-6 h-8 shrink-0 grid place-items-center text-muted cursor-grab touch-none" title="{{t "week.drag"}}" aria-hidden="true">{{template "icon" "i-grip"}}</span>{{end}}
+    <span class="w-1.5 shrink-0"></span>
     <div class="min-w-0 flex-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1">
       {{template "meal_time_pill" .}}
       <h3 class="text-[15px] font-bold leading-6 {{if $m.HasCheats}}text-danger{{end}}">{{$m.Meal.Name}}</h3>
@@ -224,7 +193,7 @@
 
   {{- /* Always there, even with no rows: it is where a row dragged from another meal lands (#228). */}}
   <ul class="px-4 {{if $m.HasCheats}}opacity-60{{end}}" data-sortable="items" data-sortable-handle="[data-item-grip]"
-      data-csrf="{{$csrf}}" data-sortable-group="meal-items" data-meal-id="{{$m.Meal.ID}}"{{if $m.HasCheats}} data-no-drop{{end}} data-move-url="/meal-items/%s/move?start={{$ws}}"
+      data-csrf="{{$csrf}}"
       data-sort-url="/meals/{{$m.Meal.ID}}/items/reorder?start={{$ws}}">
     {{range $m.ItemViews}}{{template "meal_item_row" (itemCtx . $m.HasCheats false $ws $csrf)}}{{end}}
   </ul>
@@ -288,7 +257,7 @@
 {{$editable := and (not .Cheat) (or $it.Ingredient (and $it.Recipe (not $it.IsCustomized)))}}
 <li class="item-grid group grid gap-x-2.5 gap-y-1.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0 data-[editing]:-mx-4 data-[editing]:px-4 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}>
   <div class="col-start-1 min-w-0 flex items-start gap-1">
-    {{if not .Cheat}}<span data-item-grip class="relative grid w-4 h-6 -ml-4 place-items-center text-muted cursor-grab touch-none [@media(hover:hover)]:opacity-0 group-hover:opacity-100 before:content-[''] before:absolute before:-top-2 before:-bottom-2 before:-left-1 before:-right-1" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
+    {{if not .Cheat}}<span data-item-grip class="relative max-lg:hidden grid w-4 h-6 -ml-4 place-items-center text-muted cursor-grab touch-none [@media(hover:hover)]:opacity-0 group-hover:opacity-100 before:content-[''] before:absolute before:-top-2 before:-bottom-2 before:-left-1 before:-right-1" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
     <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
       {{if $it.Recipe}}
         <span class="marq"><span class="mq"><a href="/recipes/{{$it.Recipe.ID}}" class="font-medium hover:underline" title="{{t "week.open_recipe"}}">{{$it.Recipe.Name}}</a>

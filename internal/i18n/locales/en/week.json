@@ -139,5 +139,15 @@
   "week.error.item_not_found": "item not found",
   "week.error.item_customized": "this item has variations: change them from “Customize ingredients”",
   "week.error.cheat_not_found": "cheat not found",
-  "week.reason.store_product": "the store's product is not available"
+  "week.reason.store_product": "the store's product is not available",
+  "week.add_title": "Add",
+  "week.add_for_day": "What do you add to {{.Day}}?",
+  "week.add_meal_row": "A meal",
+  "week.add_meal_row_hint": "With a name and, if you like, a time",
+  "week.add_reminder_row": "A reminder",
+  "week.add_reminder_row_hint": "A time with no food",
+  "week.add_workout_row": "A workout",
+  "week.add_workout_row_hint": "Activity and minutes",
+  "week.add_meal_title": "New meal",
+  "week.add_workout_title": "New workout"
 }

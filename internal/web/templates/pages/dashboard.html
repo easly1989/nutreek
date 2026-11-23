@@ -34,7 +34,7 @@
           </form>
         </div>
       </div>
-      <button type="button" class="btn-primary" data-focus="new-meal-name" aria-label="{{t "week.add_meal"}}">{{template "icon" "i-plus"}}<span class="hidden sm:inline">{{t "week.add_meal"}}</span></button>
+      <button type="button" class="btn-primary" data-add-day hx-get="/week/add?start={{.WeekStartStr}}" hx-target="#modal-host" hx-swap="innerHTML" aria-haspopup="dialog">{{template "icon" "i-plus"}}{{t "week.add"}}</button>
     </div>
   </header>
 

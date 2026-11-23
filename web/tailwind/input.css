@@ -148,6 +148,9 @@
   .btn-ghost { @apply btn text-accent hover:bg-accent-soft; }
   .btn-danger { @apply btn bg-surface text-danger border border-border hover:bg-danger-soft; }
   .btn-icon { @apply w-9 px-0; }
+  /* The rows of the «Add» chooser of the week (#251): a whole-row button with an icon. */
+  .add-opt { @apply flex items-center gap-3.5 w-full min-h-[64px] px-1 text-left text-[17px] font-semibold border-b border-border hover:bg-surface-2 transition-colors; }
+  .add-ic { @apply w-10 h-10 shrink-0 rounded-full bg-accent-soft text-accent grid place-items-center; }
   .card { @apply bg-surface border border-border rounded-xl; }
   .field {
     @apply w-full h-9 rounded-[10px] border border-border bg-surface px-3 text-[14px] text-text placeholder:text-muted;

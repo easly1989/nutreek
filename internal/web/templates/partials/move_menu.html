@@ -8,7 +8,7 @@
 <form method="post" action="{{$post}}" hx-post="{{$post}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
   <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
   <input type="hidden" name="meal_id" value="{{.ID}}">
-  <button class="nav-link w-full">{{.Name}}</button>
+  <button class="nav-link w-full">{{if .Time}}<span class="w-11 shrink-0 text-left text-accent font-semibold tabular-nums">{{.Time}}</span>{{end}}{{.Name}}</button>
 </form>
 {{end}}
 <details class="group">
