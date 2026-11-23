@@ -272,10 +272,10 @@ func TestEnglishRecipesPlanAndTemplates(t *testing.T) {
 		{name: "quick recipe, name taken", rpReq: with(post("/quick/recipe", url.Values{"name": {"Porridge"}, "servings": {"1"}}), a.handleQuickRecipeCreate), want: "You already have a recipe with this name."},
 		{name: "bulk delete, bad form", rpReq: with(post("/recipes/bulk-delete?a=%zz", nil), a.handleRecipesBulkDelete), want: "invalid form", italian: "form invalido"},
 		// ---- nutrition plan
-		{name: "plan, no template", rpReq: rpReq{target: "/piano-nutrizionale", as: noPlan, handler: a.handlePianoNutrizionale}, want: "Choose a template"},
+		{name: "plan, no template", rpReq: rpReq{target: "/piano-nutrizionale", as: noPlan, handler: a.handlePianoNutrizionale}, want: "meals come from the active weekly template"},
 		{name: "plan, templates tab empty", rpReq: rpReq{target: "/piano-nutrizionale?tab=template", as: noPlan, handler: a.handlePianoNutrizionale}, want: "No templates yet"},
-		{name: "plan, templates tab", rpReq: rpReq{target: "/piano-nutrizionale?tab=template", as: planned, handler: a.handlePianoNutrizionale}, want: "Delete the template “Away from home”?"},
-		{name: "plan, no active template", rpReq: rpReq{target: "/piano-nutrizionale", as: idle, handler: a.handlePianoNutrizionale}, want: "Choose a template"},
+		{name: "plan, template menu", rpReq: rpReq{target: "/piano-nutrizionale", as: planned, handler: a.handlePianoNutrizionale}, want: "Edit days and meals…"},
+		{name: "plan, no active template", rpReq: rpReq{target: "/piano-nutrizionale", as: idle, handler: a.handlePianoNutrizionale}, want: "Change"},
 		{name: "plan, template without meals", rpReq: rpReq{target: "/piano-nutrizionale", as: empty, handler: a.handlePianoNutrizionale}, want: "Add meals to the template"},
 		{name: "plan, variants and foods", rpReq: rpReq{target: "/piano-nutrizionale", as: planned, handler: a.handlePianoNutrizionale}, want: "Delete the variant “Light” and its foods?"},
 		{name: "plan, main variant", rpReq: rpReq{target: "/piano-nutrizionale", as: planned, handler: a.handlePianoNutrizionale}, want: "Delete the variant “Main variant” and its foods?"},

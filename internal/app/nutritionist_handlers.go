@@ -39,7 +39,6 @@ type pianoNutrizionaleData struct {
 	authPageData
 	Plan              *domain.NutritionistPlanFull
 	Templates         []*domain.MealTemplate
-	ActiveTab         string // "piano" | "template"
 	SlotMealTypes     []slotMealType
 	HasActiveTemplate bool
 	ReadOnly          bool   // true when the plan shown was assigned by the coach
@@ -104,10 +103,6 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	tab := r.URL.Query().Get("tab")
-	if tab != "template" {
-		tab = "piano"
-	}
 
 	// Build the slot→meal-type list from the active template (only for the
 	// user's own plan: the one assigned by the coach must not be changed).
@@ -171,7 +166,6 @@ func (a *App) handlePianoNutrizionale(w http.ResponseWriter, r *http.Request) {
 		authPageData:      a.baseData(r),
 		Plan:              plan,
 		Templates:         tpls,
-		ActiveTab:         tab,
 		SlotMealTypes:     slotMealTypes,
 		HasActiveTemplate: hasActiveTemplate,
 		ReadOnly:          readOnly,
@@ -268,6 +262,75 @@ func (a *App) handleNutritionistDeleteVariation(w http.ResponseWriter, r *http.R
 		return
 	}
 	if err := a.NutritionistPlans.DeleteVariation(r.Context(), id, plan.ID); err != nil {
+		a.nutritionistWriteError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
+}
+
+// handleNutritionistRenameVariation POST /nutrizionista/variations/{id}/rename: an
+// empty name goes back to the main variant.
+func (a *App) handleNutritionistRenameVariation(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	name := strings.TrimSpace(r.PostFormValue("name"))
+	if !withinLen(name, 200) {
+		a.Sessions.Put(r.Context(), "flash", "plan.error.variant_name_long")
+		http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
+		return
+	}
+	var namePtr *string
+	if name != "" {
+		namePtr = &name
+	}
+	plan, err := a.NutritionistPlans.GetOrCreateActivePlan(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if err := a.NutritionistPlans.RenameVariation(r.Context(), id, plan.ID, namePtr); err != nil {
+		a.nutritionistWriteError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
+}
+
+// handleNutritionistDuplicateVariation POST /nutrizionista/variations/{id}/duplicate:
+// a copy with the same items, named after the original.
+func (a *App) handleNutritionistDuplicateVariation(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	plan, err := a.NutritionistPlans.LoadPlanFull(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	base, found := "", false
+	for _, mt := range plan.MealTypes {
+		for _, v := range mt.Variations {
+			if v.ID == id {
+				found = true
+				base = a.t(r, "plan.main_variant")
+				if v.Name != nil && *v.Name != "" {
+					base = *v.Name
+				}
+			}
+		}
+	}
+	if !found {
+		a.notFound(w, r)
+		return
+	}
+	name := base + " " + a.t(r, "plan.copy_suffix")
+	if _, err := a.NutritionistPlans.DuplicateVariation(r.Context(), id, plan.ID, &name); err != nil {
 		a.nutritionistWriteError(w, r, err)
 		return
 	}
