@@ -51,6 +51,7 @@ var reasons = []struct {
 	{off.ErrNotFound, "week.reason.off_not_found"},
 	{off.ErrUnavailable, "week.reason.off_unavailable"},
 	{errOFFNoMacros, "week.reason.off_no_macros"},
+	{errStoreProduct, "week.reason.store_product"},
 	{db.ErrPlanNotFound, "week.reason.plan_not_found"},
 	{db.ErrMealNotFound, "week.reason.meal_not_found"},
 	{db.ErrRecipeNotFound, "week.reason.recipe_not_found"},

@@ -261,6 +261,7 @@ func (a *App) Router() http.Handler {
 		r.Post("/shopping-list/user-items/{id}/ignore", a.handleShoppingUserItemIgnore)
 		r.Post("/shopping-list/items/{id}/quantity", a.handleShoppingItemQuantity)
 		r.Post("/shopping-list/{id}/user-items", a.handleAddShoppingUserItem)
+		r.Post("/shopping-list/{id}/prices", a.handleShoppingPrices)
 		r.Post("/shopping-list/user-items/{id}/toggle", a.handleToggleShoppingUserItem)
 		r.Post("/shopping-list/user-items/{id}/edit", a.handleShoppingUserItemEdit)
 		r.Post("/shopping-list/user-items/{id}/delete", a.handleRemoveShoppingUserItem)
@@ -286,6 +287,15 @@ func (a *App) Router() http.Handler {
 		r.Get("/meal-items/{itemID}/people", a.handleHouseholdItemForm)
 		r.Post("/meal-items/{itemID}/people", a.handleHouseholdItemSave)
 		r.Post("/meals/{mealID}/people/{personID}/skip", a.handleHouseholdMealSkip)
+		if a.Demo == nil { // a plugin address is any URL the user gives: no use in the demo, and an SSRF risk
+			r.Get("/settings/stores", a.handleStoresPage)
+			r.Post("/settings/stores", a.handleStoresSave)
+			r.Post("/settings/stores/order", a.handleStoresOrder)
+			r.Post("/settings/stores/{id}", a.handleStoresSave)
+			r.Post("/settings/stores/{id}/delete", a.handleStoresDelete)
+			r.Post("/settings/stores/{id}/test", a.handleStoresTest)
+			r.Post("/settings/stores/{key}/enabled", a.handleStoresEnabled)
+		}
 		r.Post("/settings/meal-times", a.handleSettingsMealTime)
 		r.Post("/settings/meal-times/delete", a.handleSettingsMealTimeDelete)
 		r.Post("/settings/show-meal-times", a.handleSettingsShowMealTimes)

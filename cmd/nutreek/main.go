@@ -22,6 +22,7 @@ import (
 	"github.com/amon2126/nutreek/internal/notify"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/service"
+	"github.com/amon2126/nutreek/internal/stores"
 	"github.com/amon2126/nutreek/internal/updates"
 	"github.com/amon2126/nutreek/internal/web"
 )
@@ -187,6 +188,13 @@ func run(logger *slog.Logger) error {
 
 		Notifications: db.NewNotifications(store.DB),
 		Household:     db.NewHousehold(store.DB),
+		StorePlugins:  db.NewStorePlugins(store.DB),
+		StoreClient:   stores.NewClient(cfg.StoresAllowPrivate),
+	}
+	if cfg.SecretKey != "" {
+		if a.StoreBox, err = stores.NewBox(cfg.SecretKey); err != nil {
+			return err
+		}
 	}
 	// Notifications (#237): the VAPID keys are made on the first start and kept in the
 	// database; the ticker sends from the browsers' own push services.

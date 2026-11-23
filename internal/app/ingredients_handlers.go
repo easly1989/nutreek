@@ -16,6 +16,7 @@ import (
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/i18n"
 	"github.com/amon2126/nutreek/internal/off"
+	"github.com/amon2126/nutreek/internal/stores"
 )
 
 // ---- view models -----------------------------------------------------------
@@ -25,6 +26,12 @@ import (
 type ingredientRow struct {
 	Local *domain.Ingredient // nil when the row is an OFF product not imported yet
 	OFF   *off.Product       // nil when the row is already in the DB
+
+	// Store is a product of a connected store (#239), not imported yet; it is
+	// imported on first use like an OFF one. StoreName is the plugin's name.
+	Store     *stores.Product
+	StoreName string
+	StoreID   int64 // the plugin's id
 
 	// Allergens and Category are filled (in batch) only for local rows:
 	// the templates show them as chips in the picker and the list.
@@ -37,8 +44,37 @@ type ingredientRow struct {
 	Author  string
 }
 
-// IsOFF is used by the template to decide whether to show the Import button.
-func (r ingredientRow) IsOFF() bool { return r.Local == nil && r.OFF != nil }
+// IsOFF is used by the template to decide whether to show the Import button: it is
+// true for any product that is not an ingredient yet, from OpenFoodFacts or a store.
+func (r ingredientRow) IsOFF() bool { return r.Local == nil && (r.OFF != nil || r.Store != nil) }
+
+// IsStore says the product comes from a store plugin.
+func (r ingredientRow) IsStore() bool { return r.Local == nil && r.Store != nil }
+
+// SourceLabel is the name shown on a product that is not an ingredient yet: the
+// store's, or "" for OpenFoodFacts (the template says its name).
+func (r ingredientRow) SourceLabel() string {
+	if r.IsStore() {
+		return r.StoreName
+	}
+	return ""
+}
+
+// Price is the store's price in cents, with HasPrice false when it gave none.
+func (r ingredientRow) Price() int {
+	if r.IsStore() {
+		return r.Store.PriceCents
+	}
+	return 0
+}
+func (r ingredientRow) HasPrice() bool { return r.IsStore() && r.Store.HasPrice }
+func (r ingredientRow) Currency() string {
+	if r.IsStore() {
+		return r.Store.Currency
+	}
+	return ""
+}
+func (r ingredientRow) Unavailable() bool { return r.IsStore() && !r.Store.Available }
 
 // Name normalizes the name for the template.
 func (r ingredientRow) Name() string {
@@ -47,6 +83,9 @@ func (r ingredientRow) Name() string {
 	}
 	if r.OFF != nil {
 		return r.OFF.Name
+	}
+	if r.Store != nil {
+		return r.Store.Name
 	}
 	return ""
 }
@@ -58,6 +97,9 @@ func (r ingredientRow) Brand() string {
 	}
 	if r.OFF != nil {
 		return r.OFF.Brand
+	}
+	if r.Store != nil {
+		return r.Store.Brand
 	}
 	return ""
 }
@@ -71,6 +113,9 @@ func (r ingredientRow) Kcal() float64 {
 	if r.OFF != nil {
 		return r.OFF.Kcal
 	}
+	if r.Store != nil {
+		return r.Store.Kcal
+	}
 	return 0
 }
 func (r ingredientRow) Protein() float64 {
@@ -79,6 +124,9 @@ func (r ingredientRow) Protein() float64 {
 	}
 	if r.OFF != nil {
 		return r.OFF.Protein
+	}
+	if r.Store != nil {
+		return r.Store.Protein
 	}
 	return 0
 }
@@ -89,6 +137,9 @@ func (r ingredientRow) Carbs() float64 {
 	if r.OFF != nil {
 		return r.OFF.Carbs
 	}
+	if r.Store != nil {
+		return r.Store.Carbs
+	}
 	return 0
 }
 func (r ingredientRow) Fat() float64 {
@@ -98,11 +149,17 @@ func (r ingredientRow) Fat() float64 {
 	if r.OFF != nil {
 		return r.OFF.Fat
 	}
+	if r.Store != nil {
+		return r.Store.Fat
+	}
 	return 0
 }
 func (r ingredientRow) Unit() string {
 	if r.Local != nil {
 		return string(r.Local.Unit)
+	}
+	if r.Store != nil && r.Store.SizeUnit == stores.UnitMl {
+		return "ml"
 	}
 	return "g"
 }
@@ -120,6 +177,9 @@ func (r ingredientRow) Barcode() string {
 	if r.OFF != nil {
 		return r.OFF.Code
 	}
+	if r.Store != nil {
+		return storeRef(r.StoreID, r.Store.ID)
+	}
 	return ""
 }
 
@@ -128,7 +188,7 @@ func (r ingredientRow) Barcode() string {
 // The import still goes through GetByBarcode on the live API, and the final
 // "are the macros complete?" check happens in the import handler.
 func (r ingredientRow) Importable() bool {
-	return r.OFF != nil
+	return r.OFF != nil || r.Store != nil
 }
 
 // Quantity is the package size of an OFF product ("1 kg"), "" when unknown:
@@ -136,6 +196,9 @@ func (r ingredientRow) Importable() bool {
 func (r ingredientRow) Quantity() string {
 	if r.OFF != nil {
 		return strings.TrimSpace(r.OFF.Quantity)
+	}
+	if r.Store != nil && r.Store.SizeQty > 0 {
+		return strconv.FormatFloat(r.Store.SizeQty, 'f', -1, 64) + " " + r.Store.SizeUnit
 	}
 	return ""
 }
@@ -167,6 +230,9 @@ func (r ingredientRow) UnitWeightG() float64 {
 	if r.OFF != nil && r.OFF.UnitWeightG != nil {
 		return *r.OFF.UnitWeightG
 	}
+	if r.Store != nil && r.Store.UnitWeightG != nil {
+		return *r.Store.UnitWeightG
+	}
 	return 0
 }
 
@@ -178,7 +244,7 @@ func (r ingredientRow) fromOFF() bool {
 	if r.Local != nil {
 		return r.Local.Source == domain.IngredientSourceOFF
 	}
-	return r.OFF != nil
+	return r.OFF != nil || r.Store != nil
 }
 
 // ServingG is the OFF serving in g/ml (0 when unknown): for an import it is
@@ -188,7 +254,7 @@ func (r ingredientRow) ServingG() float64 {
 		return 0
 	}
 	if r.Local == nil {
-		if r.OFF.ServingG != nil {
+		if r.OFF != nil && r.OFF.ServingG != nil {
 			return *r.OFF.ServingG
 		}
 		return 0
@@ -593,7 +659,9 @@ func (a *App) searchIngredients(ctx context.Context, q string, includeOFF, usedF
 
 	rows := make([]ingredientRow, 0, len(locals))
 	knownBarcodes := make(map[string]bool, len(locals))
+	knownIDs := make(map[int64]bool, len(locals))
 	for _, l := range locals {
+		knownIDs[l.ID] = true
 		rows = append(rows, ingredientRow{Local: l})
 		if l.OFFBarcode != nil {
 			knownBarcodes[*l.OFFBarcode] = true
@@ -605,16 +673,56 @@ func (a *App) searchIngredients(ctx context.Context, q string, includeOFF, usedF
 	if !includeOFF || q == "" {
 		return rows, "", nil
 	}
+	// The sources the user chose, in their order: OpenFoodFacts and the connected stores.
+	sources := []db.SearchSource{{OFF: true, Enabled: true}}
+	if a.StorePlugins != nil && viewer > 0 {
+		var serr error
+		if sources, serr = a.StorePlugins.Sources(ctx, viewer); serr != nil {
+			return nil, "", serr
+		}
+	}
+	found := a.searchSources(ctx, q, viewer, sources, knownBarcodes, knownIDs)
+	var warns []string
+	for _, f := range found {
+		if f.err != nil {
+			return nil, "", f.err
+		}
+		if f.warn != "" {
+			warns = append(warns, f.warn)
+		}
+		a.attachTags(ctx, f.extra)
+		rows = append(rows, f.extra...)
+	}
+	for _, f := range found {
+		rows = append(rows, f.rows...)
+	}
+	return rows, strings.Join(warns, " "), nil
+}
 
+// sourceResult is what one search source answered: the products to offer, the
+// ingredients of the viewer that match them (shown as ingredients, not offered
+// again), and a warning when the source could not be asked.
+type sourceResult struct {
+	rows, extra []ingredientRow
+	warn        string
+	err         error
+}
+
+// searchOFFRows is the OpenFoodFacts part of a search: the local copy of its catalogue
+// (FTS5, filled by the Syncer), so no network and no timeouts.
+func (a *App) searchOFFRows(ctx context.Context, q string, viewer int64, knownBarcodes map[string]bool) sourceResult {
+	if a.OFF == nil {
+		return sourceResult{}
+	}
 	products, offErr := a.OFF.SearchByName(ctx, q)
 	if offErr != nil {
 		a.Logger.Warn("OFF search failed", "err", offErr, "q", q)
-		return rows, i18n.T(i18n.FromContext(ctx), "ingredients.off.search_unavailable"), nil
+		return sourceResult{warn: i18n.T(i18n.FromContext(ctx), "ingredients.off.search_unavailable")}
 	}
 	// Products hidden from the viewer's lists stay out of these results too.
 	hidden, err := a.Ingredients.HiddenBarcodes(ctx, viewer)
 	if err != nil {
-		return nil, "", err
+		return sourceResult{err: err}
 	}
 	// A product the viewer already has as an ingredient is shown once, as that
 	// ingredient. When the ingredient is not among the local rows above (more
@@ -626,9 +734,9 @@ func (a *App) searchIngredients(ctx context.Context, q string, includeOFF, usedF
 	}
 	have, err := a.Ingredients.CatalogBarcodes(ctx, viewer, codes)
 	if err != nil {
-		return nil, "", err
+		return sourceResult{err: err}
 	}
-	var extra, offRows []ingredientRow
+	var res sourceResult
 	// FTS5 does a native AND across tokens + prefix match: no extra filter needed.
 	for i := range products {
 		p := products[i]
@@ -637,16 +745,13 @@ func (a *App) searchIngredients(ctx context.Context, q string, includeOFF, usedF
 			continue // hidden from this viewer, or already shown as an ingredient
 		case have[p.Code]:
 			if ing, gerr := a.Ingredients.GetByBarcode(ctx, p.Code); gerr == nil {
-				extra = append(extra, ingredientRow{Local: ing})
+				res.extra = append(res.extra, ingredientRow{Local: ing})
 				continue
 			}
 		}
-		offRows = append(offRows, ingredientRow{OFF: &p})
+		res.rows = append(res.rows, ingredientRow{OFF: &p})
 	}
-	a.attachTags(ctx, extra)
-	rows = append(rows, extra...)
-	rows = append(rows, offRows...)
-	return rows, "", nil
+	return res
 }
 
 // searchBarcode is the search by barcode (the picker's scanner or digits
@@ -910,6 +1015,16 @@ func (a *App) handleIngredientOFFImport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if strings.HasPrefix(barcode, storeRefPrefix) { // a store's product (#239)
+		if _, err := a.resolveStoreProduct(r.Context(), barcode); err != nil {
+			a.Sessions.Put(r.Context(), "flash", a.t(r, "week.flash.off_import_failed", "Error", a.errText(r, err)))
+		} else {
+			a.Sessions.Put(r.Context(), "flash", "ingredients.flash.imported")
+		}
+		http.Redirect(w, r, "/ingredients", http.StatusSeeOther)
+		return
+	}
+
 	// Pre-check: already imported?
 	existing, err := a.Ingredients.GetByBarcode(r.Context(), barcode)
 	if err != nil && !errors.Is(err, db.ErrIngredientNotFound) {
@@ -972,6 +1087,9 @@ func (a *App) resolveOFFBarcode(ctx context.Context, barcode string) (int64, err
 	barcode = strings.TrimSpace(barcode)
 	if barcode == "" {
 		return 0, errEmpty
+	}
+	if strings.HasPrefix(barcode, storeRefPrefix) {
+		return a.resolveStoreProduct(ctx, barcode)
 	}
 	// DB pre-check: avoids an HTTP call when already imported.
 	existing, err := a.Ingredients.GetByBarcode(ctx, barcode)

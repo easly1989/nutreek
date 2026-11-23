@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -162,4 +163,26 @@ func weeksRange(lang string, start time.Time, n int) string {
 	default:
 		return i18n.T(lang, "format.range.same_month", args...)
 	}
+}
+
+// formatMoney writes a price given in cents with two decimals: "1,09 €" in Italian,
+// "€1.09" elsewhere. Currencies other than the euro, the dollar and the pound are
+// written with their code.
+func formatMoney(lang string, cents int, currency string) string {
+	_, decimal := separators(lang)
+	sign := ""
+	if cents < 0 {
+		sign, cents = "-", -cents
+	}
+	n := formatNum(lang, float64(cents/100)) + decimal + fmt.Sprintf("%02d", cents%100)
+	symbol, ok := map[string]string{"EUR": "€", "USD": "$", "GBP": "£"}[currency]
+	switch {
+	case !ok && lang == "it":
+		return sign + n + " " + currency
+	case !ok:
+		return sign + currency + " " + n
+	case lang == "it":
+		return sign + n + " " + symbol
+	}
+	return sign + symbol + n
 }

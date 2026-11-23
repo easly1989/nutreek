@@ -45,8 +45,8 @@
 {{end}}
 
 {{define "picker_sections"}}
-{{- $locals := 0 -}}{{- $offs := 0 -}}
-{{- range .Rows}}{{if .IsOFF}}{{$offs = add $offs 1}}{{else}}{{$locals = add $locals 1}}{{end}}{{end -}}
+{{- $locals := 0 -}}{{- $offs := 0 -}}{{- $stores := 0 -}}
+{{- range .Rows}}{{if .IsOFF}}{{$offs = add $offs 1}}{{if .IsStore}}{{$stores = add $stores 1}}{{end}}{{else}}{{$locals = add $locals 1}}{{end}}{{end -}}
 {{if .NutritionistItems}}
   <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">{{t "picker.suggested"}}</p>
   <div class="divide-y divide-border">
@@ -60,7 +60,7 @@
   </div>
 {{end}}
 {{if gt $offs 0}}
-  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">{{t "picker.from_off"}} <span class="font-medium">{{t "picker.imported_on_first_use"}}</span></p>
+  <p class="px-4 lg:px-5 pt-3 pb-1 text-[12.5px] font-bold text-muted">{{if gt $stores 0}}{{t "picker.from_sources"}}{{else}}{{t "picker.from_off"}}{{end}} <span class="font-medium">{{t "picker.imported_on_first_use"}}</span></p>
   <div class="divide-y divide-border">
     {{range .Rows}}{{if .IsOFF}}{{template "picker_row" (pickerRow . $)}}{{end}}{{end}}
   </div>
@@ -92,7 +92,7 @@
     {{end}}
     <span class="grow min-w-0">
       <span class="marq"><b class="mq font-semibold">{{$r.Name}}</b></span>
-      <span class="flex items-center gap-1.5 min-w-0 min-h-[20px]"><span class="marq text-[12.5px] text-muted"><span class="mq">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}</span></span>{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px] shrink-0">{{ref "allergen" .Code .Name}}</span>{{end}}</span>
+      <span class="flex items-center gap-1.5 min-w-0 min-h-[20px]"><span class="marq text-[12.5px] text-muted"><span class="mq">{{$r.Brand}}{{if and $r.Brand $r.Quantity}} · {{end}}{{$r.Quantity}}</span></span>{{range $r.Allergens}}<span class="chip chip-warn h-5 text-[11px] shrink-0">{{ref "allergen" .Code .Name}}</span>{{end}}{{if $r.IsOFF}}<span class="chip chip-soft h-5 text-[11px] shrink-0">{{with $r.SourceLabel}}{{.}}{{else}}OpenFoodFacts{{end}}</span>{{template "store_price" $r}}{{end}}</span>
       <span class="block sm:hidden mt-0.5">{{template "macros_inline" $r}}</span>
     </span>
     <span class="hidden sm:block">{{template "macros_inline" $r}}</span>
@@ -148,3 +148,8 @@
   {{end}}
 </details>
 {{end}}
+
+{{define "store_price"}}
+{{- /* The price a store asks for a product of its catalogue, and a note when it is out of stock. . is an ingredientRow. */ -}}
+{{if .HasPrice}}<span class="chip chip-n h-5 text-[11px] shrink-0 tabular-nums">{{money .Price .Currency}}</span>{{end}}{{if .Unavailable}}<span class="chip chip-warn h-5 text-[11px] shrink-0">{{t "stores.unavailable"}}</span>{{end}}
+{{- end}}

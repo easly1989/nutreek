@@ -178,6 +178,10 @@
   /* A person of the household (#238): the colour comes from --hh-c, set inline as
      style="--hh-c:var(--hh3)" (a class per colour would be purged unseen). */
   .hh-dot { @apply inline-block w-2 h-2 rounded-full shrink-0; background: var(--hh-c, var(--accent)); }
+  /* The search sources of Settings → Stores (#239): the place in the order is a counter. */
+  .src-list { counter-reset: src; }
+  .src-n { @apply inline-grid place-items-center w-[22px] h-[22px] shrink-0 rounded-full bg-surface-2 text-muted text-[12px] font-bold; }
+  .src-n::before { counter-increment: src; content: counter(src); }
   .hh-av { @apply inline-grid place-items-center w-[30px] h-[30px] rounded-full shrink-0 text-[12.5px] font-bold text-accent-fg; background: var(--hh-c, var(--accent)); }
   .hh-chip { @apply inline-flex items-center gap-1.5 h-6 px-2 rounded-full text-[12.5px] font-bold tabular-nums text-text whitespace-nowrap; background: color-mix(in srgb, var(--hh-c, var(--accent)) 16%, var(--surface)); }
   .hh-fill { @apply block h-full rounded-full; background: var(--hh-c, var(--accent)); }
@@ -340,6 +344,11 @@
   }
   /* Quantity: two fixed columns, pieces then amount, so rows line up (#222). */
   .shop-qty { @apply flex shrink-0 tabular-nums whitespace-nowrap; }
+  .shop-price { @apply flex flex-col items-end text-[12.5px] leading-tight tabular-nums whitespace-nowrap text-muted; }
+  .shop-price b { @apply font-semibold text-text; }
+  .shop-price small { @apply text-[11px]; }
+  .shop-price small.shop-out { @apply font-bold text-warn-fg; }
+  .shop-item[aria-pressed="true"] .shop-price, .shop-item[aria-pressed="true"] .shop-price b { @apply text-muted line-through font-normal; }
   .shop-pc { @apply w-[58px] max-sm:w-[46px] text-right; }
   .shop-gr { @apply w-[72px] max-sm:w-[62px] overflow-hidden text-ellipsis text-right text-muted; }
   .shop-item[aria-pressed="true"] .shop-name,

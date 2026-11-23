@@ -8,6 +8,7 @@ import (
 
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/stores"
 )
 
 // shoppingView is the shopping list as the page shows it: one list with the
@@ -25,6 +26,89 @@ type shoppingView struct {
 	Total    int
 	Percent  int
 	Rest     int // 100 - Percent: what the progress bar still has to fill
+	Prices   shoppingPrices
+}
+
+// shoppingPrice is the estimate of a row from the store product an ingredient was
+// made from (#239): whole packages of it, priced when the store was last asked.
+type shoppingPrice struct {
+	Cents       int
+	Currency    string
+	Packs       int
+	Pack        string // the package, "700 g"
+	Store       string
+	Unavailable bool
+}
+
+// shoppingPrices is the estimate of the whole list: the rows that count (not the
+// ones set aside) with a price, out of those that could have one.
+type shoppingPrices struct {
+	Total    int
+	Currency string
+	Priced   int
+	Rows     int
+	Stores   string // the stores the prices come from, "A, B"
+	Any      bool   // at least one ingredient is linked to a store product: show the estimate
+}
+
+// withPrices fills the price of the rows computed from the meals that have a store
+// product, and the estimate of the list. links is by ingredient id.
+func (v shoppingView) withPrices(links map[int64]db.StoreLink) shoppingView {
+	if len(links) == 0 {
+		return v
+	}
+	price := func(row *shoppingRow) {
+		if row.Auto == nil || row.Auto.Item.Ingredient == nil {
+			return
+		}
+		l, ok := links[row.Auto.Item.IngredientID]
+		if !ok || !l.HasPrice {
+			return
+		}
+		ing := row.Auto.Item.Ingredient
+		var pieceG float64
+		if ing.UnitWeightG != nil {
+			pieceG = *ing.UnitWeightG
+		}
+		cents, packs, ok := stores.Estimate(row.Auto.Item.TotalQuantity, string(ing.Unit), pieceG, l.SizeQty, l.SizeUnit, l.PriceCents)
+		if !ok {
+			return
+		}
+		pack := strconv.FormatFloat(l.SizeQty, 'f', -1, 64) + " " + l.SizeUnit
+		row.Price = &shoppingPrice{Cents: cents, Currency: l.Currency, Packs: packs, Pack: pack, Store: l.PluginName, Unavailable: !l.Available}
+	}
+	fill := func(rows []shoppingRow) {
+		for i := range rows {
+			price(&rows[i])
+		}
+	}
+	fill(v.Rows)
+	fill(v.Cart)
+	fill(v.Print)
+	for g := range v.Groups {
+		fill(v.Groups[g].Rows)
+	}
+	var names []string
+	seen := map[string]bool{}
+	for _, row := range v.Print {
+		if row.Auto == nil || row.Ignored {
+			continue
+		}
+		v.Prices.Rows++
+		if row.Price == nil || (v.Prices.Currency != "" && row.Price.Currency != v.Prices.Currency) {
+			continue
+		}
+		v.Prices.Currency = row.Price.Currency
+		v.Prices.Total += row.Price.Cents
+		v.Prices.Priced++
+		if !seen[row.Price.Store] {
+			seen[row.Price.Store] = true
+			names = append(names, row.Price.Store)
+		}
+	}
+	v.Prices.Stores = strings.Join(names, ", ")
+	v.Prices.Any = v.Prices.Priced > 0
+	return v
 }
 
 // shoppingGroup is a category of the list.
@@ -54,6 +138,7 @@ type shoppingRow struct {
 	Similar     *shoppingSimilar // the notice under the row: it looks like another row (#233)
 	Key         string           // the row's key in the stored order: «i<ingredient id>» or «u<id>»
 	Shares      []shoppingShare  // who needs how much of it, when the account has a household (#238)
+	Price       *shoppingPrice   // what the linked store product would cost, when there is one (#239)
 	name        string
 	id          int64
 	catOrder    int

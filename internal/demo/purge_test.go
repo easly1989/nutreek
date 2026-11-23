@@ -110,6 +110,8 @@ func fill(t *testing.T, d *sql.DB, userID int64) int64 {
 	person := exec(`INSERT INTO household_people (user_id, name, target_kcal) VALUES (?, 'Leo', 1400)`, userID)
 	exec(`INSERT INTO household_item_quantities (person_id, meal_item_id, quantity) VALUES (?, ?, 60)`, person, item)
 	exec(`INSERT INTO household_meal_skips (person_id, meal_id) VALUES (?, ?)`, person, meal)
+	plugin := exec(`INSERT INTO store_plugins (user_id, name, base_url, token_sealed) VALUES (?, 'Shop', 'https://s.example', 'x')`, userID)
+	exec(`INSERT INTO ingredient_store_products (user_id, ingredient_id, plugin_id, product_id, product_name) VALUES (?, ?, ?, 'p1', 'Oats')`, userID, ing, plugin)
 	list := exec(`INSERT INTO shopping_lists (user_id, week_start) VALUES (?, '2020-01-06')`, userID)
 	exec(`INSERT INTO shopping_list_items (shopping_list_id, ingredient_id, total_quantity) VALUES (?, ?, 80)`, list, ing)
 	exec(`INSERT INTO shopping_list_shares (shopping_list_id, ingredient_id, person_id, quantity) VALUES (?, ?, 0, 80)`, list, ing)

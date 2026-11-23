@@ -14,7 +14,6 @@
   "picker.search_label": "Cerca",
   "picker.searching_off": "Cerco anche su OpenFoodFacts…",
   "picker.loading": "Carico…",
-
   "picker.code": "Codice",
   "picker.scan_again": "Scansiona un altro",
   "picker.looking_up": "Cerco il codice su OpenFoodFacts…",
@@ -28,7 +27,6 @@
   "picker.imported_on_first_use": "(importati al primo uso)",
   "picker.none_for": "Nessun ingrediente trovato per «{{.Query}}».",
   "picker.type_to_search": "Scrivi per cercare tra i tuoi ingredienti e su OpenFoodFacts.",
-
   "picker.kcal_per_100": "kcal / 100 {{.Unit}}",
   "picker.per_100": "per 100 {{.Unit}}",
   "picker.quantity": "Quantità",
@@ -42,7 +40,6 @@
   "picker.qty.label": "Quantità di {{.Name}}",
   "picker.qty.servings_label": "Porzioni di {{.Name}}",
   "picker.qty.save": "Salva la quantità",
-
   "picker.servings": {
     "one": "{{.Count}} porzione",
     "other": "{{.Count}} porzioni"
@@ -52,5 +49,6 @@
   "picker.servings_label": "Porzioni",
   "picker.servings_unit": "porzioni",
   "picker.no_recipe_for": "Nessuna ricetta trovata per «{{.Query}}».",
-  "picker.no_recipes": "Nessuna ricetta ancora: creane una con «Nuova ricetta»."
+  "picker.no_recipes": "Nessuna ricetta ancora: creane una con «Nuova ricetta».",
+  "picker.from_sources": "Da OpenFoodFacts e dai tuoi negozi"
 }

@@ -246,6 +246,8 @@ Every environment variable:
 | `NUTREEK_BACKUP_INTERVAL` | `24h` | How often backups run |
 | `NUTREEK_BACKUP_KEEP` | `7` | How many backups to keep (the oldest are deleted) |
 | `NUTREEK_UPDATE_CHECK` | `true` | Checks once a day for a newer release and tells the owner (see [Updating](#updating)) |
+| `NUTREEK_SECRET_KEY` | *(none)* | 16+ characters (`openssl rand -hex 32`); seals the tokens of store plugins. Without it no store can be connected ([docs/store-plugins.md](docs/store-plugins.md)) |
+| `NUTREEK_STORES_ALLOW_PRIVATE` | `false` | Lets a store plugin sit on a private address (a server at home) |
 
 ### OpenFoodFacts
 
