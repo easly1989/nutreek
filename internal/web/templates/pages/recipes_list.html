@@ -132,7 +132,7 @@
           <span></span>
         </div>
         {{range .Rows}}
-          <div class="grid grid-cols-[minmax(0,1fr)_44px_auto_32px] lg:grid-cols-[18px_minmax(0,1fr)_44px_96px_180px_32px] gap-x-3 lg:gap-x-3.5 gap-y-1 items-center max-lg:[&:nth-child(2)]:!border-t-0 min-h-[60px] py-2.5 pl-3.5 lg:pl-4 pr-2 lg:pr-3">
+          <div class="grid grid-cols-[minmax(0,1fr)_32px_auto_32px] lg:grid-cols-[18px_minmax(0,1fr)_44px_96px_180px_32px] gap-x-3 lg:gap-x-3.5 gap-y-1 items-center max-lg:[&:nth-child(2)]:!border-t-0 min-h-[60px] py-2.5 pl-3.5 lg:pl-4 pr-2 lg:pr-3">
             {{if .Mine}}
               <input type="checkbox" class="check hidden lg:block" name="recipe_id" value="{{.Recipe.ID}}"
                      data-recipes-checkbox data-usages="{{.Usages}}" aria-label="{{t "recipes.row.select" "Name" .Recipe.Name}}">
@@ -144,9 +144,9 @@
               </span>
             </div>
             {{- /* The photo, in a column of its own so the names line up; zoom.js shows it larger on hover. */}}
-            <span class="w-11 h-11 justify-self-end">
+            <span class="w-8 h-8 lg:w-11 lg:h-11 justify-self-end">
               {{if .PhotoETag}}
-              <img src="/recipes/{{.Recipe.ID}}/photo/thumb?v={{.PhotoETag}}" data-zoom data-zoom-src="/recipes/{{.Recipe.ID}}/photo?v={{.PhotoETag}}" alt="" width="44" height="44" loading="lazy" class="w-11 h-11 rounded-[10px] object-cover bg-surface-2">
+              <img src="/recipes/{{.Recipe.ID}}/photo/thumb?v={{.PhotoETag}}" data-zoom data-zoom-src="/recipes/{{.Recipe.ID}}/photo?v={{.PhotoETag}}" alt="" width="44" height="44" loading="lazy" class="w-8 h-8 lg:w-11 lg:h-11 rounded-lg lg:rounded-[10px] object-cover bg-surface-2">
               {{end}}
             </span>
             <span class="text-right tabular-nums whitespace-nowrap"><b>{{num .PerServing.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal</span></span>
