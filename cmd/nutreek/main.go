@@ -186,6 +186,7 @@ func run(logger *slog.Logger) error {
 		Updates:    updates.New(db.NewInstanceSettings(store.DB), version, cfg.UpdateCheck),
 
 		Notifications: db.NewNotifications(store.DB),
+		Household:     db.NewHousehold(store.DB),
 	}
 	// Notifications (#237): the VAPID keys are made on the first start and kept in the
 	// database; the ticker sends from the browsers' own push services.

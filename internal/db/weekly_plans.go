@@ -442,6 +442,22 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 				}
 			}
 		}
+		// The quantities the household's people set by hand follow their rows (#238).
+		for srcID, dstID := range itemIDMap {
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO household_item_quantities (person_id, meal_item_id, quantity)
+				 SELECT person_id, ?, quantity FROM household_item_quantities WHERE meal_item_id = ?`, dstID, srcID); err != nil {
+				return fmt.Errorf("copy household quantities: %w", err)
+			}
+		}
+	}
+	// And the meals they skip.
+	for srcID, dstID := range idMap {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO household_meal_skips (person_id, meal_id)
+			 SELECT person_id, ? FROM household_meal_skips WHERE meal_id = ?`, dstID, srcID); err != nil {
+			return fmt.Errorf("copy household skips: %w", err)
+		}
 	}
 
 	return tx.Commit()
@@ -714,14 +730,16 @@ func (r *WeeklyPlans) UpdateItem(ctx context.Context, itemID, userID int64, quan
 	}
 	var ingredientID sql.NullInt64
 	var customized bool
+	var oldUnit string
 	err := r.db.QueryRowContext(ctx, `
 		SELECT mi.ingredient_id,
-		       EXISTS (SELECT 1 FROM meal_item_customizations c WHERE c.meal_item_id = mi.id)
+		       EXISTS (SELECT 1 FROM meal_item_customizations c WHERE c.meal_item_id = mi.id),
+		       mi.quantity_unit
 		FROM meal_items mi
 		JOIN meals m ON m.id = mi.meal_id
 		JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
 		WHERE mi.id = ? AND wp.user_id = ?`, itemID, userID,
-	).Scan(&ingredientID, &customized)
+	).Scan(&ingredientID, &customized, &oldUnit)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrMealItemNotFound
 	}
@@ -741,6 +759,11 @@ func (r *WeeklyPlans) UpdateItem(ctx context.Context, itemID, userID int64, quan
 		`UPDATE meal_items SET quantity = ?, quantity_unit = ? WHERE id = ?`,
 		quantity, stored, itemID); err != nil {
 		return fmt.Errorf("update meal_item: %w", err)
+	}
+	if stored != oldUnit { // a quantity a person set by hand (#238) was in the old unit
+		if _, err := r.db.ExecContext(ctx, `DELETE FROM household_item_quantities WHERE meal_item_id = ?`, itemID); err != nil {
+			return fmt.Errorf("clear household quantities: %w", err)
+		}
 	}
 	return nil
 }

@@ -53,6 +53,7 @@ type App struct {
 	// Notifications (#237): the reminders and devices, the sender that ticks every
 	// minute (nil in the demo build) and the VAPID public key the browser needs.
 	Notifications   *db.Notifications
+	Household       *db.Household // the people who share the account's week (#238)
 	Notify          *notify.Service
 	NotifyPublicKey string
 

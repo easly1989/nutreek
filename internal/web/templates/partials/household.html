@@ -1,0 +1,36 @@
+{{define "household_item_dialog"}}
+{{- /* The dialog that sets what each person of the household eats of a row (#238).
+       View model: app.householdItemData. One field per person, q_<id>: empty is the
+       automatic quantity, a number is theirs, 0 is not eaten. */ -}}
+<dialog data-modal class="dialog-panel lg:w-[460px]" aria-label="{{t "household.item.title"}}">
+  <div class="flex items-start gap-3 pl-4 lg:pl-5 pr-4 pt-4 pb-3">
+    <div class="grow min-w-0">
+      <h2 class="text-[17px] font-bold truncate">{{.Name}}</h2>
+      <p class="text-muted">{{t "household.item.base" "Qty" (dec .OwnerQty 2) "Unit" .Unit}}</p>
+    </div>
+    <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
+  </div>
+  <form method="post" action="{{.Action}}" hx-post="{{.Action}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog class="flex flex-col min-h-0">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="divide-y divide-border border-t border-border">
+      {{range .People}}
+      <label class="flex items-center gap-3 px-4 lg:px-5 py-2.5">
+        <span class="hh-av" style="--hh-c:var(--hh{{.Color}})" aria-hidden="true">{{initial .Name}}</span>
+        <span class="grow min-w-0">
+          <b class="block font-semibold truncate">{{.Name}}</b>
+          <span class="block text-[12.5px] text-muted">{{if .Manual}}{{t "household.item.by_hand"}} · {{end}}{{t "household.item.auto" "Qty" (dec .Auto 2) "Unit" .Unit}}</span>
+        </span>
+        <input name="q_{{.PersonID}}" inputmode="decimal" autocomplete="off" value="{{if .Manual}}{{dec .Qty 2}}{{end}}" placeholder="{{dec .Auto 2}}"
+               aria-label="{{t "household.item.qty_for" "Name" .Name}}" class="field w-24 text-right tabular-nums">
+        <span class="w-[4.5rem] shrink-0 truncate text-muted">{{.Unit}}</span>
+      </label>
+      {{end}}
+    </div>
+    <p class="px-4 lg:px-5 py-2.5 text-[12.5px] text-muted">{{t "household.item.hint"}}</p>
+    <div class="flex items-center justify-end gap-2 px-4 lg:px-5 py-3 border-t border-border">
+      <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+      <button type="submit" class="btn-primary">{{t "household.save"}}</button>
+    </div>
+  </form>
+</dialog>
+{{end}}

@@ -53,6 +53,21 @@
       </div>
     {{end}}
 
+    {{- /* The household (#238): the day's kcal of each person against their goal. */}}
+    {{if .Day.People}}
+    <div class="flex flex-col gap-2 pt-1 border-t border-border" role="group" aria-label="{{t "household.day_label"}}">
+      {{range .Day.People}}
+      <div class="flex flex-col gap-1" style="--hh-c:var(--hh{{.Color}})">
+        <div class="flex items-center justify-between gap-2">
+          <span class="inline-flex items-center gap-1.5 font-semibold min-w-0"><span class="hh-dot" aria-hidden="true"></span><span class="truncate">{{.Name}}</span></span>
+          <span class="tabular-nums whitespace-nowrap"><strong class="{{if .Over}}text-danger{{end}}">{{num .Kcal}}</strong><span class="text-muted">{{if .Target}} / {{num .Target}}{{end}} kcal</span></span>
+        </div>
+        {{if .Target}}<span class="block h-1.5 rounded-full bg-track overflow-hidden" aria-hidden="true"><span class="hh-fill" style="width:{{.Pct}}%"></span></span>{{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
     {{if or .HasMeals (gt .WorkoutKcal 0.0)}}
     <div class="flex flex-wrap gap-1.5">
       {{if .HasMeals}}
@@ -175,6 +190,7 @@
       {{template "meal_time_pill" .}}
       <h3 class="text-[15px] font-bold leading-6 {{if $m.HasCheats}}text-danger{{end}}">{{$m.Meal.Name}}</h3>
       {{if $m.HasCheats}}<span class="chip bg-danger-soft text-danger">{{t "week.cheat"}}</span>{{end}}
+      {{range $m.Skips}}{{if .Skipped}}<span class="chip bg-surface-2 text-muted" style="--hh-c:var(--hh{{.Color}})"><span class="hh-dot mr-1.5" aria-hidden="true"></span>{{t "household.skips_chip" "Name" .Name}}</span>{{end}}{{end}}
       <span class="inline-flex gap-2.5 text-[12.5px] text-muted tabular-nums">
         <span title="{{t "common.protein"}}"><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{num $m.MealTotal.Protein}} g</span>
         <span title="{{t "common.carbs"}}"><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num $m.MealTotal.Carbs}} g</span>
@@ -187,6 +203,15 @@
       <div id="meal-menu-{{$m.Meal.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
         <a href="/meals/{{$m.Meal.ID}}/items/new?cheat=1&start={{$ws}}" class="nav-link"
            hx-get="/meals/{{$m.Meal.ID}}/items/new?cheat=1&start={{$ws}}" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon" "i-plus"}}{{t "week.log_cheat"}}</a>
+        {{- /* Household (#238): who eats the meal. */}}
+        {{range $m.Skips}}
+        <form method="post" action="/meals/{{$m.Meal.ID}}/people/{{.PersonID}}/skip?start={{$ws}}"
+              hx-post="/meals/{{$m.Meal.ID}}/people/{{.PersonID}}/skip?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
+          <input type="hidden" name="csrf_token" value="{{$csrf}}">
+          <input type="hidden" name="skip" value="{{if .Skipped}}0{{else}}1{{end}}">
+          <button class="nav-link w-full"><span class="hh-dot" style="--hh-c:var(--hh{{.Color}})" aria-hidden="true"></span>{{if .Skipped}}{{t "household.eats" "Name" .Name}}{{else}}{{t "household.skips" "Name" .Name}}{{end}}</button>
+        </form>
+        {{end}}
         <form method="post" action="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}"
               hx-post="/meals/{{$m.Meal.ID}}/delete?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
               hx-confirm="{{t "week.delete_meal_confirm" "Name" $m.Meal.Name}}">
@@ -337,6 +362,13 @@
     </div>
     {{end}}
   </span>
+  {{- /* Household (#238): what each person eats of the row, a tap changes it. */}}
+  {{if $v.People}}
+  <button type="button" hx-get="/meal-items/{{$it.ID}}/people?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
+          class="col-span-full justify-self-start flex flex-wrap items-center gap-1.5 -ml-1 px-1 pb-1 rounded-lg hover:bg-surface-2" aria-label="{{t "household.item.change" "Name" $nm}}">
+    {{range $v.People}}<span class="hh-chip" style="--hh-c:var(--hh{{.Color}})" title="{{.Name}}"><span class="hh-dot" aria-hidden="true"></span><span class="sr-only">{{.Name}}</span>{{if .None}}—{{else}}{{dec .Qty 2}} {{.Unit}}{{end}}{{if .Manual}}<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>{{end}}</span>{{end}}
+  </button>
+  {{end}}
 </li>
 {{end}}
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/household"
 	"github.com/amon2126/nutreek/internal/macros"
 )
 
@@ -113,8 +114,28 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 		weekCount = 1
 	}
 
-	// Aggregate the ingredients over every week covered.
-	totals := make(map[int64]float64) // ingredientID -> total quantity
+	// Aggregate the ingredients over every week covered. The household's people (#238)
+	// add what they eat; shares keeps who needs what, for the detail on a row.
+	totals := make(map[int64]float64)           // ingredientID -> total quantity
+	shares := make(map[int64]map[int64]float64) // ingredientID -> person (0 = the owner) -> quantity
+	add := func(ingID, person int64, q float64) {
+		totals[ingID] += q
+		if shares[ingID] == nil {
+			shares[ingID] = map[int64]float64{}
+		}
+		shares[ingID][person] += q
+	}
+	hh := NewHousehold(r.db)
+	people, err := hh.List(ctx, userID)
+	if err != nil {
+		return err
+	}
+	var ownerTarget sql.NullFloat64
+	if len(people) > 0 {
+		if err := r.db.QueryRowContext(ctx, `SELECT target_kcal FROM users WHERE id = ?`, userID).Scan(&ownerTarget); err != nil {
+			return fmt.Errorf("load owner target: %w", err)
+		}
+	}
 	for w := 0; w < weekCount; w++ {
 		ws := weekStart.AddDate(0, 0, 7*w)
 		plan, err := r.plans.GetOrCreateForWeek(ctx, userID, ws)
@@ -133,15 +154,33 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 				for _, it := range meal.Items {
 					if it.Ingredient != nil {
 						// Items in pieces are bought by weight: «2 pz» of apples = 300 g.
-						totals[it.Ingredient.ID] += macros.Grams(it.Quantity, it.QuantityUnit, it.Ingredient)
+						add(it.Ingredient.ID, 0, macros.Grams(it.Quantity, it.QuantityUnit, it.Ingredient))
 					}
 					if it.Recipe != nil && it.Recipe.Servings > 0 {
 						scale := it.Quantity / float64(it.Recipe.Servings)
 						for _, ri := range it.RecipeItems {
-							totals[ri.IngredientID] += macros.RecipeItemGrams(ri) * scale
+							add(ri.IngredientID, 0, macros.RecipeItemGrams(ri)*scale)
 						}
 					}
 				}
+			}
+		}
+		if len(people) == 0 {
+			continue
+		}
+		week, err := hh.Week(ctx, userID, plan.ID)
+		if err != nil {
+			return err
+		}
+		for _, p := range people {
+			person := household.Person{ID: p.ID, Ratio: household.Ratio(p.TargetKcal, ownerTarget.Float64),
+				Quantities: week.Quantities[p.ID], Skipped: week.Skips[p.ID]}
+			need := map[int64]float64{}
+			for d := 0; d < 7; d++ {
+				person.Needs(full.Days[d], need)
+			}
+			for ingID, q := range need {
+				add(ingID, p.ID, q)
 			}
 		}
 	}
@@ -168,6 +207,13 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 		if to != from {
 			totals[to] += q
 			delete(totals, from)
+			for person, pq := range shares[from] {
+				if shares[to] == nil {
+					shares[to] = map[int64]float64{}
+				}
+				shares[to][person] += pq
+			}
+			delete(shares, from)
 		}
 	}
 
@@ -211,6 +257,9 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 	); err != nil {
 		return fmt.Errorf("clear items: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM shopping_list_shares WHERE shopping_list_id = ?`, listID); err != nil {
+		return fmt.Errorf("clear shares: %w", err)
+	}
 
 	if len(totals) == 0 {
 		return tx.Commit()
@@ -243,7 +292,45 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 		}
 		idx++
 	}
+	if len(people) > 0 { // the detail for a row: who needs how much
+		for ingID, byPerson := range shares {
+			for person, q := range byPerson {
+				if _, err := tx.ExecContext(ctx,
+					`INSERT INTO shopping_list_shares (shopping_list_id, ingredient_id, person_id, quantity) VALUES (?, ?, ?, ?)`,
+					listID, ingID, person, q); err != nil {
+					return fmt.Errorf("insert share: %w", err)
+				}
+			}
+		}
+	}
 	return tx.Commit()
+}
+
+// Shares returns, for each ingredient of a list, what each person needs of it
+// (person id 0 = the account owner). Empty for a household of one.
+func (r *ShoppingLists) Shares(ctx context.Context, listID, userID int64) (map[int64]map[int64]float64, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT s.ingredient_id, s.person_id, s.quantity
+		FROM shopping_list_shares s
+		JOIN shopping_lists l ON l.id = s.shopping_list_id
+		WHERE s.shopping_list_id = ? AND l.user_id = ?`, listID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("load shares: %w", err)
+	}
+	defer rows.Close()
+	out := map[int64]map[int64]float64{}
+	for rows.Next() {
+		var ing, person int64
+		var q float64
+		if err := rows.Scan(&ing, &person, &q); err != nil {
+			return nil, err
+		}
+		if out[ing] == nil {
+			out[ing] = map[int64]float64{}
+		}
+		out[ing][person] = q
+	}
+	return out, rows.Err()
 }
 
 // LoadFull loads the list, the auto items (with Ingredient resolved, sorted
