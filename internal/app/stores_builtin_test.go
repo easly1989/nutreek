@@ -2,16 +2,19 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/stores"
 )
 
@@ -45,8 +48,12 @@ func TestIntegratedStore(t *testing.T) {
 		{ID: "newshop", Name: "Newshop", Description: "Plugin's own description", Site: "https://newshop.example"},
 	}
 
+	jars := map[int64][]*http.Cookie{} // each user's cookies, kept between requests as a browser does
 	do := func(h http.HandlerFunc, method, target string, v url.Values, params map[string]string, userID int64) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, target, strings.NewReader(v.Encode()))
+		for _, c := range jars[userID] {
+			r.AddCookie(c)
+		}
 		if method == http.MethodPost {
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}
@@ -61,6 +68,7 @@ func TestIntegratedStore(t *testing.T) {
 		}
 		w := httptest.NewRecorder()
 		a.Sessions.LoadAndSave(h).ServeHTTP(w, requestWithUser(r, u))
+		jars[userID] = append(jars[userID], w.Result().Cookies()...)
 		return w
 	}
 
@@ -94,11 +102,19 @@ func TestIntegratedStore(t *testing.T) {
 		t.Error("Bob sees Alice's connection, or cannot connect his own")
 	}
 
-	// It cannot be edited into an address, and its test and delete work like any store's.
+	// It cannot be edited into an address, and its test and delete work like any store's. The
+	// secret key is set here so that the handler's own guard is the one that answers.
+	a.StoreBox, _ = stores.NewBox("0123456789abcdef")
 	id := map[string]string{"id": strconv.FormatInt(list[0].ID, 10)}
 	do(a.handleStoresSave, http.MethodPost, "/settings/stores/x", url.Values{"name": {"Mine"}, "url": {"https://evil.example"}, "token": {"x"}}, id, alice.ID)
 	if p, _ := a.StorePlugins.Get(ctx, alice.ID, list[0].ID); p.BaseURL != stores.BuiltinURL("conad") || p.Name != "Conad" {
 		t.Errorf("an integrated store was edited: %+v", p)
+	}
+	if err := a.StorePlugins.Update(ctx, alice.ID, list[0].ID, "Mine", "https://evil.example", "x"); !errors.Is(err, db.ErrStoreNotFound) {
+		t.Errorf("the repository edited an integrated store: %v", err)
+	}
+	if p, _ := a.StorePlugins.Get(ctx, alice.ID, list[0].ID); p.BaseURL != stores.BuiltinURL("conad") {
+		t.Errorf("the address changed: %+v", p)
 	}
 	if w := do(a.handleStoresTest, http.MethodPost, "/settings/stores/x/test", nil, id, alice.ID); w.Code != http.StatusSeeOther {
 		t.Errorf("test: %d", w.Code)
@@ -140,8 +156,12 @@ func TestIntegratedStore(t *testing.T) {
 	if hidden, _ := a.StorePlugins.PricesNoticeHidden(ctx, alice.ID); hidden {
 		t.Error("closing for now hid it for good")
 	}
+	if strings.Contains(shop(), "data-prices-notice") {
+		t.Error("the notice shows again in the same session after «Close»")
+	}
+	jars[alice.ID] = nil // a new sign-in: the notice is back
 	if !strings.Contains(shop(), "data-prices-notice") {
-		t.Error("a request with no session of its own lost the notice (the close is per sign-in)")
+		t.Error("«Close» hid the notice for good, not for the visit")
 	}
 	do(a.handlePricesNotice, http.MethodPost, "/shopping-list/prices-notice?week=2026-10-12&weeks=1", url.Values{"forever": {"1"}}, nil, alice.ID)
 	if hidden, _ := a.StorePlugins.PricesNoticeHidden(ctx, alice.ID); !hidden {
@@ -152,5 +172,30 @@ func TestIntegratedStore(t *testing.T) {
 	}
 	if hidden, _ := a.StorePlugins.PricesNoticeHidden(ctx, bob.ID); hidden {
 		t.Error("Alice's choice hid Bob's notice")
+	}
+}
+
+// Two clicks on «Connect» at once make one connection.
+func TestAddBuiltinRace(t *testing.T) {
+	a := newTestApp(t)
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	ids := make([]int64, 8)
+	var wg sync.WaitGroup
+	for i := range ids {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ids[i], _ = a.StorePlugins.AddBuiltin(context.Background(), alice.ID, "conad", "Conad")
+		}()
+	}
+	wg.Wait()
+	list, _ := a.StorePlugins.List(context.Background(), alice.ID)
+	if len(list) != 1 {
+		t.Fatalf("%d connections from 8 clicks: %+v", len(list), list)
+	}
+	for _, id := range ids {
+		if id != list[0].ID {
+			t.Errorf("a click got %d, the connection is %d", id, list[0].ID)
+		}
 	}
 }

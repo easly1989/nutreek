@@ -44,5 +44,6 @@
   "stores.builtin.connected": "Collegato",
   "stores.builtin.manage": "Gestisci",
   "stores.builtin.nothing_to_set": "Un negozio integrato non ha nulla da impostare. Puoi provarlo o scollegarlo.",
-  "stores.builtin.desc.conad": "Prodotti, prezzi, disponibilità e valori nutrizionali dal negozio online di Conad."
+  "stores.builtin.desc.conad": "Prodotti, prezzi, disponibilità e valori nutrizionali dal negozio online di Conad.",
+  "stores.prices.partial": "Prezzi aggiornati ({{.Count}}); {{.Missing}} non si sono potuti aggiornare, riprova."
 }

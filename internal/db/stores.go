@@ -204,7 +204,13 @@ func (s *StorePlugins) AddBuiltin(ctx context.Context, userID int64, id, name st
 	if !errors.Is(err, sql.ErrNoRows) {
 		return 0, err
 	}
-	return s.Add(ctx, userID, name, BuiltinPrefix+id, "builtin")
+	added, err := s.Add(ctx, userID, name, BuiltinPrefix+id, "builtin")
+	if err != nil && strings.Contains(err.Error(), "UNIQUE") { // the other click got there first
+		if gerr := s.db.QueryRowContext(ctx, `SELECT id FROM store_plugins WHERE user_id = ? AND base_url = ?`, userID, BuiltinPrefix+id).Scan(&have); gerr == nil {
+			return have, nil
+		}
+	}
+	return added, err
 }
 
 // PricesNoticeHidden says whether the user closed the notice about indicative prices for good.

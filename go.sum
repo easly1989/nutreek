@@ -8,8 +8,8 @@ github.com/alexedwards/scs/v2 v2.9.0 h1:xa05mVpwTBm1iLeTMNFfAWpKUm4fXAW7CeAViqBV
 github.com/alexedwards/scs/v2 v2.9.0/go.mod h1:ToaROZxyKukJKT/xLcVQAChi5k6+Pn1Gvmdl7h3RRj8=
 github.com/dustin/go-humanize v1.1.0 h1:dbKTrvD0klcbBV/h4AWJdMuZogJACoMlvWIWZ5b2xWg=
 github.com/dustin/go-humanize v1.1.0/go.mod h1:hc1CvRkJMsgxqjmjMQF3QNRAZBwY8AXBAzKYoSX9sFI=
-github.com/easly1989/nutreek-store-plugins v0.1.0 h1:7zKe0KS1LlbLsyX2p04YvAUXYZ35H5Wfj4hJmEKBPQM=
-github.com/easly1989/nutreek-store-plugins v0.1.0/go.mod h1:K7eLct9hVJbPxPNSJInCPeAbUpmiMjZRDXI1qwf4OW0=
+github.com/easly1989/nutreek-store-plugins v0.1.1 h1:qTYjjiVzuDDqwNnAL+bRUanrTeyKNUN0qHdPNT7i4bU=
+github.com/easly1989/nutreek-store-plugins v0.1.1/go.mod h1:K7eLct9hVJbPxPNSJInCPeAbUpmiMjZRDXI1qwf4OW0=
 github.com/go-chi/chi/v5 v5.5.0 h1:xdKQ1dJmVJsmgahrXSKhUx8NyVPzpwdlyrrQFpMPJgg=
 github.com/go-chi/chi/v5 v5.5.0/go.mod h1:d1IG7GtKPSjPyBP365PH8sAGVHk3qfB/IhjFNRH1wWM=
 github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=

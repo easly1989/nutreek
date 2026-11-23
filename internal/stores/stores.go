@@ -34,7 +34,7 @@ import (
 const (
 	maxBody     = 1 << 20 // a plugin answer is read up to 1 MiB
 	maxProducts = 20      // products kept from a search
-	maxIDs      = 50      // ids asked in one availability call
+	maxIDs      = 20      // ids asked in one availability call: what a plugin can look at in its time
 )
 
 // Sizes a package can be measured in: grams, millilitres or pieces.

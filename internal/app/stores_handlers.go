@@ -290,7 +290,7 @@ func (a *App) handleShoppingPrices(w http.ResponseWriter, r *http.Request) {
 	for _, l := range links {
 		byPlugin[l.PluginID] = append(byPlugin[l.PluginID], l)
 	}
-	var updated int
+	var updated, asked int
 	var failed []string
 	for pluginID, ls := range byPlugin {
 		p, err := a.StorePlugins.Get(r.Context(), user.ID, pluginID)
@@ -301,6 +301,7 @@ func (a *App) handleShoppingPrices(w http.ResponseWriter, r *http.Request) {
 		for _, l := range ls {
 			products = append(products, l.ProductID)
 		}
+		asked += len(ls)
 		ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 		token, err := a.pluginToken(p)
 		var status map[string]stores.Status
@@ -324,6 +325,10 @@ func (a *App) handleShoppingPrices(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	flash := a.t(r, "stores.prices.updated", "Count", updated)
+	if missing := asked - updated; missing > 0 && len(failed) == 0 {
+		// The store answered for fewer products than were asked: say so, not «updated».
+		flash = a.t(r, "stores.prices.partial", "Count", updated, "Missing", missing)
+	}
 	if len(failed) > 0 {
 		flash = a.t(r, "stores.prices.failed", "Names", strings.Join(failed, ", "))
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -21,7 +22,14 @@ func IsBuiltin(base string) bool {
 
 // fetchBuiltin calls an integrated store's handler as a request would, and cuts its answer
 // at the size a network one is.
-func (c *Client) fetchBuiltin(ctx context.Context, id, path string, q url.Values) (int, []byte, error) {
+func (c *Client) fetchBuiltin(ctx context.Context, id, path string, q url.Values) (status int, body []byte, err error) {
+	// The handler runs in this process, on a goroutine no middleware watches: a panic in it
+	// is a failed call, not a dead server.
+	defer func() {
+		if v := recover(); v != nil {
+			status, body, err = 0, nil, fmt.Errorf("integrated store %s panicked: %v", id, v)
+		}
+	}()
 	h, ok := c.Builtin[id]
 	if !ok {
 		return 0, nil, errors.New("no such integrated store")

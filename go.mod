@@ -6,6 +6,7 @@ require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/alexedwards/scs/sqlite3store v0.0.0-20251002162104-209de6e426de
 	github.com/alexedwards/scs/v2 v2.9.0
+	github.com/easly1989/nutreek-store-plugins v0.1.1
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/justinas/nosurf v1.2.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
@@ -17,7 +18,6 @@ require (
 
 require (
 	github.com/dustin/go-humanize v1.1.0 // indirect
-	github.com/easly1989/nutreek-store-plugins v0.1.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
