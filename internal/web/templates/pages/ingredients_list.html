@@ -16,44 +16,53 @@
        active filters along through data-search-extra. */}}
   <form method="get" action="/ingredients" class="flex flex-col gap-3" role="search">
     {{with $f.Src}}<input type="hidden" name="src" value="{{.}}">{{end}}
-    <label class="field-ico">
-      {{template "icon" "i-search"}}
-      <input type="search" name="q" value="{{.Query}}" placeholder="{{t "ingredients.search.placeholder"}}" aria-label="{{t "ingredients.search.label"}}"
-             class="field field-lg" autocomplete="off" autofocus
-             data-ingredient-search
-             data-search-url="/ingredients/search"
-             data-search-target="#ingredient-results"
-             data-search-spinner="#ingredient-search-spinner"
-             {{with $f.Query}}data-search-extra="{{.}}"{{end}}
-             {{if not $f.WantsOFF}}data-search-no-off="1"{{end}}>
-    </label>
+    {{- $n := 0}}{{if $f.CategoryID}}{{$n = add $n 1}}{{end}}{{if $f.AllergenID}}{{$n = add $n 1}}{{end}}
+    <div class="flex items-center gap-2">
+      <label class="field-ico grow min-w-0">
+        {{template "icon" "i-search"}}
+        <input type="search" name="q" value="{{.Query}}" placeholder="{{t "ingredients.search.placeholder"}}" aria-label="{{t "ingredients.search.label"}}"
+               class="field field-lg" autocomplete="off" autofocus
+               data-ingredient-search
+               data-search-url="/ingredients/search"
+               data-search-target="#ingredient-results"
+               data-search-spinner="#ingredient-search-spinner"
+               {{with $f.Query}}data-search-extra="{{.}}"{{end}}
+               {{if not $f.WantsOFF}}data-search-no-off="1"{{end}}>
+      </label>
+      {{if or .AllCategories .AllAllergens}}
+      <div class="relative shrink-0">
+        <button type="button" class="btn-secondary" data-popover="ing-filters" aria-expanded="false" aria-controls="ing-filters">{{t "ingredients.filter.title"}}{{if $n}} <span class="chip chip-soft">{{$n}}</span>{{end}}</button>
+        <div id="ing-filters" class="menu-panel hidden absolute right-0 top-full mt-1 w-72 z-20 p-3 flex flex-col gap-3">
+          {{if .AllCategories}}
+          <label class="lab">{{t "ingredients.filter.category"}}
+            <select name="category" onchange="this.form.requestSubmit()" class="field font-normal text-text">
+              <option value="">{{t "ingredients.filter.category_all"}}</option>
+              {{range .AllCategories}}<option value="{{.ID}}"{{if eq $f.CategoryID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+            </select>
+          </label>
+          {{end}}
+          {{if .AllAllergens}}
+          <label class="lab">{{t "ingredients.filter.allergen"}}
+            <select name="allergen" onchange="this.form.requestSubmit()" class="field font-normal text-text">
+              <option value="">{{t "ingredients.filter.allergen_all"}}</option>
+              {{range .AllAllergens}}<option value="{{.ID}}"{{if eq $f.AllergenID .ID}} selected{{end}}>{{ref "allergen" .Code .Name}}</option>{{end}}
+            </select>
+          </label>
+          {{end}}
+          {{if $n}}<a href="{{$f.WithoutTags.Href .Query}}" class="btn-ghost self-start h-8 px-2.5">{{t "ingredients.filter.reset"}}</a>{{end}}
+        </div>
+      </div>
+      {{end}}
+    </div>
     <div class="flex flex-wrap items-center gap-2">
       <nav class="segmented" aria-label="{{t "ingredients.filter.source"}}">
         <a href="{{($f.WithSrc "").Href .Query}}"{{if eq $f.Src ""}} aria-current="page"{{end}}>{{t "ingredients.filter.all"}}</a>
         <a href="{{($f.WithSrc "mine").Href .Query}}"{{if eq $f.Src "mine"}} aria-current="page"{{end}}>{{t "ingredients.filter.mine"}}</a>
         <a href="{{($f.WithSrc "off").Href .Query}}"{{if eq $f.Src "off"}} aria-current="page"{{end}}>OpenFoodFacts</a>
       </nav>
-      {{if .AllCategories}}
-      <label class="filter relative pr-8{{if $f.CategoryID}} is-on{{end}}">
-        <select name="category" onchange="this.form.requestSubmit()" aria-label="{{t "ingredients.filter.category"}}" class="absolute inset-0 opacity-0 cursor-pointer">
-          <option value="">{{t "ingredients.filter.category_all"}}</option>
-          {{range .AllCategories}}<option value="{{.ID}}"{{if eq $f.CategoryID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
-        </select>
-        {{if $f.CategoryID}}{{range .AllCategories}}{{if eq $f.CategoryID .ID}}{{.Name}}{{end}}{{end}}{{else}}{{t "ingredients.filter.category_all"}}{{end}}
-        <span class="absolute right-2.5">{{template "icon_sm" "i-chevron-down"}}</span>
-      </label>
-      {{end}}
-      {{if .AllAllergens}}
-      <label class="filter relative pr-8{{if $f.AllergenID}} is-on{{end}}">
-        <select name="allergen" onchange="this.form.requestSubmit()" aria-label="{{t "ingredients.filter.allergen"}}" class="absolute inset-0 opacity-0 cursor-pointer">
-          <option value="">{{t "ingredients.filter.allergen_all"}}</option>
-          {{range .AllAllergens}}<option value="{{.ID}}"{{if eq $f.AllergenID .ID}} selected{{end}}>{{ref "allergen" .Code .Name}}</option>{{end}}
-        </select>
-        {{if $f.AllergenID}}{{range .AllAllergens}}{{if eq $f.AllergenID .ID}}{{t "ingredients.filter.contains" "Name" (ref "allergen" .Code .Name)}}{{end}}{{end}}{{else}}{{t "ingredients.filter.allergen_all"}}{{end}}
-        <span class="absolute right-2.5">{{template "icon_sm" "i-chevron-down"}}</span>
-      </label>
-      {{end}}
-      {{if or $f.CategoryID $f.AllergenID}}<a href="{{$f.WithoutTags.Href .Query}}" class="btn-ghost h-8 px-2.5">{{t "ingredients.filter.reset"}}</a>{{end}}
+      {{- /* What the Filters menu has set stays in view. */}}
+      {{if $f.CategoryID}}{{range .AllCategories}}{{if eq $f.CategoryID .ID}}<span class="chip chip-n">{{.Name}}</span>{{end}}{{end}}{{end}}
+      {{if $f.AllergenID}}{{range .AllAllergens}}{{if eq $f.AllergenID .ID}}<span class="chip chip-warn">{{t "ingredients.filter.contains" "Name" (ref "allergen" .Code .Name)}}</span>{{end}}{{end}}{{end}}
       <noscript><button class="btn-secondary h-8">{{t "ingredients.filter.apply"}}</button></noscript>
     </div>
   </form>
