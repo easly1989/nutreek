@@ -1,0 +1,18 @@
+{
+  "tu.title": "You",
+  "tu.desc": "Your account, preferences and help.",
+  "tu.account": "Account",
+  "tu.profile": "Profile and goals",
+  "tu.profile_desc": "Weight, height, calories and macros",
+  "tu.household": "Household",
+  "tu.household_desc": "The people who share the week",
+  "tu.data": "Password, data and tokens",
+  "tu.data_desc": "Sign-in, export and API tokens",
+  "tu.preferences": "Preferences",
+  "tu.appearance": "Appearance and language",
+  "tu.meal_times": "Meals and times",
+  "tu.notifications": "Notifications",
+  "tu.stores": "Stores",
+  "tu.help": "Help",
+  "tu.admin": "Administration"
+}

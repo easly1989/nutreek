@@ -209,6 +209,18 @@
   }
   .tab-link.is-active { @apply text-accent; }
 
+  /* The ledger (DESIGN.md): a group opens with a strong rule, its rows are
+     separated by hairlines. Used by the You page (#283). */
+  .ledger-head { @apply text-[17px] font-bold pt-2 mb-0.5 border-t-2 border-text; }
+  .tu-row { @apply flex items-center justify-between gap-3 min-h-[52px] px-1 border-t border-border text-text hover:bg-surface-2 transition-colors; }
+  .tu-row-end { @apply border-t-2 border-text; }
+
+  /* The tabs at the top of a destination that holds several pages (Library,
+     Progress): the current one is underlined. */
+  .subnav { @apply flex gap-1 border-b border-border mb-4 -mt-1 overflow-x-auto; }
+  .subnav a { @apply inline-flex items-center min-h-[44px] px-3 text-[15px] font-semibold text-muted border-b-2 border-transparent -mb-px whitespace-nowrap hover:text-text; }
+  .subnav a[aria-current="page"] { @apply text-accent border-accent; }
+
   /* The plan-building pages (#122). */
   .field-lg { @apply h-[42px] text-[15px]; }
   textarea.field { @apply h-auto py-2; }

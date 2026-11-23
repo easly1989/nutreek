@@ -56,5 +56,11 @@
   "layout.error.server_tab": "Error",
   "layout.error.server_title": "Something went wrong",
   "layout.error.server_text": "The problem is on our side and has been logged. Try again shortly; if it happens again, tell whoever runs this instance.",
-  "layout.error.plain": "Internal error"
+  "layout.error.plain": "Internal error",
+  "layout.nav.library": "Library",
+  "layout.nav.progress": "Progress",
+  "layout.nav.you": "You",
+  "layout.nav.you_menu": "You: {{.Name}}",
+  "layout.nav.library_tabs": "Library",
+  "layout.nav.progress_tabs": "Progress"
 }

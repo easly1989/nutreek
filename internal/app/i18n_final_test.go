@@ -464,6 +464,8 @@ func TestEnglishEveryPage(t *testing.T) {
 		{route: "/upgrade", target: "/upgrade"},
 		{target: "/upgrade", as: "eve", premium: true},
 		{target: "/upgrade?da=" + features[0].Key, as: "eve", premium: true},
+		{route: "/tu", target: "/tu"},
+		{target: "/tu", as: "eve"},
 		{route: "/settings", target: "/settings"},
 		{target: "/settings?ok=password"},
 		{target: "/settings", as: "eve"},

@@ -56,5 +56,11 @@
   "layout.error.server_tab": "Errore",
   "layout.error.server_title": "Qualcosa non ha funzionato",
   "layout.error.server_text": "Il problema è dalla nostra parte ed è stato registrato. Riprova tra poco; se si ripete, avvisa chi gestisce questa istanza.",
-  "layout.error.plain": "Errore interno"
+  "layout.error.plain": "Errore interno",
+  "layout.nav.library": "Libreria",
+  "layout.nav.progress": "Progressi",
+  "layout.nav.you": "Tu",
+  "layout.nav.you_menu": "Tu: {{.Name}}",
+  "layout.nav.library_tabs": "Libreria",
+  "layout.nav.progress_tabs": "Progressi"
 }
