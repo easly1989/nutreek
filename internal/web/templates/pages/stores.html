@@ -21,13 +21,54 @@
     {{template "store_sources" .}}
   </section>
 
+  {{/* The integrated stores (#277): they run inside Nutreek, so one click connects them. */}}
+  {{if .Builtins}}
+  <section class="card" aria-labelledby="st-builtin">
+    <div class="px-4 pt-3.5 pb-1">
+      <h2 id="st-builtin" class="h2">{{t "stores.builtin.title"}}</h2>
+      <p class="text-[12.5px] text-muted">{{t "stores.builtin.hint"}}</p>
+    </div>
+    {{range .Builtins}}
+    <div class="flex items-center gap-3 px-4 py-3 border-t border-border">
+      <div class="grow min-w-0">
+        <b class="block font-semibold truncate">{{.Name}}</b>
+        <span class="block text-[12.5px] text-muted">{{.About}}</span>
+      </div>
+      {{if .Connected}}
+      <span class="chip bg-accent-soft text-text font-semibold shrink-0">{{t "stores.builtin.connected"}}</span>
+      {{else}}
+      <form method="post" action="/settings/stores/builtin/{{.ID}}" class="shrink-0">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button class="btn-primary h-8 px-3 text-[13px]">{{t "stores.builtin.connect"}}</button>
+      </form>
+      {{end}}
+    </div>
+    {{end}}
+  </section>
+  {{end}}
+
   {{range .Plugins}}
   <section class="card" aria-label="{{.Name}}">
     <details>
       <summary class="flex items-center gap-3 px-4 py-3 cursor-pointer list-none">
         <b class="grow min-w-0 truncate">{{.Name}}</b>
-        <span class="text-accent font-semibold text-[13px]">{{t "stores.edit"}}</span>
+        <span class="text-accent font-semibold text-[13px]">{{if .Builtin}}{{t "stores.builtin.manage"}}{{else}}{{t "stores.edit"}}{{end}}</span>
       </summary>
+      {{if .Builtin}}
+      <div class="flex flex-col gap-3 px-4 pb-4 bg-surface-2 pt-3">
+        <p class="text-[12.5px] text-muted">{{t "stores.builtin.nothing_to_set"}}</p>
+        <div class="flex flex-wrap items-center gap-2">
+          <form method="post" action="/settings/stores/{{.ID}}/test">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button class="btn-secondary">{{t "stores.test"}}</button>
+          </form>
+          <form method="post" action="/settings/stores/{{.ID}}/delete" data-confirm="{{t "stores.delete_confirm" "Name" .Name}}" class="ml-auto">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button class="btn-ghost text-danger h-8 px-2 text-[12.5px]" aria-label="{{t "stores.delete_named" "Name" .Name}}">{{template "icon_sm" "i-trash"}}{{t "stores.delete"}}</button>
+          </form>
+        </div>
+      </div>
+      {{else}}
       <div class="flex flex-col gap-3 px-4 pb-4 bg-surface-2 pt-3">
         <form method="post" action="/settings/stores/{{.ID}}" class="flex flex-col gap-2.5">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
@@ -47,6 +88,7 @@
           </form>
         </div>
       </div>
+      {{end}}
     </details>
   </section>
   {{end}}
@@ -84,7 +126,7 @@
     <span class="hh-av" style="--hh-c:var(--hh{{.Color}})" aria-hidden="true">{{if .OFF}}O{{else}}{{initial .Name}}{{end}}</span>
     <div class="grow min-w-0">
       <b class="block font-semibold truncate">{{if .OFF}}{{t "stores.off"}}{{else}}{{.Name}}{{end}}</b>
-      <span class="block text-[12.5px] text-muted truncate">{{if .OFF}}{{t "stores.off_desc"}}{{else}}{{.Host}}{{end}}</span>
+      <span class="block text-[12.5px] text-muted truncate">{{if .OFF}}{{t "stores.off_desc"}}{{else if .Builtin}}{{t "stores.integrated"}}{{else}}{{.Host}}{{end}}</span>
     </div>
     <span class="flex shrink-0"><button type="button" data-move="up" class="icon-action" aria-label="{{t "stores.move_up"}}"><span class="inline-flex rotate-180">{{template "icon_sm" "i-chevron-down"}}</span></button><button type="button" data-move="down" class="icon-action" aria-label="{{t "stores.move_down"}}">{{template "icon_sm" "i-chevron-down"}}</button></span>
     <form method="post" action="/settings/stores/{{.Key}}/enabled" class="shrink-0">

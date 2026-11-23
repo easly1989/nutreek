@@ -55,6 +55,13 @@ func (s SearchSource) Key() string {
 	return strconv.FormatInt(s.Plugin.ID, 10)
 }
 
+// BuiltinPrefix is how the address of an integrated store (#277) starts: «builtin://conad».
+const BuiltinPrefix = "builtin://"
+
+// Builtin says whether the plugin is an integrated store: it runs in Nutreek, has no
+// address of its own to edit and no token.
+func (p StorePlugin) Builtin() bool { return strings.HasPrefix(p.BaseURL, BuiltinPrefix) }
+
 // StoreLink is the store product behind an ingredient, with what was last known of
 // its price and availability.
 type StoreLink struct {
@@ -186,15 +193,49 @@ func (s *StorePlugins) Add(ctx context.Context, userID int64, name, baseURL, tok
 	return id, tx.Commit()
 }
 
+// AddBuiltin connects an integrated store, once: connecting it again returns the plugin
+// it already is. It needs no token.
+func (s *StorePlugins) AddBuiltin(ctx context.Context, userID int64, id, name string) (int64, error) {
+	var have int64
+	err := s.db.QueryRowContext(ctx, `SELECT id FROM store_plugins WHERE user_id = ? AND base_url = ?`, userID, BuiltinPrefix+id).Scan(&have)
+	if err == nil {
+		return have, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return 0, err
+	}
+	added, err := s.Add(ctx, userID, name, BuiltinPrefix+id, "builtin")
+	if err != nil && strings.Contains(err.Error(), "UNIQUE") { // the other click got there first
+		if gerr := s.db.QueryRowContext(ctx, `SELECT id FROM store_plugins WHERE user_id = ? AND base_url = ?`, userID, BuiltinPrefix+id).Scan(&have); gerr == nil {
+			return have, nil
+		}
+	}
+	return added, err
+}
+
+// PricesNoticeHidden says whether the user closed the notice about indicative prices for good.
+func (s *StorePlugins) PricesNoticeHidden(ctx context.Context, userID int64) (bool, error) {
+	var hidden bool
+	err := s.db.QueryRowContext(ctx, `SELECT prices_notice_hidden FROM users WHERE id = ?`, userID).Scan(&hidden)
+	return hidden, err
+}
+
+// HidePricesNotice closes the notice for good.
+func (s *StorePlugins) HidePricesNotice(ctx context.Context, userID int64) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE users SET prices_notice_hidden = 1 WHERE id = ?`, userID)
+	return err
+}
+
 // Update changes a plugin's name and address, and its token when tokenSealed is not empty.
+// An integrated store has nothing to change.
 func (s *StorePlugins) Update(ctx context.Context, userID, id int64, name, baseURL, tokenSealed string) error {
 	name, ok := validStore(name, baseURL)
 	if !ok {
 		return ErrInvalidStore
 	}
-	q, args := `UPDATE store_plugins SET name = ?, base_url = ? WHERE user_id = ? AND id = ?`, []any{name, baseURL, userID, id}
+	q, args := `UPDATE store_plugins SET name = ?, base_url = ? WHERE user_id = ? AND id = ? AND base_url NOT LIKE 'builtin://%'`, []any{name, baseURL, userID, id}
 	if tokenSealed != "" {
-		q, args = `UPDATE store_plugins SET name = ?, base_url = ?, token_sealed = ? WHERE user_id = ? AND id = ?`, []any{name, baseURL, tokenSealed, userID, id}
+		q, args = `UPDATE store_plugins SET name = ?, base_url = ?, token_sealed = ? WHERE user_id = ? AND id = ? AND base_url NOT LIKE 'builtin://%'`, []any{name, baseURL, tokenSealed, userID, id}
 	}
 	return affectOne(s.db.ExecContext(ctx, q, args...))
 }

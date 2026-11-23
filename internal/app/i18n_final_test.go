@@ -268,6 +268,7 @@ func TestEnglishEveryPage(t *testing.T) {
 			must(a.Household.SetQuantity(ctx, ada.ID, leo, oatItem, 45))
 			// A store (#239) and the product the oats were made from, to price the list.
 			conad := id(a.StorePlugins.Add(ctx, ada.ID, "Conad Mestre", "https://plugin.example/conad", "sealed"))
+			a.StoreBuiltins = []StoreBuiltin{{ID: "conad", Name: "Conad", Site: "https://spesaonline.conad.it"}}
 			must(a.StorePlugins.SaveLink(ctx, db.StoreLink{UserID: ada.ID, IngredientID: oats, PluginID: conad, ProductID: "p1", ProductName: "Fiocchi", SizeQty: 500, SizeUnit: "g", PriceCents: 189, HasPrice: true, Currency: "EUR", Available: true}))
 		}
 	}
@@ -294,7 +295,7 @@ func TestEnglishEveryPage(t *testing.T) {
 
 	// What users typed, the names of reference data (#158) and of months and
 	// days (#157), and the OpenFoodFacts products are not interface text.
-	data := []string{"Ada", "Eve", "Cat", "Bob", "Dan", "Leo", "Conad Mestre", "plugin.example", "Open Food Facts", "Token", "Oats", "Eggs", "Rice", "Mill", "Oat flakes", "Oat bran", "Farm",
+	data := []string{"Ada", "Eve", "Cat", "Bob", "Dan", "Leo", "Conad Mestre", "Conad", "plugin.example", "Open Food Facts", "Token", "Oats", "Eggs", "Rice", "Mill", "Oat flakes", "Oat bran", "Farm",
 		"Breakfast", "Lunch", "Dinner", "Snack", "Porridge", "Duo copy", "Duo", "Bowl", "Pasta", "Soak the oats.",
 		"Standard week", "Away from home", "Light", "Coach plan", "Candles", "Home Assistant", "Utente Test",
 		"Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica",

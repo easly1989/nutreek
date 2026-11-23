@@ -24,6 +24,7 @@ type storeSourceRow struct {
 	Key     string
 	Name    string // empty for OpenFoodFacts: the template translates it
 	Host    string
+	Builtin bool // an integrated store: no address to show
 	OFF     bool
 	Enabled bool
 	Color   int
@@ -36,6 +37,14 @@ type storesPageData struct {
 	Plugins    []db.StorePlugin
 	CanConnect bool // NUTREEK_SECRET_KEY is set
 	CanAdd     bool
+	Builtins   []builtinRow
+}
+
+// builtinRow is an integrated store on the settings page.
+type builtinRow struct {
+	StoreBuiltin
+	Connected bool
+	About     string // what it is: the catalog's text, or the plugin's own when there is none
 }
 
 func (a *App) storesData(r *http.Request) (storesPageData, error) {
@@ -53,10 +62,21 @@ func (a *App) storesData(r *http.Request) (storesPageData, error) {
 	for i, s := range sources {
 		row := storeSourceRow{Key: s.Key(), OFF: s.OFF, Enabled: s.Enabled}
 		if !s.OFF {
-			row.Name, row.Host = s.Plugin.Name, hostOf(s.Plugin.BaseURL)
+			row.Name, row.Host, row.Builtin = s.Plugin.Name, hostOf(s.Plugin.BaseURL), s.Plugin.Builtin()
 			row.Color = 1 + i%5
 		}
 		data.Sources = append(data.Sources, row)
+	}
+	connected := map[string]bool{}
+	for _, p := range plugins {
+		connected[p.BaseURL] = true
+	}
+	for _, b := range a.StoreBuiltins {
+		row := builtinRow{StoreBuiltin: b, Connected: connected[stores.BuiltinURL(b.ID)], About: b.Description}
+		if key := "stores.builtin.desc." + b.ID; a.t(r, key) != key {
+			row.About = a.t(r, key)
+		}
+		data.Builtins = append(data.Builtins, row)
 	}
 	return data, nil
 }
@@ -123,8 +143,12 @@ func (a *App) handleStoresSave(w http.ResponseWriter, r *http.Request) {
 		}
 		// The token never leaves for an address the user did not give it with: a new
 		// address needs a new token.
-		if cur, gerr := a.StorePlugins.Get(r.Context(), user.ID, id); gerr == nil && cur.BaseURL != base && sealed == "" {
-			back("stores.error.token_needed")
+		if cur, gerr := a.StorePlugins.Get(r.Context(), user.ID, id); gerr == nil && (cur.Builtin() || cur.BaseURL != base && sealed == "") {
+			if cur.Builtin() {
+				back("stores.error.invalid")
+			} else {
+				back("stores.error.token_needed")
+			}
 			return
 		}
 		err = a.StorePlugins.Update(r.Context(), user.ID, id, name, base, sealed)
@@ -266,7 +290,7 @@ func (a *App) handleShoppingPrices(w http.ResponseWriter, r *http.Request) {
 	for _, l := range links {
 		byPlugin[l.PluginID] = append(byPlugin[l.PluginID], l)
 	}
-	var updated int
+	var updated, asked int
 	var failed []string
 	for pluginID, ls := range byPlugin {
 		p, err := a.StorePlugins.Get(r.Context(), user.ID, pluginID)
@@ -277,6 +301,7 @@ func (a *App) handleShoppingPrices(w http.ResponseWriter, r *http.Request) {
 		for _, l := range ls {
 			products = append(products, l.ProductID)
 		}
+		asked += len(ls)
 		ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 		token, err := a.pluginToken(p)
 		var status map[string]stores.Status
@@ -300,9 +325,58 @@ func (a *App) handleShoppingPrices(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	flash := a.t(r, "stores.prices.updated", "Count", updated)
+	if missing := asked - updated; missing > 0 && len(failed) == 0 {
+		// The store answered for fewer products than were asked: say so, not «updated».
+		flash = a.t(r, "stores.prices.partial", "Count", updated, "Missing", missing)
+	}
 	if len(failed) > 0 {
 		flash = a.t(r, "stores.prices.failed", "Names", strings.Join(failed, ", "))
 	}
 	a.Sessions.Put(r.Context(), "flash", flash)
 	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
 }
+
+// handleStoresBuiltin POST /settings/stores/builtin/{id}: connects an integrated store.
+// It needs no secret key: there is no token to seal and no address to reach.
+func (a *App) handleStoresBuiltin(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	id := chi.URLParam(r, "id")
+	var found *StoreBuiltin
+	for i := range a.StoreBuiltins {
+		if a.StoreBuiltins[i].ID == id {
+			found = &a.StoreBuiltins[i]
+		}
+	}
+	if found == nil {
+		a.notFound(w, r)
+		return
+	}
+	switch _, err := a.StorePlugins.AddBuiltin(r.Context(), user.ID, found.ID, found.Name); {
+	case errors.Is(err, db.ErrInvalidStore):
+		a.Sessions.Put(r.Context(), "flash", "stores.error.invalid")
+	case err != nil:
+		a.serverError(w, r, err)
+		return
+	default:
+		a.Sessions.Put(r.Context(), "flash", "stores.flash.saved")
+	}
+	http.Redirect(w, r, "/settings/stores", http.StatusSeeOther)
+}
+
+// handlePricesNotice POST /shopping-list/prices-notice: closes the notice about indicative
+// prices, for this visit (forever=0) or for good (forever=1).
+func (a *App) handlePricesNotice(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	if r.PostFormValue("forever") == "1" {
+		if err := a.StorePlugins.HidePricesNotice(r.Context(), user.ID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	} else {
+		a.Sessions.Put(r.Context(), sessionKeyPricesNoticeClosed, true)
+	}
+	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+}
+
+// sessionKeyPricesNoticeClosed marks the notice closed for this sign-in.
+const sessionKeyPricesNoticeClosed = "prices_notice_closed"

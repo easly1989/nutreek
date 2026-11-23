@@ -111,6 +111,19 @@
         </details>
         {{end}}
 
+        {{/* The prices come from a store's site, for its default shop, so they are indicative (#277);
+             the notice closes for this visit or for good. */}}
+        {{if .PricesNotice}}
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 border-t border-border bg-warn-bg text-warn-fg text-[12.5px]" role="note" data-prices-notice>
+          <p class="grow min-w-0 basis-full sm:basis-0">{{t "shopping.prices.notice"}}</p>
+          <form method="post" action="/shopping-list/prices-notice?week={{$ws}}&weeks={{$wc}}" class="flex items-center gap-2 shrink-0">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button class="btn-secondary h-7 px-2.5 text-[12.5px]" name="forever" value="0">{{t "shopping.prices.notice_close"}}</button>
+            <button class="btn-secondary h-7 px-2.5 text-[12.5px]" name="forever" value="1">{{t "shopping.prices.notice_never"}}</button>
+          </form>
+        </div>
+        {{end}}
+
         {{/* What the list would cost at the stores the ingredients were taken from (#239). */}}
         {{if .View.Prices.Any}}
         <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 border-t border-border bg-surface-2">

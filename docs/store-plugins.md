@@ -10,6 +10,14 @@ A grocery store is connected to Nutreek (#239) with a **plugin**: a small HTTP s
 
 By default Nutreek reaches **public https addresses only** (the token travels in a header, so plain http is refused too) (the same guard as the push sender: loopback, private, link-local and shared addresses are refused when the connection is made, redirects are not followed). For a plugin on your own network set `NUTREEK_STORES_ALLOW_PRIVATE=true`, which also allows http: **every account on the instance can then point a store at the private network**, so set it only on an instance you trust. Changing a store's address asks for the token again. The demo has no stores.
 
+## Integrated stores
+
+Stores that need no service of their own come with Nutreek (#277). Their code is in [`nutreek-store-plugins`](https://github.com/easly1989/nutreek-store-plugins), a Go module Nutreek imports, and runs in Nutreek's process: **Settings → Stores → Integrated stores → Connect** is all it takes, with no address, no token and no `NUTREEK_SECRET_KEY`. They answer the same contract through an in-process call (`builtin://<id>` in `store_plugins.base_url`), so searching, importing and pricing work as for any plugin.
+
+An integrated store reads the store's public website with plain HTTP, a few requests a second at most, and never tries to get past anything the site uses to tell programs from people. The first one is **Conad** (products, prices, stock and nutrition from `spesaonline.conad.it`). Its prices are those of the site's default store, which can differ from the shop the user goes to, so the shopping list shows a notice that they are indicative; it closes for the visit or for good (`users.prices_notice_hidden`, migration 0049).
+
+To add a store, write its plugin in that repository (see its README); Nutreek picks up the new version when its dependency is updated.
+
 ## The contract
 
 Every call is a `GET` with `Authorization: Bearer <token>` and an answer of at most 1 MiB in JSON, within 6 seconds.

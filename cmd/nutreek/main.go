@@ -16,6 +16,8 @@ import (
 	"github.com/alexedwards/scs/sqlite3store"
 	"github.com/alexedwards/scs/v2"
 
+	storeplugins "github.com/easly1989/nutreek-store-plugins"
+
 	"github.com/amon2126/nutreek/internal/app"
 	"github.com/amon2126/nutreek/internal/config"
 	"github.com/amon2126/nutreek/internal/db"
@@ -190,6 +192,17 @@ func run(logger *slog.Logger) error {
 		Household:     db.NewHousehold(store.DB),
 		StorePlugins:  db.NewStorePlugins(store.DB),
 		StoreClient:   stores.NewClient(cfg.StoresAllowPrivate),
+	}
+	// The integrated stores (#277) run in this process.
+	a.StoreClient.Builtin = map[string]http.Handler{}
+	for _, p := range storeplugins.All() {
+		h, err := p.Handler()
+		if err != nil {
+			logger.Warn("integrated store is off", "store", p.ID, "err", err)
+			continue
+		}
+		a.StoreClient.Builtin[p.ID] = h
+		a.StoreBuiltins = append(a.StoreBuiltins, app.StoreBuiltin{ID: p.ID, Name: p.Name, Description: p.Description, Site: p.Site})
 	}
 	if cfg.SecretKey != "" {
 		if a.StoreBox, err = stores.NewBox(cfg.SecretKey); err != nil {

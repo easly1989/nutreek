@@ -40,6 +40,9 @@ var errStoreProduct = simpleErr("il prodotto del negozio non è disponibile")
 
 // pluginToken opens the token of a plugin.
 func (a *App) pluginToken(p db.StorePlugin) (string, error) {
+	if p.Builtin() { // an integrated store has no token
+		return "", nil
+	}
 	if a.StoreBox == nil {
 		return "", errors.New("NUTREEK_SECRET_KEY is not set")
 	}

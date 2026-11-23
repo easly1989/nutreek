@@ -34,7 +34,7 @@ import (
 const (
 	maxBody     = 1 << 20 // a plugin answer is read up to 1 MiB
 	maxProducts = 20      // products kept from a search
-	maxIDs      = 50      // ids asked in one availability call
+	maxIDs      = 20      // ids asked in one availability call: what a plugin can look at in its time
 )
 
 // Sizes a package can be measured in: grams, millilitres or pieces.
@@ -78,6 +78,10 @@ type Status struct {
 // Client calls plugins. The zero value is not usable: use NewClient.
 type Client struct {
 	HTTP *http.Client
+	// Builtin are the integrated stores (#277): handlers that run in this process, by the
+	// ID they are connected with («builtin://<id>»). They need no address, token or network
+	// access of ours; what a handler reads from its store is its own business.
+	Builtin map[string]http.Handler
 }
 
 // NewClient builds the plugin client. A plugin address is set by the user, so by
@@ -173,31 +177,43 @@ func (c *Client) Availability(ctx context.Context, base, token string, ids []str
 }
 
 func (c *Client) get(ctx context.Context, base, token, path string, q url.Values, dst any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path+"?"+q.Encode(), nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-	resp, err := c.HTTP.Do(req)
+	status, body, err := c.fetch(ctx, base, token, path, q)
 	if err != nil {
 		return fmt.Errorf("stores: %s: %w", path, err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("stores: %s answered %d", path, resp.StatusCode)
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
-	if err != nil {
-		return fmt.Errorf("stores: %s: %w", path, err)
-	}
-	if len(body) > maxBody {
-		return fmt.Errorf("stores: %s answered more than %d bytes", path, maxBody)
+	if status != http.StatusOK {
+		return fmt.Errorf("stores: %s answered %d", path, status)
 	}
 	if err := json.Unmarshal(body, dst); err != nil {
 		return fmt.Errorf("stores: %s: %w", path, err)
 	}
 	return nil
+}
+
+// fetch makes the call, over the network or, for an integrated store, in the process.
+func (c *Client) fetch(ctx context.Context, base, token, path string, q url.Values) (int, []byte, error) {
+	if id, ok := strings.CutPrefix(base, BuiltinPrefix); ok {
+		return c.fetchBuiltin(ctx, id, path, q)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path+"?"+q.Encode(), nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
+	if err != nil {
+		return 0, nil, err
+	}
+	if len(body) > maxBody {
+		return 0, nil, fmt.Errorf("answered more than %d bytes", maxBody)
+	}
+	return resp.StatusCode, body, nil
 }
 
 // wireProduct is a product as a plugin writes it.
