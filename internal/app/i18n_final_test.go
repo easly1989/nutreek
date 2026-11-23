@@ -279,7 +279,7 @@ func TestEnglishEveryPage(t *testing.T) {
 	if err != nil || len(acts) == 0 {
 		t.Fatalf("workout activities: %v", err)
 	}
-	id(a.WorkoutLogs.CreateWorkoutLog(ctx, ada.ID, acts[0].ID, todayDate(), 45, nil))
+	workout := id(a.WorkoutLogs.CreateWorkoutLog(ctx, ada.ID, acts[0].ID, todayDate(), 45, nil))
 	must(a.WaterLogs.Log(ctx, ada.ID, todayDate(), 1500))
 
 	// ---- the shopping list
@@ -384,6 +384,8 @@ func TestEnglishEveryPage(t *testing.T) {
 		{route: "/week/add", target: "/week/add?date=" + thisWeek + "&start=" + thisWeek, htmx: true},
 		{route: "/week/meal", target: "/week/meal?day=2&start=" + thisWeek, htmx: true},
 		{route: "/week/workout", target: "/week/workout?day=2&start=" + thisWeek, htmx: true},
+		{route: "/allenamento/{id}/edit", target: "/allenamento/" + idOf(workout) + "/edit", htmx: true},
+		{target: "/week/workout?day=2&activity=" + idOf(acts[0].ID) + "&minutes=30&start=" + thisWeek, htmx: true},
 		{route: "/week/reminder", target: "/week/reminder?day=2&start=" + thisWeek, htmx: true},
 		{route: "/meal-items/{itemID}/move", target: "/meal-items/" + idOf(oatItem) + "/move?start=" + thisWeek, htmx: true},
 		{route: "/meal-items/{itemID}/replace", target: "/meal-items/" + idOf(oatItem) + "/replace?start=" + thisWeek, htmx: true},

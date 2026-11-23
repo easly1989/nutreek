@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/db"
 )
@@ -92,4 +93,92 @@ func (a *App) handleWorkoutLogDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.respondMutationOrRedirect(w, r, weekStart, dayIndex)
+}
+
+// handleWorkoutEditForm GET /allenamento/{id}/edit?start=YYYY-MM-DD: the dialog
+// that changes the activity and the minutes of a workout.
+func (a *App) handleWorkoutEditForm(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	log, err := a.WorkoutLogs.GetWorkoutLog(r.Context(), id, user.ID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	weekStart := db.MondayOf(log.LoggedAt)
+	if r.Header.Get("HX-Request") != "true" {
+		a.redirectToDay(w, r, weekStart, int(log.LoggedAt.Sub(weekStart).Hours()/24))
+		return
+	}
+	acts, _ := a.WorkoutLogs.ListActivities(r.Context())
+	data := addFormData{
+		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+		Date:         log.LoggedAt,
+		WeekStart:    formatDate(weekStart),
+		Activities:   acts,
+		ActivityID:   log.ActivityID,
+		Minutes:      log.DurationMinutes,
+		EditID:       log.ID,
+	}
+	mdata := modalDialogData{Title: a.t(r, "week.edit_workout_title"), Inner: "workout_form", InnerData: data}
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "dashboard", "modal_dialog", mdata); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
+// handleWorkoutLogUpdate POST /allenamento/{id} — changes the activity and the
+// minutes of a workout; the kcal are worked out again.
+func (a *App) handleWorkoutLogUpdate(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	log, err := a.WorkoutLogs.GetWorkoutLog(r.Context(), id, user.ID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	weekStart := db.MondayOf(log.LoggedAt)
+	dayIndex := int(log.LoggedAt.Sub(weekStart).Hours() / 24)
+
+	activityID, err := strconv.ParseInt(strings.TrimSpace(r.PostFormValue("activity_id")), 10, 64)
+	if err != nil || activityID <= 0 {
+		a.Sessions.Put(r.Context(), "flash", "week.flash.select_activity")
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	minutes, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("duration_minutes")))
+	if err != nil || minutes <= 0 || minutes > 720 {
+		a.Sessions.Put(r.Context(), "flash", "week.flash.invalid_duration")
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	if err := a.WorkoutLogs.UpdateWorkoutLog(r.Context(), id, user.ID, activityID, minutes); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.respondMutationOrRedirect(w, r, weekStart, dayIndex)
+}
+
+// handleWorkoutCopy POST /allenamento/copy — repeats the workouts of the day
+// before the date logged_at on that date («As yesterday»).
+func (a *App) handleWorkoutCopy(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	date, err := time.Parse("2006-01-02", strings.TrimSpace(r.PostFormValue("logged_at")))
+	if err != nil {
+		a.Sessions.Put(r.Context(), "flash", "week.flash.invalid_date")
+		a.redirectToWeek(w, r, parseWeekStart(r))
+		return
+	}
+	if _, err := a.WorkoutLogs.CopyWorkoutLogs(r.Context(), user.ID, date.AddDate(0, 0, -1), date); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	a.respondMutationOrRedirect(w, r, db.MondayOf(date), int(date.Sub(db.MondayOf(date)).Hours()/24))
 }
