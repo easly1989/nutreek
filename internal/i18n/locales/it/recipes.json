@@ -37,10 +37,6 @@
     "one": "{{.Count}} porzione",
     "other": "{{.Count}} porzioni"
   },
-  "recipes.in_use": {
-    "one": "In uso in {{.Count}} voce",
-    "other": "In uso in {{.Count}} voci"
-  },
   "recipes.public": "Pubblica",
   "recipes.draft": "Bozza",
   "recipes.delete.confirm": "Eliminare la ricetta «{{.Name}}»?",
@@ -152,5 +148,8 @@
     "one": "Rimosse {{.Count}} voce nei piani settimanali.",
     "other": "Rimosse {{.Count}} voci nei piani settimanali."
   },
-  "recipes.flash.duplicated": "Ricetta duplicata. Modifica gli ingredienti per personalizzarla."
+  "recipes.flash.duplicated": "Ricetta duplicata. Modifica gli ingredienti per personalizzarla.",
+  "recipes.row.in_plan": "nel piano",
+  "recipes.row.public": "pubblica",
+  "recipes.more": "Altro"
 }

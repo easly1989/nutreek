@@ -37,10 +37,6 @@
     "one": "{{.Count}} serving",
     "other": "{{.Count}} servings"
   },
-  "recipes.in_use": {
-    "one": "Used in {{.Count}} entry",
-    "other": "Used in {{.Count}} entries"
-  },
   "recipes.public": "Public",
   "recipes.draft": "Draft",
   "recipes.delete.confirm": "Delete the recipe “{{.Name}}”?",
@@ -152,5 +148,8 @@
     "one": "Removed {{.Count}} entry in the weekly plans.",
     "other": "Removed {{.Count}} entries in the weekly plans."
   },
-  "recipes.flash.duplicated": "Recipe duplicated. Edit the ingredients to make it your own."
+  "recipes.flash.duplicated": "Recipe duplicated. Edit the ingredients to make it your own.",
+  "recipes.row.in_plan": "in the plan",
+  "recipes.row.public": "public",
+  "recipes.more": "More"
 }

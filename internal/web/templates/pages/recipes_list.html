@@ -8,8 +8,15 @@
       <p class="text-muted">{{t "recipes.list.mine" "Count" .MineN}}{{if .OthersN}}, {{t "recipes.list.others" "Count" .OthersN}}{{end}}</p>
     </div>
     <div class="flex items-center gap-2">
-      {{if not .Demo}}<a href="/recipes/new#importa" class="btn-secondary">{{template "icon" "i-link"}}{{t "recipes.import_from_url"}}</a>{{end}}
       <a href="/recipes/new" class="btn-primary">{{template "icon" "i-plus"}}{{t "recipes.new"}}</a>
+      {{if not .Demo}}
+      <div class="relative">
+        <button type="button" class="btn-secondary btn-icon" data-popover="recipes-more" aria-expanded="false" aria-controls="recipes-more" aria-label="{{t "recipes.more"}}" title="{{t "recipes.more"}}">{{template "icon" "i-dots"}}</button>
+        <div id="recipes-more" class="menu-panel hidden absolute right-0 top-full mt-1 w-64 z-20 p-1.5 flex flex-col">
+          <a href="/recipes/new#importa" class="nav-link">{{template "icon" "i-link"}}{{t "recipes.import_from_url"}}</a>
+        </div>
+      </div>
+      {{end}}
     </div>
   </div>
 
@@ -116,41 +123,39 @@
       {{end}}
 
       <div class="card divide-y divide-border">
-        <div class="hidden lg:grid grid-cols-[18px_minmax(0,1fr)_96px_180px_32px] gap-3.5 items-center min-h-[38px] pl-4 pr-3 text-[12.5px] font-semibold text-muted">
+        <div class="hidden lg:grid grid-cols-[18px_minmax(0,1fr)_44px_96px_180px_32px] gap-3.5 items-center min-h-[38px] pl-4 pr-3 text-[12.5px] font-semibold text-muted">
           {{if $mine}}<input type="checkbox" class="check" data-recipes-select-all aria-label="{{t "recipes.table.select_all"}}">{{else}}<span></span>{{end}}
           <span>{{t "recipes.table.name"}}</span>
+          <span></span>
           <span class="text-right">{{t "recipes.table.kcal_per_serving"}}</span>
           <span>{{t "recipes.table.macros_per_serving"}}</span>
           <span></span>
         </div>
         {{range .Rows}}
-          <div class="grid grid-cols-[minmax(0,1fr)_auto_32px] lg:grid-cols-[18px_minmax(0,1fr)_96px_180px_32px] gap-x-3 lg:gap-x-3.5 gap-y-1 items-center max-lg:[&:nth-child(2)]:!border-t-0 min-h-[60px] py-2.5 pl-3.5 lg:pl-4 pr-2 lg:pr-3">
+          <div class="grid grid-cols-[minmax(0,1fr)_44px_auto_32px] lg:grid-cols-[18px_minmax(0,1fr)_44px_96px_180px_32px] gap-x-3 lg:gap-x-3.5 gap-y-1 items-center max-lg:[&:nth-child(2)]:!border-t-0 min-h-[60px] py-2.5 pl-3.5 lg:pl-4 pr-2 lg:pr-3">
             {{if .Mine}}
               <input type="checkbox" class="check hidden lg:block" name="recipe_id" value="{{.Recipe.ID}}"
                      data-recipes-checkbox data-usages="{{.Usages}}" aria-label="{{t "recipes.row.select" "Name" .Recipe.Name}}">
             {{else}}<span class="hidden lg:block"></span>{{end}}
-            <div class="flex items-center gap-3 min-w-0">
-              {{if .PhotoETag}}
-                <img src="/recipes/{{.Recipe.ID}}/photo/thumb?v={{.PhotoETag}}" data-zoom data-zoom-src="/recipes/{{.Recipe.ID}}/photo?v={{.PhotoETag}}" alt="" width="44" height="44" loading="lazy" class="w-11 h-11 shrink-0 rounded-[10px] object-cover bg-surface-2">
-              {{else}}
-                <span class="w-11 h-11 shrink-0 rounded-[10px] bg-surface-2 grid place-items-center text-muted" aria-hidden="true">{{template "icon_sm" "i-camera"}}</span>
-              {{end}}
-              <div class="flex flex-col gap-1 min-w-0">
-                <a href="/recipes/{{.Recipe.ID}}" class="font-semibold hover:underline truncate">{{.Recipe.Name}}</a>
-                <span class="flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
-                  {{t "recipes.servings" "Count" .Recipe.Servings}}
-                  {{if and .Mine (gt .Usages 0)}}<span class="chip chip-n">{{t "recipes.in_use" "Count" .Usages}}</span>{{end}}
-                  {{if and .Mine .Recipe.IsPublic}}<span class="chip chip-soft">{{t "recipes.public"}}</span>{{end}}
-                </span>
-              </div>
+            <div class="flex flex-col gap-0.5 min-w-0">
+              <a href="/recipes/{{.Recipe.ID}}" class="font-semibold hover:underline [overflow-wrap:anywhere]">{{.Recipe.Name}}</a>
+              <span class="text-[12.5px] text-muted">
+                {{t "recipes.servings" "Count" .Recipe.Servings}}{{if and .Mine (gt .Usages 0)}} · {{t "recipes.row.in_plan"}}{{end}}{{if and .Mine .Recipe.IsPublic}} · {{t "recipes.row.public"}}{{end}}
+              </span>
             </div>
+            {{- /* The photo, in a column of its own so the names line up; zoom.js shows it larger on hover. */}}
+            <span class="w-11 h-11 justify-self-end">
+              {{if .PhotoETag}}
+              <img src="/recipes/{{.Recipe.ID}}/photo/thumb?v={{.PhotoETag}}" data-zoom data-zoom-src="/recipes/{{.Recipe.ID}}/photo?v={{.PhotoETag}}" alt="" width="44" height="44" loading="lazy" class="w-11 h-11 rounded-[10px] object-cover bg-surface-2">
+              {{end}}
+            </span>
             <span class="text-right tabular-nums whitespace-nowrap"><b>{{num .PerServing.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal</span></span>
-            <span class="col-span-3 lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums">
+            <span class="col-span-4 lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums">
               <span><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{num .PerServing.Protein}} g</span>
               <span><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num .PerServing.Carbs}} g</span>
               <span><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{num .PerServing.Fat}} g</span>
             </span>
-            <div class="relative row-start-1 col-start-3 lg:row-start-auto lg:col-start-auto">
+            <div class="relative row-start-1 col-start-4 lg:row-start-auto lg:col-start-auto">
               <button type="button" class="icon-action" data-popover="recipe-menu-{{.Recipe.ID}}" aria-expanded="false" aria-controls="recipe-menu-{{.Recipe.ID}}" aria-label="{{t "recipes.row.actions" "Name" .Recipe.Name}}">{{template "icon" "i-dots"}}</button>
               <div id="recipe-menu-{{.Recipe.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5 flex flex-col">
                 <a href="/recipes/{{.Recipe.ID}}" class="nav-link">{{template "icon" (or (and .Mine "i-edit") "i-recipes")}}{{if .Mine}}{{t "recipes.row.edit"}}{{else}}{{t "recipes.row.open"}}{{end}}</a>
