@@ -122,17 +122,18 @@
       </div>
       {{end}}
 
+      {{- $ph := .ShowPhotos}}
       <div class="card divide-y divide-border">
-        <div class="hidden lg:grid grid-cols-[18px_minmax(0,1fr)_44px_96px_180px_32px] gap-3.5 items-center min-h-[38px] pl-4 pr-3 text-[12.5px] font-semibold text-muted">
+        <div class="hidden lg:grid {{if $ph}}grid-cols-[18px_minmax(0,1fr)_44px_96px_180px_32px]{{else}}grid-cols-[18px_minmax(0,1fr)_96px_180px_32px]{{end}} gap-3.5 items-center min-h-[38px] pl-4 pr-3 text-[12.5px] font-semibold text-muted">
           {{if $mine}}<input type="checkbox" class="check" data-recipes-select-all aria-label="{{t "recipes.table.select_all"}}">{{else}}<span></span>{{end}}
           <span>{{t "recipes.table.name"}}</span>
-          <span></span>
+          {{if $ph}}<span></span>{{end}}
           <span class="text-right">{{t "recipes.table.kcal_per_serving"}}</span>
           <span>{{t "recipes.table.macros_per_serving"}}</span>
           <span></span>
         </div>
         {{range .Rows}}
-          <div class="grid grid-cols-[minmax(0,1fr)_32px_auto_32px] lg:grid-cols-[18px_minmax(0,1fr)_44px_96px_180px_32px] gap-x-3 lg:gap-x-3.5 gap-y-1 items-center max-lg:[&:nth-child(2)]:!border-t-0 min-h-[60px] py-2.5 pl-3.5 lg:pl-4 pr-2 lg:pr-3">
+          <div class="grid {{if $ph}}grid-cols-[minmax(0,1fr)_32px_auto_32px] lg:grid-cols-[18px_minmax(0,1fr)_44px_96px_180px_32px]{{else}}grid-cols-[minmax(0,1fr)_auto_32px] lg:grid-cols-[18px_minmax(0,1fr)_96px_180px_32px]{{end}} gap-x-3 lg:gap-x-3.5 gap-y-1 items-center max-lg:[&:nth-child(2)]:!border-t-0 min-h-[60px] py-2.5 pl-3.5 lg:pl-4 pr-2 lg:pr-3">
             {{if .Mine}}
               <input type="checkbox" class="check hidden lg:block" name="recipe_id" value="{{.Recipe.ID}}"
                      data-recipes-checkbox data-usages="{{.Usages}}" aria-label="{{t "recipes.row.select" "Name" .Recipe.Name}}">
@@ -143,19 +144,21 @@
                 {{t "recipes.servings" "Count" .Recipe.Servings}}{{if and .Mine (gt .Usages 0)}} · {{t "recipes.row.in_plan"}}{{end}}{{if and .Mine .Recipe.IsPublic}} · {{t "recipes.row.public"}}{{end}}
               </span>
             </div>
+            {{if $ph}}
             {{- /* The photo, in a column of its own so the names line up; zoom.js shows it larger on hover. */}}
             <span class="w-8 h-8 lg:w-11 lg:h-11 justify-self-end">
               {{if .PhotoETag}}
               <img src="/recipes/{{.Recipe.ID}}/photo/thumb?v={{.PhotoETag}}" data-zoom data-zoom-src="/recipes/{{.Recipe.ID}}/photo?v={{.PhotoETag}}" alt="" width="44" height="44" loading="lazy" class="w-8 h-8 lg:w-11 lg:h-11 rounded-lg lg:rounded-[10px] object-cover bg-surface-2">
               {{end}}
             </span>
+            {{end}}
             <span class="text-right tabular-nums whitespace-nowrap"><b>{{num .PerServing.Kcal}}</b> <span class="text-[12.5px] text-muted">kcal</span></span>
-            <span class="col-span-4 lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums">
+            <span class="{{if $ph}}col-span-4{{else}}col-span-3{{end}} lg:col-span-1 row-start-2 lg:row-start-auto flex gap-2.5 text-[12.5px] text-muted tabular-nums">
               <span><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{num .PerServing.Protein}} g</span>
               <span><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num .PerServing.Carbs}} g</span>
               <span><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{num .PerServing.Fat}} g</span>
             </span>
-            <div class="relative row-start-1 col-start-4 lg:row-start-auto lg:col-start-auto">
+            <div class="relative row-start-1 {{if $ph}}col-start-4{{else}}col-start-3{{end}} lg:row-start-auto lg:col-start-auto">
               <button type="button" class="icon-action" data-popover="recipe-menu-{{.Recipe.ID}}" aria-expanded="false" aria-controls="recipe-menu-{{.Recipe.ID}}" aria-label="{{t "recipes.row.actions" "Name" .Recipe.Name}}">{{template "icon" "i-dots"}}</button>
               <div id="recipe-menu-{{.Recipe.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5 flex flex-col">
                 <a href="/recipes/{{.Recipe.ID}}" class="nav-link">{{template "icon" (or (and .Mine "i-edit") "i-recipes")}}{{if .Mine}}{{t "recipes.row.edit"}}{{else}}{{t "recipes.row.open"}}{{end}}</a>

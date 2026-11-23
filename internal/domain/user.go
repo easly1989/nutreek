@@ -59,4 +59,7 @@ type User struct {
 
 	// WorkoutsInGoal raises a day's kcal goal by the kcal its workouts burned (#251). Off by default.
 	WorkoutsInGoal bool
+
+	// ShowRecipePhotos shows the photos in the recipe list (#251). On by default.
+	ShowRecipePhotos bool
 }

@@ -24,6 +24,8 @@ type recipesListData struct {
 	Filters []recipeFilter
 	MineN   int // totals for the subtitle
 	OthersN int
+	// ShowPhotos is the user's setting: the photo column of the list (#251).
+	ShowPhotos bool
 }
 
 // recipeFilter is a filter chip of the recipe list with its count.
@@ -197,6 +199,7 @@ func (a *App) handleRecipesList(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	data := buildRecipesList(rows, q.Get("f"), strings.TrimSpace(q.Get("q")))
 	data.authPageData = a.baseData(r)
+	data.ShowPhotos = user.ShowRecipePhotos
 	// The live search (HTMX) replaces only the results.
 	if r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-Target") == "recipe-results" {
 		if err := a.Render.RenderPartial(w, r, http.StatusOK, "recipes_list", "recipe_results", data); err != nil {
@@ -993,4 +996,23 @@ func (a *App) handleRecipeError(w http.ResponseWriter, r *http.Request, err erro
 	default:
 		a.serverError(w, r, err)
 	}
+}
+
+// handleSettingsRecipePhotos POST /settings/recipe-photos: a hidden 0 and, when the
+// switch is on, a 1 in show_recipe_photos.
+func (a *App) handleSettingsRecipePhotos(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, a.t(r, "week.error.invalid_ids"), http.StatusBadRequest)
+		return
+	}
+	on := false
+	for _, v := range r.PostForm["show_recipe_photos"] {
+		on = on || v == "1"
+	}
+	if err := a.Users.SetShowRecipePhotos(r.Context(), user.ID, on); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/settings#elenchi", http.StatusSeeOther)
 }

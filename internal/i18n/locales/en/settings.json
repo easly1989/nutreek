@@ -74,5 +74,11 @@
   "settings.workouts.desc": "What a workout does to the day's goal.",
   "settings.workouts.goal_label": "Workouts raise the day's goal",
   "settings.workouts.goal_hint": "Off: the kcal burned stay an estimate next to the day. On: the goal of a day with a workout goes up by those kcal.",
-  "settings.workouts.save": "Save"
+  "settings.workouts.save": "Save",
+  "settings.toc.lists": "Lists",
+  "settings.lists.title": "Lists",
+  "settings.lists.desc": "What the lists of recipes and ingredients show.",
+  "settings.lists.photos_label": "Show recipe photos",
+  "settings.lists.photos_hint": "A small photo to the right of each recipe in the list. Turn it off for narrower rows.",
+  "settings.lists.save": "Save"
 }
