@@ -13,7 +13,7 @@
          class="grid gap-3 lg:gap-[18px] items-start grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_1fr]">
 
   {{/* ---- The day's summary ---- */}}
-  <div class="card p-4 flex flex-col gap-3.5 lg:col-start-2 lg:row-start-1">
+  <div class="flex flex-col gap-3 max-lg:pb-3.5 max-lg:border-b max-lg:border-border lg:card lg:p-4 lg:gap-3.5 lg:col-start-2 lg:row-start-1">
     <div class="flex items-baseline justify-between gap-2">
       <h2 class="text-[15px] font-bold">{{dayTitle .Day.Date}}{{if eq .State "today"}}<span class="ml-1.5 text-[12.5px] font-semibold text-accent">{{t "week.today_badge"}}</span>{{end}}</h2>
       {{if gt .Progress.Kcal.Target 0.0}}<span class="text-[12.5px] text-muted">{{t "week.goal" "Kcal" (num .Progress.Kcal.Target)}}</span>{{end}}
@@ -40,10 +40,16 @@
         </div>
       </div>
       {{end}}
-      <div class="flex flex-col gap-2.5">
+      <div class="flex flex-col gap-2.5 max-lg:hidden">
         {{template "macro_bar" .Progress.Protein}}
         {{template "macro_bar" .Progress.Carbs}}
         {{template "macro_bar" .Progress.Fat}}
+      </div>
+      {{- /* On a phone the three macros sit on one row: a figure each and the goal under it. */}}
+      <div class="grid grid-cols-3 gap-3.5 lg:hidden">
+        {{template "macro_cell" .Progress.Protein}}
+        {{template "macro_cell" .Progress.Carbs}}
+        {{template "macro_cell" .Progress.Fat}}
       </div>
     {{else}}
       <div class="flex flex-col gap-1">
@@ -85,11 +91,11 @@
   {{/* ---- Pasti ---- */}}
   <div class="flex flex-col gap-3 min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
     {{if .Day.Meals}}
-    <div class="flex flex-col gap-3">
+    <div class="flex flex-col">
       {{range .Day.Meals}}{{template "meal_card" (mealCtx . $.WeekStart $.CSRFToken)}}{{end}}
     </div>
     {{else}}
-    <div class="card px-4 py-6 text-center text-muted">{{t "week.no_meals_day"}}</div>
+    <div class="border-y border-border px-4 py-6 text-center text-muted">{{t "week.no_meals_day"}}</div>
     {{end}}
 
   </div>
@@ -99,7 +105,7 @@
     {{template "water_widget" .Water}}
 
     {{if .Workouts}}
-    <div class="card px-4 py-3 flex flex-col gap-2">
+    <div class="max-lg:border-t max-lg:border-border max-lg:pt-3 lg:card lg:px-4 lg:py-3 flex flex-col gap-2">
       <div class="flex items-baseline justify-between gap-2">
         <h3 class="font-semibold">{{t "week.workout"}}</h3>
         {{if gt .WorkoutKcal 0.0}}<span class="text-muted tabular-nums">{{t "week.workout_burned" "Kcal" (num .WorkoutKcal)}}</span>{{end}}
@@ -121,6 +127,17 @@
     {{end}}
   </div>
 </section>
+{{end}}
+
+{{define "macro_cell"}}
+{{- /* A macro of the phone summary. View model: profile.MacroBar. */ -}}
+{{if gt .Target 0.0}}
+<div class="flex flex-col gap-0.5 min-w-0">
+  <span class="inline-flex items-center gap-1.5 text-[12.5px] font-semibold {{if .Overflow}}text-danger{{else}}text-muted{{end}}"><i class="w-2 h-2 rounded-full {{if .Overflow}}bg-danger{{else if eq .Label "common.protein"}}bg-prot{{else if eq .Label "common.carbs"}}bg-carb{{else}}bg-fat{{end}}" aria-hidden="true"></i>{{t .Label}}</span>
+  <strong class="tabular-nums {{if .Overflow}}text-danger{{end}}">{{num .Actual}} g</strong>
+  <span class="text-[12.5px] text-muted tabular-nums">{{t "week.macro_of" "Target" (num .Target)}}</span>
+</div>
+{{end}}
 {{end}}
 
 {{define "macro_bar"}}
@@ -154,20 +171,13 @@
   </form>
 </article>
 {{- else}}
-<article class="card" data-id="{{$m.Meal.ID}}">
-  <header class="flex items-start gap-2 pl-1.5 pr-2 pt-2 pb-1.5">
-    {{- /* A meal with a time sorts by it, so it has no handle; one without keeps its place by hand. */}}
-    <span class="w-1.5 shrink-0"></span>
-    <div class="min-w-0 flex-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1">
+<article class="border-t border-border first:border-t-0 pt-2.5 pb-1 first:pt-0" data-id="{{$m.Meal.ID}}">
+  <header class="flex items-start gap-2">
+    <div class="min-w-0 flex-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 py-1">
       {{template "meal_time_pill" .}}
       <h3 class="text-[15px] font-bold leading-6 {{if $m.HasCheats}}text-danger{{end}}">{{$m.Meal.Name}}</h3>
       {{if $m.HasCheats}}<span class="chip bg-danger-soft text-danger">{{t "week.cheat"}}</span>{{end}}
       {{range $m.Skips}}{{if .Skipped}}<span class="chip bg-surface-2 text-muted" style="--hh-c:var(--hh{{.Color}})"><span class="hh-dot mr-1.5" aria-hidden="true"></span>{{t "household.skips_chip" "Name" .Name}}</span>{{end}}{{end}}
-      <span class="inline-flex gap-2.5 text-[12.5px] text-muted tabular-nums">
-        <span title="{{t "common.protein"}}"><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{num $m.MealTotal.Protein}} g</span>
-        <span title="{{t "common.carbs"}}"><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num $m.MealTotal.Carbs}} g</span>
-        <span title="{{t "common.fat"}}"><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{num $m.MealTotal.Fat}} g</span>
-      </span>
     </div>
     <span class="shrink-0 font-bold tabular-nums leading-6 py-1">{{num $m.MealTotal.Kcal}} kcal</span>
     <div class="relative shrink-0">
@@ -193,16 +203,21 @@
       </div>
     </div>
   </header>
+  <p class="mb-0.5 flex gap-3 text-[12.5px] text-muted tabular-nums">
+    <span title="{{t "common.protein"}}"><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{num $m.MealTotal.Protein}} g</span>
+    <span title="{{t "common.carbs"}}"><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num $m.MealTotal.Carbs}} g</span>
+    <span title="{{t "common.fat"}}"><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{num $m.MealTotal.Fat}} g</span>
+  </p>
 
   {{- /* Always there, even with no rows: it is where a row dragged from another meal lands (#228). */}}
-  <ul class="px-4 {{if $m.HasCheats}}opacity-60{{end}}" data-sortable="items" data-sortable-handle="[data-item-grip]"
+  <ul class="{{if $m.HasCheats}}opacity-60{{end}}" data-sortable="items" data-sortable-handle="[data-item-grip]"
       data-csrf="{{$csrf}}"
       data-sort-url="/meals/{{$m.Meal.ID}}/items/reorder?start={{$ws}}">
     {{range $m.ItemViews}}{{template "meal_item_row" (itemCtx . $m.HasCheats false $ws $csrf)}}{{end}}
   </ul>
 
   {{if $m.HasCheats}}
-  <div class="mx-4 mt-2 mb-1 pl-3 border-l-2 border-danger">
+  <div class="mt-2 mb-1 pl-3 border-l-2 border-danger">
     <div class="flex items-center justify-between gap-2 min-h-[32px]">
       <span class="text-[12.5px] font-semibold text-danger">{{t "week.eaten_instead"}}</span>
       <form method="post" action="/meals/{{$m.Meal.ID}}/cheat/clear?start={{$ws}}"
@@ -221,7 +236,7 @@
   {{/* The picker opens in a dialog over the week; without JS it is a page. */}}
   <a href="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}"
      hx-get="/meals/{{$m.Meal.ID}}/items/new?start={{$ws}}" hx-target="#modal-host" hx-swap="innerHTML"
-     class="flex items-center gap-1.5 min-h-[38px] px-4 mt-1 border-t border-border text-accent font-semibold text-[13px] rounded-b-xl hover:bg-accent-soft">
+     class="flex items-center gap-1.5 min-h-[40px] text-accent font-semibold text-[13px] hover:underline">
     {{template "icon" "i-plus"}}{{t "week.add_food"}}
   </a>
 </article>
@@ -258,18 +273,18 @@
        opens an editor in place (#206, picker.js): servings for a recipe,
        quantity and g / pz for an ingredient. */ -}}
 {{$editable := and (not .Cheat) (or $it.Ingredient (and $it.Recipe (not $it.IsCustomized)))}}
-<li class="item-grid group grid gap-x-2.5 gap-y-1.5 items-center min-h-[36px] py-1 border-t border-border first:border-t-0 data-[editing]:-mx-4 data-[editing]:px-4 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}>
-  <div class="col-start-1 min-w-0 flex items-start gap-1">
+<li class="item-grid group grid gap-x-2.5 gap-y-1.5 items-center min-h-[44px] py-0.5 border-t border-border first:border-t-0 data-[editing]:-mx-2 data-[editing]:px-2 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}>
+  <div class="col-start-1 min-w-0 flex items-start gap-1"{{if not .Cheat}} title="{{t "common.protein_short"}} {{num $v.Macros.Protein}} g · {{t "common.carbs_short"}} {{num $v.Macros.Carbs}} g · {{t "common.fat_short"}} {{num $v.Macros.Fat}} g"{{end}}>
     {{if not .Cheat}}<span data-item-grip class="relative max-lg:hidden grid w-4 h-6 -ml-4 place-items-center text-muted cursor-grab touch-none [@media(hover:hover)]:opacity-0 group-hover:opacity-100 before:content-[''] before:absolute before:-top-2 before:-bottom-2 before:-left-1 before:-right-1" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
     <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
       {{if $it.Recipe}}
-        <span class="marq"><span class="mq"><a href="/recipes/{{$it.Recipe.ID}}" class="font-medium hover:underline" title="{{t "week.open_recipe"}}">{{$it.Recipe.Name}}</a>
-        {{if $it.IsCustomized}}<span class="text-[12px] text-accent" title="{{t "week.customized_title"}}">{{t "week.customized"}}</span>{{end}}</span></span>
+        <span class="block"><a href="/recipes/{{$it.Recipe.ID}}" class="font-medium hover:underline" title="{{t "week.open_recipe"}}">{{$it.Recipe.Name}}</a>
+        {{if $it.IsCustomized}}<span class="text-[12px] text-accent" title="{{t "week.customized_title"}}">{{t "week.customized"}}</span>{{end}}</span>
         {{if $v.ScaledRecipeItems}}
-        <span class="marq text-[12.5px] text-muted"><span class="mq">{{range $i, $s := $v.ScaledRecipeItems}}{{if $i}}, {{end}}{{$s.Name}} {{num $s.Quantity}} {{$s.Unit}}{{end}}</span></span>
+        <span class="block text-[12.5px] text-muted line-clamp-2">{{range $i, $s := $v.ScaledRecipeItems}}{{if $i}}, {{end}}{{$s.Name}} {{num $s.Quantity}} {{$s.Unit}}{{end}}</span>
         {{end}}
       {{else if $it.Ingredient}}
-        <span class="marq"><span class="mq">{{$it.Ingredient.Name}}</span></span>
+        <span class="block">{{$it.Ingredient.Name}}</span>
       {{end}}
     </div>
   </div>
@@ -283,7 +298,7 @@
   </button>
   <form method="post" action="/meal-items/{{$it.ID}}?start={{.WeekStart}}" hx-post="/meal-items/{{$it.ID}}?start={{.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
         data-qty-editor{{if $it.Ingredient}} data-unit-weight="{{$it.Ingredient.PieceWeight}}"{{end}}
-        class="hidden group-data-[editing]:flex col-start-2 max-sm:col-start-1 max-sm:col-span-full max-sm:order-last items-center gap-1.5">
+        class="hidden group-data-[editing]:flex col-span-full order-last items-center gap-1.5">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <label for="qty-{{$it.ID}}" class="sr-only">{{if $it.Recipe}}{{t "picker.qty.servings_label" "Name" $nm}}{{else}}{{t "picker.qty.label" "Name" $nm}}{{end}}</label>
     <input id="qty-{{$it.ID}}" name="quantity" required inputmode="decimal" autocomplete="off" value="{{dec $it.Quantity 2}}" class="field w-16 h-8 px-2 text-right tabular-nums">
@@ -303,37 +318,36 @@
   {{- else}}
   <span class="col-start-2 text-right text-muted tabular-nums whitespace-nowrap {{if .Struck}}line-through{{end}}"{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}>{{template "meal_item_qty" .}}</span>
   {{- end}}
-  {{- /* The grams of protein, carbs and fat of the quantity used: on the row from sm up, under the name on a phone. */}}
-  <span class="item-macros{{if .Struck}} line-through{{end}}">{{template "macros_inline" $v.Macros}}</span>
   <span class="item-kcal text-right tabular-nums {{if .Cheat}}text-danger{{end}} {{if .Struck}}line-through text-muted{{end}}">{{num $v.Macros.Kcal}}</span>
-  <span class="item-actions flex items-center -mr-2 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity group-data-[editing]:invisible">
-    {{if and $it.Recipe (not .Struck) (not .Cheat)}}
-    <button type="button" hx-get="/meal-items/{{$it.ID}}/customize?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
-            class="icon-action" title="{{t "week.customize"}}" aria-label="{{t "week.customize_named" "Name" $it.Recipe.Name}}">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>
-    </button>
-    {{end}}
-    {{if and $it.Ingredient (not .Struck) (not .Cheat)}}
-    <button type="button" hx-get="/meal-items/{{$it.ID}}/replace?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
-            class="icon-action" title="{{t "replace.button"}}" aria-label="{{t "replace.button_named" "Name" $nm}}">{{template "icon" "i-swap"}}</button>
-    {{end}}
-    <form method="post" action="/{{if .Cheat}}meal-cheat-items{{else}}meal-items{{end}}/{{$it.ID}}/delete?start={{.WeekStart}}"
-          hx-post="/{{if .Cheat}}meal-cheat-items{{else}}meal-items{{end}}/{{$it.ID}}/delete?start={{.WeekStart}}"
-          hx-target="closest section[data-day]" hx-swap="outerHTML">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button class="icon-action hover:text-danger" title="{{t "week.delete"}}" aria-label="{{t "week.delete_named" "Name" $nm}}">{{template "icon" "i-trash"}}</button>
-    </form>
-    {{- /* «Move to…» (#228): the meals of the day and the other days, loaded when the menu opens. */}}
-    {{if not .Cheat}}
-    <div class="relative">
-      <button type="button" class="icon-action" data-popover="move-menu-{{$it.ID}}" aria-expanded="false" aria-controls="move-menu-{{$it.ID}}"
-              hx-get="/meal-items/{{$it.ID}}/move?start={{.WeekStart}}" hx-target="#move-menu-{{$it.ID}}" hx-swap="innerHTML"              title="{{t "move.button"}}" aria-label="{{t "move.button_named" "Name" $nm}}">{{template "icon" "i-dots"}}</button>
-      <div id="move-menu-{{$it.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
-        <p class="px-3 py-2 text-muted animate-pulse">{{t "picker.loading"}}</p>
-      </div>
+  {{- /* One menu for the row (the day as a ledger, #251): replace, customize, move, delete. A cheat has only «delete». */}}
+  {{if .Cheat}}
+  <form method="post" action="/meal-cheat-items/{{$it.ID}}/delete?start={{.WeekStart}}"
+        hx-post="/meal-cheat-items/{{$it.ID}}/delete?start={{.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML" class="item-actions">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button class="icon-action hover:text-danger" title="{{t "week.delete"}}" aria-label="{{t "week.delete_named" "Name" $nm}}">{{template "icon" "i-trash"}}</button>
+  </form>
+  {{else}}
+  <div class="item-actions relative group-data-[editing]:invisible">
+    <button type="button" class="icon-action" data-popover="move-menu-{{$it.ID}}" aria-expanded="false" aria-controls="move-menu-{{$it.ID}}"
+            hx-get="/meal-items/{{$it.ID}}/move?start={{.WeekStart}}" hx-target="#move-targets-{{$it.ID}}" hx-swap="innerHTML" hx-trigger="click once"
+            title="{{t "week.item_actions"}}" aria-label="{{t "week.item_actions_named" "Name" $nm}}">{{template "icon" "i-dots"}}</button>
+    <div id="move-menu-{{$it.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-60 z-20 p-1.5 flex flex-col">
+      {{if and $it.Recipe (not .Struck)}}
+      <button type="button" hx-get="/meal-items/{{$it.ID}}/customize?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML" data-menu-close class="nav-link w-full">{{t "week.customize"}}</button>
+      {{end}}
+      {{if and $it.Ingredient (not .Struck)}}
+      <button type="button" hx-get="/meal-items/{{$it.ID}}/replace?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML" data-menu-close class="nav-link w-full">{{t "replace.button"}}</button>
+      {{end}}
+      <div id="move-targets-{{$it.ID}}"><p class="px-3 py-2 text-muted animate-pulse">{{t "picker.loading"}}</p></div>
+      <hr class="my-1 border-border">
+      <form method="post" action="/meal-items/{{$it.ID}}/delete?start={{.WeekStart}}"
+            hx-post="/meal-items/{{$it.ID}}/delete?start={{.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button class="nav-link w-full text-danger" aria-label="{{t "week.delete_named" "Name" $nm}}">{{template "icon" "i-trash"}}{{t "week.delete"}}</button>
+      </form>
     </div>
-    {{end}}
-  </span>
+  </div>
+  {{end}}
   {{- /* Household (#238): what each person eats of the row, a tap changes it. */}}
   {{if $v.People}}
   <button type="button" hx-get="/meal-items/{{$it.ID}}/people?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"

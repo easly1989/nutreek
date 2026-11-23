@@ -76,7 +76,7 @@
         trigger.setAttribute("aria-expanded", String(open));
         return;
       }
-      if (!e.target.closest(".menu-panel")) closePopovers(null);
+      if (!e.target.closest(".menu-panel") || e.target.closest("[data-menu-close]")) closePopovers(null);
 
       // data-focus="<id>": moves the cursor to a field (e.g. «Aggiungi pasto»).
       var focusBtn = e.target.closest("[data-focus]");
