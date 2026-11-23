@@ -224,7 +224,7 @@ func TestStorePluginsFlow(t *testing.T) {
 		return strings.Contains(body, s) || strings.Contains(body, strings.Replace(s, ".", ",", 1))
 	}
 	body := shop()
-	if !has(body, "1.89") || !strings.Contains(body, "1 righe su 1 hanno un prezzo") {
+	if !has(body, "1.89") || !strings.Contains(body, "Righe con prezzo: 1 su 1") {
 		t.Errorf("the list is not priced:\n%s", body)
 	}
 	if body := call(a.handleShoppingList, http.MethodGet, "/shopping-list?week=2026-10-12&weeks=1", nil, nil, bob).Body.String(); has(body, "1.89") {

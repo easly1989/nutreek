@@ -97,8 +97,11 @@
   "shopping.flash.copy_none": "Spunta almeno una voce da copiare.",
   "shopping.flash.regenerated": "Lista rigenerata.",
   "shopping.prices.estimate": "Stima · {{.Stores}}",
-  "shopping.prices.count": "{{.Priced}} righe su {{.Rows}} hanno un prezzo",
+  "shopping.prices.count": "Righe con prezzo: {{.Priced}} su {{.Rows}}",
   "shopping.prices.refresh": "Aggiorna i prezzi",
   "shopping.prices.row": "{{.Packs}} × {{.Pack}}",
-  "shopping.prices.unavailable": "esaurito"
+  "shopping.prices.unavailable": "esaurito",
+  "shopping.prices.notice": "I prezzi arrivano dai siti dei negozi e possono differire da quelli del punto vendita dove vai: considerali indicativi.",
+  "shopping.prices.notice_close": "Chiudi",
+  "shopping.prices.notice_never": "Non mostrare più"
 }

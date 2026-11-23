@@ -26,6 +26,9 @@ type shoppingListData struct {
 	WeekCount int
 	NextWeek  string
 	PrevWeek  string
+	// PricesNotice: the prices on the list are indicative (#277) and the user has not
+	// closed the notice, for good or for this visit.
+	PricesNotice bool
 }
 
 // shoppingUserItemView enriches ShoppingUserItem with the "duplicate" flag:
@@ -146,11 +149,18 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var links map[int64]db.StoreLink
+	notice := false
 	if a.StorePlugins != nil {
 		if links, err = a.StorePlugins.Links(r.Context(), user.ID, ingIDs); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
+		hidden, herr := a.StorePlugins.PricesNoticeHidden(r.Context(), user.ID)
+		if herr != nil {
+			a.serverError(w, r, herr)
+			return
+		}
+		notice = !hidden && !a.Sessions.GetBool(r.Context(), sessionKeyPricesNoticeClosed)
 	}
 	data := shoppingListData{
 		authPageData: a.baseData(r),
@@ -164,6 +174,7 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		PrevWeek:     weekStart.AddDate(0, 0, -7).Format("2006-01-02"),
 		NextWeek:     weekStart.AddDate(0, 0, 7).Format("2006-01-02"),
 	}
+	data.PricesNotice = notice && data.View.Prices.Any
 	if err := a.Render.Render(w, r, http.StatusOK, "shopping_list", data); err != nil {
 		a.serverError(w, r, err)
 	}

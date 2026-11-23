@@ -59,8 +59,11 @@ type App struct {
 	// Store plugins (#239): the connected stores, the client that calls them and the
 	// box that seals their tokens (nil without NUTREEK_SECRET_KEY: no store can be connected).
 	StorePlugins *db.StorePlugins
-	StoreClient  *stores.Client
-	StoreBox     *stores.Box
+	// StoreBuiltins are the integrated stores (#277) a user can connect with one click;
+	// their handlers run behind StoreClient.Builtin.
+	StoreBuiltins []StoreBuiltin
+	StoreClient   *stores.Client
+	StoreBox      *stores.Box
 
 	Notify          *notify.Service
 	NotifyPublicKey string
@@ -74,6 +77,11 @@ type App struct {
 	// so there is no constructor to initialize it in.
 	loginLimiter     *ipRateLimiter
 	loginLimiterOnce sync.Once
+}
+
+// StoreBuiltin describes an integrated store.
+type StoreBuiltin struct {
+	ID, Name, Description, Site string
 }
 
 // loginRateLimiter returns the login limiter, creating it on first use in a
