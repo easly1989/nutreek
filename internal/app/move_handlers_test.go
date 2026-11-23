@@ -93,6 +93,13 @@ func TestMoveItemHandlers(t *testing.T) {
 		t.Error("rows and meals must not drag across lists")
 	}
 
+	// A row has one menu (#251): its «Move to…» choices load into it and the
+	// delete is in it, with no icon of its own on the row.
+	if got := w.Body.String(); !strings.Contains(got, `id="move-targets-`) || !strings.Contains(got, `hx-target="#move-targets-`) ||
+		strings.Contains(got, `item-macros`) {
+		t.Error("a row must have a single menu and no macros of its own")
+	}
+
 	// Another day: the row leaves, and the tab of that day comes OOB.
 	w = call(a.handleMealItemMove, http.MethodPost, "/x"+start, url.Values{"to_day": {"1"}}, true, 1, "itemID", key(milkRow))
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `id="pill-2026-10-13"`) || !strings.Contains(w.Body.String(), `hx-swap-oob`) {

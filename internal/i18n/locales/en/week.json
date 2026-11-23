@@ -167,5 +167,8 @@
   "week.activity_create": "Create",
   "week.flash.invalid_time": "Invalid time.",
   "week.flash.invalid_activity": "Give the activity a name and its kcal per hour (1–2000).",
-  "week.flash.activity_exists": "You already have an activity with that name."
+  "week.flash.activity_exists": "You already have an activity with that name.",
+  "week.macro_of": "of {{.Target}}",
+  "week.item_actions": "More actions",
+  "week.item_actions_named": "Actions for {{.Name}}"
 }

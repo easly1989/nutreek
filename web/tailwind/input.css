@@ -413,20 +413,11 @@
     .sheet-qty { @apply h-11 text-[18px]; flex: 1 1 0%; width: auto; min-width: 0; }
   }
 
-  /* A meal item's row (#226): name, quantity, kcal and actions, and the macros
-     under the name; in the row itself where it is wide enough (sm to lg, and xl
-     up: between lg and xl the day sits beside its 300 px side column). */
-  .item-grid { grid-template-columns: minmax(0, 1fr) auto 3.5rem auto; }
-  .item-macros { grid-column: 1 / -1; grid-row: 2; }
-  .item-macros > span { text-decoration: inherit; }
+  /* A meal item's row (#251, the day as a ledger): name (it wraps), quantity,
+     kcal and one menu. The macros of the row are a tooltip; the meal shows its own. */
+  .item-grid { grid-template-columns: minmax(0, 1fr) auto 2.75rem 2.25rem; }
   .item-kcal { grid-column: 3; }
   .item-actions { grid-column: 4; }
-  @media (min-width: 640px) and (max-width: 1023px), (min-width: 1280px) {
-    .item-grid { grid-template-columns: minmax(0, 1fr) auto auto 3.5rem auto; }
-    .item-macros { grid-column: 3; grid-row: auto; justify-self: end; }
-    .item-kcal { grid-column: 4; }
-    .item-actions { grid-column: 5; }
-  }
 
   /* Dragging a row to another meal of the day (#228, dnd.js): every meal has a
      place to drop in, also when it has no rows, and the one under the row
