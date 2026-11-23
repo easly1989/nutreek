@@ -35,7 +35,7 @@
         <span class="block text-[12.5px] text-muted">{{.About}}</span>
       </div>
       {{if .Connected}}
-      <span class="chip bg-accent-soft text-accent shrink-0">{{t "stores.builtin.connected"}}</span>
+      <span class="chip bg-accent-soft text-text font-semibold shrink-0">{{t "stores.builtin.connected"}}</span>
       {{else}}
       <form method="post" action="/settings/stores/builtin/{{.ID}}" class="shrink-0">
         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
