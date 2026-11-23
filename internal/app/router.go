@@ -311,6 +311,7 @@ func (a *App) Router() http.Handler {
 		r.Post("/settings/meal-times/delete", a.handleSettingsMealTimeDelete)
 		r.Post("/settings/show-meal-times", a.handleSettingsShowMealTimes)
 		r.Post("/settings/workouts-in-goal", a.handleSettingsWorkoutsInGoal)
+		r.Post("/settings/recipe-photos", a.handleSettingsRecipePhotos)
 		r.Get("/settings/export", a.handleUserDataExport)
 		if a.Demo == nil { // both ask for the password a demo account does not have
 			r.Post("/settings/password", a.handleChangePassword)

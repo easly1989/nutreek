@@ -74,5 +74,11 @@
   "settings.workouts.desc": "Cosa fa un allenamento all'obiettivo del giorno.",
   "settings.workouts.goal_label": "Gli allenamenti alzano l'obiettivo del giorno",
   "settings.workouts.goal_hint": "Spento: le kcal bruciate restano una stima accanto al giorno. Acceso: l'obiettivo di un giorno con un allenamento sale di quelle kcal.",
-  "settings.workouts.save": "Salva"
+  "settings.workouts.save": "Salva",
+  "settings.toc.lists": "Elenchi",
+  "settings.lists.title": "Elenchi",
+  "settings.lists.desc": "Cosa mostrano gli elenchi di ricette e ingredienti.",
+  "settings.lists.photos_label": "Mostra le foto delle ricette",
+  "settings.lists.photos_hint": "Una piccola foto a destra di ogni ricetta nell'elenco. Spegnila per avere righe più larghe.",
+  "settings.lists.save": "Salva"
 }

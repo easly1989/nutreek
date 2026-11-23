@@ -9,6 +9,7 @@
   <div class="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] items-start">
     <nav class="hidden lg:flex sticky top-6 flex-col gap-0.5" aria-label="{{t "settings.toc_label"}}">
       <a href="#aspetto" class="settings-toc" aria-current="true">{{t "settings.toc.appearance"}}</a>
+      <a href="#elenchi" class="settings-toc">{{t "settings.toc.lists"}}</a>
       <a href="#allenamenti" class="settings-toc">{{t "settings.toc.workouts"}}</a>
       <a href="#app" class="settings-toc">{{t "settings.toc.app"}}</a>
       {{if not .Demo}}<a href="#account" class="settings-toc">{{t "settings.toc.account"}}</a>{{end}}
@@ -144,6 +145,21 @@
               <input type="checkbox" role="switch" name="show_meal_times" value="1" class="toggle"{{if .User.ShowMealTimes}} checked{{end}} aria-label="{{t "meal_times.settings.csv_label"}}">
             </label>
             <button class="btn-secondary mt-2">{{t "meal_times.save"}}</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="elenchi" class="card scroll-mt-6">
+        <div class="settings-sec">
+          <div><h2 class="h2">{{t "settings.lists.title"}}</h2><p class="settings-d">{{t "settings.lists.desc"}}</p></div>
+          <form method="post" action="/settings/recipe-photos">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <span class="grow min-w-0"><b class="block">{{t "settings.lists.photos_label"}}</b><span class="block settings-d">{{t "settings.lists.photos_hint"}}</span></span>
+              <input type="hidden" name="show_recipe_photos" value="0">
+              <input type="checkbox" role="switch" name="show_recipe_photos" value="1" class="toggle" aria-label="{{t "settings.lists.photos_label"}}"{{if .User.ShowRecipePhotos}} checked{{end}}>
+            </label>
+            <button class="btn-secondary mt-2">{{t "settings.lists.save"}}</button>
           </form>
         </div>
       </section>
