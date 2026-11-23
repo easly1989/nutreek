@@ -103,5 +103,10 @@
   "shopping.prices.unavailable": "esaurito",
   "shopping.prices.notice": "I prezzi arrivano dai siti dei negozi e possono differire da quelli del punto vendita dove vai: considerali indicativi.",
   "shopping.prices.notice_close": "Chiudi",
-  "shopping.prices.notice_never": "Non mostrare più"
+  "shopping.prices.notice_never": "Non mostrare più",
+  "shopping.more": "Altro",
+  "shopping.item_actions": "Azioni per {{.Name}}",
+  "shopping.item_actions_title": "Altre azioni",
+  "shopping.optional": "facoltativa",
+  "shopping.add_note": "Le voci aggiunte a mano restano quando rigeneri la lista."
 }

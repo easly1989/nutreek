@@ -342,7 +342,7 @@
 
   /* Shopping list (#123): a 48 px row, tappable as a whole. */
   .shop-item {
-    @apply w-full flex items-center gap-3 h-14 px-4 text-left hover:bg-surface-2 transition-colors;
+    @apply w-full flex items-center gap-3 min-h-[56px] py-1.5 px-4 text-left hover:bg-surface-2 transition-colors;
   }
   .shop-box {
     @apply w-[22px] h-[22px] shrink-0 grid place-items-center rounded-md border-[1.5px] border-border bg-surface;
@@ -442,14 +442,13 @@
   .swipe-fg { @apply relative; }
   /* An ignored item stays, greyed out. */
   .is-ignored .shop-name, .is-ignored .shop-qty { @apply opacity-50; }
-  .is-ignored .shop-name > .marq:first-child .mq { @apply line-through; }
+  .is-ignored .shop-nm { @apply line-through; }
 
   /* «Reorder» on the shopping list (#231): the arrows show beside the grip. */
   #shop-list[data-reorder-on] [data-move-btns] { display: flex; }
   /* With the arrows on, a row keeps only what it needs to be moved. */
   #shop-list[data-reorder-on] [data-shop-grip],
-  #shop-list[data-reorder-on] .swipe-fg > details,
-  #shop-list[data-reorder-on] .swipe-fg > form ~ form { display: none; }
+  #shop-list[data-reorder-on] .swipe-fg > .shop-menu { display: none; }
 
   /* Statistics (#123): summary cards, legends and SVG charts (static/js/charts.js). */
   .tile { @apply card px-3.5 py-3 flex flex-col gap-0.5 min-w-0; }

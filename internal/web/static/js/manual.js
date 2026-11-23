@@ -78,7 +78,7 @@
   // A request that went through empties the suggestions the form's reset left.
   document.body.addEventListener("htmx:afterRequest", function (evt) {
     var f = evt.detail.elt;
-    if (f && f.matches && f.matches("#shop-manual form[data-reset-on-success]") && evt.detail.successful) clearSuggest();
+    if (f && f.matches && f.matches("#shop-add form[data-reset-on-success]") && evt.detail.successful) clearSuggest();
   });
 
   function showTab(tab) {

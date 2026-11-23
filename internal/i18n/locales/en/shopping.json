@@ -103,5 +103,10 @@
   "shopping.prices.unavailable": "out of stock",
   "shopping.prices.notice": "The prices come from the stores' websites and can differ from the ones in the shop you go to: take them as indicative.",
   "shopping.prices.notice_close": "Close",
-  "shopping.prices.notice_never": "Don't show again"
+  "shopping.prices.notice_never": "Don't show again",
+  "shopping.more": "More",
+  "shopping.item_actions": "Actions for {{.Name}}",
+  "shopping.item_actions_title": "More actions",
+  "shopping.optional": "optional",
+  "shopping.add_note": "Items added by hand stay when you regenerate the list."
 }
