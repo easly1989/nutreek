@@ -3,19 +3,54 @@
 {{- $ws := .WeekStart -}}
 {{- $wc := .WeekCount -}}
 <div class="flex flex-col gap-4 lg:gap-[18px] no-print">
-  <header class="flex items-start justify-between gap-3">
-    <div class="min-w-0">
+  <header class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+    <div class="min-w-0 max-w-[34rem]">
       <h1 class="h1">{{t "shopping.title"}}</h1>
       <p class="text-muted mt-0.5">{{if gt $wc 1}}{{t "shopping.intro_weeks" "Weeks" $wc}}{{else}}{{t "shopping.intro_week"}}{{end}}</p>
     </div>
     <div class="flex items-center gap-2 shrink-0">
-      <a href="/?start={{$ws}}" class="btn-secondary max-sm:w-9 max-sm:px-0" aria-label="{{t "shopping.go_to_week"}}" title="{{t "shopping.go_to_week"}}">{{template "icon" "i-week"}}<span class="hidden sm:inline">{{t "shopping.go_to_week"}}</span></a>
-      {{if and .View.Rows (not .Check)}}<a href="/shopping-list?week={{$ws}}&weeks={{$wc}}&check=1" class="btn-secondary max-sm:w-9 max-sm:px-0" aria-label="{{t "shopping.precheck"}}" title="{{t "shopping.precheck_title"}}">{{template "icon" "i-check"}}<span class="hidden sm:inline">{{t "shopping.precheck"}}</span></a>{{end}}
-      <form method="post" action="/shopping-list/generate?week={{$ws}}&weeks={{$wc}}">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <button class="btn-secondary btn-icon" title="{{t "shopping.regenerate"}}" aria-label="{{t "shopping.regenerate"}}">{{template "icon" "i-refresh"}}</button>
-      </form>
-      <button type="button" class="btn-secondary max-sm:w-9 max-sm:px-0" onclick="window.print()" aria-label="{{t "shopping.print"}}" title="{{t "shopping.print"}}">{{template "icon" "i-printer"}}<span class="hidden sm:inline">{{t "shopping.print"}}</span></button>
+      {{if and .View.Rows (not .Check)}}<a href="/shopping-list?week={{$ws}}&weeks={{$wc}}&check=1" class="btn-secondary" title="{{t "shopping.precheck_title"}}">{{t "shopping.precheck"}}</a>{{end}}
+      <button type="button" class="btn-secondary btn-icon" data-sheet="shop-add" aria-label="{{t "shopping.add_label"}}" title="{{t "shopping.add_label"}}">{{template "icon" "i-plus"}}</button>
+      <div class="relative">
+        <button type="button" class="btn-secondary btn-icon" data-popover="shop-menu" aria-expanded="false" aria-controls="shop-menu" aria-label="{{t "shopping.more"}}" title="{{t "shopping.more"}}">{{template "icon" "i-dots"}}</button>
+        <div id="shop-menu" class="menu-panel hidden absolute right-0 top-full mt-1 w-60 z-20 p-1.5 flex flex-col">
+          <a href="/?start={{$ws}}" class="nav-link">{{template "icon" "i-week"}}{{t "shopping.go_to_week"}}</a>
+          <form method="post" action="/shopping-list/generate?week={{$ws}}&weeks={{$wc}}">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button class="nav-link w-full">{{template "icon" "i-refresh"}}{{t "shopping.regenerate"}}</button>
+          </form>
+          {{if .Past}}<button type="button" class="nav-link w-full" data-menu-close data-open-sheet="shop-sheet-copy">{{template "icon" "i-copy"}}{{t "shopping.copy_title"}}</button>{{end}}
+          <button type="button" class="nav-link w-full" onclick="window.print()">{{template "icon" "i-printer"}}{{t "shopping.print"}}</button>
+        </div>
+        {{if .Past}}
+<details id="shop-sheet-copy" class="relative shrink-0" data-sheet>
+    <summary class="hidden"></summary>
+    <form method="post" action="/shopping-list/{{.List.ID}}/copy?week={{$ws}}&weeks={{$wc}}"
+          hx-post="/shopping-list/{{.List.ID}}/copy?week={{$ws}}&weeks={{$wc}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
+          class="sheet-panel sheet-wide" data-copy>
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <div class="flex items-center justify-between gap-2"><h3 class="font-bold">{{t "shopping.copy_title"}}</h3><button type="button" class="icon-action" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button></div>
+      {{if gt (len .Past) 1}}
+      <div class="segmented overflow-x-auto" role="tablist">
+        {{range $i, $l := .Past}}<button type="button" role="tab" data-copy-tab="{{$i}}" aria-selected="{{$l.Active}}" class="px-3 whitespace-nowrap">{{weeksRange $l.WeekStart $l.WeekCount}}</button>{{end}}
+      </div>
+      {{else}}{{range .Past}}<p class="text-[12.5px] text-muted">{{weeksRange .WeekStart .WeekCount}}</p>{{end}}{{end}}
+      {{range $i, $l := .Past}}
+      <ul data-copy-pane="{{$i}}" class="max-h-[45vh] overflow-y-auto divide-y divide-border"{{if not $l.Active}} hidden{{end}}>
+        {{range $l.Items}}
+        <li><label class="flex items-center gap-3 py-2.5 cursor-pointer">
+          <input type="checkbox" class="check" name="item" value="{{.ID}}"{{if .Checked}} checked{{end}}>
+          <span class="grow min-w-0 truncate">{{.Description}}</span>
+          <span class="shrink-0 text-muted tabular-nums">{{if .Qty}}{{template "shop_n" .Qty}} {{if eq .Unit "pz"}}{{t "shopping.unit_pieces"}}{{else}}{{.Unit}}{{end}}{{else}}{{.Text}}{{end}}</span>
+        </label></li>
+        {{end}}
+      </ul>
+      {{end}}
+      <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit" data-copy-submit data-single="{{t "shopping.copy_n" "Count" 1}}" data-plural="{{t "shopping.copy_n" "Count" 2}}">{{t "shopping.copy_n" "Count" 2}}</button></div>
+    </form>
+  </details>
+        {{end}}
+      </div>
     </div>
   </header>
 
@@ -36,7 +71,7 @@
   <p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">{{t "shopping.multi_week_warning" "Weeks" $wc}}</p>
   {{end}}
 
-  <div class="grid gap-4 lg:gap-[18px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] items-start [overflow-anchor:none]">
+  <div class="flex flex-col gap-3 max-w-3xl [overflow-anchor:none]">
     <div id="shop-list" class="flex flex-col gap-3">
       {{/* After a merge: a toast with «Undo», for a few seconds (the server keeps the undo for three minutes). */}}
       {{if .CanUndo}}
@@ -54,7 +89,7 @@
       {{if .View.Total}}
       {{/* shop_progress.js animates the fill (clip-path) when the items in the cart change, and celebrates when it reaches the total.
            It reads the list and the counts from the progressbar: htmx keeps the old attributes of a swapped element that has an id until it settles. */}}
-      <div id="shop-progress" class="card p-4 flex flex-col gap-2 relative">
+      <div id="shop-progress" class="flex flex-col gap-2 relative">
         <div class="flex items-baseline gap-1">
           <b class="tabular-nums">{{t "shopping.progress" "Done" .View.Done "Total" .View.Total}}</b><span class="text-muted">{{t "shopping.in_cart"}}</span>
           <span class="ml-auto text-[12.5px] text-muted tabular-nums">{{.View.Percent}}%</span>
@@ -145,68 +180,46 @@
       {{end}}
     </div>
 
-    <div class="flex flex-col gap-3">
-      <section id="shop-manual" class="card">
-        <div class="flex items-center justify-between gap-2 px-4 pt-3.5 pb-3">
-          <div class="min-w-0"><h2 class="h2">{{t "shopping.manual_title"}}</h2><span class="text-[12.5px] text-muted">{{t "shopping.manual_note"}}</span></div>
-          {{if .Past}}
-          {{/* Copy what was added by hand to a past list (#234): a tab per list,
-               a checkbox per item; sheet.js opens and closes it, manual.js runs the tabs and the count. */}}
-          <details class="relative shrink-0" data-sheet>
-            <summary class="btn-secondary h-8 px-2.5 text-[12.5px] cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="{{t "shopping.copy_title"}}" title="{{t "shopping.copy_title"}}">{{template "icon_sm" "i-copy"}}{{t "shopping.copy_from"}}</summary>
-            <form method="post" action="/shopping-list/{{.List.ID}}/copy?week={{$ws}}&weeks={{$wc}}"
-                  hx-post="/shopping-list/{{.List.ID}}/copy?week={{$ws}}&weeks={{$wc}}" hx-target="#shop-list" hx-select="#shop-list" hx-select-oob="#shop-manual" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
-                  class="sheet-panel sheet-wide" data-copy>
-              <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-              <div class="flex items-center justify-between gap-2"><h3 class="font-bold">{{t "shopping.copy_title"}}</h3><button type="button" class="icon-action" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button></div>
-              {{if gt (len .Past) 1}}
-              <div class="segmented overflow-x-auto" role="tablist">
-                {{range $i, $l := .Past}}<button type="button" role="tab" data-copy-tab="{{$i}}" aria-selected="{{$l.Active}}" class="px-3 whitespace-nowrap">{{weeksRange $l.WeekStart $l.WeekCount}}</button>{{end}}
-              </div>
-              {{else}}{{range .Past}}<p class="text-[12.5px] text-muted">{{weeksRange .WeekStart .WeekCount}}</p>{{end}}{{end}}
-              {{range $i, $l := .Past}}
-              <ul data-copy-pane="{{$i}}" class="max-h-[45vh] overflow-y-auto divide-y divide-border"{{if not $l.Active}} hidden{{end}}>
-                {{range $l.Items}}
-                <li><label class="flex items-center gap-3 py-2.5 cursor-pointer">
-                  <input type="checkbox" class="check" name="item" value="{{.ID}}"{{if .Checked}} checked{{end}}>
-                  <span class="grow min-w-0 truncate">{{.Description}}</span>
-                  <span class="shrink-0 text-muted tabular-nums">{{if .Qty}}{{template "shop_n" .Qty}} {{if eq .Unit "pz"}}{{t "shopping.unit_pieces"}}{{else}}{{.Unit}}{{end}}{{else}}{{.Text}}{{end}}</span>
-                </label></li>
-                {{end}}
-              </ul>
-              {{end}}
-              <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit" data-copy-submit data-single="{{t "shopping.copy_n" "Count" 1}}" data-plural="{{t "shopping.copy_n" "Count" 2}}">{{t "shopping.copy_n" "Count" 2}}</button></div>
-            </form>
-          </details>
-          {{end}}
-        </div>
-        <form method="post" action="/shopping-list/{{.List.ID}}/user-items"
-              hx-post="/shopping-list/{{.List.ID}}/user-items" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML"
-              hx-disabled-elt="find button" data-reset-on-success
-              class="flex flex-wrap gap-2 px-3 py-2.5 border-t border-border">
-          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <input type="hidden" name="week" value="{{$ws}}">
-          <input type="hidden" name="weeks" value="{{$wc}}">
-          {{/* What was added by hand before is suggested while typing (manual.js
-               fills the quantity and the unit); the form's htmx settings do not apply here. */}}
-          <div class="relative min-w-0 basis-full">
-            <input id="ui-desc" name="description" data-reset-focus data-suggest-field required maxlength="200" autocomplete="off" class="field w-full" placeholder="{{t "shopping.add_placeholder"}}" aria-label="{{t "shopping.add_label"}}"
-                   hx-get="/shopping-list/suggest" hx-trigger="input changed delay:200ms" hx-target="#shop-suggest" hx-swap="innerHTML" hx-select="unset" hx-sync="this:replace" hx-disabled-elt="unset">
-            <div id="shop-suggest" class="suggest-panel empty:hidden" aria-live="polite"></div>
-          </div>
-          <input name="quantity" inputmode="decimal" maxlength="10" class="field min-w-0 flex-1" placeholder="{{t "shopping.quantity"}}" aria-label="{{t "shopping.quantity"}}">
-          <select name="unit" class="field w-auto" aria-label="{{t "shopping.unit"}}">
-            <option value="g">g</option>
-            <option value="ml">ml</option>
-            <option value="pz">{{t "shopping.unit_pieces"}}</option>
-          </select>
-          <button class="btn-secondary btn-icon shrink-0" aria-label="{{t "shopping.add"}}" title="{{t "shopping.add"}}">{{template "icon" "i-plus"}}</button>
-        </form>
-      </section>
-      <p class="px-1 text-[12.5px] text-muted">{{t "shopping.category_note"}}</p>
-    </div>
+    <p class="px-1 text-[12.5px] text-muted">{{t "shopping.category_note"}}</p>
   </div>
+
 </div>
+
+{{/* Adding an item by hand: a dialog opened by the «+» of the header (theme.js, data-sheet),
+     closed when the request goes through (modal.js, data-close-dialog). What was added before
+     is suggested while typing (manual.js fills the quantity and the unit). */}}
+<dialog id="shop-add" data-modal class="dialog-panel no-print" aria-label="{{t "shopping.add_label"}}">
+  <div class="flex items-center gap-3 pl-5 pr-4 pt-4 pb-3">
+    <h2 class="grow text-[17px] font-bold">{{t "shopping.add_label"}}</h2>
+    <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
+  </div>
+  <form method="post" action="/shopping-list/{{.List.ID}}/user-items"
+        hx-post="/shopping-list/{{.List.ID}}/user-items" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML"
+        hx-disabled-elt="find button" data-reset-on-success data-close-dialog
+        class="flex flex-col gap-3 px-5 pb-5">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="week" value="{{.WeekStart}}">
+    <input type="hidden" name="weeks" value="{{.WeekCount}}">
+    <div class="relative min-w-0">
+      <input id="ui-desc" name="description" data-reset-focus data-suggest-field required maxlength="200" autocomplete="off" class="field w-full" placeholder="{{t "shopping.add_placeholder"}}" aria-label="{{t "shopping.add_label"}}"
+             hx-get="/shopping-list/suggest" hx-trigger="input changed delay:200ms" hx-target="#shop-suggest" hx-swap="innerHTML" hx-select="unset" hx-sync="this:replace" hx-disabled-elt="unset">
+      <div id="shop-suggest" class="suggest-panel empty:hidden" aria-live="polite"></div>
+    </div>
+    <div class="flex items-center gap-2">
+      <input name="quantity" inputmode="decimal" maxlength="10" class="field min-w-0 flex-1 tabular-nums" placeholder="{{t "shopping.quantity"}} ({{t "shopping.optional"}})" aria-label="{{t "shopping.quantity"}}">
+      <select name="unit" class="field w-auto" aria-label="{{t "shopping.unit"}}">
+        <option value="g">g</option>
+        <option value="ml">ml</option>
+        <option value="pz">{{t "shopping.unit_pieces"}}</option>
+      </select>
+    </div>
+    <p class="text-[12.5px] text-muted">{{t "shopping.add_note"}}</p>
+    <div class="flex items-center justify-end gap-2 pt-1">
+      <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+      <button class="btn-primary">{{t "shopping.add"}}</button>
+    </div>
+  </form>
+</dialog>
 
 {{/* Printed sheet: black on white only, two columns, one box per item. */}}
 <div class="only-print shop-print">
@@ -306,7 +319,7 @@
   </form>
 </div>{{end}}{{end}}
 
-{{define "shop_category"}}{{if .ShowCat}}<span class="marq text-[12.5px] text-muted"><span class="mq">{{if .Category}}{{.Category}}{{else}}{{t "shopping.other"}}{{end}}</span></span>{{end}}{{end}}
+{{define "shop_category"}}{{if .ShowCat}}<span class="block text-[12.5px] text-muted">{{if .Category}}{{.Category}}{{else}}{{t "shopping.other"}}{{end}}</span>{{end}}{{end}}
 
 {{/* In the user's own order a row has a grip to drag by and, once «Reorder» is
      on, the arrows (reorder.js) for the keyboard and for those who cannot drag. */}}
@@ -328,14 +341,14 @@
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
     <button id="shop-item-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
-      <span class="shop-name">{{if $r.Ignored}}<span class="sr-only">{{t "shopping.ignored"}}</span>{{end}}<span class="marq"><span class="mq">{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}</span></span>{{template "shop_category" $r}}</span>
+      <span class="shop-name">{{if $r.Ignored}}<span class="sr-only">{{t "shopping.ignored"}}</span>{{end}}<span class="shop-nm block">{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}</span>{{template "shop_category" $r}}</span>
       <span class="flex flex-col items-end shrink-0">{{template "shop_cols" $r}}{{template "shop_price" $r}}</span>
     </button>
   </form>
   {{/* The quantity editor: a panel on the row, a sheet from the bottom on a
        phone (sheet.js closes it; picker.js converts the number when the unit changes). */}}
-  <details class="relative shrink-0" data-sheet>
-    <summary class="icon-action cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="{{t "shopping.edit_qty" "Name" $it.Ingredient.Name}}" title="{{t "shopping.edit_qty_title"}}">{{template "icon" "i-edit"}}</summary>
+  <details id="shop-sheet-a{{$it.ID}}" class="relative shrink-0" data-sheet>
+    <summary class="hidden"></summary>
     <form method="post" action="/shopping-list/items/{{$it.ID}}/quantity?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
           hx-post="/shopping-list/items/{{$it.ID}}/quantity?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
           class="sheet-panel"{{if $r.PieceWeight}} data-unit-weight="{{$r.PieceWeight}}"{{end}}>
@@ -352,10 +365,16 @@
       <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit">{{t "shopping.save"}}</button></div>
     </form>
   </details>
-  <form method="post" action="/shopping-list/items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="shrink-0 [@media(hover:none)]:sr-only">
-    <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
-    <button class="icon-action" aria-label="{{if $r.Ignored}}{{t "shopping.restore_named" "Name" $it.Ingredient.Name}}{{else}}{{t "shopping.ignore_named" "Name" $it.Ingredient.Name}}{{end}}" title="{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}">{{template "icon" "i-ban"}}</button>
-  </form>
+  <div class="shop-menu relative shrink-0">
+    <button type="button" class="icon-action" data-popover="shop-menu-a{{$it.ID}}" aria-expanded="false" aria-controls="shop-menu-a{{$it.ID}}" aria-label="{{t "shopping.item_actions" "Name" $it.Ingredient.Name}}" title="{{t "shopping.item_actions_title"}}">{{template "icon" "i-dots"}}</button>
+    <div id="shop-menu-a{{$it.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
+      <button type="button" class="nav-link w-full" data-menu-close data-open-sheet="shop-sheet-a{{$it.ID}}">{{t "shopping.edit_qty_title"}}</button>
+      <form method="post" action="/shopping-list/items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+        <button class="nav-link w-full">{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}</button>
+      </form>
+    </div>
+  </div>
   </div>
   {{template "shop_similar" .}}
   {{template "shop_shares" $r}}
@@ -385,12 +404,12 @@
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
     <button id="shop-user-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
-      <span class="shop-name">{{if $r.Ignored}}<span class="sr-only">{{t "shopping.ignored"}}</span>{{end}}<span class="marq"><span class="mq">{{$it.Description}}<span class="inline-block align-[-2px] ml-1 text-muted" title="{{t "shopping.by_hand"}}">{{template "icon_sm" "i-user"}}<span class="sr-only">{{t "shopping.by_hand"}}</span></span>{{if $r.User.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}</span></span>{{template "shop_category" $r}}</span>
+      <span class="shop-name">{{if $r.Ignored}}<span class="sr-only">{{t "shopping.ignored"}}</span>{{end}}<span class="shop-nm block">{{$it.Description}}<span class="inline-block align-[-2px] ml-1 text-muted" title="{{t "shopping.by_hand"}}">{{template "icon_sm" "i-user"}}<span class="sr-only">{{t "shopping.by_hand"}}</span></span>{{if $r.User.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}</span>{{template "shop_category" $r}}</span>
       {{template "shop_cols" $r}}
     </button>
   </form>
-  <details class="relative shrink-0" data-sheet>
-    <summary class="icon-action cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="{{t "shopping.edit_item" "Name" $it.Description}}" title="{{t "shopping.edit_item_title"}}">{{template "icon" "i-edit"}}</summary>
+  <details id="shop-sheet-u{{$it.ID}}" class="relative shrink-0" data-sheet>
+    <summary class="hidden"></summary>
     <form method="post" action="/shopping-list/user-items/{{$it.ID}}/edit?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
           hx-post="/shopping-list/user-items/{{$it.ID}}/edit?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
           class="sheet-panel">
@@ -412,17 +431,21 @@
       <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" data-sheet-close>{{t "common.cancel"}}</button><button class="btn-primary" type="submit">{{t "shopping.save"}}</button></div>
     </form>
   </details>
-
-  <form method="post" action="/shopping-list/user-items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/user-items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="shrink-0 [@media(hover:none)]:sr-only">
-    <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
-    <button class="icon-action" aria-label="{{if $r.Ignored}}{{t "shopping.restore_named" "Name" $it.Description}}{{else}}{{t "shopping.ignore_named" "Name" $it.Description}}{{end}}" title="{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}">{{template "icon" "i-ban"}}</button>
-  </form>
-  <form method="post" action="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
-        hx-post="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
-        hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML">
-    <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
-    <button class="icon-action hover:text-danger" aria-label="{{t "shopping.remove" "Name" $it.Description}}" title="{{t "shopping.remove_title"}}">{{template "icon" "i-trash"}}</button>
-  </form>
+  <div class="shop-menu relative shrink-0">
+    <button type="button" class="icon-action" data-popover="shop-menu-u{{$it.ID}}" aria-expanded="false" aria-controls="shop-menu-u{{$it.ID}}" aria-label="{{t "shopping.item_actions" "Name" $it.Description}}" title="{{t "shopping.item_actions_title"}}">{{template "icon" "i-dots"}}</button>
+    <div id="shop-menu-u{{$it.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
+      <button type="button" class="nav-link w-full" data-menu-close data-open-sheet="shop-sheet-u{{$it.ID}}">{{t "shopping.edit_item_title"}}</button>
+      <form method="post" action="/shopping-list/user-items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/user-items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+        <button class="nav-link w-full">{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}</button>
+      </form>
+      <hr class="my-1 border-border">
+      <form method="post" action="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
+        <button class="nav-link w-full text-danger" aria-label="{{t "shopping.remove" "Name" $it.Description}}">{{template "icon" "i-trash"}}{{t "shopping.remove_title"}}</button>
+      </form>
+    </div>
+  </div>
   </div>
   {{template "shop_similar" .}}
 </li>{{end}}

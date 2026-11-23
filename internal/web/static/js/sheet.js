@@ -26,6 +26,13 @@
   document.addEventListener("click", function (evt) {
     var t = evt.target;
     if (!(t instanceof Element)) return;
+    // A row's menu opens its quantity editor (data-open-sheet="<id of the <details>>").
+    var opener = t.closest("[data-open-sheet]");
+    if (opener) {
+      var target = document.getElementById(opener.getAttribute("data-open-sheet"));
+      if (target) target.open = true;
+      return;
+    }
     var closer = t.closest("[data-sheet-close]");
     if (closer) {
       close(closer.closest("details[data-sheet]"));
