@@ -270,6 +270,8 @@ func (a *App) Router() http.Handler {
 		// Premium upgrade page (target of requireFeature's redirects).
 		r.Get("/upgrade", a.handleUpgradePage)
 
+		// The You page (#283): the entry to everything behind the avatar.
+		r.Get("/tu", a.handleTuPage)
 		// Account settings (GDPR export, password change, deletion, API tokens).
 		r.Get("/settings", a.handleSettingsPage)
 		r.Post("/settings/keep-awake", a.handleSettingsKeepAwake)

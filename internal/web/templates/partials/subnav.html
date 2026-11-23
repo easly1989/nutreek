@@ -1,0 +1,14 @@
+{{define "library_tabs"}}{{- /* The tabs of the Library destination (#283); . is the current page: recipes, ingredients or plan. */ -}}
+<nav class="subnav" aria-label="{{t "layout.nav.library_tabs"}}">
+  <a href="/recipes"{{if eq . "recipes"}} aria-current="page"{{end}}>{{t "layout.nav.recipes"}}</a>
+  <a href="/ingredients"{{if eq . "ingredients"}} aria-current="page"{{end}}>{{t "layout.nav.ingredients"}}</a>
+  <a href="/piano-nutrizionale"{{if eq . "plan"}} aria-current="page"{{end}}>{{t "layout.nav.plan"}}</a>
+</nav>
+{{end}}
+
+{{define "progress_tabs"}}{{- /* The tabs of the Progress destination (#283); . is the current page: stats or weight. */ -}}
+<nav class="subnav" aria-label="{{t "layout.nav.progress_tabs"}}">
+  <a href="/stats"{{if eq . "stats"}} aria-current="page"{{end}}>{{t "layout.nav.stats"}}</a>
+  <a href="/profile/peso"{{if eq . "weight"}} aria-current="page"{{end}}>{{t "layout.nav.weight"}}</a>
+</nav>
+{{end}}

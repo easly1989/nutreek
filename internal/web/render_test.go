@@ -2,6 +2,29 @@ package web
 
 import "testing"
 
+func TestNavSection(t *testing.T) {
+	for cur, want := range map[string]string{
+		"/":                   "week",
+		"/shopping-list":      "shopping",
+		"/recipes/12/edit":    "library",
+		"/ingredients":        "library",
+		"/piano-nutrizionale": "library",
+		"/templates/3":        "library",
+		"/stats":              "progress",
+		"/profile/peso":       "progress",
+		"/profile":            "you",
+		"/tu":                 "you",
+		"/settings/household": "you",
+		"/login":              "",
+		"/profile-old":        "",
+		"/recipes-old":        "",
+	} {
+		if got := navSection(cur); got != want {
+			t.Errorf("navSection(%q) = %q, want %q", cur, got, want)
+		}
+	}
+}
+
 func TestNavActive(t *testing.T) {
 	cases := []struct {
 		cur, href string

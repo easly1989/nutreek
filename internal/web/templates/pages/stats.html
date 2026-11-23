@@ -2,6 +2,7 @@
 {{define "content"}}
 {{- $v := .View -}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
+  {{template "progress_tabs" "stats"}}
   <header>
     <h1 class="h1">{{t "stats.title"}}</h1>
     <p class="text-muted mt-0.5">{{t "stats.range" "From" (printf "%d %s" .From.Day (monthName .From)) "To" (printf "%d %s" .To.Day (monthName .To))}}</p>

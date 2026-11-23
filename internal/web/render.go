@@ -228,11 +228,17 @@ func funcMap(lang string) template.FuncMap {
 			}
 			return "i-star"
 		},
-		"navActive": navActive,
+		"navActive":  navActive,
+		"navSection": navSection,
 		// nav builds a navigation entry of the shell (sidebar and bottom
 		// bar): {{template "nav_link" (nav $.ActiveNav "/recipes" "Ricette" "i-recipes")}}.
 		"nav": func(cur, href, label, icon string) NavItem {
 			return NavItem{Href: href, Label: label, Icon: icon, Active: navActive(cur, href)}
+		},
+		// navTo builds a navigation entry whose active state the caller already
+		// knows (a destination groups several pages, see navSection).
+		"navTo": func(href, label, icon string, active bool) NavItem {
+			return NavItem{Href: href, Label: label, Icon: icon, Active: active}
 		},
 		// initial returns the first letter of a name, uppercased, for the
 		// avatar in the sidebar.
@@ -278,6 +284,29 @@ type RowCtx struct {
 type NavItem struct {
 	Href, Label, Icon string
 	Active            bool
+}
+
+// navSection says which of the four destinations of the shell a page belongs
+// to: "week", "shopping", "library" (recipes, ingredients, the plan and its
+// templates), "progress" (statistics, weight) or "you" (the You page, the
+// profile, settings and everything else behind the avatar). A page of no
+// section gives "".
+func navSection(cur string) string {
+	switch {
+	case cur == "/":
+		return "week"
+	case navActive(cur, "/shopping-list"):
+		return "shopping"
+	case navActive(cur, "/recipes"), navActive(cur, "/ingredients"), navActive(cur, "/piano-nutrizionale"),
+		navActive(cur, "/templates"), navActive(cur, "/nutrizionista"):
+		return "library"
+	case navActive(cur, "/stats"), navActive(cur, "/profile/peso"):
+		return "progress"
+	case navActive(cur, "/tu"), navActive(cur, "/profile"), navActive(cur, "/settings"), navActive(cur, "/coach"),
+		navActive(cur, "/admin"), navActive(cur, "/onboarding"), navActive(cur, "/upgrade"):
+		return "you"
+	}
+	return ""
 }
 
 // navActive says whether the link href matches the current page cur: "/"

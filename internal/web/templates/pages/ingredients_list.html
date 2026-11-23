@@ -2,6 +2,7 @@
 {{define "content"}}
 {{- $f := .Filter -}}
 <div class="flex flex-col gap-4 lg:gap-[18px]">
+  {{template "library_tabs" "ingredients"}}
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
       <h1 class="h1">{{t "ingredients.title"}}</h1>

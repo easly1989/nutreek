@@ -1,0 +1,55 @@
+{{define "title"}}{{t "tu.title"}} — Nutreek{{end}}
+{{define "content"}}
+{{- /* The You page (#283): the entry to everything behind the avatar. Rows,
+       not cards: a rule opens each group. View model: authPageData. */}}
+<div class="flex flex-col gap-5 max-w-[920px]">
+  <header class="flex items-center gap-4">
+    <span class="w-14 h-14 rounded-full bg-accent text-accent-fg grid place-items-center text-[22px] font-bold" aria-hidden="true">{{initial .User.DisplayName}}</span>
+    <div class="min-w-0">
+      <h1 class="h1">{{.User.DisplayName}}</h1>
+      {{if not .Demo}}<p class="text-muted truncate">{{.User.Email}}</p>{{end}}
+    </div>
+  </header>
+
+  {{with .Update}}<div class="max-w-[420px]">{{template "update_card" .}}</div>{{end}}
+
+  <div class="grid gap-x-10 gap-y-5 lg:grid-cols-2 items-start">
+    <section aria-labelledby="tu-account" class="flex flex-col">
+      <h2 id="tu-account" class="ledger-head">{{t "tu.account"}}</h2>
+      {{template "tu_row" (list "/profile" (t "tu.profile") (t "tu.profile_desc"))}}
+      {{template "tu_row" (list "/settings/household" (t "tu.household") (t "tu.household_desc"))}}
+      {{template "tu_row" (list "/settings#account" (t "tu.data") (t "tu.data_desc"))}}
+    </section>
+
+    <div class="flex flex-col gap-5">
+      <section aria-labelledby="tu-prefs" class="flex flex-col">
+        <h2 id="tu-prefs" class="ledger-head">{{t "tu.preferences"}}</h2>
+        {{template "tu_row" (list "/settings#aspetto" (t "tu.appearance") "")}}
+        {{template "tu_row" (list "/settings#orari" (t "tu.meal_times") "")}}
+        {{template "tu_row" (list "/settings/notifications" (t "tu.notifications") "")}}
+        {{if not .Demo}}{{template "tu_row" (list "/settings/stores" (t "tu.stores") "")}}{{end}}
+      </section>
+
+      <section aria-labelledby="tu-help" class="flex flex-col">
+        <h2 id="tu-help" class="ledger-head">{{t "tu.help"}}</h2>
+        {{template "tu_row" (list "/onboarding?restart=true" (t "layout.nav.quick_guide") "")}}
+        <form method="post" action="/tour/restart" class="contents">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <button type="submit" class="tu-row w-full text-left"><span class="font-medium">{{t "layout.nav.tour"}}</span>{{template "icon_sm" "i-chevron-right"}}</button>
+        </form>
+        {{if eq .User.Role "coach"}}{{template "tu_row" (list "/coach" (t "layout.nav.coach") "")}}{{end}}
+        {{if .IsOwner}}{{template "tu_row" (list "/admin/panel" (t "tu.admin") "")}}{{end}}
+      </section>
+    </div>
+  </div>
+
+  <form method="post" action="/logout" class="max-w-[420px]">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button class="tu-row tu-row-end w-full text-left"><span class="font-medium">{{t "layout.logout"}}</span>{{template "icon_sm" "i-logout"}}</button>
+  </form>
+</div>
+{{end}}
+
+{{define "tu_row"}}{{- /* (list href title description) */ -}}
+<a href="{{index . 0}}" class="tu-row"><span class="min-w-0"><span class="font-medium block">{{index . 1}}</span>{{with index . 2}}<span class="block text-[13px] text-muted">{{.}}</span>{{end}}</span>{{template "icon_sm" "i-chevron-right"}}</a>
+{{end}}

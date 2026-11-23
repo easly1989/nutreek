@@ -46,102 +46,49 @@
   {{template "icon_sprite"}}
 
   {{if and .User (not .Bare)}}
-  {{- $p := .ActiveNav -}}
+  {{- $sec := navSection .ActiveNav -}}
+  {{/* The page's CSRF token for scripts (tour.js reads it): it used to come from
+       the sign-out form of the sidebar, which now lives on the You page. */}}
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-  {{/* Sidebar: desktop only (lg). On the phone the bottom bar replaces it. */}}
+  {{/* Sidebar: desktop only (lg). On the phone the bottom bar replaces it.
+       The same four destinations everywhere; the rest is behind the avatar. */}}
   <nav id="sidebar" aria-label="{{t "layout.nav.sections"}}"
        class="hidden lg:flex fixed inset-y-0 left-0 z-30 w-[220px] flex-col gap-5 px-3 py-5 bg-surface border-r border-border overflow-y-auto">
     {{template "brand"}}
     <ul class="flex flex-col gap-0.5">
-      {{template "nav_link" (nav $p "/" (t "layout.nav.week") "i-week")}}
-      {{template "nav_link" (nav $p "/recipes" (t "layout.nav.recipes") "i-recipes")}}
-      {{template "nav_link" (nav $p "/ingredients" (t "layout.nav.ingredients") "i-ingredients")}}
-      {{template "nav_link" (nav $p "/piano-nutrizionale" (t "layout.nav.plan") "i-plan")}}
-      {{template "nav_link" (nav $p "/shopping-list" (t "layout.nav.shopping") "i-cart")}}
-      {{template "nav_link" (nav $p "/stats" (t "layout.nav.stats") "i-stats")}}
-      {{template "nav_link" (nav $p "/profile/peso" (t "layout.nav.weight") "i-weight")}}
-    </ul>
-    <ul class="flex flex-col gap-0.5 pt-4 border-t border-border">
-      {{template "nav_link" (nav $p "/settings" (t "layout.nav.settings") "i-settings")}}
-      {{if eq .User.Role "coach"}}{{template "nav_link" (nav $p "/coach" (t "layout.nav.coach") "i-coach")}}{{end}}
-      {{if .IsOwner}}{{template "nav_link" (nav $p "/admin/panel" (t "layout.nav.admin") "i-shield")}}{{end}}
-      <li><a href="/onboarding?restart=true" class="nav-link{{if eq $p "/onboarding"}} is-active{{end}}">{{template "icon" "i-help"}}{{t "layout.nav.quick_guide"}}</a></li>
-      <li>
-        <form method="post" action="/tour/restart">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" class="nav-link w-full">{{template "icon" "i-play"}}{{t "layout.nav.tour"}}</button>
-        </form>
-      </li>
+      {{template "nav_link" (navTo "/" (t "layout.nav.week") "i-week" (eq $sec "week"))}}
+      {{template "nav_link" (navTo "/shopping-list" (t "layout.nav.shopping") "i-cart" (eq $sec "shopping"))}}
+      {{template "nav_link" (navTo "/recipes" (t "layout.nav.library") "i-recipes" (eq $sec "library"))}}
+      {{template "nav_link" (navTo "/stats" (t "layout.nav.progress") "i-stats" (eq $sec "progress"))}}
     </ul>
 
     <div class="mt-auto flex flex-col gap-1">
       {{with .Update}}<div class="mb-2">{{template "update_card" .}}</div>{{end}}
-      <div>
-        {{/* The panel is fixed next to the sidebar: inside the sidebar
-             (overflow-y-auto) it would be cut off. */}}
-        <button type="button" class="nav-link w-full" data-popover="appearance-desktop" aria-expanded="false" aria-controls="appearance-desktop">
-          <span class="w-[18px] h-[18px] grid place-items-center"><span class="w-3.5 h-3.5 rounded-full bg-accent"></span></span>{{t "layout.appearance"}}
-        </button>
-        <div id="appearance-desktop" class="menu-panel hidden fixed left-[228px] bottom-4 w-[280px] z-40" role="dialog" aria-label="{{t "layout.appearance"}}">
-          {{template "appearance_controls" .Appearance}}
-        </div>
-      </div>
-      <a href="/profile" class="nav-link {{if eq $p "/profile"}}is-active{{end}}"{{if eq $p "/profile"}} aria-current="page"{{end}}>
-        <span class="w-[26px] h-[26px] -ml-1 rounded-full bg-surface-2 text-text grid place-items-center text-xs font-bold">{{initial .User.DisplayName}}</span>
+      <a href="/tu" class="nav-link {{if eq $sec "you"}}is-active{{end}}"{{if eq $sec "you"}} aria-current="page"{{end}}>
+        <span class="w-[26px] h-[26px] -ml-1 rounded-full bg-accent text-accent-fg grid place-items-center text-xs font-bold" aria-hidden="true">{{initial .User.DisplayName}}</span>
         <span class="truncate">{{.User.DisplayName}}</span>
       </a>
-      <form method="post" action="/logout">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <button class="nav-link w-full text-muted">{{template "icon" "i-logout"}}{{t "layout.logout"}}</button>
-      </form>
     </div>
   </nav>
 
-  {{/* Bottom bar: phone and tablet. The four everyday sections plus
-       «Altro», which opens a sheet with the rest. */}}
-  {{- $tabOn := or (navActive $p "/") (navActive $p "/shopping-list") (navActive $p "/recipes") (navActive $p "/stats") -}}
+  {{/* Top bar: phone and tablet. The brand and the avatar, which opens the You page. */}}
+  <header class="lg:hidden sticky top-0 z-20 flex items-center justify-between gap-3 h-14 px-4 bg-surface border-b border-border">
+    {{template "brand"}}
+    <a href="/tu" class="relative w-11 h-11 -mr-1 rounded-full grid place-items-center" aria-label="{{t "layout.nav.you_menu" "Name" .User.DisplayName}}"{{if eq $sec "you"}} aria-current="page"{{end}}>
+      <span class="w-9 h-9 rounded-full bg-accent text-accent-fg grid place-items-center text-[15px] font-bold{{if eq $sec "you"}} ring-2 ring-accent-soft{{end}}">{{initial .User.DisplayName}}</span>
+      {{with .Update}}<span class="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-accent ring-2 ring-surface" data-update-dot="{{.Latest}}"><span class="sr-only">{{t "updates.card.available" "Version" .Latest}}</span></span>{{end}}
+    </a>
+  </header>
+
+  {{/* Bottom bar: phone and tablet. The same four destinations as the sidebar. */}}
   <nav id="bottom-nav" aria-label="{{t "layout.nav.sections"}}"
-       class="lg:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-5 bg-surface border-t border-border px-1.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
-    {{template "tab_link" (nav $p "/" (t "layout.nav.week") "i-week")}}
-    {{template "tab_link" (nav $p "/shopping-list" (t "layout.nav.shopping_short") "i-cart")}}
-    {{template "tab_link" (nav $p "/recipes" (t "layout.nav.recipes") "i-recipes")}}
-    {{template "tab_link" (nav $p "/stats" (t "layout.nav.stats") "i-stats")}}
-    <button type="button" class="tab-link relative{{if not $tabOn}} is-active{{end}}" data-sheet="more-sheet" aria-haspopup="dialog">
-      {{template "icon_lg" "i-more"}}{{t "layout.nav.more"}}
-      {{with .Update}}<span class="absolute top-1 left-[calc(50%+6px)] w-2.5 h-2.5 rounded-full bg-accent ring-2 ring-surface" data-update-dot="{{.Latest}}"><span class="sr-only">{{t "updates.card.available" "Version" .Latest}}</span></span>{{end}}
-    </button>
+       class="lg:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-4 bg-surface border-t border-border px-1.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+    {{template "tab_link" (navTo "/" (t "layout.nav.week") "i-week" (eq $sec "week"))}}
+    {{template "tab_link" (navTo "/shopping-list" (t "layout.nav.shopping_short") "i-cart" (eq $sec "shopping"))}}
+    {{template "tab_link" (navTo "/recipes" (t "layout.nav.library") "i-recipes" (eq $sec "library"))}}
+    {{template "tab_link" (navTo "/stats" (t "layout.nav.progress") "i-stats" (eq $sec "progress"))}}
   </nav>
-
-  <dialog id="more-sheet" class="sheet" aria-label="{{t "layout.nav.more_sections"}}">
-    <div class="flex items-center justify-between px-4 pt-4 pb-2">
-      <span class="font-bold text-[15px]">{{.User.DisplayName}}</span>
-      <button type="button" class="btn-secondary btn-icon" data-sheet-close aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
-    </div>
-    {{with .Update}}<div class="px-4 pb-2">{{template "update_card" .}}</div>{{end}}
-    <ul class="grid grid-cols-2 gap-1 px-3">
-      {{template "nav_link" (nav $p "/ingredients" (t "layout.nav.ingredients") "i-ingredients")}}
-      {{template "nav_link" (nav $p "/piano-nutrizionale" (t "layout.nav.plan") "i-plan")}}
-      {{template "nav_link" (nav $p "/profile/peso" (t "layout.nav.weight") "i-weight")}}
-      <li><a href="/profile" class="nav-link{{if eq $p "/profile"}} is-active{{end}}">{{template "icon" "i-user"}}{{t "layout.nav.profile"}}</a></li>
-      {{template "nav_link" (nav $p "/settings" (t "layout.nav.settings") "i-settings")}}
-      <li><a href="/onboarding?restart=true" class="nav-link{{if eq $p "/onboarding"}} is-active{{end}}">{{template "icon" "i-help"}}{{t "layout.nav.quick_guide"}}</a></li>
-      {{if eq .User.Role "coach"}}{{template "nav_link" (nav $p "/coach" (t "layout.nav.coach") "i-coach")}}{{end}}
-      {{if .IsOwner}}{{template "nav_link" (nav $p "/admin/panel" (t "layout.nav.admin") "i-shield")}}{{end}}
-      <li>
-        <form method="post" action="/tour/restart">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-          <button type="submit" class="nav-link w-full">{{template "icon" "i-play"}}{{t "layout.nav.tour"}}</button>
-        </form>
-      </li>
-    </ul>
-    <div class="mx-4 mt-3 pt-4 border-t border-border">
-      {{template "appearance_controls" .Appearance}}
-    </div>
-    <form method="post" action="/logout" class="px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button class="btn-secondary w-full">{{template "icon" "i-logout"}}{{t "layout.logout"}}</button>
-    </form>
-  </dialog>
   {{else}}
   <header class="h-[60px] flex items-center gap-3 px-4 lg:px-6 bg-surface border-b border-border">
     {{template "brand"}}
