@@ -102,16 +102,19 @@
     <div class="card px-4 py-3 flex flex-col gap-2">
       <div class="flex items-baseline justify-between gap-2">
         <h3 class="font-semibold">{{t "week.workout"}}</h3>
-        {{if gt .WorkoutKcal 0.0}}<span class="text-muted tabular-nums">−{{num .WorkoutKcal}} kcal</span>{{end}}
+        {{if gt .WorkoutKcal 0.0}}<span class="text-muted tabular-nums">{{t "week.workout_burned" "Kcal" (num .WorkoutKcal)}}</span>{{end}}
       </div>
       {{range .Workouts}}
       <div class="flex items-center justify-between gap-2 min-h-[32px] border-t border-border">
         <span>{{ref "activity" .ActivityCode .ActivityName}} <span class="text-muted">{{.DurationMinutes}} {{t "week.min"}}</span></span>
+        <span class="flex items-center">
+        <button type="button" class="icon-action" hx-get="/allenamento/{{.ID}}/edit?start={{$.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML" title="{{t "week.workout_edit"}}" aria-label="{{t "week.workout_edit_named" "Name" (ref "activity" .ActivityCode .ActivityName)}}">{{template "icon" "i-edit"}}</button>
         <form method="post" action="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}"
               hx-post="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
           <button type="submit" class="icon-action hover:text-danger" title="{{t "week.workout_delete"}}" aria-label="{{t "week.workout_delete_named" "Name" (ref "activity" .ActivityCode .ActivityName)}}">{{template "icon" "i-trash"}}</button>
         </form>
+        </span>
       </div>
       {{end}}
     </div>

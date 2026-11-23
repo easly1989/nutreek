@@ -217,6 +217,9 @@ func (a *App) Router() http.Handler {
 
 		// Workout log (entered from the dashboard's day card).
 		r.Post("/allenamento", a.handleWorkoutLog)
+		r.Post("/allenamento/copy", a.handleWorkoutCopy)
+		r.Get("/allenamento/{id}/edit", a.handleWorkoutEditForm)
+		r.Post("/allenamento/{id}", a.handleWorkoutLogUpdate)
 		r.Post("/allenamento/{id}/delete", a.handleWorkoutLogDelete)
 
 		// Hydration tracking (quick log from the day card).

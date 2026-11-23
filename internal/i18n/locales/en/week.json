@@ -42,7 +42,7 @@
   "week.adherence": "Adherence {{.Score}}%",
   "week.adherence_title": "Kcal deviation from the plan: {{.Pct}}%",
   "week.plan_followed": "Plan followed",
-  "week.workout_kcal_chip": "−{{.Kcal}} kcal from workouts",
+  "week.workout_kcal_chip": "about {{.Kcal}} kcal burned in workouts",
   "week.macro_over": "One or more macros over the goal",
   "week.no_meals_day": "No meals on this day. Add one below.",
   "week.new_meal_label": "Name of the new meal",
@@ -149,5 +149,11 @@
   "week.add_workout_row": "A workout",
   "week.add_workout_row_hint": "Activity and minutes",
   "week.add_meal_title": "New meal",
-  "week.add_workout_title": "New workout"
+  "week.add_workout_title": "New workout",
+  "week.workout_recent": "Used lately",
+  "week.workout_as_yesterday": "As yesterday",
+  "week.workout_edit": "Change workout",
+  "week.workout_edit_named": "Change workout {{.Name}}",
+  "week.edit_workout_title": "Change workout",
+  "week.workout_burned": "burned about {{.Kcal}} kcal (estimate)"
 }

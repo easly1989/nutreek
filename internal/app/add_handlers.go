@@ -7,6 +7,7 @@ import (
 
 	"github.com/justinas/nosurf"
 
+	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
@@ -22,6 +23,14 @@ type addFormData struct {
 	Date       time.Time
 	WeekStart  string
 	Activities []domain.WorkoutActivity
+
+	// The workout form: shortcuts, what to start from, how many workouts the day
+	// before has ("As yesterday"), and the workout being edited (0 for a new one).
+	Recents    []db.WorkoutRecent
+	ActivityID int64
+	Minutes    int
+	YesterdayN int
+	EditID     int64
 }
 
 // addDay reads the week (start) and the day of an add request, which names the
@@ -82,8 +91,19 @@ func (a *App) handleAddMealForm(w http.ResponseWriter, r *http.Request) {
 	a.renderAddDialog(w, r, "week.add_meal_title", "meal_form", nil)
 }
 
-// handleAddWorkoutForm GET /week/workout?day=N&start=YYYY-MM-DD.
+// handleAddWorkoutForm GET /week/workout?day=N&start=YYYY-MM-DD, with the
+// activity and minutes of a recent workout (activity, minutes) to start from.
 func (a *App) handleAddWorkoutForm(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
 	acts, _ := a.WorkoutLogs.ListActivities(r.Context())
-	a.renderAddDialog(w, r, "week.add_workout_title", "workout_form", func(d *addFormData) { d.Activities = acts })
+	recents, _ := a.WorkoutLogs.RecentWorkouts(r.Context(), user.ID, 3)
+	activityID, _ := strconv.ParseInt(r.URL.Query().Get("activity"), 10, 64)
+	minutes, _ := strconv.Atoi(r.URL.Query().Get("minutes"))
+	a.renderAddDialog(w, r, "week.add_workout_title", "workout_form", func(d *addFormData) {
+		d.Activities, d.Recents, d.ActivityID, d.Minutes = acts, recents, activityID, minutes
+		yesterday := d.Date.AddDate(0, 0, -1)
+		if logs, err := a.WorkoutLogs.ListWorkoutLogs(r.Context(), user.ID, yesterday, yesterday); err == nil {
+			d.YesterdayN = len(logs)
+		}
+	})
 }

@@ -42,7 +42,7 @@
   "week.adherence": "Aderenza {{.Score}}%",
   "week.adherence_title": "Scostamento kcal dal piano: {{.Pct}}%",
   "week.plan_followed": "Piano rispettato",
-  "week.workout_kcal_chip": "−{{.Kcal}} kcal di allenamento",
+  "week.workout_kcal_chip": "circa {{.Kcal}} kcal bruciate in allenamento",
   "week.macro_over": "Uno o più macro oltre l'obiettivo",
   "week.no_meals_day": "Nessun pasto in questo giorno. Aggiungine uno qui sotto.",
   "week.new_meal_label": "Nome del nuovo pasto",
@@ -149,5 +149,11 @@
   "week.add_workout_row": "Un allenamento",
   "week.add_workout_row_hint": "Attività e minuti",
   "week.add_meal_title": "Nuovo pasto",
-  "week.add_workout_title": "Nuovo allenamento"
+  "week.add_workout_title": "Nuovo allenamento",
+  "week.workout_recent": "Usate di recente",
+  "week.workout_as_yesterday": "Come ieri",
+  "week.workout_edit": "Modifica allenamento",
+  "week.workout_edit_named": "Modifica allenamento {{.Name}}",
+  "week.edit_workout_title": "Modifica allenamento",
+  "week.workout_burned": "bruciate circa {{.Kcal}} kcal (stima)"
 }
