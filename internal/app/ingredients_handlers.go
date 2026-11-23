@@ -588,7 +588,7 @@ func (f ingredientFilter) apply(rows []ingredientRow) []ingredientRow {
 	out := make([]ingredientRow, 0, len(rows))
 	for _, row := range rows {
 		switch {
-		case f.Src == "mine" && row.IsOFF(), f.Src == "off" && !row.IsOFF():
+		case f.Src == "mine" && row.IsOFF(), f.Src == "off" && row.OFF == nil:
 			continue
 		case f.CategoryID > 0 && (row.Category == nil || row.Category.ID != f.CategoryID):
 			continue

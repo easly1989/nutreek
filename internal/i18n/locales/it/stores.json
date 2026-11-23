@@ -28,12 +28,13 @@
   "stores.unavailable": "esaurito",
   "stores.search_failed": "{{.Name}} non ha risposto.",
   "stores.error.no_key": "Imposta prima NUTREEK_SECRET_KEY: cifra il token.",
-  "stores.error.url": "L'indirizzo deve iniziare con http:// o https://.",
+  "stores.error.url": "L'indirizzo deve iniziare con https:// (http:// solo dove gli indirizzi privati sono ammessi).",
   "stores.error.invalid": "Servono un nome, un indirizzo e un token, e si possono collegare al massimo 5 negozi.",
   "stores.flash.saved": "Negozio salvato.",
   "stores.flash.deleted": "Negozio scollegato.",
   "stores.test.ok": "{{.Name}} risponde: {{.Count}} prodotti per «pasta».",
   "stores.test.failed": "{{.Name}} non ha risposto. Controlla l'indirizzo e il token.",
   "stores.prices.updated": "Prezzi aggiornati ({{.Count}}).",
-  "stores.prices.failed": "Impossibile interrogare {{.Names}}."
+  "stores.prices.failed": "Impossibile interrogare {{.Names}}.",
+  "stores.error.token_needed": "Un nuovo indirizzo richiede di nuovo il token: quello vecchio non gli viene inviato."
 }

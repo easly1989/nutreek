@@ -28,12 +28,13 @@
   "stores.unavailable": "out of stock",
   "stores.search_failed": "{{.Name}} did not answer.",
   "stores.error.no_key": "Set NUTREEK_SECRET_KEY first: it seals the token.",
-  "stores.error.url": "The address must start with http:// or https://.",
+  "stores.error.url": "The address must start with https:// (http:// only where private addresses are allowed).",
   "stores.error.invalid": "A name, an address and a token are needed, and up to 5 stores can be connected.",
   "stores.flash.saved": "Store saved.",
   "stores.flash.deleted": "Store disconnected.",
   "stores.test.ok": "{{.Name}} answers: {{.Count}} products for «pasta».",
   "stores.test.failed": "{{.Name}} did not answer. Check the address and the token.",
   "stores.prices.updated": "Prices updated ({{.Count}}).",
-  "stores.prices.failed": "Could not ask {{.Names}}."
+  "stores.prices.failed": "Could not ask {{.Names}}.",
+  "stores.error.token_needed": "A new address needs the token again: the old one is not sent to it."
 }

@@ -96,7 +96,7 @@ func (a *App) handleStoresSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := r.PostFormValue("name")
-	base, err := stores.CleanURL(r.PostFormValue("url"))
+	base, err := stores.CleanURL(r.PostFormValue("url"), a.Cfg.StoresAllowPrivate)
 	if err != nil {
 		back("stores.error.url")
 		return
@@ -119,6 +119,12 @@ func (a *App) handleStoresSave(w http.ResponseWriter, r *http.Request) {
 		var id int64
 		if id, err = parseID(r, "id"); err != nil {
 			a.notFound(w, r)
+			return
+		}
+		// The token never leaves for an address the user did not give it with: a new
+		// address needs a new token.
+		if cur, gerr := a.StorePlugins.Get(r.Context(), user.ID, id); gerr == nil && cur.BaseURL != base && sealed == "" {
+			back("stores.error.token_needed")
 			return
 		}
 		err = a.StorePlugins.Update(r.Context(), user.ID, id, name, base, sealed)

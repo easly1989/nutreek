@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -57,6 +58,7 @@ func TestStorePluginsFlow(t *testing.T) {
 	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
 	bob := mustCreateTestUser(t, a, "bob@x.com", "password-di-prova")
 	srv, price, _ := fakePlugin(t)
+	a.Cfg.StoresAllowPrivate = true // the fake plugin is http on a loopback address
 
 	call := func(h http.HandlerFunc, method, target string, v url.Values, params map[string]string, who *domain.User) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, target, strings.NewReader(v.Encode()))
@@ -121,6 +123,11 @@ func TestStorePluginsFlow(t *testing.T) {
 	if p, _ := a.StorePlugins.Get(ctx, alice.ID, conad.ID); p.Name != "Conad" || p.TokenSealed != conad.TokenSealed {
 		t.Errorf("after the update: %+v", p)
 	}
+	// A new address without a new token is refused: the old token would be sent there.
+	call(a.handleStoresSave, http.MethodPost, "/settings/stores/x", form("Conad", "http://127.0.0.1:1", ""), id, alice)
+	if p, _ := a.StorePlugins.Get(ctx, alice.ID, conad.ID); p.BaseURL != srv.URL {
+		t.Errorf("the address changed without a token: %+v", p)
+	}
 	if w := call(a.handleStoresTest, http.MethodPost, "/settings/stores/x/test", nil, id, bob); w.Code != http.StatusNotFound {
 		t.Errorf("Bob testing Alice's store: %d, want 404", w.Code)
 	}
@@ -152,15 +159,30 @@ func TestStorePluginsFlow(t *testing.T) {
 	if rows, warn, err := a.searchPicker(uctx, "avena", true); err != nil || len(rows) != 0 || !strings.Contains(warn, "Conad") {
 		t.Errorf("a dead store: %v, %q, %v", rows, warn, err)
 	}
-	call(a.handleStoresSave, http.MethodPost, "/settings/stores/x", form("Conad", srv.URL, ""), id, alice)
+	call(a.handleStoresSave, http.MethodPost, "/settings/stores/x", form("Conad", srv.URL, "secret"), id, alice)
 
-	// Importing makes an ingredient with the store's nutrition and links it; once only.
-	ing, err := a.resolveOFFBarcode(uctx, row.Barcode())
-	if err != nil {
-		t.Fatal(err)
+	// Importing makes an ingredient with the store's nutrition and links it; once only,
+	// also when requests race.
+	ids := make([]int64, 4)
+	var wg sync.WaitGroup
+	for i := range ids {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ids[i], _ = a.resolveOFFBarcode(uctx, row.Barcode())
+		}()
 	}
-	if again, _ := a.resolveOFFBarcode(uctx, row.Barcode()); again != ing {
-		t.Errorf("a second import made another ingredient: %d, %d", again, ing)
+	wg.Wait()
+	ing := ids[0]
+	for _, id := range ids {
+		if id == 0 || id != ing {
+			t.Fatalf("racing imports made different ingredients: %v", ids)
+		}
+	}
+	var n int
+	_ = a.Store.DB.QueryRow(`SELECT COUNT(*) FROM ingredients WHERE name = ?`, "Fiocchi d'avena").Scan(&n)
+	if n != 1 {
+		t.Errorf("%d ingredients made from one product", n)
 	}
 	got, _ := a.Ingredients.GetByID(ctx, ing)
 	if got.Name != "Fiocchi d'avena" || got.KcalPer100 != 372 || got.Source != domain.IngredientSourceLocal || got.CreatedBy == nil || *got.CreatedBy != alice.ID {
@@ -173,6 +195,12 @@ func TestStorePluginsFlow(t *testing.T) {
 	if rows, _, _ := a.searchPicker(uctx, "fiocchi", true); len(rows) != 1 {
 		t.Errorf("search by the ingredient's own name: %d rows", len(rows))
 	}
+	// A plugin that fails answers with a fixed reason, not its network error.
+	call(a.handleStoresSave, http.MethodPost, "/settings/stores/x", form("Conad", "http://127.0.0.1:1", "secret"), id, alice)
+	if _, err := a.resolveOFFBarcode(uctx, storeRef(conad.ID, "p9")); err != errStoreProduct {
+		t.Errorf("a failing plugin = %v, want errStoreProduct", err)
+	}
+	call(a.handleStoresSave, http.MethodPost, "/settings/stores/x", form("Conad", srv.URL, "secret"), id, alice)
 	for _, bad := range []struct {
 		ref string
 		who *domain.User

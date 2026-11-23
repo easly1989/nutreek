@@ -105,33 +105,42 @@ func (a *App) searchPluginRows(ctx context.Context, q string, viewer int64, p db
 	return res
 }
 
+// storeImportMu serializes the creation of an ingredient from a store product, so a
+// double click or two tabs make one ingredient, not two (the link is unique).
+var storeImportMu sync.Mutex
+
 // resolveStoreProduct makes an ingredient of a store product (idempotent) and links it
 // to the product, so the shopping list can price it. It returns the ingredient's id.
+// Whatever goes wrong with the plugin is logged and answered with errStoreProduct: the
+// text of a network error would tell a user what their server can reach.
 func (a *App) resolveStoreProduct(ctx context.Context, ref string) (int64, error) {
 	pluginID, productID, ok := parseStoreRef(ref)
 	user := userFromContext(ctx)
 	if !ok || user == nil {
 		return 0, errStoreProduct
 	}
-	if id, err := a.StorePlugins.LinkedIngredient(ctx, user.ID, pluginID, productID); err != nil || id > 0 {
-		return id, err
+	fail := func(err error) (int64, error) {
+		a.Logger.Warn("store product import failed", "plugin", pluginID, "err", err)
+		return 0, errStoreProduct
+	}
+	if id, err := a.StorePlugins.LinkedIngredient(ctx, user.ID, pluginID, productID); err != nil {
+		return fail(err)
+	} else if id > 0 {
+		return id, nil
 	}
 	p, err := a.StorePlugins.Get(ctx, user.ID, pluginID)
 	if err != nil {
-		return 0, errStoreProduct
+		return fail(err)
 	}
 	token, err := a.pluginToken(p)
 	if err != nil {
-		return 0, err
+		return fail(err)
 	}
-	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	fetch, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
-	prod, err := a.StoreClient.Product(ctx, p.BaseURL, token, productID)
+	prod, err := a.StoreClient.Product(fetch, p.BaseURL, token, productID)
 	if err != nil || !prod.HasNutrition {
-		if err == nil {
-			err = errStoreProduct
-		}
-		return 0, err
+		return fail(err)
 	}
 	unit := domain.UnitGram
 	if prod.SizeUnit == stores.UnitMl {
@@ -141,15 +150,26 @@ func (a *App) resolveStoreProduct(ctx context.Context, ref string) (int64, error
 	if b := strings.TrimSpace(prod.Brand); b != "" {
 		brand = &b
 	}
+
+	storeImportMu.Lock()
+	defer storeImportMu.Unlock()
+	if id, err := a.StorePlugins.LinkedIngredient(ctx, user.ID, pluginID, productID); err != nil {
+		return fail(err)
+	} else if id > 0 { // the other click got here first
+		return id, nil
+	}
 	id, err := a.Ingredients.CreateLocal(ctx, prod.Name, brand, unit, prod.Kcal, prod.Protein, prod.Carbs, prod.Fat,
 		&user.ID, prod.UnitWeightG, nil, prod.Fiber, prod.Sugars, prod.SaturatedFat, prod.Sodium)
 	if err != nil {
-		return 0, err
+		return fail(err)
 	}
 	err = a.StorePlugins.SaveLink(ctx, db.StoreLink{
 		UserID: user.ID, IngredientID: id, PluginID: p.ID, ProductID: prod.ID, ProductName: prod.Name,
 		SizeQty: prod.SizeQty, SizeUnit: prod.SizeUnit, PriceCents: prod.PriceCents, HasPrice: prod.HasPrice,
 		Currency: prod.Currency, Available: prod.Available,
 	})
-	return id, err
+	if err != nil {
+		return fail(err)
+	}
+	return id, nil
 }

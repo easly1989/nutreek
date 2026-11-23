@@ -8,7 +8,7 @@ A grocery store is connected to Nutreek (#239) with a **plugin**: a small HTTP s
 2. Open **Settings → Stores → Connect a store** and give a name, the plugin's address and its token. **Test the connection** searches it for «pasta».
 3. Put the sources in the order you want. A search starts from the first; each source can be turned off. With no store connected, only Open Food Facts is searched, as before.
 
-By default Nutreek reaches **public addresses only** (the same guard as the push sender: loopback, private, link-local and shared addresses are refused when the connection is made, redirects are not followed). For a plugin on your own network set `NUTREEK_STORES_ALLOW_PRIVATE=true`. The demo has no stores.
+By default Nutreek reaches **public https addresses only** (the token travels in a header, so plain http is refused too) (the same guard as the push sender: loopback, private, link-local and shared addresses are refused when the connection is made, redirects are not followed). For a plugin on your own network set `NUTREEK_STORES_ALLOW_PRIVATE=true`, which also allows http: **every account on the instance can then point a store at the private network**, so set it only on an instance you trust. Changing a store's address asks for the token again. The demo has no stores.
 
 ## The contract
 

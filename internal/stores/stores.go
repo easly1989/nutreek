@@ -45,7 +45,7 @@ const (
 )
 
 // ErrBadURL is returned for an address that is not an http(s) URL with a host.
-var ErrBadURL = errors.New("stores: the address is not an http or https URL")
+var ErrBadURL = errors.New("stores: the address is not an https URL (http only where private addresses are allowed)")
 
 // ErrBadProduct is returned when a plugin's product lacks what Nutreek needs.
 var ErrBadProduct = errors.New("stores: the product has no id, name or nutrition")
@@ -96,11 +96,13 @@ func NewClient(allowPrivate bool) *Client {
 	}}
 }
 
-// CleanURL checks a plugin address and returns it without a trailing slash.
-func CleanURL(raw string) (string, error) {
+// CleanURL checks a plugin address and returns it without a trailing slash. The token
+// is sent in the clear over http, so http is accepted only where private addresses are
+// (allowPrivate): a plugin on a public address has to speak https.
+func CleanURL(raw string, allowPrivate bool) (string, error) {
 	raw = strings.TrimSpace(raw)
 	u, err := url.Parse(raw)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || len(raw) > 300 {
+	if err != nil || (u.Scheme != "https" && !(u.Scheme == "http" && allowPrivate)) || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || len(raw) > 300 {
 		return "", ErrBadURL
 	}
 	return strings.TrimRight(raw, "/"), nil

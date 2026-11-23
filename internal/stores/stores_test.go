@@ -89,14 +89,17 @@ func TestPluginAnswersAreBounded(t *testing.T) {
 }
 
 func TestCleanURL(t *testing.T) {
-	for in, want := range map[string]string{"https://a.example/x/": "https://a.example/x", " http://10.0.0.2:8080 ": "http://10.0.0.2:8080"} {
-		if got, err := CleanURL(in); err != nil || got != want {
+	for in, want := range map[string]string{"https://a.example/x/": "https://a.example/x", " https://10.0.0.2:8080 ": "https://10.0.0.2:8080"} {
+		if got, err := CleanURL(in, false); err != nil || got != want {
 			t.Errorf("CleanURL(%q) = %q, %v", in, got, err)
 		}
 	}
-	for _, bad := range []string{"", "ftp://a.example", "a.example", "https://u:p@a.example", "https://a.example/?x=1", "javascript:alert(1)"} {
-		if _, err := CleanURL(bad); err == nil {
-			t.Errorf("CleanURL(%q) must fail", bad)
+	if got, err := CleanURL("http://10.0.0.2:8080", true); err != nil || got != "http://10.0.0.2:8080" {
+		t.Errorf("http where private addresses are allowed: %q, %v", got, err)
+	}
+	for _, bad := range []string{"", "ftp://a.example", "a.example", "https://u:p@a.example", "https://a.example/?x=1", "javascript:alert(1)", "http://a.example"} {
+		if _, err := CleanURL(bad, false); err == nil {
+			t.Errorf("CleanURL(%q, false) must fail", bad)
 		}
 	}
 }

@@ -12,6 +12,15 @@ import (
 // cgnat is the shared address space 100.64.0.0/10, which IsPrivate does not cover.
 var cgnat = netip.MustParsePrefix("100.64.0.0/10")
 
+// notPublic are the ranges IsPrivate and friends do not cover: "this network", the IETF
+// protocol block, benchmarking, reserved, the IPv4-compatible and NAT64 forms of an IPv4
+// address (which a gateway may translate to a private one), and the discard prefix.
+var notPublic = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"), netip.MustParsePrefix("192.0.0.0/24"), netip.MustParsePrefix("198.18.0.0/15"),
+	netip.MustParsePrefix("240.0.0.0/4"), netip.MustParsePrefix("::/96"), netip.MustParsePrefix("64:ff9b::/96"),
+	netip.MustParsePrefix("100::/64"),
+}
+
 // publicOnly refuses a connection to a loopback, private, link-local, multicast,
 // shared or unspecified address. The endpoint of a device is chosen by the user, so
 // without this the server would POST to whatever address they give it. It runs on
@@ -29,6 +38,11 @@ func publicOnly(_, address string, _ syscall.RawConn) error {
 	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
 		ip.IsMulticast() || ip.IsUnspecified() || cgnat.Contains(ip) {
 		return fmt.Errorf("push endpoint address %s is not public", ip)
+	}
+	for _, p := range notPublic {
+		if p.Contains(ip) {
+			return fmt.Errorf("push endpoint address %s is not public", ip)
+		}
 	}
 	return nil
 }
