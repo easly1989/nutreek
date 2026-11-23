@@ -267,6 +267,8 @@ Tutte le variabili d'ambiente:
 | `NUTREEK_BACKUP_INTERVAL` | `24h` | Frequenza backup automatici |
 | `NUTREEK_BACKUP_KEEP` | `7` | Numero di backup da conservare (i più vecchi vengono eliminati) |
 | `NUTREEK_UPDATE_CHECK` | `true` | Controlla una volta al giorno se c'è una release più recente e lo dice al proprietario (vedi [Aggiornare](#aggiornare)) |
+| `NUTREEK_SECRET_KEY` | *(nessuno)* | Almeno 16 caratteri (`openssl rand -hex 32`); cifra i token dei plugin dei negozi. Senza, non si può collegare nessun negozio ([docs/store-plugins.md](docs/store-plugins.md)) |
+| `NUTREEK_STORES_ALLOW_PRIVATE` | `false` | Permette a un plugin di stare su un indirizzo privato (un server in casa) |
 
 ### OpenFoodFacts
 

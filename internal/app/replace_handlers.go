@@ -152,6 +152,13 @@ func rowIngredient(fr ingredientRow) (*domain.Ingredient, string) {
 	if fr.Local != nil {
 		return fr.Local, "ing:" + strconv.FormatInt(fr.Local.ID, 10)
 	}
+	if fr.Store != nil { // a store's product (#239): chosen by its reference, imported when chosen
+		brand := fr.Store.Brand
+		return &domain.Ingredient{
+			Name: fr.Store.Name, Brand: &brand, KcalPer100: fr.Store.Kcal,
+			ProteinPer100: fr.Store.Protein, CarbsPer100: fr.Store.Carbs, FatPer100: fr.Store.Fat,
+		}, "off:" + fr.Barcode()
+	}
 	if fr.OFF == nil || !fr.Importable() {
 		return nil, ""
 	}

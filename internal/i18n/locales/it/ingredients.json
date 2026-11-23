@@ -105,5 +105,6 @@
   "ingredients.off.not_found": "Prodotto non trovato su OpenFoodFacts.",
   "ingredients.off.unreachable": "OpenFoodFacts non raggiungibile, riprova fra poco.",
   "ingredients.off.search_unavailable": "Ricerca OpenFoodFacts non disponibile, mostro solo gli ingredienti locali.",
-  "ingredients.off.barcode_unavailable": "OpenFoodFacts non risponde: riprova tra poco, oppure crea l'ingrediente."
+  "ingredients.off.barcode_unavailable": "OpenFoodFacts non risponde: riprova tra poco, oppure crea l'ingrediente.",
+  "ingredients.results.from_sources": "Da OpenFoodFacts e dai tuoi negozi"
 }

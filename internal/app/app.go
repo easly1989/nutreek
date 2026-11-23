@@ -14,6 +14,7 @@ import (
 	"github.com/amon2126/nutreek/internal/notify"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/service"
+	"github.com/amon2126/nutreek/internal/stores"
 	"github.com/amon2126/nutreek/internal/updates"
 	"github.com/amon2126/nutreek/internal/web"
 )
@@ -52,8 +53,15 @@ type App struct {
 
 	// Notifications (#237): the reminders and devices, the sender that ticks every
 	// minute (nil in the demo build) and the VAPID public key the browser needs.
-	Notifications   *db.Notifications
-	Household       *db.Household // the people who share the account's week (#238)
+	Notifications *db.Notifications
+	Household     *db.Household // the people who share the account's week (#238)
+
+	// Store plugins (#239): the connected stores, the client that calls them and the
+	// box that seals their tokens (nil without NUTREEK_SECRET_KEY: no store can be connected).
+	StorePlugins *db.StorePlugins
+	StoreClient  *stores.Client
+	StoreBox     *stores.Box
+
 	Notify          *notify.Service
 	NotifyPublicKey string
 

@@ -95,5 +95,10 @@
   "shopping.pc_have_label": "Ne ho",
   "shopping.flash.precheck_invalid": "Alcune risposte non si sono potute applicare: scrivi quanto ne hai per le voci segnate «Un po'».",
   "shopping.flash.copy_none": "Spunta almeno una voce da copiare.",
-  "shopping.flash.regenerated": "Lista rigenerata."
+  "shopping.flash.regenerated": "Lista rigenerata.",
+  "shopping.prices.estimate": "Stima · {{.Stores}}",
+  "shopping.prices.count": "{{.Priced}} righe su {{.Rows}} hanno un prezzo",
+  "shopping.prices.refresh": "Aggiorna i prezzi",
+  "shopping.prices.row": "{{.Packs}} × {{.Pack}}",
+  "shopping.prices.unavailable": "esaurito"
 }

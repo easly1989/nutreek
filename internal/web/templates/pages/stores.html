@@ -1,0 +1,97 @@
+{{define "title"}}{{t "stores.title"}} — Nutreek{{end}}
+{{define "content"}}
+{{- /* Store plugins (#239): where a search looks, in the user's order, and the stores
+       connected. View model: app.storesPageData. */}}
+<div class="flex flex-col gap-4 lg:gap-[18px] max-w-[640px]">
+  <div>
+    <a href="/settings" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "stores.back"}}</a>
+    <h1 class="h1">{{t "stores.title"}}</h1>
+    <p class="text-muted mt-1">{{t "stores.desc"}}</p>
+  </div>
+
+  {{if not .CanConnect}}
+  <p class="rounded-xl bg-warn-bg text-warn-fg px-3 py-2.5">{{t "stores.no_key"}}</p>
+  {{end}}
+
+  <section class="card" aria-labelledby="st-sources">
+    <div class="px-4 pt-3.5 pb-1">
+      <h2 id="st-sources" class="h2">{{t "stores.sources"}}</h2>
+      <p class="text-[12.5px] text-muted">{{t "stores.sources_hint"}}</p>
+    </div>
+    {{template "store_sources" .}}
+  </section>
+
+  {{range .Plugins}}
+  <section class="card" aria-label="{{.Name}}">
+    <details>
+      <summary class="flex items-center gap-3 px-4 py-3 cursor-pointer list-none">
+        <b class="grow min-w-0 truncate">{{.Name}}</b>
+        <span class="text-accent font-semibold text-[13px]">{{t "stores.edit"}}</span>
+      </summary>
+      <div class="flex flex-col gap-3 px-4 pb-4 bg-surface-2 pt-3">
+        <form method="post" action="/settings/stores/{{.ID}}" class="flex flex-col gap-2.5">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "stores.name"}}<input name="name" value="{{.Name}}" required maxlength="60" class="field font-normal text-text"></label>
+          <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "stores.url"}}<input name="url" type="url" value="{{.BaseURL}}" required maxlength="300" class="field font-mono text-[13px] font-normal text-text"></label>
+          <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "stores.token"}}<input name="token" type="password" autocomplete="off" maxlength="500" placeholder="{{t "stores.token_keep"}}" class="field font-mono text-[13px] font-normal text-text"></label>
+          <div class="flex flex-wrap gap-2"><button class="btn-primary"{{if not $.CanConnect}} disabled{{end}}>{{t "stores.save"}}</button></div>
+        </form>
+        <div class="flex flex-wrap items-center gap-2">
+          <form method="post" action="/settings/stores/{{.ID}}/test">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button class="btn-secondary"{{if not $.CanConnect}} disabled{{end}}>{{t "stores.test"}}</button>
+          </form>
+          <form method="post" action="/settings/stores/{{.ID}}/delete" data-confirm="{{t "stores.delete_confirm" "Name" .Name}}" class="ml-auto">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button class="btn-ghost text-danger h-8 px-2 text-[12.5px]" aria-label="{{t "stores.delete_named" "Name" .Name}}">{{template "icon_sm" "i-trash"}}{{t "stores.delete"}}</button>
+          </form>
+        </div>
+      </div>
+    </details>
+  </section>
+  {{end}}
+
+  {{if and .CanConnect .CanAdd}}
+  <section class="card p-4 flex flex-col gap-3" aria-labelledby="st-add">
+    <h2 id="st-add" class="h2">{{t "stores.add"}}</h2>
+    <form method="post" action="/settings/stores" class="flex flex-col gap-2.5">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "stores.name"}}<input name="name" required maxlength="60" class="field font-normal text-text"></label>
+      <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "stores.url"}}<input name="url" type="url" required maxlength="300" placeholder="https://" class="field font-mono text-[13px] font-normal text-text"></label>
+      <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "stores.token"}}<input name="token" type="password" required autocomplete="off" maxlength="500" class="field font-mono text-[13px] font-normal text-text"></label>
+      <div><button class="btn-primary">{{template "icon_sm" "i-plus"}}{{t "stores.add_button"}}</button></div>
+    </form>
+  </section>
+  {{end}}
+
+  <section class="card p-4 flex flex-col gap-1.5">
+    <h2 class="h2">{{t "stores.what.title"}}</h2>
+    <p class="text-muted">{{t "stores.what.body"}}</p>
+    <p class="text-[12.5px] text-muted">{{t "stores.what.private"}}</p>
+  </section>
+</div>
+{{end}}
+
+{{define "store_sources"}}
+{{- /* The search sources in order: a drag handle, the place, the source and its switch.
+       dnd.js saves the order after a drop and swaps this list for the answer; the arrows
+       (reorder.js) do the same for the keyboard. View model: app.storesPageData. */ -}}
+<ul id="store-sources" class="src-list" data-sortable="sources" data-sortable-handle="[data-grip]" data-sort-url="/settings/stores/order" data-csrf="{{.CSRFToken}}">
+  {{range .Sources}}
+  <li data-id="{{.Key}}" class="flex items-center gap-2.5 px-4 py-2.5 border-t border-border bg-surface">
+    <span data-grip class="text-muted cursor-grab touch-none shrink-0" aria-hidden="true">{{template "icon_sm" "i-grip"}}</span>
+    <span class="src-n" aria-hidden="true"></span>
+    <span class="hh-av" style="--hh-c:var(--hh{{.Color}})" aria-hidden="true">{{if .OFF}}O{{else}}{{initial .Name}}{{end}}</span>
+    <div class="grow min-w-0">
+      <b class="block font-semibold truncate">{{if .OFF}}{{t "stores.off"}}{{else}}{{.Name}}{{end}}</b>
+      <span class="block text-[12.5px] text-muted truncate">{{if .OFF}}{{t "stores.off_desc"}}{{else}}{{.Host}}{{end}}</span>
+    </div>
+    <span class="flex shrink-0"><button type="button" data-move="up" class="icon-action" aria-label="{{t "stores.move_up"}}"><span class="inline-flex rotate-180">{{template "icon_sm" "i-chevron-down"}}</span></button><button type="button" data-move="down" class="icon-action" aria-label="{{t "stores.move_down"}}">{{template "icon_sm" "i-chevron-down"}}</button></span>
+    <form method="post" action="/settings/stores/{{.Key}}/enabled" class="shrink-0">
+      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+      <input type="hidden" name="enabled" value="0"><input type="checkbox" role="switch" name="enabled" value="1" class="toggle notify-switch"{{if .Enabled}} checked{{end}} aria-label="{{if .OFF}}{{t "stores.off"}}{{else}}{{.Name}}{{end}}">
+    </form>
+  </li>
+  {{end}}
+</ul>
+{{end}}

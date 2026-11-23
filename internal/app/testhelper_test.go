@@ -15,6 +15,7 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/service"
+	"github.com/amon2126/nutreek/internal/stores"
 	"github.com/amon2126/nutreek/internal/web"
 )
 
@@ -59,6 +60,8 @@ func newTestApp(t *testing.T) *App {
 		Categories:             db.NewCategories(store.DB),
 		Notifications:          db.NewNotifications(store.DB),
 		Household:              db.NewHousehold(store.DB),
+		StorePlugins:           db.NewStorePlugins(store.DB),
+		StoreClient:            stores.NewClient(true),
 		NutritionistPlans:      nutritionistRepo,
 		Features:               db.NewFeatures(store.DB),
 		Subscriptions:          db.NewSubscriptions(store.DB),

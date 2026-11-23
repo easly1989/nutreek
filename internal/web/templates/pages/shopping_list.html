@@ -110,6 +110,18 @@
           </ul>
         </details>
         {{end}}
+
+        {{/* What the list would cost at the stores the ingredients were taken from (#239). */}}
+        {{if .View.Prices.Any}}
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 border-t border-border bg-surface-2">
+          <div class="grow min-w-0"><b class="block">{{t "shopping.prices.estimate" "Stores" .View.Prices.Stores}}</b><span class="text-[12.5px] text-muted">{{t "shopping.prices.count" "Priced" .View.Prices.Priced "Rows" .View.Prices.Rows}}</span></div>
+          <b class="tabular-nums text-[15px]">{{money .View.Prices.Total .View.Prices.Currency}}</b>
+          <form method="post" action="/shopping-list/{{.List.ID}}/prices?week={{$ws}}&weeks={{$wc}}">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button class="btn-secondary h-8 px-2.5 text-[12.5px]">{{t "shopping.prices.refresh"}}</button>
+          </form>
+        </div>
+        {{end}}
       </div>
       {{else}}
       <div class="card px-4 py-8 flex flex-col items-center gap-3 text-center">
@@ -304,7 +316,7 @@
     <button id="shop-item-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
       <span class="shop-name">{{if $r.Ignored}}<span class="sr-only">{{t "shopping.ignored"}}</span>{{end}}<span class="marq"><span class="mq">{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}</span></span>{{template "shop_category" $r}}</span>
-      {{template "shop_cols" $r}}
+      <span class="flex flex-col items-end shrink-0">{{template "shop_cols" $r}}{{template "shop_price" $r}}</span>
     </button>
   </form>
   {{/* The quantity editor: a panel on the row, a sheet from the bottom on a
@@ -401,3 +413,8 @@
   </div>
   {{template "shop_similar" .}}
 </li>{{end}}
+
+{{/* The estimate of a row from the store product behind the ingredient (#239): the price of
+     whole packages under the quantity, with how many when more than one, and a note when the
+     store is out of it. . is the shoppingRow. */}}
+{{define "shop_price"}}{{with .Price}}<span class="shop-price" title="{{.Store}}"><b>{{money .Cents .Currency}}</b>{{if gt .Packs 1}}<small>{{t "shopping.prices.row" "Packs" .Packs "Pack" .Pack}}</small>{{end}}{{if .Unavailable}}<small class="shop-out">{{t "shopping.prices.unavailable"}}</small>{{end}}</span>{{end}}{{end}}

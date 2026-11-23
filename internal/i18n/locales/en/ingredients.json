@@ -105,5 +105,6 @@
   "ingredients.off.not_found": "Product not found on OpenFoodFacts.",
   "ingredients.off.unreachable": "OpenFoodFacts is unreachable, try again shortly.",
   "ingredients.off.search_unavailable": "OpenFoodFacts search is unavailable: showing local ingredients only.",
-  "ingredients.off.barcode_unavailable": "OpenFoodFacts is not answering: try again shortly, or create the ingredient."
+  "ingredients.off.barcode_unavailable": "OpenFoodFacts is not answering: try again shortly, or create the ingredient.",
+  "ingredients.results.from_sources": "From OpenFoodFacts and your stores"
 }

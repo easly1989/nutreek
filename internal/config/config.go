@@ -47,6 +47,11 @@ type Config struct {
 	// UpdateCheck lets the server look for newer Nutreek releases once a day
 	// (#167); false turns it off for the whole installation.
 	UpdateCheck bool
+
+	// SecretKey seals the tokens of the store plugins (#239); empty = plugins cannot be
+	// connected. StoresAllowPrivate lets a plugin sit on a private address (a home server).
+	SecretKey          string
+	StoresAllowPrivate bool
 }
 
 // Load reads the configuration from the env vars. It validates the prod
@@ -102,6 +107,15 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("NUTREEK_UPDATE_CHECK: %w", err)
 	}
 
+	storesAllowPrivate, err := strconv.ParseBool(getenv("NUTREEK_STORES_ALLOW_PRIVATE", "false"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_STORES_ALLOW_PRIVATE: %w", err)
+	}
+	secret := os.Getenv("NUTREEK_SECRET_KEY")
+	if secret != "" && len(secret) < 16 {
+		return nil, errors.New("NUTREEK_SECRET_KEY: at least 16 characters required (e.g. openssl rand -hex 32)")
+	}
+
 	cfg := &Config{
 		Addr:              getenv("NUTREEK_ADDR", ":8080"),
 		DBPath:            getenv("NUTREEK_DB_PATH", "./data/nutreek.db"),
@@ -121,6 +135,9 @@ func Load() (*Config, error) {
 		BackupKeep:        backupKeep,
 		PremiumEnabled:    premiumEnabled,
 		UpdateCheck:       updateCheck,
+
+		SecretKey:          secret,
+		StoresAllowPrivate: storesAllowPrivate,
 	}
 
 	keyHex := os.Getenv("NUTREEK_SESSION_KEY")

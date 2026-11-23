@@ -160,6 +160,8 @@ func funcMap(lang string) template.FuncMap {
 		"deltaTone": deltaTone,
 		// list builds a list of strings to use in a range.
 		"list": func(v ...string) []string { return v },
+		// money writes a price given in cents: «1,09 €» in Italian, «€1.09» elsewhere.
+		"money": func(cents int, currency string) string { return formatMoney(lang, cents, currency) },
 		"liters": func(ml int) string {
 			return formatDec(lang, float64(ml)/1000, 2) + " l"
 		},

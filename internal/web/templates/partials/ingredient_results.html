@@ -4,8 +4,8 @@
 {{if .OFFWarning}}
   <p class="mb-3 rounded-xl bg-warn-bg text-warn-fg px-3 py-2">{{.OFFWarning}}</p>
 {{end}}
-{{- $locals := 0 -}}{{- $offs := 0 -}}
-{{- range .Rows}}{{if .IsOFF}}{{$offs = add $offs 1}}{{else}}{{$locals = add $locals 1}}{{end}}{{end -}}
+{{- $locals := 0 -}}{{- $offs := 0 -}}{{- $stores := 0 -}}
+{{- range .Rows}}{{if .IsOFF}}{{$offs = add $offs 1}}{{if .IsStore}}{{$stores = add $stores 1}}{{end}}{{else}}{{$locals = add $locals 1}}{{end}}{{end -}}
 {{if .Rows}}
   <div class="card overflow-hidden">
     <div class="hidden lg:grid grid-cols-[36px_minmax(0,1fr)_84px_190px_96px] gap-3.5 items-center min-h-[38px] pl-4 pr-3 text-[12.5px] font-semibold text-muted">
@@ -19,7 +19,7 @@
       {{range .Rows}}{{if not .IsOFF}}{{template "ingredient_row" (pickerRow . $)}}{{end}}{{end}}
     {{end}}
     {{if gt $offs 0}}
-      <p class="px-4 py-2 border-t border-border bg-surface-2 text-[12.5px] font-bold text-muted">{{t "ingredients.results.from_off"}}</p>
+      <p class="px-4 py-2 border-t border-border bg-surface-2 text-[12.5px] font-bold text-muted">{{if gt $stores 0}}{{t "ingredients.results.from_sources"}}{{else}}{{t "ingredients.results.from_off"}}{{end}}</p>
       {{range .Rows}}{{if .IsOFF}}{{template "ingredient_row" (pickerRow . $)}}{{end}}{{end}}
     {{end}}
   </div>
@@ -60,7 +60,7 @@
     {{end}}
     {{if or $r.Category $r.Allergens $r.IsOFF}}
     <span class="flex flex-wrap gap-1">
-      {{if $r.IsOFF}}<span class="chip chip-soft">OpenFoodFacts</span>{{end}}
+      {{if $r.IsOFF}}<span class="chip chip-soft">{{with $r.SourceLabel}}{{.}}{{else}}OpenFoodFacts{{end}}</span>{{template "store_price" $r}}{{end}}
       {{with $r.Category}}<span class="chip chip-n">{{.Name}}</span>{{end}}
       {{range $r.Allergens}}<span class="chip chip-warn">{{ref "allergen" .Code .Name}}</span>{{end}}
     </span>

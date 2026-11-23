@@ -23,6 +23,8 @@ Moved from CLAUDE.md. Read before adding or changing a NUTREEK_* setting.
 | `NUTREEK_BACKUP_INTERVAL` | `24h` | automatic backup interval |
 | `NUTREEK_BACKUP_KEEP` | `7` | backups to keep (the oldest are deleted) |
 | `NUTREEK_UPDATE_CHECK` | `true` | release builds read `versions.json` (branch `site-data`) once a day and tell the owner of a newer release; the owner's switch lives in `instance_settings` |
+| `NUTREEK_SECRET_KEY` | (none) | at least 16 characters (`openssl rand -hex 32`); seals the tokens of the store plugins (#239) in the database. Without it no store can be connected. Changing it makes the stored tokens unreadable: connect the stores again |
+| `NUTREEK_STORES_ALLOW_PRIVATE` | `false` | lets a store plugin sit on a private address and speak plain http (a home server); by default only public https addresses are reached, as a plugin address is any URL a user gives. **It opens the instance's private network to every account**, not only the admin |
 | `NUTREEK_DEMO_IDLE` | `2h` | demo build only: a demo session ends, and its group is deleted, after this long without use; every group is deleted nightly at 03:00 UTC |
 | `NUTREEK_DEMO_MAX_USERS` | `200` | demo build only: live demo users; then the entry says the demo is full |
 | `NUTREEK_DEMO_STARTS_PER_HOUR` | `10` | demo build only: demos started per client address per hour; then 429 |

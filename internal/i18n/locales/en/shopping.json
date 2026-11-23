@@ -95,5 +95,10 @@
   "shopping.pc_have_label": "I have",
   "shopping.flash.precheck_invalid": "Some answers could not be applied: enter how much you have for the items marked “Some”.",
   "shopping.flash.copy_none": "Tick at least one item to copy.",
-  "shopping.flash.regenerated": "List regenerated."
+  "shopping.flash.regenerated": "List regenerated.",
+  "shopping.prices.estimate": "Estimate · {{.Stores}}",
+  "shopping.prices.count": "{{.Priced}} of {{.Rows}} rows have a price",
+  "shopping.prices.refresh": "Update prices",
+  "shopping.prices.row": "{{.Packs}} × {{.Pack}}",
+  "shopping.prices.unavailable": "out of stock"
 }
