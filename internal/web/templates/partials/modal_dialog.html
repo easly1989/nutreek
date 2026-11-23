@@ -17,6 +17,9 @@
     {{if eq .Inner "recipe_duplicate_form"}}{{template "recipe_duplicate_form" .InnerData}}{{end}}
     {{if eq .Inner "meal_item_customize_form"}}{{template "meal_item_customize_form" .InnerData}}{{end}}
     {{if eq .Inner "reminder_form"}}{{template "reminder_form" .InnerData}}{{end}}
+    {{if eq .Inner "add_chooser"}}{{template "add_chooser" .InnerData}}{{end}}
+    {{if eq .Inner "meal_form"}}{{template "meal_form" .InnerData}}{{end}}
+    {{if eq .Inner "workout_form"}}{{template "workout_form" .InnerData}}{{end}}
   </div>
 </dialog>
 {{end}}

@@ -26,6 +26,7 @@ type MoveContext struct {
 type MoveTarget struct {
 	ID   int64
 	Name string
+	Time string // the start time, "" when the meal has none
 }
 
 // MoveContextFor returns the context of the row itemID (an ingredient or a
@@ -47,7 +48,7 @@ func (r *WeeklyPlans) MoveContextFor(ctx context.Context, itemID, userID int64) 
 		return nil, fmt.Errorf("move context: %w", err)
 	}
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, name FROM meals
+		SELECT id, name, COALESCE(start_time, '') FROM meals
 		WHERE weekly_plan_id = ? AND day_of_week = ? AND id <> ? AND `+noCheats+`
 		ORDER BY (start_time IS NULL), start_time, sort_order, id`, planID, mc.DayOfWeek, mc.MealID)
 	if err != nil {
@@ -56,7 +57,7 @@ func (r *WeeklyPlans) MoveContextFor(ctx context.Context, itemID, userID int64) 
 	defer rows.Close()
 	for rows.Next() {
 		var t MoveTarget
-		if err := rows.Scan(&t.ID, &t.Name); err != nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.Time); err != nil {
 			return nil, fmt.Errorf("scan move target: %w", err)
 		}
 		mc.Meals = append(mc.Meals, t)

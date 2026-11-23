@@ -177,6 +177,9 @@ func (a *App) Router() http.Handler {
 		r.Post("/week/reset", a.handleResetWeek)
 		r.Get("/days/{date}", a.handleDayCard) // HTMX partial for a single card
 		r.Post("/meals", a.handleAddMeal)
+		r.Get("/week/add", a.handleAddChooser)
+		r.Get("/week/meal", a.handleAddMealForm)
+		r.Get("/week/workout", a.handleAddWorkoutForm)
 		r.Get("/week/reminder", a.handleReminderForm)
 		r.Post("/reminders", a.handleAddReminder)
 		r.Post("/meals/{mealID}/time", a.handleMealTime)

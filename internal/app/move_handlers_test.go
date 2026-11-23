@@ -83,11 +83,14 @@ func TestMoveItemHandlers(t *testing.T) {
 	if strings.Contains(w.Body.String(), `id="pill-2026-10-13"`) {
 		t.Error("a move inside the day must not send another day's tab")
 	}
-	// The lists of the day post without a form (dnd.js): they must carry the CSRF
-	// token themselves, or the server answers 403 to every drop.
-	if got := w.Body.String(); !strings.Contains(got, `data-sortable="meals" data-sortable-handle="[data-meal-grip]" data-csrf=`) ||
-		!strings.Contains(got, `data-csrf="" data-sortable-group="meal-items"`) || !strings.Contains(got, `data-move-url="/meal-items/%s/move?start=2026-10-12"`) {
-		t.Error("the day's sortable lists must carry data-csrf and the move URL")
+	// The rows of a meal reorder without a form (dnd.js): the list must carry the
+	// CSRF token itself, or the server answers 403 to every drop. A row moves to
+	// another meal from its menu only: no drag across meals, no drag of meals.
+	if got := w.Body.String(); !strings.Contains(got, `data-sortable="items" data-sortable-handle="[data-item-grip]"`) ||
+		!strings.Contains(got, `data-csrf=""`) {
+		t.Error("a meal's sortable list must carry data-csrf")
+	} else if strings.Contains(got, `data-sortable-group`) || strings.Contains(got, `data-move-url`) || strings.Contains(got, `data-sortable="meals"`) {
+		t.Error("rows and meals must not drag across lists")
 	}
 
 	// Another day: the row leaves, and the tab of that day comes OOB.

@@ -139,5 +139,15 @@
   "week.error.item_not_found": "voce non trovata",
   "week.error.item_customized": "questa voce ha delle variazioni: cambiale da «Personalizza ingredienti»",
   "week.error.cheat_not_found": "sgarro non trovato",
-  "week.reason.store_product": "il prodotto del negozio non è disponibile"
+  "week.reason.store_product": "il prodotto del negozio non è disponibile",
+  "week.add_title": "Aggiungi",
+  "week.add_for_day": "Cosa aggiungi a {{.Day}}?",
+  "week.add_meal_row": "Un pasto",
+  "week.add_meal_row_hint": "Con un nome e, se vuoi, un orario",
+  "week.add_reminder_row": "Un promemoria",
+  "week.add_reminder_row_hint": "Un orario senza cibo",
+  "week.add_workout_row": "Un allenamento",
+  "week.add_workout_row_hint": "Attività e minuti",
+  "week.add_meal_title": "Nuovo pasto",
+  "week.add_workout_title": "Nuovo allenamento"
 }

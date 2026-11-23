@@ -34,6 +34,16 @@
     if (host) openInserted(host);
   });
 
+  // A button with [data-add-day] (the «Add» of the week) names the day shown
+  // when it is clicked, which only the browser knows: the date of the selected
+  // day tab.
+  document.body.addEventListener("htmx:configRequest", function (evt) {
+    var elt = evt.detail && evt.detail.elt;
+    if (!elt || !elt.hasAttribute || !elt.hasAttribute("data-add-day")) return;
+    var tab = document.querySelector('#timeline-pills [aria-selected="true"]');
+    if (tab && tab.dataset.day) evt.detail.parameters.date = tab.dataset.day;
+  });
+
   // Clicks on close buttons inside the dialog
   document.body.addEventListener("click", function (evt) {
     var btn = evt.target.closest && evt.target.closest("[data-modal-close]");
