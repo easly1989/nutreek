@@ -279,7 +279,7 @@ func TestEnglishEveryPage(t *testing.T) {
 	if err != nil || len(acts) == 0 {
 		t.Fatalf("workout activities: %v", err)
 	}
-	workout := id(a.WorkoutLogs.CreateWorkoutLog(ctx, ada.ID, acts[0].ID, todayDate(), 45, nil))
+	workout := id(a.WorkoutLogs.CreateWorkoutLog(ctx, ada.ID, acts[0].ID, todayDate(), 45, "", nil))
 	must(a.WaterLogs.Log(ctx, ada.ID, todayDate(), 1500))
 
 	// ---- the shopping list

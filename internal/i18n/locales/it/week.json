@@ -155,5 +155,17 @@
   "week.workout_edit": "Modifica allenamento",
   "week.workout_edit_named": "Modifica allenamento {{.Name}}",
   "week.edit_workout_title": "Modifica allenamento",
-  "week.workout_burned": "bruciate circa {{.Kcal}} kcal (stima)"
+  "week.workout_burned": "bruciate circa {{.Kcal}} kcal (stima)",
+  "week.workout_search": "Cerca un'attività",
+  "week.workout_no_match": "Nessuna attività trovata.",
+  "week.workout_time": "Orario (facoltativo)",
+  "week.workout_estimate": "circa {kcal} kcal (stima)",
+  "week.workout_estimate_hint": "Calcolate dal peso del tuo profilo.",
+  "week.activity_new": "Nuova attività…",
+  "week.activity_name": "Nome",
+  "week.activity_kcal": "kcal all'ora",
+  "week.activity_create": "Crea",
+  "week.flash.invalid_time": "Orario non valido.",
+  "week.flash.invalid_activity": "Dai un nome all'attività e le sue kcal all'ora (1–2000).",
+  "week.flash.activity_exists": "Hai già un'attività con questo nome."
 }

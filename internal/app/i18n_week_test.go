@@ -131,7 +131,7 @@ func TestEnglishWeekAndPicker(t *testing.T) {
 	if len(acts) == 0 {
 		t.Fatal("no workout activities seeded")
 	}
-	id(a.WorkoutLogs.CreateWorkoutLog(ctx, ada.ID, acts[0].ID, mon.AddDate(0, 0, today), 30, nil))
+	id(a.WorkoutLogs.CreateWorkoutLog(ctx, ada.ID, acts[0].ID, mon.AddDate(0, 0, today), 30, "", nil))
 	// Last week has a meal (to copy from) and the week after is empty with a template.
 	id(a.WeeklyPlans.AddMeal(ctx, weekPlan(ada, -1), ada.ID, 0, "Past meal"))
 	tpl := id(a.MealTemplates.Create(ctx, ada.ID, "Standard week"))
@@ -180,10 +180,14 @@ func TestEnglishWeekAndPicker(t *testing.T) {
 	workout := func(name string, form url.Values, flash string) weekCall {
 		return weekCall{name: name, method: http.MethodPost, target: "/allenamento?start=" + wkStr(0), form: form, week: wkStr(0), want: flash, handler: a.handleWorkoutLog}
 	}
+	activity := func(name string, form url.Values, flash string) weekCall {
+		return weekCall{name: name, method: http.MethodPost, target: "/allenamento/attivita?start=" + wkStr(0), form: form, week: wkStr(0), want: flash, handler: a.handleWorkoutActivityCreate}
+	}
 	apply := func(name string, form url.Values, flash string) weekCall {
 		form.Set("start", wkStr(0))
 		return weekCall{name: name, method: http.MethodPost, target: "/week/apply-template", form: form, week: wkStr(0), want: flash, handler: a.handleApplyTemplate}
 	}
+	id(a.WorkoutLogs.CreateActivity(ctx, ada.ID, "Padel", 360))
 	actID := strconv.FormatInt(acts[0].ID, 10)
 
 	calls := []weekCall{
@@ -260,6 +264,9 @@ func TestEnglishWeekAndPicker(t *testing.T) {
 		workout("workout, no activity", url.Values{"logged_at": {todayStr}, "duration_minutes": {"20"}}, "Select a valid activity."),
 		workout("workout, bad date", url.Values{"activity_id": {actID}, "logged_at": {"x"}, "duration_minutes": {"20"}}, "Invalid date."),
 		workout("workout, bad duration", url.Values{"activity_id": {actID}, "logged_at": {todayStr}, "duration_minutes": {"999"}}, "Invalid duration"),
+		workout("workout, bad time", url.Values{"activity_id": {actID}, "logged_at": {todayStr}, "duration_minutes": {"20"}, "at_time": {"25:99"}}, "Invalid time."),
+		activity("activity, no kcal", url.Values{"new_name": {"Padel"}, "new_kcal": {"0"}, "logged_at": {todayStr}}, "Give the activity a name"),
+		activity("activity, again", url.Values{"new_name": {"Padel"}, "new_kcal": {"380"}, "logged_at": {todayStr}}, "already have an activity"),
 		{name: "import, a CSV", method: http.MethodPost, target: "/week/" + wkStr(0) + "/import", params: map[string]string{"start": wkStr(0)}, body: csvBody, contentType: csvType, week: wkStr(0), want: "Imported 1 item. Meals not found", italian: "Importato 1 elemento. Pasti non trovati", handler: a.handleWeekImport},
 		{name: "import, no file", method: http.MethodPost, target: "/week/" + wkStr(0) + "/import", params: map[string]string{"start": wkStr(0)}, body: noBody, contentType: noType, week: wkStr(0), want: "Select a CSV file.", handler: a.handleWeekImport},
 		{name: "import, a broken CSV", method: http.MethodPost, target: "/week/" + wkStr(0) + "/import", params: map[string]string{"start": wkStr(0)}, body: badBody, contentType: badType, week: wkStr(0), want: "Invalid CSV file.", handler: a.handleWeekImport},
@@ -344,6 +351,15 @@ func TestEnglishWeekAndPicker(t *testing.T) {
 			}
 		})
 	}
+
+	// A new activity from the workout dialog gives the dialog back with it selected
+	// (once: a second run would find the name taken).
+	t.Run("new activity", func(t *testing.T) {
+		c := weekCall{name: "new activity", method: http.MethodPost, target: "/allenamento/attivita?start=" + wkStr(0), form: url.Values{"new_name": {"Squash"}, "new_kcal": {"380"}, "logged_at": {todayStr}, "duration_minutes": {"45"}}, htmx: true, handler: a.handleWorkoutActivityCreate}
+		if body := do(c, "en", nil).Body.String(); !strings.Contains(body, "New workout") || !strings.Contains(body, ">Squash</span>") || !strings.Contains(body, "value=\"45\"") {
+			t.Errorf("the dialog after a new activity:\n%s", body)
+		}
+	})
 
 	// What changes the week gets a week of its own for each language.
 	flows := []struct {

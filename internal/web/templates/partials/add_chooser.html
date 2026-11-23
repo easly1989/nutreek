@@ -47,7 +47,7 @@
        the recent ones and «As yesterday») or to change (EditID set). View model: app.addFormData. */ -}}
 {{- $action := "/allenamento" -}}{{if .EditID}}{{$action = printf "/allenamento/%d" .EditID}}{{end -}}
 <form method="post" action="{{$action}}?start={{.WeekStart}}"
-      hx-post="{{$action}}?start={{.WeekStart}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog
+      hx-post="{{$action}}?start={{.WeekStart}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog data-workout-form
       class="flex flex-col gap-3">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
   {{if not .EditID}}<input type="hidden" name="logged_at" value="{{.Date.Format "2006-01-02"}}">{{end}}
@@ -60,14 +60,40 @@
     </div>
   </div>
   {{end}}
-  <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "week.activity"}}
-    <select name="activity_id" class="field font-normal text-text">
-      {{range .Activities}}<option value="{{.ID}}"{{if eq .ID $.ActivityID}} selected{{end}}>{{ref "activity" .Code .Name}} ({{num .KcalPerHour}} kcal/h)</option>{{end}}
-    </select>
-  </label>
-  <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "week.duration"}}
-    <input name="duration_minutes" type="number" min="1" max="720" required value="{{if .Minutes}}{{.Minutes}}{{end}}" placeholder="{{t "week.min"}}" class="field tabular-nums font-normal text-text">
-  </label>
+  <div class="flex flex-col gap-1.5">
+    <label for="wk-search" class="text-[12.5px] font-semibold text-muted">{{t "week.activity"}}</label>
+    <input id="wk-search" type="search" data-wk-search autocomplete="off" placeholder="{{t "week.workout_search"}}" class="field">
+    <div role="radiogroup" aria-label="{{t "week.activity"}}" class="wk-list" data-wk-list>
+      {{range $i, $a := .Activities}}
+      <label class="wk-row">
+        <input type="radio" name="activity_id" value="{{$a.ID}}" data-kcal="{{$a.KcalPerHour}}" required{{if or (eq $a.ID $.ActivityID) (and (not $.ActivityID) (eq $i 0))}} checked{{end}}>
+        <span class="grow min-w-0">{{ref "activity" $a.Code $a.Name}}</span>
+        <span class="text-muted tabular-nums">{{num $a.KcalPerHour}} kcal/h</span>
+      </label>
+      {{end}}
+      <p class="px-3 py-2 text-muted" data-wk-empty hidden>{{t "week.workout_no_match"}}</p>
+    </div>
+  </div>
+  <div class="grid grid-cols-2 gap-3">
+    <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "week.duration"}}
+      <input name="duration_minutes" type="number" min="1" max="720" required inputmode="numeric" value="{{if .Minutes}}{{.Minutes}}{{end}}" placeholder="{{t "week.min"}}" class="field tabular-nums font-normal text-text">
+    </label>
+    <label class="flex flex-col gap-1 text-[12.5px] font-semibold text-muted">{{t "week.workout_time"}}
+      <input name="at_time" type="time" value="{{.AtTime}}" class="field tabular-nums font-normal text-text">
+    </label>
+  </div>
+  <p class="text-[13px] text-muted tabular-nums" data-wk-estimate data-tpl="{{t "week.workout_estimate"}}" data-weight="{{.WeightKg}}" aria-live="polite"></p>
+  {{if .WeightKg}}<p class="text-[12.5px] text-muted -mt-2">{{t "week.workout_estimate_hint"}}</p>{{end}}
+  {{if not .EditID}}
+  <details class="border-t border-border pt-1" data-wk-new>
+    <summary class="flex items-center min-h-[44px] cursor-pointer font-semibold text-accent">{{t "week.activity_new"}}</summary>
+    <div class="flex flex-col gap-2 pb-2">
+      <input name="new_name" maxlength="60" autocomplete="off" aria-label="{{t "week.activity_name"}}" placeholder="{{t "week.activity_name"}}" class="field">
+      <input name="new_kcal" type="number" min="1" max="2000" step="1" inputmode="numeric" aria-label="{{t "week.activity_kcal"}}" placeholder="{{t "week.activity_kcal"}}" class="field tabular-nums">
+      <button type="button" class="btn-secondary" hx-post="/allenamento/attivita?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML">{{t "week.activity_create"}}</button>
+    </div>
+  </details>
+  {{end}}
   <div class="flex items-center justify-end gap-2 pt-1">
     <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
     <button class="btn-primary">{{t "week.save"}}</button>

@@ -106,7 +106,7 @@
       </div>
       {{range .Workouts}}
       <div class="flex items-center justify-between gap-2 min-h-[32px] border-t border-border">
-        <span>{{ref "activity" .ActivityCode .ActivityName}} <span class="text-muted">{{.DurationMinutes}} {{t "week.min"}}</span></span>
+        <span>{{if .AtTime}}<span class="text-muted tabular-nums">{{.AtTime}}</span> {{end}}{{ref "activity" .ActivityCode .ActivityName}} <span class="text-muted">{{.DurationMinutes}} {{t "week.min"}}</span></span>
         <span class="flex items-center">
         <button type="button" class="icon-action" hx-get="/allenamento/{{.ID}}/edit?start={{$.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML" title="{{t "week.workout_edit"}}" aria-label="{{t "week.workout_edit_named" "Name" (ref "activity" .ActivityCode .ActivityName)}}">{{template "icon" "i-edit"}}</button>
         <form method="post" action="/allenamento/{{.ID}}/delete?start={{$.WeekStart}}"

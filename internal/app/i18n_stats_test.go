@@ -133,7 +133,7 @@ func TestEnglishShoppingStatsWeightProfile(t *testing.T) {
 	if err != nil || len(acts) == 0 {
 		t.Fatalf("workout activities: %v", err)
 	}
-	if _, err := a.WorkoutLogs.CreateWorkoutLog(ctx, adaID, acts[0].ID, today, 45, nil); err != nil {
+	if _, err := a.WorkoutLogs.CreateWorkoutLog(ctx, adaID, acts[0].ID, today, 45, "", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := a.WaterLogs.Log(ctx, adaID, today, 1500); err != nil {

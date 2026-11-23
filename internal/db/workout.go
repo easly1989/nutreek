@@ -5,13 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/amon2126/nutreek/internal/domain"
 )
 
-var ErrWorkoutLogNotFound = errors.New("allenamento non trovato")
+var (
+	ErrWorkoutLogNotFound = errors.New("allenamento non trovato")
+	ErrActivityNotFound   = errors.New("attività non trovata")
+	ErrActivityExists     = errors.New("attività già presente")
+)
 
 type WorkoutLogs struct {
 	db *sql.DB
@@ -21,9 +24,18 @@ func NewWorkoutLogs(db *sql.DB) *WorkoutLogs {
 	return &WorkoutLogs{db: db}
 }
 
+// ListActivities returns the built-in activities, shared by everyone.
 func (w *WorkoutLogs) ListActivities(ctx context.Context) ([]domain.WorkoutActivity, error) {
+	return w.ListActivitiesFor(ctx, 0)
+}
+
+// ListActivitiesFor returns the built-in activities and the ones userID added,
+// those last.
+func (w *WorkoutLogs) ListActivitiesFor(ctx context.Context, userID int64) ([]domain.WorkoutActivity, error) {
 	rows, err := w.db.QueryContext(ctx,
-		`SELECT id, COALESCE(code, ''), name, kcal_per_hour, sort_order FROM workout_activities ORDER BY sort_order`,
+		`SELECT id, COALESCE(code, ''), name, kcal_per_hour, sort_order, user_id IS NOT NULL
+		 FROM workout_activities WHERE user_id IS NULL OR user_id = ?
+		 ORDER BY user_id IS NOT NULL, sort_order, name`, userID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list workout activities: %w", err)
@@ -33,7 +45,7 @@ func (w *WorkoutLogs) ListActivities(ctx context.Context) ([]domain.WorkoutActiv
 	var activities []domain.WorkoutActivity
 	for rows.Next() {
 		var a domain.WorkoutActivity
-		if err := rows.Scan(&a.ID, &a.Code, &a.Name, &a.KcalPerHour, &a.SortOrder); err != nil {
+		if err := rows.Scan(&a.ID, &a.Code, &a.Name, &a.KcalPerHour, &a.SortOrder, &a.Custom); err != nil {
 			return nil, fmt.Errorf("scan workout activity: %w", err)
 		}
 		activities = append(activities, a)
@@ -41,21 +53,44 @@ func (w *WorkoutLogs) ListActivities(ctx context.Context) ([]domain.WorkoutActiv
 	return activities, rows.Err()
 }
 
-func (w *WorkoutLogs) CreateWorkoutLog(ctx context.Context, userID, activityID int64, date time.Time, minutes int, note *string) (int64, error) {
-	var kcalPerHour float64
+// kcalFor works out the kcal of minutes of an activity for userID, from the
+// weight in the profile; ErrActivityNotFound when the activity is neither a
+// built-in one nor userID's.
+func (w *WorkoutLogs) kcalFor(ctx context.Context, userID, activityID int64, minutes int) (float64, error) {
+	var perHour float64
+	var weight sql.NullFloat64
 	err := w.db.QueryRowContext(ctx,
-		`SELECT kcal_per_hour FROM workout_activities WHERE id = ?`, activityID,
-	).Scan(&kcalPerHour)
+		`SELECT wa.kcal_per_hour, u.weight_kg FROM workout_activities wa, users u
+		 WHERE wa.id = ? AND u.id = ? AND (wa.user_id IS NULL OR wa.user_id = u.id)`,
+		activityID, userID).Scan(&perHour, &weight)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrActivityNotFound
+	}
 	if err != nil {
 		return 0, fmt.Errorf("lookup activity kcal: %w", err)
 	}
+	return domain.WorkoutKcal(perHour, minutes, weight.Float64), nil
+}
 
-	kcalBurned := math.Round((kcalPerHour/60)*float64(minutes)*10) / 10
+// nullTime is the stored form of a time of day: NULL when none was given.
+func nullTime(atTime string) any {
+	if atTime == "" {
+		return nil
+	}
+	return atTime
+}
 
+// CreateWorkoutLog logs a workout; atTime is "HH:MM" or "". The kcal come from the
+// activity and the weight in the profile.
+func (w *WorkoutLogs) CreateWorkoutLog(ctx context.Context, userID, activityID int64, date time.Time, minutes int, atTime string, note *string) (int64, error) {
+	kcalBurned, err := w.kcalFor(ctx, userID, activityID, minutes)
+	if err != nil {
+		return 0, err
+	}
 	res, err := w.db.ExecContext(ctx,
-		`INSERT INTO workout_logs (user_id, activity_id, logged_at, duration_minutes, kcal_burned, note)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		userID, activityID, date.Format("2006-01-02"), minutes, kcalBurned, note,
+		`INSERT INTO workout_logs (user_id, activity_id, logged_at, duration_minutes, kcal_burned, note, at_time)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		userID, activityID, date.Format("2006-01-02"), minutes, kcalBurned, note, nullTime(atTime),
 	)
 	if err != nil {
 		return 0, fmt.Errorf("insert workout log: %w", err)
@@ -64,14 +99,30 @@ func (w *WorkoutLogs) CreateWorkoutLog(ctx context.Context, userID, activityID i
 	return id, nil
 }
 
+// CreateActivity adds an activity of userID's own; ErrActivityExists when they
+// already have one with that name.
+func (w *WorkoutLogs) CreateActivity(ctx context.Context, userID int64, name string, kcalPerHour float64) (int64, error) {
+	res, err := w.db.ExecContext(ctx,
+		`INSERT INTO workout_activities (name, kcal_per_hour, sort_order, user_id) VALUES (?, ?, 0, ?)`,
+		name, kcalPerHour, userID)
+	if isUniqueViolation(err) {
+		return 0, ErrActivityExists
+	}
+	if err != nil {
+		return 0, fmt.Errorf("insert activity: %w", err)
+	}
+	id, _ := res.LastInsertId()
+	return id, nil
+}
+
 func (w *WorkoutLogs) ListWorkoutLogs(ctx context.Context, userID int64, from, to time.Time) ([]domain.WorkoutLog, error) {
 	rows, err := w.db.QueryContext(ctx,
 		`SELECT wl.id, wl.user_id, wl.activity_id, COALESCE(wa.code, ''), wa.name, wl.logged_at,
-		        wl.duration_minutes, wl.kcal_burned, wl.note, wl.created_at
+		        wl.duration_minutes, wl.kcal_burned, wl.note, wl.created_at, COALESCE(wl.at_time, '')
 		 FROM workout_logs wl
 		 JOIN workout_activities wa ON wa.id = wl.activity_id
 		 WHERE wl.user_id = ? AND wl.logged_at BETWEEN ? AND ?
-		 ORDER BY wl.logged_at DESC, wl.id DESC`,
+		 ORDER BY wl.logged_at DESC, COALESCE(wl.at_time, '24:00') DESC, wl.id DESC`,
 		userID, from.Format("2006-01-02"), to.Format("2006-01-02"),
 	)
 	if err != nil {
@@ -85,7 +136,7 @@ func (w *WorkoutLogs) ListWorkoutLogs(ctx context.Context, userID int64, from, t
 		var dateStr string
 		var note sql.NullString
 		if err := rows.Scan(&l.ID, &l.UserID, &l.ActivityID, &l.ActivityCode, &l.ActivityName,
-			&dateStr, &l.DurationMinutes, &l.KcalBurned, &note, &l.CreatedAt); err != nil {
+			&dateStr, &l.DurationMinutes, &l.KcalBurned, &note, &l.CreatedAt, &l.AtTime); err != nil {
 			return nil, fmt.Errorf("scan workout log: %w", err)
 		}
 		l.LoggedAt, _ = time.Parse("2006-01-02", dateStr)
@@ -150,10 +201,10 @@ func (w *WorkoutLogs) GetWorkoutLog(ctx context.Context, id, userID int64) (doma
 	var l domain.WorkoutLog
 	var dateStr string
 	err := w.db.QueryRowContext(ctx,
-		`SELECT wl.id, wl.activity_id, COALESCE(wa.code, ''), wa.name, wl.logged_at, wl.duration_minutes, wl.kcal_burned
+		`SELECT wl.id, wl.activity_id, COALESCE(wa.code, ''), wa.name, wl.logged_at, wl.duration_minutes, wl.kcal_burned, COALESCE(wl.at_time, '')
 		 FROM workout_logs wl JOIN workout_activities wa ON wa.id = wl.activity_id
 		 WHERE wl.id = ? AND wl.user_id = ?`, id, userID,
-	).Scan(&l.ID, &l.ActivityID, &l.ActivityCode, &l.ActivityName, &dateStr, &l.DurationMinutes, &l.KcalBurned)
+	).Scan(&l.ID, &l.ActivityID, &l.ActivityCode, &l.ActivityName, &dateStr, &l.DurationMinutes, &l.KcalBurned, &l.AtTime)
 	if errors.Is(err, sql.ErrNoRows) {
 		return l, ErrWorkoutLogNotFound
 	}
@@ -168,19 +219,16 @@ func (w *WorkoutLogs) GetWorkoutLog(ctx context.Context, id, userID int64) (doma
 	return l, nil
 }
 
-// UpdateWorkoutLog changes the activity and the minutes of a workout and works
-// the kcal out again; ErrWorkoutLogNotFound when it is not userID's.
-func (w *WorkoutLogs) UpdateWorkoutLog(ctx context.Context, id, userID, activityID int64, minutes int) error {
-	var kcalPerHour float64
-	if err := w.db.QueryRowContext(ctx,
-		`SELECT kcal_per_hour FROM workout_activities WHERE id = ?`, activityID,
-	).Scan(&kcalPerHour); err != nil {
-		return fmt.Errorf("lookup activity kcal: %w", err)
+// UpdateWorkoutLog changes the activity, the minutes and the time of a workout
+// and works the kcal out again; ErrWorkoutLogNotFound when it is not userID's.
+func (w *WorkoutLogs) UpdateWorkoutLog(ctx context.Context, id, userID, activityID int64, minutes int, atTime string) error {
+	kcal, err := w.kcalFor(ctx, userID, activityID, minutes)
+	if err != nil {
+		return err
 	}
-	kcal := math.Round((kcalPerHour/60)*float64(minutes)*10) / 10
 	res, err := w.db.ExecContext(ctx,
-		`UPDATE workout_logs SET activity_id = ?, duration_minutes = ?, kcal_burned = ? WHERE id = ? AND user_id = ?`,
-		activityID, minutes, kcal, id, userID)
+		`UPDATE workout_logs SET activity_id = ?, duration_minutes = ?, kcal_burned = ?, at_time = ? WHERE id = ? AND user_id = ?`,
+		activityID, minutes, kcal, nullTime(atTime), id, userID)
 	if err != nil {
 		return fmt.Errorf("update workout log: %w", err)
 	}
@@ -194,8 +242,8 @@ func (w *WorkoutLogs) UpdateWorkoutLog(ctx context.Context, id, userID, activity
 // to and returns how many it copied.
 func (w *WorkoutLogs) CopyWorkoutLogs(ctx context.Context, userID int64, from, to time.Time) (int, error) {
 	res, err := w.db.ExecContext(ctx,
-		`INSERT INTO workout_logs (user_id, activity_id, logged_at, duration_minutes, kcal_burned, note)
-		 SELECT user_id, activity_id, ?, duration_minutes, kcal_burned, note FROM workout_logs
+		`INSERT INTO workout_logs (user_id, activity_id, logged_at, duration_minutes, kcal_burned, note, at_time)
+		 SELECT user_id, activity_id, ?, duration_minutes, kcal_burned, note, at_time FROM workout_logs
 		 WHERE user_id = ? AND logged_at = ?`,
 		to.Format("2006-01-02"), userID, from.Format("2006-01-02"))
 	if err != nil {

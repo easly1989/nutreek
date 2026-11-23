@@ -218,6 +218,7 @@ func (a *App) Router() http.Handler {
 		// Workout log (entered from the dashboard's day card).
 		r.Post("/allenamento", a.handleWorkoutLog)
 		r.Post("/allenamento/copy", a.handleWorkoutCopy)
+		r.Post("/allenamento/attivita", a.handleWorkoutActivityCreate)
 		r.Get("/allenamento/{id}/edit", a.handleWorkoutEditForm)
 		r.Post("/allenamento/{id}", a.handleWorkoutLogUpdate)
 		r.Post("/allenamento/{id}/delete", a.handleWorkoutLogDelete)
@@ -309,6 +310,7 @@ func (a *App) Router() http.Handler {
 		r.Post("/settings/meal-times", a.handleSettingsMealTime)
 		r.Post("/settings/meal-times/delete", a.handleSettingsMealTimeDelete)
 		r.Post("/settings/show-meal-times", a.handleSettingsShowMealTimes)
+		r.Post("/settings/workouts-in-goal", a.handleSettingsWorkoutsInGoal)
 		r.Get("/settings/export", a.handleUserDataExport)
 		if a.Demo == nil { // both ask for the password a demo account does not have
 			r.Post("/settings/password", a.handleChangePassword)

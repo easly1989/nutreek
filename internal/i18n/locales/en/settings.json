@@ -68,5 +68,11 @@
   "settings.delete.confirm": "Delete the account and all its data? This cannot be undone.",
   "settings.delete.password": "Confirm with your password",
   "settings.delete.submit": "Delete account",
-  "settings.delete.err_password": "Incorrect password."
+  "settings.delete.err_password": "Incorrect password.",
+  "settings.toc.workouts": "Workouts",
+  "settings.workouts.title": "Workouts",
+  "settings.workouts.desc": "What a workout does to the day's goal.",
+  "settings.workouts.goal_label": "Workouts raise the day's goal",
+  "settings.workouts.goal_hint": "Off: the kcal burned stay an estimate next to the day. On: the goal of a day with a workout goes up by those kcal.",
+  "settings.workouts.save": "Save"
 }

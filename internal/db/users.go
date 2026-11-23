@@ -57,7 +57,7 @@ func (u *Users) GetByEmail(ctx context.Context, email string) (*domain.User, err
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
 		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
-		        water_target_ml, role, locale, keep_awake, show_meal_times
+		        water_target_ml, role, locale, keep_awake, show_meal_times, workouts_in_goal
 		 FROM users WHERE email = ?`, email,
 	)
 	return scanUser(row)
@@ -77,7 +77,7 @@ func (u *Users) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
 		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
-		        water_target_ml, role, locale, keep_awake, show_meal_times
+		        water_target_ml, role, locale, keep_awake, show_meal_times, workouts_in_goal
 		 FROM users WHERE id = ?`, id,
 	)
 	return scanUser(row)
@@ -137,7 +137,7 @@ func scanUser(row *sql.Row) (*domain.User, error) {
 		&user.WeightKg, &user.HeightCm, &user.BirthYear, &user.Sex,
 		&user.TargetKcal, &user.TargetProtein, &user.TargetCarbs, &user.TargetFat,
 		&user.BMI, &user.BMR, &user.ActivityLevel, &user.OnboardingCompletedAt, &user.TourDismissedAt,
-		&user.WaterTargetML, &user.Role, &user.Locale, &user.KeepAwake, &user.ShowMealTimes,
+		&user.WaterTargetML, &user.Role, &user.Locale, &user.KeepAwake, &user.ShowMealTimes, &user.WorkoutsInGoal,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
@@ -224,6 +224,23 @@ func (u *Users) SetShowMealTimes(ctx context.Context, id int64, on bool) error {
 	return nil
 }
 
+// SetWorkoutsInGoal saves whether the kcal burned by a day's workouts raise that
+// day's goal (#251). Off by default: they stay an estimate beside the day.
+func (u *Users) SetWorkoutsInGoal(ctx context.Context, id int64, on bool) error {
+	v := 0
+	if on {
+		v = 1
+	}
+	res, err := u.db.ExecContext(ctx, `UPDATE users SET workouts_in_goal = ? WHERE id = ?`, v, id)
+	if err != nil {
+		return fmt.Errorf("save workouts in goal: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 // ShoppingGrouping returns how the user wants the shopping list grouped:
 // ShoppingGroupNone, ShoppingGroupCategory or ShoppingGroupCustom.
 func (u *Users) ShoppingGrouping(ctx context.Context, id int64) (string, error) {
@@ -277,7 +294,7 @@ func (u *Users) ListAll(ctx context.Context) ([]*domain.User, error) {
 		        weight_kg, height_cm, birth_year, sex,
 		        target_kcal, target_protein, target_carbs, target_fat,
 		        bmi, bmr, activity_level, onboarding_completed_at, tour_dismissed_at,
-		        water_target_ml, role, locale, keep_awake, show_meal_times
+		        water_target_ml, role, locale, keep_awake, show_meal_times, workouts_in_goal
 		 FROM users ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list all users: %w", err)
@@ -291,7 +308,7 @@ func (u *Users) ListAll(ctx context.Context) ([]*domain.User, error) {
 			&user.WeightKg, &user.HeightCm, &user.BirthYear, &user.Sex,
 			&user.TargetKcal, &user.TargetProtein, &user.TargetCarbs, &user.TargetFat,
 			&user.BMI, &user.BMR, &user.ActivityLevel, &user.OnboardingCompletedAt, &user.TourDismissedAt,
-			&user.WaterTargetML, &user.Role, &user.Locale, &user.KeepAwake, &user.ShowMealTimes,
+			&user.WaterTargetML, &user.Role, &user.Locale, &user.KeepAwake, &user.ShowMealTimes, &user.WorkoutsInGoal,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan user: %w", err)

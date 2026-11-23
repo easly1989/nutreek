@@ -11,6 +11,7 @@ import (
 	"github.com/justinas/nosurf"
 
 	"github.com/amon2126/nutreek/internal/db"
+	"github.com/amon2126/nutreek/internal/domain"
 )
 
 // handleWorkoutLog POST /allenamento — adds a workout to the day.
@@ -46,12 +47,24 @@ func (a *App) handleWorkoutLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	atTime, ok := parseAtTime(r.PostFormValue("at_time"))
+	if !ok {
+		a.Sessions.Put(r.Context(), "flash", "week.flash.invalid_time")
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+
 	var notePtr *string
 	if noteStr != "" {
 		notePtr = &noteStr
 	}
 
-	if _, err := a.WorkoutLogs.CreateWorkoutLog(r.Context(), user.ID, activityID, date, minutes, notePtr); err != nil {
+	if _, err := a.WorkoutLogs.CreateWorkoutLog(r.Context(), user.ID, activityID, date, minutes, atTime, notePtr); err != nil {
+		if errors.Is(err, db.ErrActivityNotFound) {
+			a.Sessions.Put(r.Context(), "flash", "week.flash.select_activity")
+			a.redirectToWeek(w, r, weekStart)
+			return
+		}
 		a.serverError(w, r, err)
 		return
 	}
@@ -114,7 +127,7 @@ func (a *App) handleWorkoutEditForm(w http.ResponseWriter, r *http.Request) {
 		a.redirectToDay(w, r, weekStart, int(log.LoggedAt.Sub(weekStart).Hours()/24))
 		return
 	}
-	acts, _ := a.WorkoutLogs.ListActivities(r.Context())
+	acts, _ := a.WorkoutLogs.ListActivitiesFor(r.Context(), user.ID)
 	data := addFormData{
 		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
 		Date:         log.LoggedAt,
@@ -122,6 +135,8 @@ func (a *App) handleWorkoutEditForm(w http.ResponseWriter, r *http.Request) {
 		Activities:   acts,
 		ActivityID:   log.ActivityID,
 		Minutes:      log.DurationMinutes,
+		AtTime:       log.AtTime,
+		WeightKg:     weightKgOf(user),
 		EditID:       log.ID,
 	}
 	mdata := modalDialogData{Title: a.t(r, "week.edit_workout_title"), Inner: "workout_form", InnerData: data}
@@ -159,7 +174,18 @@ func (a *App) handleWorkoutLogUpdate(w http.ResponseWriter, r *http.Request) {
 		a.redirectToWeek(w, r, weekStart)
 		return
 	}
-	if err := a.WorkoutLogs.UpdateWorkoutLog(r.Context(), id, user.ID, activityID, minutes); err != nil {
+	atTime, ok := parseAtTime(r.PostFormValue("at_time"))
+	if !ok {
+		a.Sessions.Put(r.Context(), "flash", "week.flash.invalid_time")
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	if err := a.WorkoutLogs.UpdateWorkoutLog(r.Context(), id, user.ID, activityID, minutes, atTime); err != nil {
+		if errors.Is(err, db.ErrActivityNotFound) {
+			a.Sessions.Put(r.Context(), "flash", "week.flash.select_activity")
+			a.redirectToWeek(w, r, weekStart)
+			return
+		}
 		a.serverError(w, r, err)
 		return
 	}
@@ -181,4 +207,93 @@ func (a *App) handleWorkoutCopy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.respondMutationOrRedirect(w, r, db.MondayOf(date), int(date.Sub(db.MondayOf(date)).Hours()/24))
+}
+
+// parseAtTime reads the optional time of a workout: "" is fine, otherwise it has to
+// be HH:MM.
+func parseAtTime(s string) (string, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", true
+	}
+	t, err := time.Parse("15:04", s)
+	if err != nil {
+		return "", false
+	}
+	return t.Format("15:04"), true
+}
+
+// weightKgOf is the weight in the profile, 0 when none was given.
+func weightKgOf(u *domain.User) float64 {
+	if u == nil || u.WeightKg == nil {
+		return 0
+	}
+	return *u.WeightKg
+}
+
+// handleWorkoutActivityCreate POST /allenamento/attivita — adds an activity of the
+// user's own from the workout dialog («New activity…») and gives the dialog back
+// with it selected, keeping the minutes and the time already typed.
+func (a *App) handleWorkoutActivityCreate(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	weekStart := parseWeekStart(r)
+	name := strings.TrimSpace(r.PostFormValue("new_name"))
+	kcal, err := strconv.ParseFloat(strings.ReplaceAll(strings.TrimSpace(r.PostFormValue("new_kcal")), ",", "."), 64)
+	if name == "" || !withinLen(name, 60) || err != nil || kcal < 1 || kcal > 2000 {
+		a.Sessions.Put(r.Context(), "flash", "week.flash.invalid_activity")
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	id, err := a.WorkoutLogs.CreateActivity(r.Context(), user.ID, name, kcal)
+	if errors.Is(err, db.ErrActivityExists) {
+		a.Sessions.Put(r.Context(), "flash", "week.flash.activity_exists")
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	date, err := time.Parse("2006-01-02", strings.TrimSpace(r.PostFormValue("logged_at")))
+	if err != nil || r.Header.Get("HX-Request") != "true" {
+		a.redirectToWeek(w, r, weekStart)
+		return
+	}
+	acts, _ := a.WorkoutLogs.ListActivitiesFor(r.Context(), user.ID)
+	minutes, _ := strconv.Atoi(strings.TrimSpace(r.PostFormValue("duration_minutes")))
+	atTime, _ := parseAtTime(r.PostFormValue("at_time"))
+	data := addFormData{
+		authPageData: authPageData{CSRFToken: nosurf.Token(r)},
+		Day:          int(date.Sub(weekStart).Hours() / 24),
+		Date:         date,
+		WeekStart:    formatDate(weekStart),
+		Activities:   acts,
+		ActivityID:   id,
+		Minutes:      minutes,
+		AtTime:       atTime,
+		WeightKg:     weightKgOf(user),
+	}
+	mdata := modalDialogData{Title: a.t(r, "week.add_workout_title"), Inner: "workout_form", InnerData: data}
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "dashboard", "modal_dialog", mdata); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
+// handleSettingsWorkoutsInGoal POST /settings/workouts-in-goal: a hidden 0 and, when
+// the switch is on, a 1 in workouts_in_goal.
+func (a *App) handleSettingsWorkoutsInGoal(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, a.t(r, "week.error.invalid_ids"), http.StatusBadRequest)
+		return
+	}
+	on := false
+	for _, v := range r.PostForm["workouts_in_goal"] {
+		on = on || v == "1"
+	}
+	if err := a.Users.SetWorkoutsInGoal(r.Context(), user.ID, on); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/settings#allenamenti", http.StatusSeeOther)
 }
