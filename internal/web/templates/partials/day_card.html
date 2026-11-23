@@ -262,8 +262,8 @@
        View model: web.MealCtx. */ -}}
 {{$m := .Meal}}{{$ws := .WeekStart}}{{$id := $m.Meal.ID}}
 <div class="relative inline-flex">
-  <button type="button" data-popover="meal-time-{{$id}}" aria-expanded="false" aria-controls="meal-time-{{$id}}" aria-label="{{if $m.Meal.StartTime}}{{$m.Meal.TimeLabel}}, {{end}}{{t "meal_times.edit_named" "Name" $m.Meal.Name}}"
-          class="inline-flex items-center h-[22px] px-2 rounded-full font-bold text-[12px] tabular-nums whitespace-nowrap {{if $m.Meal.IsReminder}}bg-surface-2 text-muted{{else if $m.Meal.StartTime}}bg-accent-soft text-accent{{else}}border border-dashed border-border text-muted font-semibold{{end}}">
+  <button type="button" data-popover="meal-time-{{$id}}" aria-expanded="false" aria-controls="meal-time-{{$id}}" aria-label="{{if $m.Meal.StartTime}}{{$m.Meal.TimeLabel}}{{else}}{{t "meal_times.set_time"}}{{end}}, {{t "meal_times.edit_named" "Name" $m.Meal.Name}}"
+          class="inline-flex items-center h-6 px-2 rounded-full font-bold text-[12px] tabular-nums whitespace-nowrap {{if $m.Meal.IsReminder}}bg-surface-2 text-muted{{else if $m.Meal.StartTime}}bg-accent-soft text-accent{{else}}border border-dashed border-border text-muted font-semibold{{end}}">
     {{- if $m.Meal.StartTime}}{{$m.Meal.TimeLabel}}{{else}}{{t "meal_times.set_time"}}{{end -}}
   </button>
   <form id="meal-time-{{$id}}" method="post" action="/meals/{{$id}}/time?start={{$ws}}" hx-post="/meals/{{$id}}/time?start={{$ws}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
