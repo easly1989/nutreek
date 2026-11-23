@@ -155,7 +155,7 @@ func (s *StorePlugins) Add(ctx context.Context, userID int64, name, baseURL, tok
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var have, rank int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM store_plugins WHERE user_id = ?`, userID).Scan(&have); err != nil {
 		return 0, err
@@ -216,7 +216,7 @@ func (s *StorePlugins) Delete(ctx context.Context, userID, id int64) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var pos int
 	if err := tx.QueryRowContext(ctx, `SELECT position FROM store_plugins WHERE user_id = ? AND id = ?`, userID, id).Scan(&pos); errors.Is(err, sql.ErrNoRows) {
 		return ErrStoreNotFound
@@ -271,7 +271,7 @@ func (s *StorePlugins) Reorder(ctx context.Context, userID int64, keys []string)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	for i, id := range order {
 		if _, err := tx.ExecContext(ctx, `UPDATE store_plugins SET position = ? WHERE user_id = ? AND id = ?`, i, userID, id); err != nil {
 			return err
