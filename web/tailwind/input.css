@@ -36,13 +36,13 @@
  * ------------------------------------------------------------------------ */
 
 :root {
-  --acc-l: #2F7A55; --acc-d: #5FBF8C; --acc-soft-l: #E3F1E9; --acc-soft-d: #1F3329;
+  --acc-l: #276B49; --acc-d: #5FBF8C; --acc-soft-l: #E3F1E9; --acc-soft-d: #1F3329;
 }
 :root[data-accent="mare"] {
   --acc-l: #1D6FA5; --acc-d: #5AA9E0; --acc-soft-l: #E1EEF8; --acc-soft-d: #1B2C3A;
 }
 :root[data-accent="tramonto"] {
-  --acc-l: #B4511A; --acc-d: #F08A4B; --acc-soft-l: #FBE9DD; --acc-soft-d: #3A2619;
+  --acc-l: #9E4515; --acc-d: #F08A4B; --acc-soft-l: #FBE9DD; --acc-soft-d: #3A2619;
 }
 :root[data-accent="grafite"] {
   --acc-l: #3A4150; --acc-d: #C9CED6; --acc-soft-l: #E7E9EE; --acc-soft-d: #2C3038;

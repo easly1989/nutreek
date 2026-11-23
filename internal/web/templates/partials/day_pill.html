@@ -14,7 +14,7 @@
    aria-selected="{{.Selected}}" aria-controls="day-panel" tabindex="{{if .Selected}}0{{else}}-1{{end}}"
    data-day="{{.DateStr}}" data-state="{{.State}}" data-title="{{dayTitle .Day.Date}}"
    class="day-tab"{{if .OOB}} hx-swap-oob="true"{{end}}>
-  <span class="flex items-center gap-1 text-[11px] sm:text-[12.5px] font-semibold opacity-85">
+  <span class="flex items-center gap-1 text-[11px] sm:text-[12.5px] font-semibold">
     <span class="sm:hidden">{{dayLetter .Day.Date}}</span>
     <span class="hidden sm:inline">{{if eq .State "today"}}{{t "week.today"}}{{else}}{{dayShort .Day.Date}}{{end}}</span>
     {{if .Progress.AnyExceeds}}<span class="w-1.5 h-1.5 rounded-full bg-danger" title="{{t "week.macro_over"}}"></span>{{end}}
