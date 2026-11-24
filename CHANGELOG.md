@@ -11,6 +11,10 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 ## [Unreleased]
 
 ### Added
+- Activities of your own in the workout log: «Add your own activity» in the workout form gives it a name and a calorie rate. Each workout has a time of the day, and the kcal are estimated from your latest weigh-in and shown as an estimate. A new switch in Settings, «Workouts raise the goal» (off by default), adds the burned kcal to the day's goal (migration 0050) (#287, #289)
+- A setting to hide the recipe photos in the recipe list, in «Lists» in Settings. They are on by default, and a smaller photo on a phone leaves more room for the name (migration 0051) (#297, #299)
+- Rename and duplicate a variant in the nutrition plan, from its menu (#301)
+- A «You» page, opened from the avatar, with the profile and goals, Household, the password and your data, the preferences (appearance, meals and times, notifications, stores), help and the guided tour, and Administration for the owner (#283)
 - Integrated stores: Settings → Stores lists the stores that come with Nutreek and connects one with a click, with no address, token or secret key. The first is Conad: ingredient searches show its products (with nutrition, from its site) and the shopping list prices them. The plugin code is in the new `nutreek-store-plugins` repository and runs inside Nutreek. Store prices are those of the site's default store, so the list shows a notice that they are indicative, which can be closed for now or for good (migration 0049) (#277)
 - Stores: «Stores» in Settings connects a grocery store through a plugin, a small HTTP service you run or find that Nutreek asks for products, prices and availability (Nutreek ships none; the contract is in docs/store-plugins.md). The list of search sources puts Open Food Facts and the stores in the order you want, by drag or with arrows, and each can be turned off. An ingredient search shows the store's products after your own, with the store's name and price, and picking one makes an ingredient from it (its nutrition comes from the plugin) that stays linked to the product. The shopping list prices the ingredients that have a product, in whole packages, with an estimate of the total and a button that asks the store for today's prices and availability. Tokens are sealed in the database with the new `NUTREEK_SECRET_KEY`, and only public addresses are reached unless `NUTREEK_STORES_ALLOW_PRIVATE` is set; not in the demo (migration 0048) (#239)
 - Household: up to six other people can share your week from «Household» in Settings. Each has a name and a calorie goal and needs no login. Their quantities are yours scaled by the ratio of the goals (rounded to 5 g, half a piece, a quarter of a serving), and any row can be set by hand for one person, or a whole meal skipped for them. The day shows a kcal bar for each person and, on every row, a chip with what each of them eats; a tap opens the quantities of that row. The shopping list sums everyone and opens a «Who needs how much» detail under each row (migration 0047, see docs/household.md) (#238)
@@ -32,6 +36,8 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 - Resting the mouse on a product photo in the ingredient picker, or on a recipe thumbnail in the recipe list, shows a larger preview next to it. Touch screens are unchanged (#223)
 
 ### Fixed
+- Contrast of the accent colour, the meal-time buttons and the day pill now meets WCAG AA (#281)
+- The update commands in the Administration page can be scrolled with the keyboard on a phone (#320)
 - Dragging a meal, or a row inside its meal, on a day of the week answered 403 and changed nothing: the lists posted without the CSRF token (#228)
 - A shopping item from the meals can be changed in pieces, grams or ml: the editor offers the units the ingredient has and converts the number when you switch (#246)
 - Items added by hand can be edited, name, quantity and unit, instead of being removed and added again (#247)
@@ -39,6 +45,16 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 - Ticking a shopping item and adding one by hand keep the page where it was instead of jumping to the bottom: the list no longer lets the browser anchor the scroll to the row that moved, and adding an item swaps the list instead of reloading the page (#245)
 
 ### Changed
+- The interface is rebuilt in a new direction, «Registro» (#251, written down in DESIGN.md, #279): rows separated by lines instead of cards, one menu on each row, numbers aligned in columns, 44 px touch targets, and phone and desktop designed together. Every page was checked at three widths, light and dark, with no accessibility violations. The pages that changed most:
+  - Navigation: four destinations (Week, Shopping, Library, Progress) in the bottom bar and the sidebar (#283)
+  - Week: one «Add» sheet for a food, a recipe, a workout or water; each row has one menu (swap the ingredient, move to another meal, edit, delete); the meals are rows with their time (#285, #287, #291)
+  - Shopping list: rows instead of cards, a «+» that adds an item in a dialog, one menu on each row (#293)
+  - Library: the recipe and ingredient lists as rows with a photo column and, for ingredients, the macros; filters in a popover (#295)
+  - Nutrition plan: templates and plan on one page, the variants as closed rows that open on a tap, and a dialog to add a food to a variant (#301, #303)
+  - Progress: statistics as four numbers and charts, the weight page with a dialog for a new weigh-in (#305)
+  - Profile: sections as rows, and a save bar that shows when a field changes (#307)
+  - Settings: an index of pages (Appearance, Meal times, Lists, App, Account), switches that save when touched, and the meal times as rows with their time, edited in a dialog (#309, #311)
+  - Notifications, Household and the forms for a new recipe, ingredient and template follow the same layout; reminders and people open in a dialog, and the ingredient form keeps Save in view (#314, #316, #318)
 - The ingredient pickers (day, recipe, nutritionist plan) now list what you used before first when the search box is empty, in the same order as the search; the ingredients page keeps its alphabetical list (#266)
 - The ingredient search puts first what you used before: ingredients in your weekly plans and recipes (the most used first, then the most recent), then the ones you made, then the ones imported from OpenFoodFacts. An OpenFoodFacts product you already have as an ingredient shows once, even when the ingredient is further down the list. An imported ingredient now records whether it is still as imported, and its page says so (migration 0043) (#225)
 - The ingredient picker search takes every word of the query: «yogurt fage» and «fage yogurt» both find the Fage yogurt. The words may come from the name, the brand or, for your own ingredients, your category, and for OpenFoodFacts products also the package size («fage 150»). Migration 0042 rebuilds the OpenFoodFacts search index with the size (#224)

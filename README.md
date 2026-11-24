@@ -49,12 +49,15 @@ The interface is in **English** and **Italian**. Each user picks the language in
 
 | Area | What it does |
 |------|-------------|
-| **Weekly plans** | One day at a time with a calorie ring and macros, meals, water and workouts; macros per meal, day and week, cheat meals, copy from the previous week |
+| **Weekly plans** | One day at a time with a calorie ring and macros, meals with a time, water and workouts (your own activities too); macros per meal, day and week, cheat meals, copy from the previous week, move a row to another meal or swap its ingredient for a close one |
 | **Ingredients** | Local FTS5 search (<50 ms, offline) with product photos, a barcode scanner in every food picker, a local OpenFoodFacts copy that updates daily, OpenFoodFacts reconciliation |
 | **Recipes** | Built from ingredients, imported automatically from a URL (schema.org/Recipe), with a photo; quantities edited in place, in grams or pieces |
 | **Templates** | Reusable weekly templates, applied in one click |
 | **Nutrition plan** | Meal variants, automatic week generation with a greedy algorithm that aims at your macro targets |
-| **Shopping list** | Generated from the selected week, grouped by aisle |
+| **Shopping list** | One list from the selected week and what you add by hand, sorted by name, grouped by category or in your own order; check what you already have before you go; prices from a connected store |
+| **Household** | Up to six other people share your week, each with a calorie goal and no login; quantities scale to the goal and the shopping list adds everyone up |
+| **Notifications** | Reminders sent to the installed app, also when it is closed: water, training, meals and your own, with quiet hours |
+| **Stores** | Connect a grocery store (Conad comes with Nutreek): its products show in ingredient search and the shopping list prices them |
 | **Weight & hydration** | Daily tracking, trend charts |
 | **Adaptive TDEE** | Estimates your real energy needs from your weight and intake trend, and suggests new targets |
 | **Workouts** | Workout log with calories burned, weekly overview |
@@ -62,7 +65,7 @@ The interface is in **English** and **Italian**. Each user picks the language in
 | **REST API v1** | Bearer tokens; endpoints for the week, ingredients, weight, hydration and workouts |
 | **Admin panel** | Feature flags, user management, premium subscriptions (owner only) |
 | **Premium gating** | `requireFeature` middleware, 60 s cache, UI badges, redirect to `/upgrade` |
-| **Look** | The «Sereno» style: light / dark / follow the system × forest / sea / sunset / graphite colour; sidebar on desktop, bottom bar on the phone; guided tour |
+| **Look** | The «Registro» style: rows and rules instead of cards, one menu per row, switches that save when you touch them; light / dark / follow the system × forest / sea / sunset / graphite colour; sidebar on desktop, a bottom bar with four destinations on the phone; guided tour |
 | **Languages** | English and Italian, per user or from the browser; community translations welcome, marked beta until complete ([guide](docs/translating.md)) |
 | **On your phone** | Installable (manifest and icons in your chosen colour, a service worker for static files); the camera and installing need https |
 
@@ -74,7 +77,7 @@ The demo's data, in English. The same look in light and dark, on desktop and on 
 
 ### The week
 
-One day at a time: the day tabs with their calories, the meals with their macros, and beside them the calorie ring, water and workouts.
+One day at a time: the day tabs with their calories, the meals as rows with their macros, and beside them the calorie ring, water and workouts.
 
 <p align="center">
   <img src="docs/screenshots/en/week.png" width="800" alt="The week: day tabs, meals with calories and macros, calorie ring, water and workout">
@@ -99,21 +102,21 @@ Recipes with calories and macros per serving; the nutrition plan with the varian
 
 <p align="center">
   <img src="docs/screenshots/en/recipes.png" width="400" alt="Recipe list with calories and macros per serving, and filters">
-  <img src="docs/screenshots/en/nutrition-plan.png" width="400" alt="Nutrition plan with the variants of breakfast and lunch">
+  <img src="docs/screenshots/en/nutrition-plan.png" width="400" alt="Nutrition plan with the variants of each meal as rows">
 </p>
 
 ### Shopping list and statistics
 
-The shopping list by aisle, with a cart and a two-column print. Statistics with your energy needs estimated from your weight and what you ate.
+The shopping list as one list, grouped by category or in your own order, with a cart bar and a two-column print. Statistics with your energy needs estimated from your weight and what you ate.
 
 <p align="center">
-  <img src="docs/screenshots/en/shopping.png" width="400" alt="Shopping list grouped by aisle, with items added by hand">
+  <img src="docs/screenshots/en/shopping.png" width="400" alt="Shopping list with the cart bar, the grouping choice and the items sorted by name">
   <img src="docs/screenshots/en/stats-dark.png" width="400" alt="Statistics in dark mode: summary, estimated energy needs, calories and macros, weight">
 </p>
 
 ### On the phone
 
-A bottom bar with the everyday sections; it installs as an app from Settings.
+A bottom bar with four destinations (Week, Shopping, Library, Progress); the avatar at the top opens You, with the profile, the preferences and help. It installs as an app from Settings.
 
 <p align="center">
   <img src="docs/screenshots/en/phone-week.png" width="200" alt="The week on the phone">
