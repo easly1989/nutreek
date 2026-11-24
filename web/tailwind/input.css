@@ -495,7 +495,7 @@
   /* Settings (#123): an index on the left, title | content sections. */
   .settings-toc { @apply px-2.5 py-[7px] rounded-lg text-[13px] font-semibold text-muted hover:text-text hover:bg-surface; }
   .settings-toc[aria-current] { @apply bg-surface text-text; box-shadow: 0 0 0 1px var(--border); }
-  .settings-sec { @apply grid gap-2.5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5 px-4 py-[18px]; }
+  .settings-sec { @apply grid gap-2.5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5 py-[18px]; }
   .settings-sec + .settings-sec { @apply border-t border-border; }
   .settings-d { @apply text-[12.5px] text-muted mt-1; }
   /* Swiping the open day to change day (#250): sideways is ours, vertical scrolling is the browser's. */

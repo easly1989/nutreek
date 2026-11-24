@@ -295,5 +295,5 @@ func (a *App) handleSettingsWorkoutsInGoal(w http.ResponseWriter, r *http.Reques
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/settings#allenamenti", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/elenchi", http.StatusSeeOther)
 }

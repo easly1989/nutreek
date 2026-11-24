@@ -284,6 +284,7 @@ func (a *App) Router() http.Handler {
 		r.Get("/tu", a.handleTuPage)
 		// Account settings (GDPR export, password change, deletion, API tokens).
 		r.Get("/settings", a.handleSettingsPage)
+		r.Get("/settings/{section:(aspetto|orari|elenchi|app|account)}", a.handleSettingsSection)
 		r.Post("/settings/keep-awake", a.handleSettingsKeepAwake)
 		r.Get("/settings/notifications", a.handleNotificationsPage)
 		r.Post("/settings/notifications/reminder", a.handleNotificationsReminder)

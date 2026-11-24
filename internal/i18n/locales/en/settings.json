@@ -80,5 +80,13 @@
   "settings.lists.desc": "What the lists of recipes and ingredients show.",
   "settings.lists.photos_label": "Show recipe photos",
   "settings.lists.photos_hint": "A small photo to the right of each recipe in the list. Turn it off for narrower rows.",
-  "settings.lists.save": "Save"
+  "settings.lists.save": "Save",
+  "settings.page.appearance": "Appearance and language",
+  "settings.page.appearance_desc": "Language, light or dark, colour, screen on",
+  "settings.page.times_desc": "The time each meal gets, and the CSV export",
+  "settings.page.lists": "Lists and workouts",
+  "settings.page.lists_desc": "Recipe photos, workouts and the day's goal",
+  "settings.page.app_desc": "Open Nutreek like an app",
+  "settings.page.account": "Account and data",
+  "settings.page.account_desc": "Password, your data, API tokens, delete the account"
 }
