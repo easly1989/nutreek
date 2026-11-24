@@ -85,55 +85,71 @@
 
     {{end}}
     {{if eq .Section "orari"}}
-      {{/* Meal times (#236): the time each meal name gets when it is created, and
-           whether the CSV export has a column for them. */}}
+      {{/* Meal times (#236): the time each meal name gets when it is created. A row shows it; the time
+           opens the dialog to change it, and «Add a meal» opens the same dialog empty. */}}
       <section id="orari" class="scroll-mt-6">
         <div class="settings-sec">
           <div><h2 class="h2">{{t "meal_times.settings.title"}}</h2><p class="settings-d">{{t "meal_times.settings.desc"}}</p></div>
-          {{if .MealTimes}}
-          <ul class="divide-y divide-border -mx-1">
-            {{range .MealTimes}}
-            <li class="flex flex-wrap items-center gap-2 py-2 px-1">
-              <form method="post" action="/settings/meal-times" class="flex flex-wrap items-center gap-2 grow min-w-0">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="name" value="{{.Name}}">
-                <b class="grow min-w-[7rem]">{{.Name}}</b>
-                <input type="time" name="start_time" required value="{{.Start}}" aria-label="{{t "meal_times.settings.start"}}: {{.Name}}" class="field w-[6.5rem] text-center tabular-nums">
-                <span class="text-muted" aria-hidden="true">–</span>
-                <input type="time" name="end_time" value="{{.End}}" aria-label="{{t "meal_times.settings.end"}}: {{.Name}}" class="field w-[6.5rem] text-center tabular-nums">
-                <button class="btn-secondary btn-icon" title="{{t "meal_times.save"}}" aria-label="{{t "meal_times.save"}}: {{.Name}}">{{template "icon_sm" "i-check"}}</button>
-              </form>
-              <form method="post" action="/settings/meal-times/delete">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="name" value="{{.Name}}">
-                <button class="icon-action hover:text-danger" title="{{t "week.delete"}}" aria-label="{{t "meal_times.settings.delete_named" "Name" .Name}}">{{template "icon" "i-trash"}}</button>
-              </form>
-            </li>
+          <div class="flex flex-col min-w-0">
+            {{if .MealTimes}}
+            <ul class="divide-y divide-border border-y border-border">
+              {{range $i, $m := .MealTimes}}
+              <li class="grid grid-cols-[minmax(0,1fr)_auto_36px] items-center gap-x-3 min-h-[52px] py-1">
+                <b class="font-semibold [overflow-wrap:anywhere]">{{.Name}}</b>
+                <button type="button" class="inline-flex items-center h-9 px-3 rounded-lg border border-border bg-surface font-semibold tabular-nums whitespace-nowrap hover:bg-surface-2" data-mt-edit data-name="{{.Name}}" data-start="{{.Start}}" data-end="{{.End}}" aria-label="{{.Start}}{{if .End}}–{{.End}}{{end}}, {{t "meal_times.settings.edit_named" "Name" .Name}}">{{.Start}}{{if .End}}–{{.End}}{{end}}</button>
+                <div class="relative">
+                  <button type="button" class="icon-action" data-popover="mt-menu-{{$i}}" aria-expanded="false" aria-controls="mt-menu-{{$i}}" aria-label="{{t "meal_times.settings.actions_named" "Name" .Name}}">{{template "icon" "i-dots"}}</button>
+                  <div id="mt-menu-{{$i}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
+                    <button type="button" class="nav-link w-full" data-menu-close data-mt-edit data-name="{{.Name}}" data-start="{{.Start}}" data-end="{{.End}}">{{template "icon" "i-edit"}}{{t "meal_times.settings.edit"}}</button>
+                    <form method="post" action="/settings/meal-times/delete">
+                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                      <input type="hidden" name="name" value="{{.Name}}">
+                      <button class="nav-link w-full text-danger" aria-label="{{t "meal_times.settings.delete_named" "Name" .Name}}">{{template "icon" "i-trash"}}{{t "week.delete"}}</button>
+                    </form>
+                  </div>
+                </div>
+              </li>
+              {{end}}
+            </ul>
+            {{else}}
+            <p class="settings-d">{{t "meal_times.settings.empty"}}</p>
             {{end}}
-          </ul>
-          {{else}}
-          <p class="settings-d">{{t "meal_times.settings.empty"}}</p>
-          {{end}}
-          <form method="post" action="/settings/meal-times" class="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <input name="name" required maxlength="200" placeholder="{{t "meal_times.settings.name_placeholder"}}" aria-label="{{t "meal_times.name"}}" class="field grow min-w-[9rem]">
-            <input type="time" name="start_time" required aria-label="{{t "meal_times.settings.start"}}" class="field w-[6.5rem] text-center tabular-nums">
-            <span class="text-muted" aria-hidden="true">–</span>
-            <input type="time" name="end_time" aria-label="{{t "meal_times.settings.end"}}" class="field w-[6.5rem] text-center tabular-nums">
-            <button class="btn-secondary shrink-0">{{template "icon" "i-plus"}}{{t "meal_times.add"}}</button>
-          </form>
-          <form method="post" action="/settings/show-meal-times" class="border-t border-border pt-3" onchange="this.requestSubmit()">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <label class="flex items-start gap-3 cursor-pointer">
-              <span class="grow min-w-0"><b class="block">{{t "meal_times.settings.csv_label"}}</b><span class="block settings-d">{{t "meal_times.settings.csv_hint"}}</span></span>
-              <input type="hidden" name="show_meal_times" value="0">
-              <input type="checkbox" role="switch" name="show_meal_times" value="1" class="toggle"{{if .User.ShowMealTimes}} checked{{end}} aria-label="{{t "meal_times.settings.csv_label"}}">
-            </label>
-            <noscript><button class="btn-secondary mt-2">{{t "meal_times.save"}}</button></noscript>
-          </form>
+            <button type="button" class="self-start min-h-[44px] text-accent font-semibold hover:underline" data-mt-add>+ {{t "meal_times.settings.add_new"}}</button>
+          </div>
         </div>
+        <form method="post" action="/settings/show-meal-times" class="settings-sec" onchange="this.requestSubmit()">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <div><h2 class="h2">{{t "meal_times.settings.csv_title"}}</h2></div>
+          <label class="flex items-start gap-3 cursor-pointer">
+            <span class="grow min-w-0"><b class="block">{{t "meal_times.settings.csv_label"}}</b><span class="block settings-d">{{t "meal_times.settings.csv_hint"}}</span></span>
+            <input type="hidden" name="show_meal_times" value="0">
+            <input type="checkbox" role="switch" name="show_meal_times" value="1" class="toggle"{{if .User.ShowMealTimes}} checked{{end}} aria-label="{{t "meal_times.settings.csv_label"}}">
+          </label>
+          <noscript><button class="btn-secondary">{{t "meal_times.save"}}</button></noscript>
+        </form>
       </section>
 
+      <dialog id="mt-dialog" data-modal class="dialog-panel" aria-label="{{t "meal_times.settings.title"}}"
+              data-title-add="{{t "meal_times.settings.add_title"}}" data-title-edit="{{t "meal_times.settings.edit_title" "Name" "{name}"}}">
+        <div class="flex items-center gap-3 pl-5 pr-4 pt-4 pb-3">
+          <h2 class="grow text-[17px] font-bold" data-mt-title></h2>
+          <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
+        </div>
+        <form method="post" action="/settings/meal-times" class="flex flex-col gap-3 px-5 pb-5">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <label class="lab">{{t "meal_times.name"}}
+            <input name="name" required maxlength="200" placeholder="{{t "meal_times.settings.name_placeholder"}}" class="field font-normal text-text" autocomplete="off" data-mt-name>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="lab">{{t "meal_times.settings.start"}}<input type="time" name="start_time" required class="field text-center tabular-nums font-normal text-text" data-mt-start></label>
+            <label class="lab">{{t "meal_times.settings.end"}}<input type="time" name="end_time" class="field text-center tabular-nums font-normal text-text" data-mt-end></label>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-1">
+            <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+            <button class="btn-primary">{{t "meal_times.save"}}</button>
+          </div>
+        </form>
+      </dialog>
     {{end}}
     {{if eq .Section "elenchi"}}
       <section id="elenchi" class="scroll-mt-6">
@@ -308,4 +324,30 @@
 
 {{define "app_icon"}}<span class="app-icon" aria-hidden="true"><svg class="w-[30px] h-[30px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-leaf"/></svg></span>{{end}}
 
-{{define "scripts"}}{{end}}
+{{define "scripts"}}
+{{if eq .Section "orari"}}
+<script>
+(function () {
+  // «Add a meal» and a time open the same dialog: empty, or with the name (it stays) and the times of the row.
+  var dlg = document.getElementById("mt-dialog");
+  if (!dlg || !dlg.showModal) return;
+  var name = dlg.querySelector("[data-mt-name]"), start = dlg.querySelector("[data-mt-start]"), end = dlg.querySelector("[data-mt-end]");
+  function open(d) {
+    var edit = d && d.name;
+    dlg.querySelector("[data-mt-title]").textContent = edit ? dlg.dataset.titleEdit.replace("{name}", d.name) : dlg.dataset.titleAdd;
+    name.value = edit ? d.name : "";
+    name.readOnly = !!edit;
+    start.value = edit ? d.start : "";
+    end.value = edit ? d.end : "";
+    dlg.showModal();
+    (edit ? start : name).focus();
+  }
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-mt-edit], [data-mt-add]");
+    if (!el) return;
+    open(el.hasAttribute("data-mt-edit") ? { name: el.dataset.name, start: el.dataset.start, end: el.dataset.end } : null);
+  });
+})();
+</script>
+{{end}}
+{{end}}
