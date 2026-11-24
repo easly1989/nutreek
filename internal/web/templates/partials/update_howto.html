@@ -20,7 +20,7 @@
 
 {{/* A command with a copy button; the button shows only with JS. */}}
 {{define "update_command"}}<div class="relative rounded-xl bg-surface-2 px-3.5 py-3 pr-20">
-  <pre class="font-mono text-[13px] whitespace-pre overflow-x-auto">{{.}}</pre>
+  <pre tabindex="0" class="font-mono text-[13px] whitespace-pre overflow-x-auto">{{.}}</pre>
   <button type="button" class="hidden absolute top-2 right-2 btn-ghost h-8 px-2.5 text-[12.5px]" data-copy data-copied="{{t "updates.howto.copied"}}">{{template "icon_sm" "i-copy"}}<span>{{t "updates.howto.copy"}}</span></button>
 </div>{{end}}
 
