@@ -10,6 +10,12 @@ The entries up to 2.0.0 link to issues and pull requests written in Italian: the
 
 ## [Unreleased]
 
+---
+
+## [3.0.0] — 2026-11-24
+
+The interface is rebuilt in a new direction, «Registro»: rows and rules instead of cards, on phone and desktop. Stores, household, reminders, a move and replace for rows, and a calmer shopping list come with it. Migrations 0041 to 0051 run on the first start; as always there is no downgrade, so back up the database first.
+
 ### Added
 - Activities of your own in the workout log: «Add your own activity» in the workout form gives it a name and a calorie rate. Each workout has a time of the day, and the kcal are estimated from your latest weigh-in and shown as an estimate. A new switch in Settings, «Workouts raise the goal» (off by default), adds the burned kcal to the day's goal (migration 0050) (#287, #289)
 - A setting to hide the recipe photos in the recipe list, in «Lists» in Settings. They are on by default, and a smaller photo on a phone leaves more room for the name (migration 0051) (#297, #299)
