@@ -1,5 +1,7 @@
 {
   "layout.nav.sections": "Sezioni",
+  "layout.nav.hide_sidebar": "Nascondi la barra laterale",
+  "layout.nav.show_sidebar": "Mostra la barra laterale",
   "layout.nav.more_sections": "Altre sezioni",
   "layout.nav.week": "Settimana",
   "layout.nav.recipes": "Ricette",

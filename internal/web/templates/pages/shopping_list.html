@@ -1,4 +1,5 @@
 {{define "title"}}{{t "shopping.title"}} — Nutreek{{end}}
+{{define "page_width"}}max-w-6xl xl:max-w-[1800px]{{end}}
 {{define "content"}}
 {{- $ws := .WeekStart -}}
 {{- $wc := .WeekCount -}}
@@ -71,7 +72,7 @@
   <p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">{{t "shopping.multi_week_warning" "Weeks" $wc}}</p>
   {{end}}
 
-  <div class="flex flex-col gap-3 max-w-3xl [overflow-anchor:none]">
+  <div class="flex flex-col gap-3 max-w-3xl lg:max-w-none [overflow-anchor:none]">
     <div id="shop-list" class="flex flex-col gap-3">
       {{/* After a merge: a toast with «Undo», for a few seconds (the server keeps the undo for three minutes). */}}
       {{if .CanUndo}}
@@ -116,16 +117,21 @@
 
       <div class="card overflow-hidden sm:overflow-visible">
         {{if .View.Rows}}
+        {{/* On a wide screen the categories flow into columns (3 from xl, 4 from 1700 px); a category never splits. */}}
         {{if .View.Groups}}
+        <div class="lg:columns-2 xl:columns-3 min-[1700px]:columns-4 lg:gap-x-6">
         {{range .View.Groups}}
+        <div class="break-inside-avoid">
         <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{if .Other}}{{t "shopping.other"}}{{else}}{{.Name}}{{end}}</span><span class="tabular-nums">{{len .Rows}}</span></h2>
         <ul>
           {{range .Rows}}{{template "shop_row" (row . $)}}{{end}}
         </ul>
+        </div>
         {{end}}
+        </div>
         {{else}}
         <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums">{{len .View.Rows}}</span></h2>
-        <ul{{if eq .View.Grouping "custom"}} data-sortable="shop" data-sortable-handle="[data-shop-grip]" data-sort-url="/shopping-list/{{.List.ID}}/order" data-csrf="{{.CSRFToken}}" data-reorder-list{{end}}>
+        <ul class="lg:columns-2 xl:columns-3 min-[1700px]:columns-4 lg:gap-x-6 [&>li]:break-inside-avoid"{{if eq .View.Grouping "custom"}} data-sortable="shop" data-sortable-handle="[data-shop-grip]" data-sort-url="/shopping-list/{{.List.ID}}/order" data-csrf="{{.CSRFToken}}" data-reorder-list{{end}}>
           {{range .View.Rows}}{{template "shop_row" (row . $)}}{{end}}
         </ul>
         {{end}}

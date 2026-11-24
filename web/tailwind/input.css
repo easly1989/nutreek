@@ -223,6 +223,16 @@
   }
   .tab-link.is-active { @apply text-accent; }
 
+  /* The sidebar can be hidden on a desktop (sidebar.js sets data-side="hidden" on <html>):
+     the page then uses the full width and one button at the top left brings it back. */
+  .sidebar-show { display: none; }
+  @media (min-width: 1024px) {
+    html[data-side="hidden"] #sidebar { display: none; }
+    html[data-side="hidden"] .app-main { padding-left: 0; }
+    html[data-side="hidden"] .app-page { padding-left: 4.25rem; }
+    html[data-side="hidden"] .sidebar-show { display: inline-grid; place-items: center; }
+  }
+
   /* The ledger (DESIGN.md): a group opens with a strong rule, its rows are
      separated by hairlines. Used by the You page (#283). */
   .ledger-head { @apply text-[17px] font-bold pt-2 mb-0.5 border-t-2 border-text; }
