@@ -436,6 +436,7 @@ func TestEnglishEveryPage(t *testing.T) {
 		{route: "/nutrizionista", target: "/nutrizionista", status: http.StatusFound, redirect: "/piano-nutrizionale"},
 		{route: "/nutrizionista/picker", target: "/nutrizionista/picker?variation_id=" + idOf(mainVar) + "&kind=ingredient&q=oat&off=1"},
 		{target: "/nutrizionista/picker?variation_id=" + idOf(mainVar) + "&kind=recipe&q="},
+		{route: "/nutrizionista/variations/{id}/add-food", target: "/nutrizionista/variations/" + idOf(mainVar) + "/add-food", htmx: true},
 		{route: "/templates", target: "/templates", status: http.StatusSeeOther, redirect: "/piano-nutrizionale?tab=template"},
 		{route: "/templates/new", target: "/templates/new"},
 		{route: "/templates/{id}", target: "/templates/" + idOf(standard)},

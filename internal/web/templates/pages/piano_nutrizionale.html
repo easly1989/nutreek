@@ -163,7 +163,7 @@
   // After "New ingredient/recipe" refresh the open pickers.
   ['ingredient-created', 'recipe-created'].forEach(function (ev) {
     window.addEventListener(ev, function () {
-      document.querySelectorAll('details[data-nutr-picker][open]').forEach(function (det) {
+      document.querySelectorAll('dialog[open] [data-nutr-picker]').forEach(function (det) {
         var varID = det.dataset.nutrPicker;
         var input = document.querySelector('input[data-nutr-var="' + varID + '"][data-ingredient-search]');
         var params = new URLSearchParams((input && input.dataset.searchExtra) || ('variation_id=' + varID + '&kind=ingredient'));
@@ -230,39 +230,8 @@
     <p class="py-2 text-muted">{{t "plan.no_items"}}</p>
   {{end}}
   {{if not $d.ReadOnly}}
-  <details class="group" data-nutr-picker="{{$v.ID}}"
-           hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=ingredient&q="
-           hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML" hx-trigger="toggle once">
-    <summary class="flex items-center gap-1.5 min-h-[40px] text-accent font-semibold text-[13px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-      <span class="group-open:rotate-45 transition-transform">{{template "icon_sm" "i-plus"}}</span><span class="group-open:hidden">{{t "plan.add_food"}}</span><span class="hidden group-open:inline">{{t "common.close"}}</span>
-    </summary>
-    <div class="flex flex-col gap-2 pb-3">
-      <div class="flex items-center gap-2">
-        <span class="segmented" role="radiogroup" aria-label="{{t "plan.kind"}}">
-          <button type="button" role="radio" aria-checked="true" class="px-3" data-nutr-tab="ingredient" data-nutr-var="{{$v.ID}}"
-                  hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=ingredient&q=" hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML">{{t "plan.kind_ingredient"}}</button>
-          <button type="button" role="radio" aria-checked="false" class="px-3" data-nutr-tab="recipe" data-nutr-var="{{$v.ID}}"
-                  hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=recipe&q=" hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML">{{t "plan.kind_recipe"}}</button>
-        </span>
-        <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2" data-nutr-quick="ingredient" data-nutr-var="{{$v.ID}}" hx-get="/quick/ingredient" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}{{t "plan.new_ingredient_short"}}</button>
-        <button type="button" class="btn-ghost h-[30px] px-2 text-[12.5px] ml-auto -mr-2 hidden" data-nutr-quick="recipe" data-nutr-var="{{$v.ID}}" hx-get="/quick/recipe" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}{{t "plan.new_recipe_short"}}</button>
-      </div>
-      <div class="flex gap-2">
-        <label class="field-ico grow">
-          {{template "icon" "i-search"}}
-          <input id="nutr-search-{{$v.ID}}" type="search" placeholder="{{t "ingredients.search.placeholder"}}" aria-label="{{t "plan.search"}}" autocomplete="off" class="field"
-                 data-msg-placeholder-ingredient="{{t "ingredients.search.placeholder"}}" data-msg-placeholder-recipe="{{t "recipes.search"}}"
-                 data-ingredient-search data-search-url="/nutrizionista/picker"
-                 data-search-extra="variation_id={{$v.ID}}&kind=ingredient"
-                 data-search-target="#nutr-results-{{$v.ID}}" data-nutr-var="{{$v.ID}}">
-        </label>
-        {{template "scan_button" (printf "#nutr-search-%d" $v.ID)}}
-      </div>
-    </div>
-    <div id="nutr-results-{{$v.ID}}" data-picker-list aria-live="polite" class="border-t border-border max-h-[360px] overflow-y-auto">
-      <p class="px-4 py-4 text-muted animate-pulse motion-reduce:animate-none">{{t "plan.loading"}}</p>
-    </div>
-  </details>
+  <button type="button" class="flex items-center gap-1.5 min-h-[40px] text-accent font-semibold text-[13px] hover:underline"
+          hx-get="/nutrizionista/variations/{{$v.ID}}/add-food" hx-target="#modal-host" hx-swap="innerHTML">{{template "icon_sm" "i-plus"}}{{t "plan.add_food"}}</button>
   {{end}}
   </div>
 </li>

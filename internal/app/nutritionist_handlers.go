@@ -337,6 +337,52 @@ func (a *App) handleNutritionistDuplicateVariation(w http.ResponseWriter, r *htt
 	http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
 }
 
+// planFoodPickerData is the view model of the dialog that adds a food to a variant.
+type planFoodPickerData struct {
+	VariationID int64
+}
+
+// handleNutritionistAddFoodForm GET /nutrizionista/variations/{id}/add-food: the
+// dialog with the picker for a variant of the user's plan. It is a fragment, so a
+// plain visit goes back to the plan.
+func (a *App) handleNutritionistAddFoodForm(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Header.Get("HX-Request") != "true" {
+		http.Redirect(w, r, "/piano-nutrizionale", http.StatusSeeOther)
+		return
+	}
+	plan, err := a.NutritionistPlans.LoadPlanFull(r.Context(), user.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	name, found := "", false
+	for _, mt := range plan.MealTypes {
+		for _, v := range mt.Variations {
+			if v.ID == id {
+				found = true
+				name = mt.Name
+				if v.Name != nil && *v.Name != "" {
+					name += " · " + *v.Name
+				}
+			}
+		}
+	}
+	if !found {
+		a.notFound(w, r)
+		return
+	}
+	mdata := modalDialogData{Title: a.t(r, "plan.add_food_to", "Name", name), Inner: "plan_food_picker", InnerData: planFoodPickerData{VariationID: id}}
+	if err := a.Render.RenderPartial(w, r, http.StatusOK, "dashboard", "modal_dialog", mdata); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
 // handleNutritionistPicker GET /nutrizionista/picker — live search for the
 // inline picker in the Piano Pasti tab. Supports kind=ingredient|recipe.
 func (a *App) handleNutritionistPicker(w http.ResponseWriter, r *http.Request) {
