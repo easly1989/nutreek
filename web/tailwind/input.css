@@ -158,6 +158,11 @@
   .wk-row > input { @apply w-[18px] h-[18px] shrink-0 accent-accent; }
   .add-ic { @apply w-10 h-10 shrink-0 rounded-full bg-accent-soft text-accent grid place-items-center; }
   .card { @apply bg-surface border border-border rounded-xl; }
+  /* A section of a long form (#251): a title over its fields, a rule above it. */
+  .form-sec { @apply flex flex-col gap-3 py-4 border-t border-border; }
+  /* Save and cancel at the end of a long form: they stay in view above the navigation bar on a phone. */
+  .formbar { @apply sticky z-10 flex justify-end gap-2 py-3 bg-bg border-t border-border; bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
+  @media (min-width: 1024px) { .formbar { bottom: 0; } }
   .field {
     @apply w-full h-9 rounded-[10px] border border-border bg-surface px-3 text-[14px] text-text placeholder:text-muted;
   }

@@ -4,7 +4,7 @@
        Allergens, SelectedAllergens, ReadOnly). With ReadOnly (#143)
        everything is disabled except the category, which is the viewer's. */ -}}
 {{- $u := or .Form.Unit "g" -}}{{- $ro := .ReadOnly -}}
-<section class="card p-4 flex flex-col gap-3">
+<section class="form-sec">
   <h2 class="h2">{{t "ingredients.form.product"}}</h2>
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
     <label class="lab sm:col-span-2">{{t "ingredients.form.name"}}<input name="name" required maxlength="200" value="{{.Form.Name}}" class="field"{{if $ro}} disabled{{end}}></label>
@@ -27,7 +27,7 @@
   </div>
 </section>
 
-<section class="card p-4 flex flex-col gap-3">
+<section class="form-sec">
   <div class="flex items-baseline gap-2"><h2 class="h2">{{t "ingredients.form.values_per_100"}} <span data-unit-label>{{$u}}</span></h2><p class="text-[12.5px] text-muted">{{t "ingredients.form.from_label"}}</p></div>
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
     <label class="lab">{{t "common.calories"}}<span class="field-unit"><input name="kcal" required inputmode="decimal" value="{{.Form.Kcal}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>kcal</em></span></label>
@@ -48,7 +48,7 @@
   </details>
 </section>
 
-<section class="card p-4 flex flex-col gap-3">
+<section class="form-sec">
   <div class="flex items-baseline gap-2"><h2 class="h2">{{t "ingredients.form.portion"}}</h2><p class="text-[12.5px] text-muted">{{t "ingredients.form.portion_hint"}}</p></div>
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
     <label class="lab">{{t "ingredients.form.piece_weight"}}<span class="field-unit"><input name="unit_weight_g" inputmode="decimal" value="{{.Form.UnitWeightG}}" placeholder="{{t "ingredients.form.piece_weight_placeholder"}}" class="field tabular-nums"{{if $ro}} disabled{{end}}><em>g</em></span></label>
@@ -57,7 +57,7 @@
 </section>
 
 {{if .Allergens}}
-<section class="card p-4 flex flex-col gap-3">
+<section class="form-sec">
   <div class="flex items-baseline gap-2"><h2 class="h2">{{t "ingredients.form.allergens"}}</h2><p class="text-[12.5px] text-muted">{{t "ingredients.form.allergens_hint"}}</p></div>
   <div class="flex flex-wrap gap-2">
     {{range .Allergens}}
