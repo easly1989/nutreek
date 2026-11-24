@@ -20,4 +20,20 @@
     {{else if .Categories}}<button class="btn-primary">{{t "ingredients.edit.save_category"}}</button>{{end}}
   </div>
 </form>
+{{if .MoveTargets}}
+{{/* The uses of this ingredient (your meals, recipes and plan) move to another one; this one stays in the library. */}}
+<form method="post" action="/ingredients/{{.IngredientID}}/move" data-confirm="{{t "ingredients.move.confirm"}}" class="flex flex-col gap-2.5 max-w-[760px] mt-8 pt-3 border-t-2 border-border">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <h2 class="text-[15px] font-bold">{{t "ingredients.move.title"}}</h2>
+  <p class="text-muted">{{t "ingredients.move.hint"}}</p>
+  <div class="flex flex-wrap gap-2">
+    <label for="move-into" class="sr-only">{{t "ingredients.move.label"}}</label>
+    <select id="move-into" name="into" required class="field grow min-w-0 sm:max-w-md">
+      <option value="">{{t "ingredients.move.choose"}}</option>
+      {{range .MoveTargets}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+    </select>
+    <button class="btn-secondary">{{t "ingredients.move.button"}}</button>
+  </div>
+</form>
+{{end}}
 {{end}}
