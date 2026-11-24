@@ -463,9 +463,17 @@
   .legend { @apply flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12.5px] text-muted; }
   .legend i { @apply inline-block w-2.5 h-2.5 rounded-[3px] mr-1.5 align-[-1px]; }
 
-  /* Save bar: on the phone it stays at the bottom, above the navigation bar. */
-  @media (max-width: 1023px) {
-    .savebar { @apply sticky bottom-[84px] z-20 bg-surface border border-border rounded-xl px-3 py-2.5; box-shadow: var(--shadow); }
+  /* Save bar of the profile (#251): hidden until a field changes, then fixed at the bottom (above the
+     navigation bar on a phone). Without JavaScript it is an ordinary bar at the end of the form. */
+  .savebar { @apply pt-2; }
+  #profile-form[data-js]:not([data-dirty]) .savebar { display: none; }
+  #profile-form[data-dirty] .savebar {
+    @apply fixed inset-x-0 z-20 bg-surface border-t border-border px-4 py-3;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, .08);
+  }
+  @media (min-width: 1024px) {
+    #profile-form[data-dirty] .savebar { @apply sticky inset-x-auto bottom-0 border-t px-0; box-shadow: none; }
   }
 
   /* Settings (#123): an index on the left, title | content sections. */
