@@ -4,125 +4,139 @@
   {{template "library_tabs" "plan"}}
   <div>
     <h1 class="h1">{{t "plan.title"}}</h1>
-    <p class="text-muted">{{t "plan.subtitle"}}</p>
+    <p class="text-muted max-w-[60ch]">{{t "plan.subtitle"}}</p>
   </div>
 
-  <div class="flex flex-wrap items-center gap-3">
-    <nav class="segmented" aria-label="{{t "plan.sections"}}">
-      <a href="/piano-nutrizionale"{{if eq .ActiveTab "piano"}} aria-current="page"{{end}}>{{t "plan.tab.meals"}}</a>
-      <a href="/piano-nutrizionale?tab=template"{{if eq .ActiveTab "template"}} aria-current="page"{{end}}>{{t "plan.tab.templates"}}</a>
-    </nav>
-    {{if and (eq .ActiveTab "piano") .ActiveTemplate}}<span class="text-[12.5px] text-muted">{{t "plan.from_template"}} <a href="/templates/{{(index .Templates 0).ID}}" class="font-bold text-text hover:underline">{{.ActiveTemplate}}</a></span>{{end}}
-  </div>
-
-  {{if eq .ActiveTab "piano"}}
-    {{if .ReadOnly}}
-      <p class="rounded-xl bg-accent-soft text-accent px-4 py-3">{{t "plan.coach.plan"}} <strong>{{planName .Plan.Name}}</strong> {{t "plan.coach.assigned_by"}} <strong>{{.CoachName}}</strong>: {{t "plan.coach.contact"}}</p>
-      {{if .Plan.MealTypes}}
-        {{range .Plan.MealTypes}}
-          <section class="flex flex-col gap-3">
-            <h2 class="text-[17px] font-bold">{{.Name}}</h2>
-            <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
-              {{range .Variations}}{{template "variation_card" (pickerRow . $)}}{{end}}
-            </div>
-          </section>
-        {{end}}
-      {{else}}
-        <p class="card px-6 py-10 text-center text-muted">{{t "plan.coach.empty"}}</p>
-      {{end}}
-
-    {{else if not .HasActiveTemplate}}
-      <div class="card border-dashed px-6 py-10 text-center flex flex-col items-center gap-3">
-        <p class="text-muted">{{t "plan.no_template"}}</p>
-        <a href="/piano-nutrizionale?tab=template" class="btn-primary">{{t "plan.choose_template"}}</a>
-      </div>
-
-    {{else if not .SlotMealTypes}}
-      <div class="card border-dashed px-6 py-10 text-center flex flex-col items-center gap-3">
-        <p class="text-muted">{{t "plan.template_empty"}}</p>
-        <a href="/templates/{{(index .Templates 0).ID}}" class="btn-primary">{{t "plan.add_meals"}}</a>
-      </div>
-
-    {{else}}
-      {{range .SlotMealTypes}}{{if .MealType}}{{$mt := .MealType}}
-        <section class="flex flex-col gap-3">
-          <div class="flex items-baseline gap-2.5">
-            <h2 class="text-[17px] font-bold">{{.SlotName}}</h2>
-            <span class="text-[12.5px] text-muted">{{t "plan.variants" "Count" (len $mt.Variations)}}</span>
-            <button type="button" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2.5" data-new-variation="{{$mt.ID}}">{{template "icon_sm" "i-plus"}}{{t "plan.new_variant"}}</button>
-          </div>
-          <div class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
-            {{range $mt.Variations}}{{template "variation_card" (pickerRow . $)}}{{end}}
-            {{/* Dashed card: it opens on the variation's (optional) name. */}}
-            <details id="new-var-{{$mt.ID}}" class="group rounded-xl border-[1.5px] border-dashed border-border"{{if not $mt.Variations}} open{{end}}>
-              <summary class="flex items-center justify-center gap-1.5 min-h-[116px] text-accent font-semibold cursor-pointer list-none group-open:hidden [&::-webkit-details-marker]:hidden">{{template "icon" "i-plus"}}{{t "plan.new_variant"}}</summary>
-              <form method="post" action="/nutrizionista/variations" class="flex flex-col justify-center gap-2 p-4 h-full">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="meal_type_id" value="{{$mt.ID}}">
-                <label class="lab">{{t "plan.new_variant_of" "Name" .SlotName}}
-                  <input name="name" placeholder="{{t "plan.variant_name_placeholder"}}" class="field">
-                </label>
-                <button class="btn-primary self-start">{{t "plan.create_variant"}}</button>
-              </form>
-            </details>
-          </div>
+  {{if .ReadOnly}}
+    <p class="rounded-xl bg-accent-soft text-accent px-4 py-3">{{t "plan.coach.plan"}} <strong>{{planName .Plan.Name}}</strong> {{t "plan.coach.assigned_by"}} <strong>{{.CoachName}}</strong>: {{t "plan.coach.contact"}}</p>
+    {{if .Plan.MealTypes}}
+      <div class="grid gap-x-9 gap-y-1 lg:grid-cols-2 items-start">
+      {{range .Plan.MealTypes}}
+        <section class="flex flex-col">
+          <div class="flex items-baseline gap-2.5 pt-3.5 pb-1.5 border-b border-border"><h2 class="text-[16px] font-bold">{{.Name}}</h2><span class="text-[12.5px] text-muted">{{t "plan.variants" "Count" (len .Variations)}}</span></div>
+          <ul>{{range .Variations}}{{template "variation_row" (pickerRow . $)}}{{end}}</ul>
         </section>
-      {{end}}{{end}}
+      {{end}}
+      </div>
+    {{else}}
+      <p class="border-y border-border px-6 py-10 text-center text-muted">{{t "plan.coach.empty"}}</p>
     {{end}}
 
   {{else}}
-    {{/* ===== Weekly templates ===== */}}
-    <section class="card max-w-[640px]">
-      <div class="flex items-center gap-2.5 px-4 py-3">
-        <h2 class="h2">{{t "templates.yours"}}</h2>
-        <a href="/templates/new" class="btn-ghost h-[30px] px-2.5 text-[12.5px] ml-auto -mr-2">{{template "icon_sm" "i-plus"}}{{t "templates.new_short"}}</a>
+    {{- /* The template in use: the meals of the plan come from it. «Change» picks another, makes a new one or edits its days. */}}
+    <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3.5 py-2.5 min-h-[56px]">
+      <div class="min-w-0">
+        <span class="block text-[12.5px] text-muted">{{t "plan.template_in_use"}}</span>
+        <b class="block [overflow-wrap:anywhere]">{{if .HasActiveTemplate}}{{.ActiveTemplate}}{{else}}{{t "plan.template_none"}}{{end}}</b>
       </div>
-      {{if .Templates}}
-        <div class="divide-y divide-border border-t border-border">
+      <div class="relative shrink-0">
+        <button type="button" class="btn-secondary" data-popover="tpl-menu" aria-expanded="false" aria-controls="tpl-menu">{{t "plan.template_change"}}{{template "icon_sm" "i-chevron-down"}}</button>
+        <div id="tpl-menu" class="menu-panel hidden absolute right-0 top-full mt-1 w-72 z-20 p-1.5 flex flex-col">
           {{range .Templates}}
-            <div class="flex items-center gap-2.5 min-h-[52px] pl-4 pr-2">
-              <a href="/templates/{{.ID}}" class="grow min-w-0 truncate hover:underline{{if .IsActive}} font-bold{{end}}">{{.Name}}</a>
-              {{if .IsActive}}
-                <span class="chip chip-soft">{{t "templates.active"}}</span>
-              {{else}}
-                <form method="post" action="/templates/{{.ID}}/activate">
-                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                  <button class="btn-secondary h-[30px] px-2.5 text-[12.5px]">{{t "templates.activate"}}</button>
-                </form>
-              {{end}}
-              <a href="/templates/{{.ID}}" class="icon-action" aria-label="{{t "templates.edit_label" "Name" .Name}}" title="{{t "templates.edit"}}">{{template "icon_sm" "i-edit"}}</a>
-              <form method="post" action="/templates/{{.ID}}/delete" data-confirm="{{t "templates.delete_confirm" "Name" .Name}}">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <button class="icon-action" aria-label="{{t "templates.delete_label" "Name" .Name}}" title="{{t "templates.delete"}}">{{template "icon_sm" "i-trash"}}</button>
-              </form>
-            </div>
+          <form method="post" action="/templates/{{.ID}}/activate">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button class="nav-link w-full justify-between{{if .IsActive}} font-bold text-accent{{end}}"{{if .IsActive}} aria-current="true"{{end}}><span class="min-w-0 [overflow-wrap:anywhere] text-left">{{.Name}}</span>{{if .IsActive}}{{template "icon_sm" "i-check"}}{{end}}</button>
+          </form>
+          {{else}}
+          <p class="px-3 py-2 text-[12.5px] text-muted">{{t "templates.none"}}</p>
           {{end}}
+          <hr class="my-1 border-border">
+          <a href="/templates/new" class="nav-link">{{template "icon" "i-plus"}}{{t "templates.new"}}</a>
+          {{if .HasActiveTemplate}}<a href="/templates/{{(index .Templates 0).ID}}" class="nav-link">{{template "icon" "i-edit"}}{{t "plan.template_edit"}}</a>{{end}}
         </div>
-      {{else}}
-        <p class="px-4 py-8 border-t border-border text-center text-muted">{{t "templates.none"}}</p>
-      {{end}}
-    </section>
-    <p class="text-muted max-w-[640px]">{{t "templates.explainer"}}</p>
+      </div>
+    </div>
+
+    {{if not .HasActiveTemplate}}
+      <p class="border-y border-border px-6 py-10 text-center text-muted">{{t "plan.no_template"}}</p>
+    {{else if not .SlotMealTypes}}
+      <div class="border-y border-border px-6 py-10 text-center flex flex-col items-center gap-3">
+        <p class="text-muted">{{t "plan.template_empty"}}</p>
+        <a href="/templates/{{(index .Templates 0).ID}}" class="btn-primary">{{t "plan.add_meals"}}</a>
+      </div>
+    {{else}}
+      <div class="grid gap-x-9 gap-y-1 lg:grid-cols-2 items-start">
+      {{range .SlotMealTypes}}{{if .MealType}}{{$mt := .MealType}}
+        <section class="flex flex-col">
+          <div class="flex items-baseline gap-2.5 pt-3.5 pb-1.5 border-b border-border">
+            <h2 class="text-[16px] font-bold">{{.SlotName}}</h2>
+            <span class="text-[12.5px] text-muted">{{t "plan.variants" "Count" (len $mt.Variations)}}</span>
+            <button type="button" class="ml-auto min-h-[36px] text-accent font-semibold text-[13.5px] hover:underline" data-new-variation="{{$mt.ID}}" data-meal="{{.SlotName}}">+ {{t "plan.new_variant"}}</button>
+          </div>
+          {{if $mt.Variations}}<ul>{{range $mt.Variations}}{{template "variation_row" (pickerRow . $)}}{{end}}</ul>
+          {{else}}<p class="py-4 text-muted">{{t "plan.no_variants"}}</p>{{end}}
+        </section>
+      {{end}}{{end}}
+      </div>
+    {{end}}
   {{end}}
 </div>
 
+{{- /* One dialog for every «New variant»: the button names the meal it is for. */}}
+<dialog id="var-new" data-modal class="dialog-panel" aria-label="{{t "plan.new_variant"}}">
+  <div class="flex items-center gap-3 pl-5 pr-4 pt-4 pb-3">
+    <h2 class="grow text-[17px] font-bold">{{t "plan.new_variant"}} <span class="text-muted font-semibold" data-var-new-meal></span></h2>
+    <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
+  </div>
+  <form method="post" action="/nutrizionista/variations" class="flex flex-col gap-3 px-5 pb-5">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="meal_type_id" value="" data-var-new-id>
+    <label class="lab">{{t "plan.variant_name_label"}}
+      <input name="name" maxlength="200" placeholder="{{t "plan.variant_name_placeholder"}}" class="field font-normal text-text" autocomplete="off">
+    </label>
+    <div class="flex items-center justify-end gap-2 pt-1">
+      <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+      <button class="btn-primary">{{t "plan.create_variant"}}</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 (function () {
+  // The variants start closed, except the first of the page and the ones left open:
+  // without JS they are all open. The open ones are kept for the visit.
+  var KEY = 'nutreek:plan-open';
+  function saved() { try { return JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+  function store() {
+    try {
+      var ids = [];
+      document.querySelectorAll('[data-var-toggle][aria-expanded="true"]').forEach(function (t) { ids.push(t.closest('[data-var]').dataset.var); });
+      sessionStorage.setItem(KEY, JSON.stringify(ids));
+    } catch (e) { /* no storage: the variants close again after a change */ }
+  }
+  function setOpen(toggle, open) {
+    toggle.setAttribute('aria-expanded', String(open));
+    var panel = document.getElementById(toggle.getAttribute('aria-controls'));
+    if (panel) panel.hidden = !open;
+    store();
+  }
+  var toggles = document.querySelectorAll('[data-var-toggle]');
+  var keep = saved();
+  toggles.forEach(function (t, i) {
+    var id = t.closest('[data-var]').dataset.var;
+    var open = keep ? keep.indexOf(id) !== -1 : i === 0;
+    t.setAttribute('aria-expanded', String(open));
+    var panel = document.getElementById(t.getAttribute('aria-controls'));
+    if (panel) panel.hidden = !open;
+  });
+
   // A variation's picker: Ingredient / Recipe switches the endpoint and the
   // parameters of the live search (hx-get on the buttons does the fetch).
   document.addEventListener('click', function (e) {
-    // "New variant" in the header opens the dashed card on the name.
+    // "New variant" of a meal opens the dialog for that meal.
     var nv = e.target.closest('[data-new-variation]');
     if (nv) {
-      var det = document.getElementById('new-var-' + nv.dataset.newVariation);
-      if (det) {
-        det.open = true;
-        det.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        var name = det.querySelector('input[name="name"]');
-        if (name) name.focus({ preventScroll: true });
+      var dlg = document.getElementById('var-new');
+      if (dlg) {
+        dlg.querySelector('[data-var-new-id]').value = nv.dataset.newVariation;
+        dlg.querySelector('[data-var-new-meal]').textContent = nv.dataset.meal || '';
+        dlg.showModal();
       }
       return;
     }
+    // A variant row opens and closes its foods.
+    var tg = e.target.closest('[data-var-toggle]');
+    if (tg) { setOpen(tg, tg.getAttribute('aria-expanded') !== 'true'); return; }
     var btn = e.target.closest('[data-nutr-tab]');
     if (!btn) return;
     var kind = btn.dataset.nutrTab;
@@ -162,30 +176,45 @@
 </script>
 {{end}}
 
-{{define "variation_card"}}
-{{- /* A variation of the plan. View model: web.PickerRowCtx {Row: variation, List: page}. */ -}}
+{{define "variation_row"}}
+{{- /* A variant of the plan as a ledger row: its name with the foods in short, its kcal and one menu;
+       its foods show when it is open. View model: web.PickerRowCtx {Row: variation, List: page}. */ -}}
 {{- $v := .Row -}}{{- $d := .List -}}
-<article class="card flex flex-col">
-  <header class="flex items-center gap-2.5 pl-4 pr-2 pt-2.5 pb-1.5">
-    <h3 class="text-[14px] font-bold">{{if $v.Name}}{{$v.Name}}{{else}}{{t "plan.main_variant"}}{{end}}</h3>
-    <span class="ml-auto font-bold tabular-nums whitespace-nowrap">{{num (index $d.VariationKcal $v.ID)}} kcal</span>
+<li class="border-b border-border" data-var="{{$v.ID}}">
+  <div class="grid grid-cols-[minmax(0,1fr)_auto_36px] items-center gap-x-2.5 min-h-[52px] py-1">
+    <button type="button" class="text-left min-w-0 py-1" data-var-toggle aria-expanded="true" aria-controls="var-items-{{$v.ID}}">
+      <b class="flex items-center gap-1 font-semibold"><span class="var-chev text-muted shrink-0" aria-hidden="true">{{template "icon_sm" "i-chevron-down"}}</span><span class="[overflow-wrap:anywhere]">{{if $v.Name}}{{$v.Name}}{{else}}{{t "plan.main_variant"}}{{end}}</span></b>
+      <span class="var-brief block pl-5 text-[12.5px] text-muted line-clamp-1">{{range $i, $it := $v.Items}}{{if $i}}, {{end}}{{if $it.Recipe}}{{$it.Recipe.Name}}{{else if $it.Ingredient}}{{$it.Ingredient.Name}}{{end}}{{end}}</span>
+    </button>
+    <span class="font-bold tabular-nums whitespace-nowrap">{{num (index $d.VariationKcal $v.ID)}} <span class="font-normal text-[12.5px] text-muted">kcal</span></span>
     {{if not $d.ReadOnly}}
     <div class="relative">
       <button type="button" class="icon-action" data-popover="var-menu-{{$v.ID}}" aria-expanded="false" aria-controls="var-menu-{{$v.ID}}" aria-label="{{t "plan.variant_actions"}}">{{template "icon" "i-dots"}}</button>
-      <div id="var-menu-{{$v.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-52 z-20 p-1.5">
+      <div id="var-menu-{{$v.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-64 z-20 p-1.5 flex flex-col gap-0.5">
+        <form method="post" action="/nutrizionista/variations/{{$v.ID}}/rename" class="flex items-center gap-1.5 p-1.5">
+          <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
+          <input name="name" maxlength="200" value="{{$v.Name}}" placeholder="{{t "plan.main_variant"}}" aria-label="{{t "plan.rename_variant"}}" class="field min-w-0 grow">
+          <button class="btn-secondary h-9 px-2.5 shrink-0">{{t "plan.rename_save"}}</button>
+        </form>
+        <form method="post" action="/nutrizionista/variations/{{$v.ID}}/duplicate">
+          <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
+          <button class="nav-link w-full">{{template "icon" "i-copy"}}{{t "plan.duplicate_variant"}}</button>
+        </form>
+        <hr class="my-1 border-border">
         <form method="post" action="/nutrizionista/variations/{{$v.ID}}/delete" data-confirm="{{t "plan.delete_variant_confirm" "Name" ($v.NameOr (t "plan.main_variant"))}}">
           <input type="hidden" name="csrf_token" value="{{$d.CSRFToken}}">
           <button class="nav-link w-full text-danger">{{template "icon" "i-trash"}}{{t "plan.delete_variant"}}</button>
         </form>
       </div>
     </div>
-    {{end}}
-  </header>
+    {{else}}<span></span>{{end}}
+  </div>
+  <div id="var-items-{{$v.ID}}" class="ml-0.5 mb-2 pl-3 border-l-2 border-accent-soft">
   {{if $v.Items}}
-    <div class="divide-y divide-border pb-1.5">
+    <div class="divide-y divide-border">
       {{range $v.Items}}
-        <div class="group/item grid grid-cols-[minmax(0,1fr)_64px_44px_28px] gap-2 items-center min-h-[34px] pl-4 pr-2">
-          <span class="truncate">{{if .Recipe}}{{.Recipe.Name}}{{else if .Ingredient}}{{.Ingredient.Name}}{{end}}</span>
+        <div class="group/item grid grid-cols-[minmax(0,1fr)_auto_44px_28px] gap-2 items-center min-h-[36px]">
+          <span class="[overflow-wrap:anywhere]">{{if .Recipe}}{{.Recipe.Name}}{{else if .Ingredient}}{{.Ingredient.Name}}{{end}}</span>
           <span class="text-right tabular-nums text-muted whitespace-nowrap">{{if .Recipe}}{{dec .Quantity 1}} {{t "plan.servings_short"}}{{else}}{{dec .Quantity 1}} {{if eq .QuantityUnit "pz"}}{{t "plan.piece"}}{{else}}{{.QuantityUnit}}{{end}}{{end}}</span>
           <span class="text-right tabular-nums">{{num (index $d.ItemKcal .ID)}}</span>
           {{if not $d.ReadOnly}}
@@ -198,16 +227,16 @@
       {{end}}
     </div>
   {{else}}
-    <p class="px-4 pb-3 text-muted">{{t "plan.no_items"}}</p>
+    <p class="py-2 text-muted">{{t "plan.no_items"}}</p>
   {{end}}
   {{if not $d.ReadOnly}}
-  <details class="group mt-auto border-t border-border" data-nutr-picker="{{$v.ID}}"
+  <details class="group" data-nutr-picker="{{$v.ID}}"
            hx-get="/nutrizionista/picker?variation_id={{$v.ID}}&kind=ingredient&q="
            hx-target="#nutr-results-{{$v.ID}}" hx-swap="innerHTML" hx-trigger="toggle once">
-    <summary class="flex items-center gap-1.5 min-h-[40px] px-4 text-accent font-semibold text-[13px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+    <summary class="flex items-center gap-1.5 min-h-[40px] text-accent font-semibold text-[13px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
       <span class="group-open:rotate-45 transition-transform">{{template "icon_sm" "i-plus"}}</span><span class="group-open:hidden">{{t "plan.add_food"}}</span><span class="hidden group-open:inline">{{t "common.close"}}</span>
     </summary>
-    <div class="flex flex-col gap-2 px-4 pb-3">
+    <div class="flex flex-col gap-2 pb-3">
       <div class="flex items-center gap-2">
         <span class="segmented" role="radiogroup" aria-label="{{t "plan.kind"}}">
           <button type="button" role="radio" aria-checked="true" class="px-3" data-nutr-tab="ingredient" data-nutr-var="{{$v.ID}}"
@@ -231,9 +260,10 @@
       </div>
     </div>
     <div id="nutr-results-{{$v.ID}}" data-picker-list aria-live="polite" class="border-t border-border max-h-[360px] overflow-y-auto">
-      <p class="px-4 py-4 text-muted animate-pulse">{{t "plan.loading"}}</p>
+      <p class="px-4 py-4 text-muted animate-pulse motion-reduce:animate-none">{{t "plan.loading"}}</p>
     </div>
   </details>
   {{end}}
-</article>
+  </div>
+</li>
 {{end}}

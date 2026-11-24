@@ -242,6 +242,8 @@ func (a *App) Router() http.Handler {
 		r.Post("/nutrizionista/meal-types/{id}/delete", a.handleNutritionistDeleteMealType)
 		r.Post("/nutrizionista/variations", a.handleNutritionistCreateVariation)
 		r.Post("/nutrizionista/variations/{id}/delete", a.handleNutritionistDeleteVariation)
+		r.Post("/nutrizionista/variations/{id}/rename", a.handleNutritionistRenameVariation)
+		r.Post("/nutrizionista/variations/{id}/duplicate", a.handleNutritionistDuplicateVariation)
 		r.Post("/nutrizionista/items", a.handleNutritionistAddItem)
 		r.Post("/nutrizionista/items/{id}/delete", a.handleNutritionistDeleteItem)
 

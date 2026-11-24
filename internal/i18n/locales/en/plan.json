@@ -1,10 +1,6 @@
 {
   "plan.title": "Nutrition plan",
   "plan.subtitle": "The variants of each meal: the picker suggests them and week generation uses them.",
-  "plan.sections": "Plan sections",
-  "plan.tab.meals": "Meals and variants",
-  "plan.tab.templates": "Weekly templates",
-  "plan.from_template": "Meals taken from the template",
   "plan.coach.plan": "Plan",
   "plan.coach.assigned_by": "assigned by your coach",
   "plan.coach.contact": "to change it, contact your coach.",
@@ -18,7 +14,6 @@
     "other": "{{.Count}} variants"
   },
   "plan.new_variant": "New variant",
-  "plan.new_variant_of": "New variant of {{.Name}}",
   "plan.variant_name_placeholder": "Name (optional)",
   "plan.create_variant": "Create variant",
   "plan.main_variant": "Main variant",
@@ -44,5 +39,16 @@
   "plan.error.select_item": "Select an ingredient or a recipe.",
   "plan.error.off_import": "OpenFoodFacts import failed.",
   "plan.error.variation_id": "invalid variation_id",
-  "plan.error.kind": "invalid kind"
+  "plan.error.kind": "invalid kind",
+  "plan.template_in_use": "Template in use",
+  "plan.template_none": "None yet",
+  "plan.template_change": "Change",
+  "plan.template_edit": "Edit days and meals…",
+  "plan.no_variants": "No variants yet.",
+  "plan.variant_name_label": "Name",
+  "plan.rename_variant": "Rename the variant",
+  "plan.rename_save": "Save",
+  "plan.duplicate_variant": "Duplicate",
+  "plan.copy_suffix": "(copy)",
+  "plan.error.variant_name_long": "The variant name is too long."
 }

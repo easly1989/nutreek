@@ -419,6 +419,10 @@
   .item-kcal { grid-column: 3; }
   .item-actions { grid-column: 4; }
 
+  /* A variant of the nutrition plan (#251): its chevron turns and its foods in short hide while it is open. */
+  [data-var-toggle][aria-expanded="false"] .var-chev { transform: rotate(-90deg); }
+  [data-var-toggle][aria-expanded="true"] .var-brief { display: none; }
+
   /* Dragging a row to another meal of the day (#228, dnd.js): every meal has a
      place to drop in, also when it has no rows, and the one under the row
      shows as the destination. */

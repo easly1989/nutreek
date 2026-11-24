@@ -1,10 +1,6 @@
 {
   "plan.title": "Piano nutrizionale",
   "plan.subtitle": "Le varianti di ogni pasto: le propone il picker e le usa la generazione della settimana.",
-  "plan.sections": "Sezioni del piano",
-  "plan.tab.meals": "Pasti e varianti",
-  "plan.tab.templates": "Template settimanali",
-  "plan.from_template": "Pasti presi dal template",
   "plan.coach.plan": "Piano",
   "plan.coach.assigned_by": "assegnato dal tuo coach",
   "plan.coach.contact": "per cambiarlo, contatta il coach.",
@@ -18,7 +14,6 @@
     "other": "{{.Count}} varianti"
   },
   "plan.new_variant": "Nuova variante",
-  "plan.new_variant_of": "Nuova variante di {{.Name}}",
   "plan.variant_name_placeholder": "Nome (facoltativo)",
   "plan.create_variant": "Crea variante",
   "plan.main_variant": "Variante principale",
@@ -44,5 +39,16 @@
   "plan.error.select_item": "Seleziona un ingrediente o una ricetta.",
   "plan.error.off_import": "Import OFF fallito.",
   "plan.error.variation_id": "variation_id non valido",
-  "plan.error.kind": "kind non valido"
+  "plan.error.kind": "kind non valido",
+  "plan.template_in_use": "Template in uso",
+  "plan.template_none": "Nessuno",
+  "plan.template_change": "Cambia",
+  "plan.template_edit": "Modifica giorni e pasti…",
+  "plan.no_variants": "Ancora nessuna variante.",
+  "plan.variant_name_label": "Nome",
+  "plan.rename_variant": "Rinomina la variante",
+  "plan.rename_save": "Salva",
+  "plan.duplicate_variant": "Duplica",
+  "plan.copy_suffix": "(copia)",
+  "plan.error.variant_name_long": "Il nome della variante è troppo lungo."
 }

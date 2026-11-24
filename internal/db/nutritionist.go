@@ -503,6 +503,70 @@ func (n *NutritionistPlans) DeleteVariation(ctx context.Context, id int64, planI
 	return nil
 }
 
+// RenameVariation changes the name of a variant of plan planID; a nil name goes
+// back to the main variant. ErrNutritionistItemNotFound when it is not in the plan.
+func (n *NutritionistPlans) RenameVariation(ctx context.Context, id, planID int64, name *string) error {
+	res, err := n.db.ExecContext(ctx,
+		`UPDATE nutritionist_meal_variations SET name = ?
+		 WHERE id = ? AND meal_type_id IN (SELECT id FROM nutritionist_meal_types WHERE plan_id = ?)`,
+		name, id, planID,
+	)
+	if err != nil {
+		return fmt.Errorf("rename variation: %w", err)
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return ErrNutritionistItemNotFound
+	}
+	return nil
+}
+
+// DuplicateVariation copies a variant of plan planID, with its items, into the same
+// meal type under the name name, and returns the new id. ErrNutritionistItemNotFound
+// when it is not in the plan.
+func (n *NutritionistPlans) DuplicateVariation(ctx context.Context, id, planID int64, name *string) (int64, error) {
+	tx, err := n.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("duplicate variation: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var mealTypeID int64
+	err = tx.QueryRowContext(ctx,
+		`SELECT nv.meal_type_id FROM nutritionist_meal_variations nv
+		 JOIN nutritionist_meal_types nmt ON nmt.id = nv.meal_type_id
+		 WHERE nv.id = ? AND nmt.plan_id = ?`, id, planID,
+	).Scan(&mealTypeID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNutritionistItemNotFound
+	}
+	if err != nil {
+		return 0, fmt.Errorf("variation owner: %w", err)
+	}
+	var maxOrder int
+	_ = tx.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(sort_order), -1) FROM nutritionist_meal_variations WHERE meal_type_id = ?`, mealTypeID,
+	).Scan(&maxOrder)
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO nutritionist_meal_variations (meal_type_id, name, sort_order) VALUES (?, ?, ?)`,
+		mealTypeID, name, maxOrder+1,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("copy variation: %w", err)
+	}
+	newID, _ := res.LastInsertId()
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO nutritionist_meal_items (variation_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order)
+		 SELECT ?, recipe_id, ingredient_id, quantity, quantity_unit, sort_order
+		 FROM nutritionist_meal_items WHERE variation_id = ?`, newID, id,
+	); err != nil {
+		return 0, fmt.Errorf("copy variation items: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("duplicate variation: %w", err)
+	}
+	return newID, nil
+}
+
 // AddItem adds an item to the variant variationID, which must be in plan
 // planID (otherwise ErrNutritionistItemNotFound). A recipe must be visible
 // to the plan's owner (otherwise ErrRecipeNotFound).
