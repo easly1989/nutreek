@@ -23,6 +23,8 @@ type weightPageData struct {
 	Trend    string             // «−0,8 kg in 30 days»; empty with fewer than two weigh-ins
 	Charts   statsCharts        // only WeightLabels and Weight
 	HasChart bool
+	// Form is what was typed in the new-weigh-in dialog, put back after a mistake.
+	Form struct{ Kg, Date, Note string }
 }
 
 // weightRanges are the chart's ranges; the first is the default.
@@ -97,6 +99,7 @@ func (a *App) handleWeightLog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data.Error = msg
+		data.Form.Kg, data.Form.Date, data.Form.Note = weightStr, dateStr, noteStr
 		if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "weight", data); err != nil {
 			a.serverError(w, r, err)
 		}
