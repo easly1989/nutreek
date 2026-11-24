@@ -84,5 +84,6 @@
   "profile.error.fat_over": "Fat alone exceeds the total calories (not possible).",
   "profile.error.macro_sum": "The macros exceed the total calories by more than 10%.",
   "profile.error.protein_high": "Unrealistic protein goal (maximum 400 g).",
-  "profile.flash.saved": "Profile saved."
+  "profile.flash.saved": "Profile saved.",
+  "profile.unsaved": "You have changes to save."
 }

@@ -84,5 +84,6 @@
   "profile.error.fat_over": "I grassi da soli superano le calorie totali (valore non possibile).",
   "profile.error.macro_sum": "La somma dei macro supera le calorie totali di oltre il 10%.",
   "profile.error.protein_high": "Obiettivo Proteine non realistico (massimo 400 g).",
-  "profile.flash.saved": "Profilo salvato."
+  "profile.flash.saved": "Profilo salvato.",
+  "profile.unsaved": "Hai modifiche da salvare."
 }
