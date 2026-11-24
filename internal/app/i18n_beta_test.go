@@ -32,7 +32,7 @@ func TestBetaLanguageMark(t *testing.T) {
 		signed  bool
 	}{
 		{"signed-out pages", "/login", a.handleLoginForm, false},
-		{"settings", "/settings", a.handleSettingsPage, true},
+		{"settings", "/settings/aspetto", a.handleSettingsSection, true},
 	}
 	for _, p := range pages {
 		t.Run(p.name, func(t *testing.T) {

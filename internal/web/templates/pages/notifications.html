@@ -92,7 +92,7 @@
             {{range .MealNames}}<label class="flex items-center gap-2.5"><input type="checkbox" name="meal" value="{{.Name}}" class="check"{{if .On}} checked{{end}}><span class="grow">{{.Name}}</span><span class="text-muted tabular-nums">{{.Time}}</span></label>{{end}}
           </div>
           {{end}}
-          <p class="text-[12.5px] text-muted">{{t "notifications.meals.hint"}} <a href="/settings#orari" class="text-accent font-semibold">{{t "notifications.meals.times"}}</a></p>
+          <p class="text-[12.5px] text-muted">{{t "notifications.meals.hint"}} <a href="/settings/orari" class="text-accent font-semibold">{{t "notifications.meals.times"}}</a></p>
           <button class="btn-primary self-end">{{t "notifications.save"}}</button>
         </div>
       </details>

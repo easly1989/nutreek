@@ -167,7 +167,7 @@ func TestDemoEntry(t *testing.T) {
 		t.Errorf("group in %q for %q; the week shows the name: %v", lang, name, strings.Contains(week, name))
 	}
 
-	_, _, settings := b.get("/settings")
+	_, _, settings := b.get("/settings/account")
 	for _, s := range []string{`action="/settings/password"`, `action="/settings/delete-account"`, emailOf(t, a)} {
 		if strings.Contains(settings, s) {
 			t.Errorf("settings show %s", s)

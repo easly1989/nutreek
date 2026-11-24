@@ -140,12 +140,15 @@ func TestEnglishSettingsAdminCoach(t *testing.T) {
 	}
 	pages := []page{
 		// Settings.
-		{name: "settings", target: "/settings", want: []string{"Appearance, language, account and your data.", "Like the browser", "Like the system", "Forest", "Install the app", "Add to Home Screen", "Export as JSON", "Create token", "Delete account", "never"}, handler: a.handleSettingsPage},
-		{name: "settings, password changed", target: "/settings?ok=password", want: []string{"Password changed."}, handler: a.handleSettingsPage},
-		{name: "settings, free plan", target: "/settings", as: bob, premium: true, handler: a.handleSettingsPage},
-		{name: "settings, premium", target: "/settings", as: dan, premium: true, handler: a.handleSettingsPage},
-		{name: "settings, no tokens", target: "/settings", as: gus, want: []string{"No tokens yet."}, handler: a.handleSettingsPage},
-		{name: "settings, free plan, no tokens", target: "/settings", as: gus, premium: true, want: []string{"Creating tokens is part of Premium."}, handler: a.handleSettingsPage},
+		{name: "settings", target: "/settings", want: []string{"Appearance, language, account and your data.", "Appearance and language", "Account and data"}, handler: a.handleSettingsPage},
+		{name: "settings, appearance", target: "/settings/aspetto", want: []string{"Like the browser", "Like the system", "Forest"}, handler: a.handleSettingsSection},
+		{name: "settings, app", target: "/settings/app", want: []string{"Install the app", "Add to Home Screen"}, handler: a.handleSettingsSection},
+		{name: "settings, account", target: "/settings/account", want: []string{"Export as JSON", "Create token", "Delete account", "never"}, handler: a.handleSettingsSection},
+		{name: "settings, password changed", target: "/settings/account?ok=password", want: []string{"Password changed."}, handler: a.handleSettingsSection},
+		{name: "settings, free plan", target: "/settings/account", as: bob, premium: true, handler: a.handleSettingsSection},
+		{name: "settings, premium", target: "/settings/account", as: dan, premium: true, handler: a.handleSettingsSection},
+		{name: "settings, no tokens", target: "/settings/account", as: gus, want: []string{"No tokens yet."}, handler: a.handleSettingsSection},
+		{name: "settings, free plan, no tokens", target: "/settings/account", as: gus, premium: true, want: []string{"Creating tokens is part of Premium."}, handler: a.handleSettingsSection},
 		{name: "token created", method: http.MethodPost, target: "/settings/api-tokens", form: url.Values{"name": {"Grafana"}}, want: []string{"Token created: copy it now"}, handler: a.handleSettingsAPITokenCreate},
 		{name: "password, wrong current", method: http.MethodPost, target: "/settings/password", form: pwForm("nope", "a-new-password", "a-new-password"), want: []string{"Current password is incorrect."}, handler: a.handleChangePassword},
 		{name: "password, too short", method: http.MethodPost, target: "/settings/password", form: pwForm(i18nTestPassword, "short", "short"), want: []string{"at least 8 characters."}, handler: a.handleChangePassword},

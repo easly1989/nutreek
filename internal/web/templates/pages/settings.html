@@ -1,29 +1,38 @@
 {{define "title"}}{{t "settings.title"}} — Nutreek{{end}}
 {{define "content"}}
-<div class="flex flex-col gap-4 lg:gap-[18px]">
+{{- /* Settings (#251): an index of pages, as the You page is; each page is a few settings as rows.
+       A switch saves when it is touched (onchange); without JavaScript its Save button is there.
+       View model: settingsPageData; Section is "" for the index. */}}
+{{if not .Section}}
+<div class="flex flex-col gap-4 max-w-[720px]">
   <header>
     <h1 class="h1">{{t "settings.title"}}</h1>
     <p class="text-muted mt-0.5">{{t "settings.subtitle"}}</p>
   </header>
-
-  <div class="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)] items-start">
-    <nav class="hidden lg:flex sticky top-6 flex-col gap-0.5" aria-label="{{t "settings.toc_label"}}">
-      <a href="#aspetto" class="settings-toc" aria-current="true">{{t "settings.toc.appearance"}}</a>
-      <a href="#elenchi" class="settings-toc">{{t "settings.toc.lists"}}</a>
-      <a href="#allenamenti" class="settings-toc">{{t "settings.toc.workouts"}}</a>
-      <a href="#app" class="settings-toc">{{t "settings.toc.app"}}</a>
-      {{if not .Demo}}<a href="#account" class="settings-toc">{{t "settings.toc.account"}}</a>{{end}}
-      <a href="#dati" class="settings-toc">{{t "settings.toc.data"}}</a>
-      {{if not .Demo}}<a href="#token" class="settings-toc">{{t "settings.toc.tokens"}}</a>{{end}}
-      {{if not .Demo}}<a href="#elimina" class="settings-toc">{{t "settings.toc.delete"}}</a>{{end}}
-    </nav>
-
-    <div class="flex flex-col gap-4 min-w-0">
-      <section id="aspetto" class="card scroll-mt-6">
+  <div class="flex flex-col border-t border-border">
+    {{template "settings_row" (list "/settings/aspetto" (t "settings.page.appearance") (t "settings.page.appearance_desc"))}}
+    {{template "settings_row" (list "/settings/orari" (t "meal_times.settings.title") (t "settings.page.times_desc"))}}
+    {{template "settings_row" (list "/settings/elenchi" (t "settings.page.lists") (t "settings.page.lists_desc"))}}
+    {{template "settings_row" (list "/settings/notifications" (t "notifications.title") (t "notifications.settings_desc"))}}
+    {{template "settings_row" (list "/settings/household" (t "household.title") (t "household.settings_desc"))}}
+    {{if not .Demo}}{{template "settings_row" (list "/settings/stores" (t "stores.title") (t "stores.settings_desc"))}}{{end}}
+    {{template "settings_row" (list "/settings/app" (t "settings.app.title") (t "settings.page.app_desc"))}}
+    {{template "settings_row" (list "/settings/account" (t "settings.page.account") (t "settings.page.account_desc"))}}
+  </div>
+</div>
+{{else}}
+<div class="flex flex-col gap-4 max-w-3xl">
+  <header>
+    <a href="/settings" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "settings.title"}}</a>
+    <h1 class="h1">{{t .SectionTitle}}</h1>
+  </header>
+  <div class="flex flex-col divide-y divide-border border-y border-border min-w-0">
+    {{if eq .Section "aspetto"}}
+      <section id="aspetto" class="scroll-mt-6">
         {{/* Language (#159): saved in the account; "" follows the browser. */}}
         <form method="post" action="/language" class="settings-sec">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <input type="hidden" name="next" value="/settings">
+          <input type="hidden" name="next" value="/settings/aspetto">
           <div><h2 class="h2">{{t "layout.language"}}</h2><p class="settings-d">{{t "settings.language.desc"}}</p></div>
           {{$cur := .User.Locale}}
           <div class="segmented flex flex-wrap" role="radiogroup" aria-label="{{t "layout.language"}}">
@@ -74,114 +83,110 @@
         </form>
       </section>
 
-      {{/* Notifications (#237) have a page of their own. */}}
-      <section id="notifiche" class="card scroll-mt-6">
-        <a href="/settings/notifications" class="settings-sec flex items-center gap-3 hover:bg-surface-2 rounded-2xl">
-          <div class="grow min-w-0"><h2 class="h2">{{t "notifications.title"}}</h2><p class="settings-d">{{t "notifications.settings_desc"}}</p></div>
-          {{template "icon" "i-chevron-right"}}
-        </a>
-      </section>
-
-      {{/* The household (#238) has a page of its own. */}}
-      <section id="famiglia" class="card scroll-mt-6">
-        <a href="/settings/household" class="settings-sec flex items-center gap-3 hover:bg-surface-2 rounded-2xl">
-          <div class="grow min-w-0"><h2 class="h2">{{t "household.title"}}</h2><p class="settings-d">{{t "household.settings_desc"}}</p></div>
-          {{template "icon" "i-chevron-right"}}
-        </a>
-      </section>
-
-      {{/* Store plugins (#239) have a page of their own; there is none in the demo. */}}
-      {{if not .Demo}}
-      <section id="negozi" class="card scroll-mt-6">
-        <a href="/settings/stores" class="settings-sec flex items-center gap-3 hover:bg-surface-2 rounded-2xl">
-          <div class="grow min-w-0"><h2 class="h2">{{t "stores.title"}}</h2><p class="settings-d">{{t "stores.settings_desc"}}</p></div>
-          {{template "icon" "i-chevron-right"}}
-        </a>
-      </section>
-      {{end}}
-
-      {{/* Meal times (#236): the time each meal name gets when it is created, and
-           whether the CSV export has a column for them. */}}
-      <section id="orari" class="card scroll-mt-6">
+    {{end}}
+    {{if eq .Section "orari"}}
+      {{/* Meal times (#236): the time each meal name gets when it is created. A row shows it; the time
+           opens the dialog to change it, and «Add a meal» opens the same dialog empty. */}}
+      <section id="orari" class="scroll-mt-6">
         <div class="settings-sec">
           <div><h2 class="h2">{{t "meal_times.settings.title"}}</h2><p class="settings-d">{{t "meal_times.settings.desc"}}</p></div>
-          {{if .MealTimes}}
-          <ul class="divide-y divide-border -mx-1">
-            {{range .MealTimes}}
-            <li class="flex flex-wrap items-center gap-2 py-2 px-1">
-              <form method="post" action="/settings/meal-times" class="flex flex-wrap items-center gap-2 grow min-w-0">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="name" value="{{.Name}}">
-                <b class="grow min-w-[7rem]">{{.Name}}</b>
-                <input type="time" name="start_time" required value="{{.Start}}" aria-label="{{t "meal_times.settings.start"}}: {{.Name}}" class="field w-[6.5rem] text-center tabular-nums">
-                <span class="text-muted" aria-hidden="true">–</span>
-                <input type="time" name="end_time" value="{{.End}}" aria-label="{{t "meal_times.settings.end"}}: {{.Name}}" class="field w-[6.5rem] text-center tabular-nums">
-                <button class="btn-secondary btn-icon" title="{{t "meal_times.save"}}" aria-label="{{t "meal_times.save"}}: {{.Name}}">{{template "icon_sm" "i-check"}}</button>
-              </form>
-              <form method="post" action="/settings/meal-times/delete">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="name" value="{{.Name}}">
-                <button class="icon-action hover:text-danger" title="{{t "week.delete"}}" aria-label="{{t "meal_times.settings.delete_named" "Name" .Name}}">{{template "icon" "i-trash"}}</button>
-              </form>
-            </li>
+          <div class="flex flex-col min-w-0">
+            {{if .MealTimes}}
+            <ul class="divide-y divide-border border-y border-border">
+              {{range $i, $m := .MealTimes}}
+              <li class="grid grid-cols-[minmax(0,1fr)_auto_36px] items-center gap-x-3 min-h-[52px] py-1">
+                <b class="font-semibold [overflow-wrap:anywhere]">{{.Name}}</b>
+                <button type="button" class="inline-flex items-center h-9 px-3 rounded-lg border border-border bg-surface font-semibold tabular-nums whitespace-nowrap hover:bg-surface-2" data-mt-edit data-name="{{.Name}}" data-start="{{.Start}}" data-end="{{.End}}" aria-label="{{.Start}}{{if .End}}–{{.End}}{{end}}, {{t "meal_times.settings.edit_named" "Name" .Name}}">{{.Start}}{{if .End}}–{{.End}}{{end}}</button>
+                <div class="relative">
+                  <button type="button" class="icon-action" data-popover="mt-menu-{{$i}}" aria-expanded="false" aria-controls="mt-menu-{{$i}}" aria-label="{{t "meal_times.settings.actions_named" "Name" .Name}}">{{template "icon" "i-dots"}}</button>
+                  <div id="mt-menu-{{$i}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
+                    <button type="button" class="nav-link w-full" data-menu-close data-mt-edit data-name="{{.Name}}" data-start="{{.Start}}" data-end="{{.End}}">{{template "icon" "i-edit"}}{{t "meal_times.settings.edit"}}</button>
+                    <form method="post" action="/settings/meal-times/delete">
+                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                      <input type="hidden" name="name" value="{{.Name}}">
+                      <button class="nav-link w-full text-danger" aria-label="{{t "meal_times.settings.delete_named" "Name" .Name}}">{{template "icon" "i-trash"}}{{t "week.delete"}}</button>
+                    </form>
+                  </div>
+                </div>
+              </li>
+              {{end}}
+            </ul>
+            {{else}}
+            <p class="settings-d">{{t "meal_times.settings.empty"}}</p>
             {{end}}
-          </ul>
-          {{else}}
-          <p class="settings-d">{{t "meal_times.settings.empty"}}</p>
-          {{end}}
-          <form method="post" action="/settings/meal-times" class="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <input name="name" required maxlength="200" placeholder="{{t "meal_times.settings.name_placeholder"}}" aria-label="{{t "meal_times.name"}}" class="field grow min-w-[9rem]">
-            <input type="time" name="start_time" required aria-label="{{t "meal_times.settings.start"}}" class="field w-[6.5rem] text-center tabular-nums">
-            <span class="text-muted" aria-hidden="true">–</span>
-            <input type="time" name="end_time" aria-label="{{t "meal_times.settings.end"}}" class="field w-[6.5rem] text-center tabular-nums">
-            <button class="btn-secondary shrink-0">{{template "icon" "i-plus"}}{{t "meal_times.add"}}</button>
-          </form>
-          <form method="post" action="/settings/show-meal-times" class="border-t border-border pt-3">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <label class="flex items-start gap-3 cursor-pointer">
-              <span class="grow min-w-0"><b class="block">{{t "meal_times.settings.csv_label"}}</b><span class="block settings-d">{{t "meal_times.settings.csv_hint"}}</span></span>
-              <input type="hidden" name="show_meal_times" value="0">
-              <input type="checkbox" role="switch" name="show_meal_times" value="1" class="toggle"{{if .User.ShowMealTimes}} checked{{end}} aria-label="{{t "meal_times.settings.csv_label"}}">
-            </label>
-            <button class="btn-secondary mt-2">{{t "meal_times.save"}}</button>
-          </form>
+            <button type="button" class="self-start min-h-[44px] text-accent font-semibold hover:underline" data-mt-add>+ {{t "meal_times.settings.add_new"}}</button>
+          </div>
         </div>
+        <form method="post" action="/settings/show-meal-times" class="settings-sec" onchange="this.requestSubmit()">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <div><h2 class="h2">{{t "meal_times.settings.csv_title"}}</h2></div>
+          <label class="flex items-start gap-3 cursor-pointer">
+            <span class="grow min-w-0"><b class="block">{{t "meal_times.settings.csv_label"}}</b><span class="block settings-d">{{t "meal_times.settings.csv_hint"}}</span></span>
+            <input type="hidden" name="show_meal_times" value="0">
+            <input type="checkbox" role="switch" name="show_meal_times" value="1" class="toggle"{{if .User.ShowMealTimes}} checked{{end}} aria-label="{{t "meal_times.settings.csv_label"}}">
+          </label>
+          <noscript><button class="btn-secondary">{{t "meal_times.save"}}</button></noscript>
+        </form>
       </section>
 
-      <section id="elenchi" class="card scroll-mt-6">
+      <dialog id="mt-dialog" data-modal class="dialog-panel" aria-label="{{t "meal_times.settings.title"}}"
+              data-title-add="{{t "meal_times.settings.add_title"}}" data-title-edit="{{t "meal_times.settings.edit_title" "Name" "{name}"}}">
+        <div class="flex items-center gap-3 pl-5 pr-4 pt-4 pb-3">
+          <h2 class="grow text-[17px] font-bold" data-mt-title></h2>
+          <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
+        </div>
+        <form method="post" action="/settings/meal-times" class="flex flex-col gap-3 px-5 pb-5">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <label class="lab">{{t "meal_times.name"}}
+            <input name="name" required maxlength="200" placeholder="{{t "meal_times.settings.name_placeholder"}}" class="field font-normal text-text" autocomplete="off" data-mt-name>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="lab">{{t "meal_times.settings.start"}}<input type="time" name="start_time" required class="field text-center tabular-nums font-normal text-text" data-mt-start></label>
+            <label class="lab">{{t "meal_times.settings.end"}}<input type="time" name="end_time" class="field text-center tabular-nums font-normal text-text" data-mt-end></label>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-1">
+            <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
+            <button class="btn-primary">{{t "meal_times.save"}}</button>
+          </div>
+        </form>
+      </dialog>
+    {{end}}
+    {{if eq .Section "elenchi"}}
+      <section id="elenchi" class="scroll-mt-6">
         <div class="settings-sec">
           <div><h2 class="h2">{{t "settings.lists.title"}}</h2><p class="settings-d">{{t "settings.lists.desc"}}</p></div>
-          <form method="post" action="/settings/recipe-photos">
+          <form method="post" action="/settings/recipe-photos" onchange="this.requestSubmit()">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <label class="flex items-start gap-3 cursor-pointer">
               <span class="grow min-w-0"><b class="block">{{t "settings.lists.photos_label"}}</b><span class="block settings-d">{{t "settings.lists.photos_hint"}}</span></span>
               <input type="hidden" name="show_recipe_photos" value="0">
               <input type="checkbox" role="switch" name="show_recipe_photos" value="1" class="toggle" aria-label="{{t "settings.lists.photos_label"}}"{{if .User.ShowRecipePhotos}} checked{{end}}>
             </label>
-            <button class="btn-secondary mt-2">{{t "settings.lists.save"}}</button>
+            <noscript><button class="btn-secondary mt-2">{{t "settings.lists.save"}}</button></noscript>
           </form>
         </div>
       </section>
 
-      <section id="allenamenti" class="card scroll-mt-6">
+      <section id="allenamenti" class="scroll-mt-6">
         <div class="settings-sec">
           <div><h2 class="h2">{{t "settings.workouts.title"}}</h2><p class="settings-d">{{t "settings.workouts.desc"}}</p></div>
-          <form method="post" action="/settings/workouts-in-goal">
+          <form method="post" action="/settings/workouts-in-goal" onchange="this.requestSubmit()">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <label class="flex items-start gap-3 cursor-pointer">
               <span class="grow min-w-0"><b class="block">{{t "settings.workouts.goal_label"}}</b><span class="block settings-d">{{t "settings.workouts.goal_hint"}}</span></span>
               <input type="hidden" name="workouts_in_goal" value="0">
               <input type="checkbox" role="switch" name="workouts_in_goal" value="1" class="toggle"{{if .User.WorkoutsInGoal}} checked{{end}} aria-label="{{t "settings.workouts.goal_label"}}">
             </label>
-            <button class="btn-secondary mt-2">{{t "settings.workouts.save"}}</button>
+            <noscript><button class="btn-secondary mt-2">{{t "settings.workouts.save"}}</button></noscript>
           </form>
         </div>
       </section>
 
+    {{end}}
+    {{if eq .Section "app"}}
       {{/* Installable app (#59). A single visible block, picked by
            static/js/pwa.js; without JS the generic one stays. */}}
-      <section id="app" class="card scroll-mt-6">
+      <section id="app" class="scroll-mt-6">
         <div class="settings-sec">
           <div><h2 class="h2">{{t "settings.app.title"}}</h2><p class="settings-d">{{t "settings.app.desc"}}</p></div>
           <div data-pwa>
@@ -219,7 +224,9 @@
         </div>
       </section>
 
-      <section class="card">
+    {{end}}
+    {{if eq .Section "account"}}
+      <section>
         {{/* A demo account has no email or password to show, change or confirm with. */}}
         {{if not .Demo}}
         <div id="account" class="settings-sec scroll-mt-6">
@@ -246,15 +253,15 @@
 
       {{/* The demo has no REST API (#185). */}}
       {{if not .Demo}}
-      <section id="token" class="card overflow-hidden scroll-mt-6">
-        <div class="flex flex-wrap items-center gap-2 px-4 pt-4 pb-3">
+      <section id="token" class="scroll-mt-6">
+        <div class="flex flex-wrap items-center gap-2 pt-4 pb-3">
           <h2 class="h2">{{t "settings.tokens.title"}}</h2>
           {{if not (index .Features "api_access")}}<span class="chip chip-warn">Premium</span>{{end}}
           <span class="ml-auto text-[12.5px] text-muted">{{t "settings.tokens.for_apps"}}</span>
         </div>
 
         {{if .NewTokenPlain}}
-        <div role="status" class="mx-4 mb-3 rounded-xl bg-accent-soft p-3 flex flex-col gap-1.5">
+        <div role="status" class="mb-3 rounded-xl bg-accent-soft p-3 flex flex-col gap-1.5">
           <p class="font-semibold text-accent">{{t "settings.tokens.created"}}</p>
           <code class="block font-mono text-[12.5px] break-all bg-surface border border-border rounded-lg px-3 py-2 select-all">{{.NewTokenPlain}}</code>
         </div>
@@ -262,9 +269,9 @@
 
         {{if .APITokens}}
         <ul class="border-t border-border divide-y divide-border">
-          <li class="list-head-sm hidden sm:grid grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 px-4 py-2 text-[12.5px] font-semibold text-muted"><span>{{t "settings.tokens.col_name"}}</span><span>{{t "settings.tokens.col_created"}}</span><span>{{t "settings.tokens.col_last_used"}}</span><span></span></li>
+          <li class="list-head-sm hidden sm:grid grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 py-2 text-[12.5px] font-semibold text-muted"><span>{{t "settings.tokens.col_name"}}</span><span>{{t "settings.tokens.col_created"}}</span><span>{{t "settings.tokens.col_last_used"}}</span><span></span></li>
           {{range .APITokens}}
-          <li class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 items-center px-4 py-2 min-h-12">
+          <li class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_110px_110px_90px] gap-3 items-center py-2 min-h-12">
             <span class="flex items-center gap-2.5 min-w-0"><span class="thumb w-[30px] h-[30px]">{{template "icon_sm" "i-key"}}</span><b class="truncate">{{.Name}}</b></span>
             <span class="hidden sm:block text-muted tabular-nums">{{.CreatedAt.Day}} {{monthName .CreatedAt}}</span>
             <span class="hidden sm:block text-muted tabular-nums">{{with .LastUsedAt}}{{.Day}} {{monthName .}}{{else}}{{t "settings.tokens.never"}}{{end}}</span>
@@ -276,24 +283,24 @@
           {{end}}
         </ul>
         {{else}}
-        <p class="border-t border-border px-4 py-4 text-muted">{{t "settings.tokens.empty"}}</p>
+        <p class="border-t border-border py-4 text-muted">{{t "settings.tokens.empty"}}</p>
         {{end}}
 
         {{if index .Features "api_access"}}
-        <form method="post" action="/settings/api-tokens" class="flex gap-2 px-4 py-3 border-t border-border">
+        <form method="post" action="/settings/api-tokens" class="flex gap-2 py-3 border-t border-border">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input name="name" required maxlength="100" placeholder="{{t "settings.tokens.name_placeholder"}}" aria-label="{{t "settings.tokens.name_placeholder"}}" class="field max-w-[320px]">
           <button class="btn-secondary shrink-0">{{template "icon_sm" "i-plus"}}{{t "settings.tokens.create"}}</button>
         </form>
-        <p class="px-4 py-3 border-t border-border text-[12.5px] text-muted">{{t "settings.tokens.once"}}</p>
+        <p class="py-3 border-t border-border text-[12.5px] text-muted">{{t "settings.tokens.once"}}</p>
         {{else}}
-        <p class="px-4 py-3 border-t border-border text-muted">{{t "settings.tokens.premium_note"}} <a href="/upgrade" class="text-accent font-semibold hover:underline">{{t "settings.tokens.see_includes"}}</a></p>
+        <p class="py-3 border-t border-border text-muted">{{t "settings.tokens.premium_note"}} <a href="/upgrade" class="text-accent font-semibold hover:underline">{{t "settings.tokens.see_includes"}}</a></p>
         {{end}}
       </section>
       {{end}}
 
       {{if not .Demo}}
-      <section id="elimina" class="card scroll-mt-6" style="border-color:color-mix(in srgb, var(--danger) 35%, var(--border))">
+      <section id="elimina" class="scroll-mt-6">
         <div class="settings-sec">
           <div><h2 class="h2 text-danger">{{t "settings.delete.title"}}</h2><p class="settings-d">{{t "settings.delete.desc"}}</p></div>
           <form method="post" action="/settings/delete-account" class="flex flex-wrap items-end gap-2" data-confirm="{{t "settings.delete.confirm"}}">
@@ -305,32 +312,42 @@
         </div>
       </section>
       {{end}}
-    </div>
+    {{end}}
   </div>
 </div>
+{{end}}
+{{end}}
+
+{{define "settings_row"}}{{- /* (list href title description) */ -}}
+<a href="{{index . 0}}" class="tu-row"><span class="min-w-0"><span class="font-medium block">{{index . 1}}</span>{{with index . 2}}<span class="block text-[13px] text-muted">{{.}}</span>{{end}}</span>{{template "icon_sm" "i-chevron-right"}}</a>
 {{end}}
 
 {{define "app_icon"}}<span class="app-icon" aria-hidden="true"><svg class="w-[30px] h-[30px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-leaf"/></svg></span>{{end}}
 
 {{define "scripts"}}
+{{if eq .Section "orari"}}
 <script>
-// Table of contents: marks the section in view.
 (function () {
-  var links = document.querySelectorAll(".settings-toc");
-  if (!links.length || !("IntersectionObserver" in window)) return;
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) {
-      if (!e.isIntersecting) return;
-      links.forEach(function (a) {
-        if (a.getAttribute("href") === "#" + e.target.id) a.setAttribute("aria-current", "true");
-        else a.removeAttribute("aria-current");
-      });
-    });
-  }, { rootMargin: "0px 0px -70% 0px" });
-  links.forEach(function (a) {
-    var t = document.querySelector(a.getAttribute("href"));
-    if (t) io.observe(t);
+  // «Add a meal» and a time open the same dialog: empty, or with the name (it stays) and the times of the row.
+  var dlg = document.getElementById("mt-dialog");
+  if (!dlg || !dlg.showModal) return;
+  var name = dlg.querySelector("[data-mt-name]"), start = dlg.querySelector("[data-mt-start]"), end = dlg.querySelector("[data-mt-end]");
+  function open(d) {
+    var edit = d && d.name;
+    dlg.querySelector("[data-mt-title]").textContent = edit ? dlg.dataset.titleEdit.replace("{name}", d.name) : dlg.dataset.titleAdd;
+    name.value = edit ? d.name : "";
+    name.readOnly = !!edit;
+    start.value = edit ? d.start : "";
+    end.value = edit ? d.end : "";
+    dlg.showModal();
+    (edit ? start : name).focus();
+  }
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-mt-edit], [data-mt-add]");
+    if (!el) return;
+    open(el.hasAttribute("data-mt-edit") ? { name: el.dataset.name, start: el.dataset.start, end: el.dataset.end } : null);
   });
 })();
 </script>
+{{end}}
 {{end}}

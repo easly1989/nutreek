@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strconv"
 	"time"
 
@@ -25,6 +26,25 @@ type settingsPageData struct {
 
 	// MealTimes is the time each meal name gets (#236).
 	MealTimes []db.MealTimeDefault
+
+	// Section is the page of Settings shown (aspetto, orari, elenchi, app, account), "" for
+	// the index; SectionTitle is the catalog key of its title.
+	Section      string
+	SectionTitle string
+}
+
+// settingsSections are the pages of Settings (#251) with the catalog key of their title.
+var settingsSections = map[string]string{
+	"aspetto": "settings.page.appearance",
+	"orari":   "meal_times.settings.title",
+	"elenchi": "settings.page.lists",
+	"app":     "settings.app.title",
+	"account": "settings.page.account",
+}
+
+// withSection says which page of Settings a view model is for.
+func (d *settingsPageData) withSection(section string) {
+	d.Section, d.SectionTitle = section, settingsSections[section]
 }
 
 // fillMealTimes loads the page's «Meal times» list.
@@ -53,7 +73,7 @@ func (a *App) handleSettingsKeepAwake(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/settings#schermo", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/aspetto", http.StatusSeeOther)
 }
 
 // userProfileExport is the sanitized user profile for the export (no hash).
@@ -76,10 +96,30 @@ type userDataExport struct {
 	Recipes     []*domain.Recipe    `json:"recipes"`
 }
 
+// handleSettingsPage GET /settings: the index of the pages of Settings.
 func (a *App) handleSettingsPage(w http.ResponseWriter, r *http.Request) {
+	data := settingsPageData{authPageData: a.baseData(r)}
+	data.ActiveNav = "/settings"
+	if err := a.Render.Render(w, r, http.StatusOK, "settings", data); err != nil {
+		a.serverError(w, r, err)
+	}
+}
+
+// handleSettingsSection GET /settings/{section}: one page of Settings (aspetto, orari,
+// elenchi, app or account); another name is a 404.
+func (a *App) handleSettingsSection(w http.ResponseWriter, r *http.Request) {
+	section := chi.URLParam(r, "section")
+	if section == "" { // a call that did not go through the router
+		section = path.Base(r.URL.Path)
+	}
+	if _, ok := settingsSections[section]; !ok {
+		a.notFound(w, r)
+		return
+	}
 	user := userFromContext(r.Context())
 	data := settingsPageData{authPageData: a.baseData(r)}
 	data.ActiveNav = "/settings"
+	data.withSection(section)
 	if flash := r.URL.Query().Get("ok"); flash == "password" {
 		data.PasswordOK = true
 	}
@@ -99,7 +139,7 @@ func (a *App) handleSettingsAPITokenCreate(w http.ResponseWriter, r *http.Reques
 	user := userFromContext(r.Context())
 	name := r.PostFormValue("name")
 	if name == "" || !withinLen(name, 100) {
-		http.Redirect(w, r, "/settings", http.StatusSeeOther)
+		http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
 		return
 	}
 	plain, err := a.APITokens.Create(r.Context(), user.ID, name)
@@ -114,6 +154,7 @@ func (a *App) handleSettingsAPITokenCreate(w http.ResponseWriter, r *http.Reques
 	}
 	data := settingsPageData{authPageData: a.baseData(r)}
 	data.ActiveNav = "/settings"
+	data.withSection("account")
 	data.APITokens = tokens
 	data.NewTokenPlain = plain
 	a.fillMealTimes(r, &data)
@@ -134,7 +175,7 @@ func (a *App) handleSettingsAPITokenRevoke(w http.ResponseWriter, r *http.Reques
 		a.serverError(w, r, rErr)
 		return
 	}
-	http.Redirect(w, r, "/settings", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
 }
 
 func (a *App) handleUserDataExport(w http.ResponseWriter, r *http.Request) {
@@ -187,6 +228,7 @@ func (a *App) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	if verr := auth.VerifyPassword(user.PasswordHash, password); verr != nil {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
+		data.withSection("account")
 		data.DeleteError = a.t(r, "settings.delete.err_password")
 		a.fillMealTimes(r, &data)
 		if rerr := a.Render.Render(w, r, http.StatusUnprocessableEntity, "settings", data); rerr != nil {
@@ -215,6 +257,7 @@ func (a *App) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	renderErr := func(msg string) {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
+		data.withSection("account")
 		data.PasswordError = msg
 		a.fillMealTimes(r, &data)
 		if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "settings", data); err != nil {
@@ -249,5 +292,5 @@ func (a *App) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/settings?ok=password", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/account?ok=password", http.StatusSeeOther)
 }

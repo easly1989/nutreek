@@ -24,5 +24,12 @@
   "meal_times.settings.delete_named": "Remove the time of {{.Name}}",
   "meal_times.settings.empty": "No times yet. A meal name with a time here gives it to every new meal of that name.",
   "meal_times.settings.csv_label": "Times in the CSV export",
-  "meal_times.settings.csv_hint": "Adds a column with the times to the week's CSV; reminders appear as rows with no food."
+  "meal_times.settings.csv_hint": "Adds a column with the times to the week's CSV; reminders appear as rows with no food.",
+  "meal_times.settings.edit": "Change the time",
+  "meal_times.settings.edit_named": "Change the time of {{.Name}}",
+  "meal_times.settings.actions_named": "Actions for {{.Name}}",
+  "meal_times.settings.add_new": "Add a meal",
+  "meal_times.settings.add_title": "New meal time",
+  "meal_times.settings.edit_title": "Time of {{.Name}}",
+  "meal_times.settings.csv_title": "Export"
 }

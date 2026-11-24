@@ -24,5 +24,12 @@
   "meal_times.settings.delete_named": "Togli l'orario di {{.Name}}",
   "meal_times.settings.empty": "Nessun orario. Un nome di pasto con un orario qui lo dà a ogni pasto nuovo con quel nome.",
   "meal_times.settings.csv_label": "Orari nell'esportazione CSV",
-  "meal_times.settings.csv_hint": "Aggiunge una colonna «ora» al CSV della settimana; i promemoria compaiono come righe senza cibo."
+  "meal_times.settings.csv_hint": "Aggiunge una colonna «ora» al CSV della settimana; i promemoria compaiono come righe senza cibo.",
+  "meal_times.settings.edit": "Cambia l'orario",
+  "meal_times.settings.edit_named": "Cambia l'orario di {{.Name}}",
+  "meal_times.settings.actions_named": "Azioni per {{.Name}}",
+  "meal_times.settings.add_new": "Aggiungi un pasto",
+  "meal_times.settings.add_title": "Nuovo orario",
+  "meal_times.settings.edit_title": "Orario di {{.Name}}",
+  "meal_times.settings.csv_title": "Esportazione"
 }

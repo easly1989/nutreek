@@ -80,5 +80,13 @@
   "settings.lists.desc": "Cosa mostrano gli elenchi di ricette e ingredienti.",
   "settings.lists.photos_label": "Mostra le foto delle ricette",
   "settings.lists.photos_hint": "Una piccola foto a destra di ogni ricetta nell'elenco. Spegnila per avere righe più larghe.",
-  "settings.lists.save": "Salva"
+  "settings.lists.save": "Salva",
+  "settings.page.appearance": "Aspetto e lingua",
+  "settings.page.appearance_desc": "Lingua, chiaro o scuro, colore, schermo acceso",
+  "settings.page.times_desc": "L'orario di ogni pasto e l'esportazione CSV",
+  "settings.page.lists": "Elenchi e allenamenti",
+  "settings.page.lists_desc": "Foto delle ricette, allenamenti e obiettivo del giorno",
+  "settings.page.app_desc": "Apri Nutreek come un'app",
+  "settings.page.account": "Account e dati",
+  "settings.page.account_desc": "Password, i tuoi dati, token API, elimina l'account"
 }

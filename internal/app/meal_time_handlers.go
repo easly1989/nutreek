@@ -130,7 +130,7 @@ func (a *App) handleSettingsMealTime(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/settings#orari", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/orari", http.StatusSeeOther)
 }
 
 // handleSettingsMealTimeDelete POST /settings/meal-times/delete, field name.
@@ -140,7 +140,7 @@ func (a *App) handleSettingsMealTimeDelete(w http.ResponseWriter, r *http.Reques
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/settings#orari", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/orari", http.StatusSeeOther)
 }
 
 // handleSettingsShowMealTimes POST /settings/show-meal-times: a hidden 0 and, when
@@ -159,5 +159,5 @@ func (a *App) handleSettingsShowMealTimes(w http.ResponseWriter, r *http.Request
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/settings#orari", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/orari", http.StatusSeeOther)
 }

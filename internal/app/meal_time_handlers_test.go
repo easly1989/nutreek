@@ -58,8 +58,8 @@ func TestMealTimeHandlers(t *testing.T) {
 		t.Fatalf("set a time: %d", w.Code)
 	}
 	call(a.handleSettingsMealTime, http.MethodPost, "/settings/meal-times", url.Values{"name": {"Cena"}, "start_time": {"25:00"}}, 1)
-	page := call(a.handleSettingsPage, http.MethodGet, "/settings", nil, 1).Body.String()
-	if !strings.Contains(page, `id="orari"`) || !strings.Contains(page, `value="12:30"`) || !strings.Contains(page, `value="13:30"`) || strings.Contains(page, `value="25:00"`) {
+	page := call(a.handleSettingsSection, http.MethodGet, "/settings/orari", nil, 1).Body.String()
+	if !strings.Contains(page, `id="orari"`) || !strings.Contains(page, `data-start="12:30" data-end="13:30"`) || strings.Contains(page, `25:00`) {
 		t.Errorf("the Settings list must show Pranzo 12:30–13:30 and not the bad time")
 	}
 

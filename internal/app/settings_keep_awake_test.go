@@ -28,9 +28,9 @@ func TestSettingsKeepAwake(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r := httptest.NewRequest(http.MethodGet, "/settings", nil)
+		r := httptest.NewRequest(http.MethodGet, "/settings/aspetto", nil)
 		w := httptest.NewRecorder()
-		a.Sessions.LoadAndSave(http.HandlerFunc(a.handleSettingsPage)).ServeHTTP(w, requestWithUser(r, u))
+		a.Sessions.LoadAndSave(http.HandlerFunc(a.handleSettingsSection)).ServeHTTP(w, requestWithUser(r, u))
 		return w.Body.String()
 	}
 
