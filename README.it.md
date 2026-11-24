@@ -49,12 +49,15 @@ L'interfaccia è in **italiano** e in **inglese**. Ogni utente sceglie la lingua
 
 | Area | Funzionalità |
 |------|-------------|
-| **Piani settimanali** | Un giorno alla volta con anello kcal e macro, pasti, acqua e allenamenti; macro per pasto/giorno/settimana, sgarri, copia da settimana precedente |
+| **Piani settimanali** | Un giorno alla volta con anello kcal e macro, pasti con un orario, acqua e allenamenti (anche attività tue); macro per pasto/giorno/settimana, sgarri, copia da settimana precedente, una riga si sposta in un altro pasto o cambia ingrediente con uno vicino |
 | **Ingredienti** | Ricerca locale FTS5 (<50 ms, offline) con foto dei prodotti, scanner del codice a barre nei picker, copia locale di OpenFoodFacts aggiornata ogni giorno, riconciliazione OFF |
 | **Ricette** | Creazione con ingredienti, import automatico da URL (schema.org/Recipe), con foto; quantità modificabili sul posto, in grammi o pezzi |
 | **Template** | Template settimanali riutilizzabili, applicazione one-click |
 | **Piano nutrizionista** | Varianti pasto, generazione automatica settimana con algoritmo greedy (target macro) |
-| **Lista spesa** | Generazione automatica dalla settimana selezionata |
+| **Lista spesa** | Una lista dalla settimana selezionata e da quello che aggiungi a mano, in ordine alfabetico, per categoria o nel tuo ordine; controlli cosa hai già prima di uscire; prezzi da un negozio collegato |
+| **Famiglia** | Fino a sei altre persone condividono la tua settimana, ognuna con il suo obiettivo di calorie e senza accesso; le quantità seguono l'obiettivo e la spesa somma tutti |
+| **Notifiche** | Promemoria inviati all'app installata, anche quando è chiusa: acqua, allenamento, pasti e i tuoi, con le ore di silenzio |
+| **Negozi** | Colleghi un negozio (Conad è già in Nutreek): i suoi prodotti compaiono nella ricerca degli ingredienti e la lista della spesa li prezza |
 | **Peso & idratazione** | Tracciamento giornaliero, grafici trend |
 | **TDEE adattivo** | Calcolo TDEE da trend peso/intake, suggerimento automatico |
 | **Allenamenti** | Log allenamenti con calorie bruciate, dashboard settimanale |
@@ -62,7 +65,7 @@ L'interfaccia è in **italiano** e in **inglese**. Ogni utente sceglie la lingua
 | **REST API v1** | Bearer token, endpoint per settimana, ingredienti, peso, idratazione, allenamenti |
 | **Admin panel** | Feature flags, gestione utenti, sottoscrizioni premium (owner-only) |
 | **Premium gating** | Middleware `requireFeature`, cache 60s, badge UI, redirect `/upgrade` |
-| **Aspetto** | Stile «Sereno»: modalità chiaro / scuro / come il sistema × colore bosco / mare / tramonto / grafite; sidebar su desktop, barra in basso sul telefono; tour guidato |
+| **Aspetto** | Stile «Registro»: righe e linee al posto dei riquadri, un solo menu per riga, interruttori che salvano appena li tocchi; modalità chiaro / scuro / come il sistema × colore bosco / mare / tramonto / grafite; sidebar su desktop, sul telefono una barra in basso con quattro voci; tour guidato |
 | **Lingue** | Italiano e inglese, per utente o dal browser; traduzioni della comunità benvenute, segnate «beta» finché non sono complete ([guida](docs/translating.md)) |
 | **App sul telefono** | Installabile (manifest e icone nel colore scelto, service worker per i file statici); fotocamera e installazione richiedono https |
 
@@ -74,7 +77,7 @@ I dati della demo, in italiano. Lo stesso aspetto in chiaro e in scuro, su deskt
 
 ### La settimana
 
-Un giorno alla volta: le schede dei giorni con le kcal, i pasti con i macro, e a lato l'anello delle calorie, l'acqua e gli allenamenti.
+Un giorno alla volta: le schede dei giorni con le kcal, i pasti a righe con i macro, e a lato l'anello delle calorie, l'acqua e gli allenamenti.
 
 <p align="center">
   <img src="docs/screenshots/settimana.png" width="800" alt="La settimana: schede dei giorni, pasti con kcal e macro, anello delle calorie, acqua e allenamento">
@@ -99,21 +102,21 @@ Ricette con kcal e macro per porzione; il piano nutrizionale con le varianti di 
 
 <p align="center">
   <img src="docs/screenshots/ricette.png" width="400" alt="Elenco delle ricette con kcal e macro per porzione e i filtri">
-  <img src="docs/screenshots/piano-nutrizionale.png" width="400" alt="Piano nutrizionale con le varianti di colazione e pranzo">
+  <img src="docs/screenshots/piano-nutrizionale.png" width="400" alt="Piano nutrizionale con le varianti di ogni pasto a righe">
 </p>
 
 ### Lista della spesa e statistiche
 
-La spesa per reparto, con il carrello e la stampa in due colonne. Le statistiche con il fabbisogno stimato dal peso e da quanto hai mangiato.
+La spesa in un'unica lista, per categoria o nel tuo ordine, con la barra del carrello e la stampa in due colonne. Le statistiche con il fabbisogno stimato dal peso e da quanto hai mangiato.
 
 <p align="center">
-  <img src="docs/screenshots/spesa.png" width="400" alt="Lista della spesa raggruppata per reparto, con le voci aggiunte a mano">
+  <img src="docs/screenshots/spesa.png" width="400" alt="Lista della spesa con la barra del carrello, la scelta del raggruppamento e le voci in ordine alfabetico">
   <img src="docs/screenshots/statistiche-scuro.png" width="400" alt="Statistiche in modalità scura: sintesi, fabbisogno stimato, calorie e macro, peso">
 </p>
 
 ### Sul telefono
 
-Barra in basso con le sezioni di tutti i giorni; si installa come app da Impostazioni.
+Barra in basso con quattro voci (Settimana, Spesa, Libreria, Progressi); l'avatar in alto apre Tu, con il profilo, le preferenze e l'aiuto. Si installa come app da Impostazioni.
 
 <p align="center">
   <img src="docs/screenshots/telefono-settimana.png" width="200" alt="La settimana sul telefono">
