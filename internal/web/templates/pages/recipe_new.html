@@ -9,7 +9,7 @@
   {{/* Import from a URL: paste a recipe's link and prefill the form from
        the page's schema.org/Recipe data. Not in the demo (#185). */}}
   {{if not .Demo}}
-  <form id="importa" method="post" action="/recipes/import" class="card p-4 flex flex-col gap-3 scroll-mt-6">
+  <form id="importa" method="post" action="/recipes/import" class="form-sec scroll-mt-6">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="flex items-baseline gap-2"><h2 class="h2">{{t "recipes.import_from_url"}}</h2><p class="text-[12.5px] text-muted">{{t "recipes.import.optional"}}</p></div>
     <div class="flex gap-2">
@@ -34,7 +34,7 @@
 
   {{if .Error}}<p class="rounded-xl bg-danger-soft text-danger px-4 py-2.5" role="alert">{{.Error}}</p>{{end}}
 
-  <form method="post" action="/recipes" class="card p-4 flex flex-col gap-3">
+  <form method="post" action="/recipes" class="form-sec">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <h2 class="h2">{{t "recipes.form.details"}}</h2>
     <label class="lab">{{t "recipes.form.name"}}<input name="name" required value="{{.Form.Name}}" class="field"></label>
