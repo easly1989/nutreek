@@ -50,5 +50,6 @@
   "plan.rename_save": "Save",
   "plan.duplicate_variant": "Duplicate",
   "plan.copy_suffix": "(copy)",
-  "plan.error.variant_name_long": "The variant name is too long."
+  "plan.error.variant_name_long": "The variant name is too long.",
+  "plan.add_food_to": "Add food to {{.Name}}"
 }
