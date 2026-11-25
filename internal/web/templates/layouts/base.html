@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  {{/* The sidebar hidden by the person (static/js/sidebar.js): read before the first paint so the page does not jump. */}}
+  <script>try{if(localStorage.getItem('nutreek.sidebar')==='hidden')document.documentElement.setAttribute('data-side','hidden')}catch(e){}</script>
   <title>{{block "title" .}}Nutreek{{end}}</title>
   {{/* Installable app (#59): manifest and icons follow the theme color. */}}
   <link rel="manifest" href="/manifest.webmanifest">
@@ -15,6 +17,7 @@
   <script src="{{asset "js/htmx.min.js"}}" defer></script>
   <script src="{{asset "js/sortable.min.js"}}" defer></script>
   <script src="{{asset "js/theme.js"}}" defer></script>
+  <script src="{{asset "js/sidebar.js"}}" defer></script>
   <script src="{{asset "js/dnd.js"}}" defer></script>
   <script src="{{asset "js/modal.js"}}" defer></script>
   <script src="{{asset "js/ingredient_search.js"}}" defer></script>
@@ -56,7 +59,10 @@
        The same four destinations everywhere; the rest is behind the avatar. */}}
   <nav id="sidebar" aria-label="{{t "layout.nav.sections"}}"
        class="hidden lg:flex fixed inset-y-0 left-0 z-30 w-[220px] flex-col gap-5 px-3 py-5 bg-surface border-r border-border overflow-y-auto">
-    {{template "brand"}}
+    <div class="flex items-center gap-1">
+      {{template "brand"}}
+      <button type="button" id="sidebar-hide" class="btn-secondary btn-icon ml-auto !w-8 !h-8 shrink-0" aria-label="{{t "layout.nav.hide_sidebar"}}" title="{{t "layout.nav.hide_sidebar"}}">{{template "icon_sm" "i-chevron-left"}}</button>
+    </div>
     <ul class="flex flex-col gap-0.5">
       {{template "nav_link" (navTo "/" (t "layout.nav.week") "i-week" (eq $sec "week"))}}
       {{template "nav_link" (navTo "/shopping-list" (t "layout.nav.shopping") "i-cart" (eq $sec "shopping"))}}
@@ -72,6 +78,8 @@
       </a>
     </div>
   </nav>
+  {{/* Desktop, sidebar hidden: the one button that brings it back. */}}
+  <button type="button" id="sidebar-show" class="sidebar-show btn-secondary btn-icon fixed top-3 left-3 z-30" aria-label="{{t "layout.nav.show_sidebar"}}" title="{{t "layout.nav.show_sidebar"}}">{{template "icon" "i-chevron-right"}}</button>
 
   {{/* Top bar: phone and tablet. The brand and the avatar, which opens the You page. */}}
   <header class="lg:hidden sticky top-0 z-20 flex items-center justify-between gap-3 h-14 px-4 bg-surface border-b border-border">
@@ -103,9 +111,10 @@
   </header>
   {{end}}
 
-  <main id="main-content" class="{{if and .User (not .Bare)}}min-h-screen lg:pl-[220px] pb-24 lg:pb-0{{else}}min-h-[calc(100vh-60px)]{{end}}">
+  <main id="main-content" class="{{if and .User (not .Bare)}}app-main min-h-screen lg:pl-[220px] pb-24 lg:pb-0{{else}}min-h-[calc(100vh-60px)]{{end}}">
     {{if and .Demo .User}}{{template "demo_band" .}}{{end}}
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 lg:py-6">
+    {{/* A page can be wider than the default: it defines "page_width" (the shopping list and the week do). */}}
+    <div class="{{block "page_width" .}}max-w-6xl{{end}} mx-auto px-4 sm:px-6 lg:px-8 py-5 lg:py-6{{if and .User (not .Bare)}} app-page{{end}}">
       {{if .Flash}}
         <div id="flash-msg" role="status" class="mb-4 rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5 flex items-center justify-between gap-3">
           <span>{{.Flash}}</span>

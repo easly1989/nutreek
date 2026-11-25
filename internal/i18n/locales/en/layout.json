@@ -1,5 +1,7 @@
 {
   "layout.nav.sections": "Sections",
+  "layout.nav.hide_sidebar": "Hide the sidebar",
+  "layout.nav.show_sidebar": "Show the sidebar",
   "layout.nav.more_sections": "More sections",
   "layout.nav.week": "Week",
   "layout.nav.recipes": "Recipes",
