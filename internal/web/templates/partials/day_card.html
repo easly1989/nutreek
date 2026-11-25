@@ -208,6 +208,14 @@
     <span title="{{t "common.carbs"}}"><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num $m.MealTotal.Carbs}} g</span>
     <span title="{{t "common.fat"}}"><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{num $m.MealTotal.Fat}} g</span>
   </p>
+  {{- /* Household (#238): who each column of the rows is (the owner first). Hidden where the chips replace the columns. */}}
+  {{if and $m.Skips (not $m.HasCheats)}}
+  <div class="hh-headrow" style="--n:{{len $m.Skips}}"{{if le (len $m.Skips) 3}} data-hh-s{{end}} aria-hidden="true">
+    <span></span>
+    <span class="justify-self-end"><span class="hh-ini" style="--hh-c:var(--hh0)" title="{{$m.Owner}}">{{initial $m.Owner}}</span></span>
+    {{range $m.Skips}}<span class="justify-self-end"><span class="hh-ini" style="--hh-c:var(--hh{{.Color}})" title="{{.Name}}">{{initial .Name}}</span></span>{{end}}
+  </div>
+  {{end}}
 
   {{- /* Always there, even with no rows: it is where a row dragged from another meal lands (#228). */}}
   <ul class="{{if $m.HasCheats}}opacity-60{{end}}" data-sortable="items" data-sortable-handle="[data-item-grip]"
@@ -273,7 +281,7 @@
        opens an editor in place (#206, picker.js): servings for a recipe,
        quantity and g / pz for an ingredient. */ -}}
 {{$editable := and (not .Cheat) (or $it.Ingredient (and $it.Recipe (not $it.IsCustomized)))}}
-<li class="item-grid group grid gap-x-2.5 gap-y-1.5 items-center min-h-[44px] py-0.5 border-t border-border first:border-t-0 data-[editing]:-mx-2 data-[editing]:px-2 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}>
+<li class="item-grid group grid gap-x-2.5 max-sm:data-[hh-s]:gap-x-1 gap-y-1.5 items-center min-h-[44px] py-0.5 border-t border-border first:border-t-0 data-[editing]:-mx-2 data-[editing]:px-2 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}{{if $v.People}} data-hh style="--n:{{len $v.People}}"{{if le (len $v.People) 3}} data-hh-s{{end}}{{end}}>
   <div class="col-start-1 min-w-0 flex items-start gap-1"{{if not .Cheat}} title="{{t "common.protein_short"}} {{num $v.Macros.Protein}} g · {{t "common.carbs_short"}} {{num $v.Macros.Carbs}} g · {{t "common.fat_short"}} {{num $v.Macros.Fat}} g"{{end}}>
     {{if not .Cheat}}<span data-item-grip class="relative max-lg:hidden grid w-4 h-6 -ml-4 place-items-center text-muted cursor-grab touch-none [@media(hover:hover)]:opacity-0 group-hover:opacity-100 before:content-[''] before:absolute before:-top-2 before:-bottom-2 before:-left-1 before:-right-1" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
     <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
@@ -318,6 +326,14 @@
   {{- else}}
   <span class="col-start-2 text-right text-muted tabular-nums whitespace-nowrap {{if .Struck}}line-through{{end}}"{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}>{{template "meal_item_qty" .}}</span>
   {{- end}}
+  {{- /* Household (#238): a column for each person next to the quantity (the meal's header names them);
+         a tap opens the dialog that changes it. The chips below take over when the columns would not fit. */}}
+  {{range $v.People}}
+  <button type="button" hx-get="/meal-items/{{$it.ID}}/people?start={{$.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
+          class="hh-cell justify-self-end items-center gap-0.5 h-8 px-1 -mr-1 rounded-lg text-[13px] tabular-nums whitespace-nowrap hover:bg-surface-2 hover:text-text group-data-[editing]:invisible {{if $.Struck}}line-through{{end}}">
+    <span class="sr-only">{{.Name}}:</span>{{if .None}}<span class="text-muted">—</span>{{else}}<span class="text-muted">{{if or (eq .Unit "g") (eq .Unit "ml")}}{{num .Qty}}{{else}}{{dec .Qty 1}}{{end}}</span><span class="sr-only"> {{.Unit}}</span>{{end}}{{if .Manual}}<svg class="w-3 h-3 text-accent" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>{{end}}
+  </button>
+  {{end}}
   <span class="item-kcal text-right tabular-nums {{if .Cheat}}text-danger{{end}} {{if .Struck}}line-through text-muted{{end}}">{{num $v.Macros.Kcal}}</span>
   {{- /* One menu for the row (the day as a ledger, #251): replace, customize, move, delete. A cheat has only «delete». */}}
   {{if .Cheat}}
@@ -351,8 +367,8 @@
   {{- /* Household (#238): what each person eats of the row, a tap changes it. */}}
   {{if $v.People}}
   <button type="button" hx-get="/meal-items/{{$it.ID}}/people?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
-          class="col-span-full justify-self-start flex flex-wrap items-center gap-1.5 -ml-1 px-1 pb-1 rounded-lg hover:bg-surface-2" aria-label="{{t "household.item.change" "Name" $nm}}">
-    {{range $v.People}}<span class="hh-chip" style="--hh-c:var(--hh{{.Color}})" title="{{.Name}}"><span class="hh-dot" aria-hidden="true"></span><span class="sr-only">{{.Name}}</span>{{if .None}}—{{else}}{{dec .Qty 2}} {{.Unit}}{{end}}{{if .Manual}}<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>{{end}}</span>{{end}}
+          class="hh-chips col-span-full justify-self-start flex flex-wrap items-center gap-1.5 -ml-1 px-1 pb-1 rounded-lg hover:bg-surface-2" aria-label="{{t "household.item.change" "Name" $nm}}">
+    {{range $v.People}}<span class="hh-chip" style="--hh-c:var(--hh{{.Color}})" title="{{.Name}}"><span class="hh-dot" aria-hidden="true"></span><span class="sr-only">{{.Name}}</span>{{if .None}}—{{else}}{{if or (eq .Unit "g") (eq .Unit "ml")}}{{num .Qty}}{{else}}{{dec .Qty 1}}{{end}} {{.Unit}}{{end}}{{if .Manual}}<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>{{end}}</span>{{end}}
   </button>
   {{end}}
 </li>
