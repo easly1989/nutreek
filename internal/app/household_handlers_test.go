@@ -95,6 +95,19 @@ func TestHouseholdHandlers(t *testing.T) {
 		t.Errorf("Bob opening Alice's row: %d, want 404", w.Code)
 	}
 
+	// The day: a column for each person on the rows and their initials on top of the meal;
+	// an account with nobody else keeps the plain rows.
+	onMonday := start + "&day=" + monday.Format("2006-01-02")
+	dayHTML := call(a.handleDashboard, http.MethodGet, "/"+onMonday, nil, nil, alice, false).Body.String()
+	for _, want := range []string{`data-hh `, `data-hh-s`, `hh-headrow`, `class="hh-cell`} {
+		if !strings.Contains(dayHTML, want) {
+			t.Errorf("the day has no %q", want)
+		}
+	}
+	if plain := call(a.handleDashboard, http.MethodGet, "/"+onMonday, nil, nil, bob, false).Body.String(); strings.Contains(plain, "hh-headrow") {
+		t.Error("an account without a household shows the household's header")
+	}
+
 	// A quantity by hand is kept; the automatic one, or an empty field, clears it; junk is refused.
 	field := "q_" + strconv.FormatInt(giulia, 10)
 	save := func(v string) {

@@ -122,6 +122,8 @@ type mealView struct {
 	HasCheats  bool
 	// Skips is, for each person of the household, whether they eat the meal (#238).
 	Skips []hhSkip
+	// Owner is the account owner's name: the first column of the household's rows.
+	Owner string
 }
 
 // scaledIngredient is an ingredient of a recipe with its quantity scaled to

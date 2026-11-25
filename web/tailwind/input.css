@@ -450,6 +450,35 @@
   .item-kcal { grid-column: 3; }
   .item-actions { grid-column: 4; }
 
+  /* The household in a row (#238): a column for each person after the quantity, and the
+     initials of the people on top of the meal. From 640 px, whatever the number of
+     people (up to 5 besides the owner); on a phone only up to 3 (data-hh-s), because
+     past that the name would have no room and the chips under the row stay. --n is the
+     number of people besides the owner. */
+  .hh-cell { display: none; }
+  .hh-headrow { display: none; margin-bottom: 0.125rem; }
+  .hh-ini { @apply inline-grid place-items-center w-5 h-5 rounded-full text-[11px] font-bold text-accent-fg; background: var(--hh-c, var(--accent)); }
+  @media (max-width: 639px) {
+    .item-grid[data-hh-s], .hh-headrow[data-hh-s] {
+      grid-template-columns: minmax(0, 1fr) 3.5rem repeat(var(--n), 2.25rem) 2.25rem 2rem;
+    }
+    .hh-headrow[data-hh-s] { display: grid; column-gap: 0.25rem; }
+  }
+  .item-grid[data-hh-s] .item-kcal { grid-column: -3 / -2; }
+  .item-grid[data-hh-s] .item-actions { grid-column: -2 / -1; }
+  .item-grid[data-hh-s] .hh-cell { display: inline-flex; }
+  .item-grid[data-hh-s] .hh-chips { display: none; }
+  @media (min-width: 640px) {
+    .item-grid[data-hh], .hh-headrow {
+      grid-template-columns: minmax(0, 1fr) 5.5rem repeat(var(--n), 3.25rem) 2.75rem 2.25rem;
+    }
+    .hh-headrow { display: grid; column-gap: 0.625rem; }
+    .item-grid[data-hh] .item-kcal { grid-column: -3 / -2; }
+    .item-grid[data-hh] .item-actions { grid-column: -2 / -1; }
+    .item-grid[data-hh] .hh-cell { display: inline-flex; }
+    .item-grid[data-hh] .hh-chips { display: none; }
+  }
+
   /* A variant of the nutrition plan (#251): its chevron turns and its foods in short hide while it is open. */
   [data-var-toggle][aria-expanded="false"] .var-chev { transform: rotate(-90deg); }
   [data-var-toggle][aria-expanded="true"] .var-brief { display: none; }

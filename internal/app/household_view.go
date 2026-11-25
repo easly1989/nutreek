@@ -91,6 +91,7 @@ func (a *App) attachHousehold(r *http.Request, user *domain.User, full *domain.W
 			if mv.Meal.IsReminder {
 				continue
 			}
+			mv.Owner = user.DisplayName
 			for i, p := range people {
 				mv.Skips = append(mv.Skips, hhSkip{PersonID: p.ID, Name: p.Name, Color: i + 1, Skipped: persons[i].Skipped[mv.Meal.ID]})
 			}
