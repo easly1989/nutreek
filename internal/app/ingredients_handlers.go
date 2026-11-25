@@ -1164,6 +1164,8 @@ type ingredientEditData struct {
 	// (#143). Author is the name of whoever created it ("" when there is none).
 	ReadOnly bool
 	Author   string
+	// MoveTargets: the ingredients the uses of this one can move to (same unit).
+	MoveTargets []moveTarget
 }
 
 func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
@@ -1207,9 +1209,76 @@ func (a *App) handleIngredientEditForm(w http.ResponseWriter, r *http.Request) {
 	if data.ReadOnly {
 		data.Author = a.ingredientAuthor(r.Context(), ing, nil)
 	}
+	data.MoveTargets = a.moveTargets(r.Context(), ing, viewerID(r.Context()))
 	if err := a.Render.Render(w, r, http.StatusOK, "ingredient_edit", data); err != nil {
 		a.serverError(w, r, err)
 	}
+}
+
+// moveTarget is an ingredient the uses of another can move to.
+type moveTarget struct {
+	ID    int64
+	Label string
+}
+
+// moveTargets lists the ingredients the viewer sees with the same unit as ing,
+// by name: where its uses can move.
+func (a *App) moveTargets(ctx context.Context, ing *domain.Ingredient, viewer int64) []moveTarget {
+	all, err := a.Ingredients.ListAllActive(ctx, viewer)
+	if err != nil {
+		return nil
+	}
+	var out []moveTarget
+	for _, o := range all {
+		if o.ID == ing.ID || o.Unit != ing.Unit {
+			continue
+		}
+		label := o.Name
+		if o.Brand != nil && *o.Brand != "" {
+			label += " · " + *o.Brand
+		}
+		out = append(out, moveTarget{ID: o.ID, Label: label})
+	}
+	return out
+}
+
+// handleIngredientMoveUses POST /ingredients/{id}/move, field into: every use
+// of the ingredient in the viewer's own data moves to the ingredient they chose.
+func (a *App) handleIngredientMoveUses(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r, "id")
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	viewer := viewerID(r.Context())
+	from, err := a.Ingredients.GetVisible(r.Context(), id, viewer)
+	if err != nil {
+		a.notFound(w, r)
+		return
+	}
+	back := "/ingredients/" + strconv.FormatInt(id, 10) + "/edit"
+	toID, _ := strconv.ParseInt(r.PostFormValue("into"), 10, 64)
+	to, err := a.Ingredients.GetVisible(r.Context(), toID, viewer)
+	if err != nil {
+		a.Sessions.Put(r.Context(), "flash", a.t(r, "ingredients.move.invalid"))
+		http.Redirect(w, r, back, http.StatusSeeOther)
+		return
+	}
+	res, err := a.Ingredients.MoveUses(r.Context(), userFromContext(r.Context()).ID, from, to)
+	switch {
+	case errors.Is(err, db.ErrMoveUses):
+		a.Sessions.Put(r.Context(), "flash", a.t(r, "ingredients.move.invalid"))
+	case err != nil:
+		a.serverError(w, r, err)
+		return
+	default:
+		msg := a.t(r, "ingredients.move.done", "Count", res.Moved, "Name", to.Name)
+		if res.Skipped > 0 {
+			msg += " " + a.t(r, "ingredients.move.skipped", "Count", res.Skipped)
+		}
+		a.Sessions.Put(r.Context(), "flash", msg)
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 // ingredientFormFrom fills the edit form with the saved data.

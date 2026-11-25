@@ -112,6 +112,7 @@ func (a *App) Router() http.Handler {
 		r.With(ingredientCap).Post("/ingredients", a.handleIngredientCreate)
 		r.Get("/ingredients/{id}/edit", a.handleIngredientEditForm)
 		r.Post("/ingredients/{id}", a.handleIngredientUpdate)
+		r.Post("/ingredients/{id}/move", a.handleIngredientMoveUses)
 		r.Post("/ingredients/off-import", a.handleIngredientOFFImport)
 		r.Post("/ingredients/categories", a.handleCategoryCreate)
 		r.Post("/ingredients/categories/{id}/delete", a.handleCategoryDelete)
