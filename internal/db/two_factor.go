@@ -139,17 +139,34 @@ func (r *TwoFactor) UseEmailCode(ctx context.Context, userID int64, code string,
 	return n == 1, err
 }
 
-// Fail counts a wrong code; the fifth in a row locks the step for MFALock.
-func (r *TwoFactor) Fail(ctx context.Context, userID int64, now time.Time) (TwoFactorState, error) {
+// Reserve takes one try before the code is looked at, in one statement, so a burst of
+// parallel requests cannot all be checked inside one lock window. It is false while the
+// step is locked. The fifth try in a row locks the step for MFALock; a lock that has ended
+// starts the count again, so old mistakes do not lock a person out for good.
+func (r *TwoFactor) Reserve(ctx context.Context, userID int64, now time.Time) (bool, error) {
 	if err := r.ensure(ctx, userID); err != nil {
-		return TwoFactorState{}, err
+		return false, err
 	}
-	if _, err := r.db.ExecContext(ctx, `UPDATE user_2fa SET failed = failed + 1,
-		locked_until = CASE WHEN failed + 1 >= ? THEN ? ELSE locked_until END WHERE user_id = ?`,
-		MaxMFAFailures, now.Add(MFALock).Unix(), userID); err != nil {
-		return TwoFactorState{}, err
+	const next = `CASE WHEN locked_until > 0 AND locked_until <= ?1 THEN 1 ELSE failed + 1 END`
+	res, err := r.db.ExecContext(ctx, `UPDATE user_2fa SET
+		failed = `+next+`,
+		locked_until = CASE WHEN `+next+` >= ?2 THEN ?3 ELSE 0 END
+		WHERE user_id = ?4 AND locked_until <= ?1`,
+		now.Unix(), MaxMFAFailures, now.Add(MFALock).Unix(), userID)
+	if err != nil {
+		return false, err
 	}
-	return r.Get(ctx, userID)
+	n, err := res.RowsAffected()
+	return n == 1, err
+}
+
+// Clear forgets everything of the second step (a password reset: the mailbox proved the
+// account is theirs).
+func (r *TwoFactor) Clear(ctx context.Context, userID int64) error {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM user_2fa WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	return r.DeleteRecoveryCodes(ctx, userID)
 }
 
 // ResetFailures clears the count after a right code.

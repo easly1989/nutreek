@@ -19,6 +19,8 @@ import (
 const (
 	sessionKeyMFAUser = "mfa_user"
 	sessionKeyMFAAt   = "mfa_at"
+	// the fingerprint of the password it was opened with: a reset in between ends it
+	sessionKeyMFAStamp = "mfa_stamp"
 
 	mfaPendingTTL  = 10 * time.Minute // from the right password to the right code
 	emailCodeTTL   = 10 * time.Minute
@@ -48,6 +50,7 @@ func (a *App) startMFA(w http.ResponseWriter, r *http.Request, user *domain.User
 	}
 	a.Sessions.Put(r.Context(), sessionKeyMFAUser, user.ID)
 	a.Sessions.Put(r.Context(), sessionKeyMFAAt, time.Now().Unix())
+	a.Sessions.Put(r.Context(), sessionKeyMFAStamp, pwStamp(user.PasswordHash))
 	if !st.TOTPOn && st.EmailOn {
 		a.mailCode(r.Context(), user, st) // errors are logged; "send again" is on the page
 		http.Redirect(w, r, "/login/2fa?m=email", http.StatusSeeOther)
@@ -70,6 +73,7 @@ func (a *App) pendingMFA(r *http.Request) (int64, bool) {
 func (a *App) clearMFA(r *http.Request) {
 	a.Sessions.Remove(r.Context(), sessionKeyMFAUser)
 	a.Sessions.Remove(r.Context(), sessionKeyMFAAt)
+	a.Sessions.Remove(r.Context(), sessionKeyMFAStamp)
 }
 
 // mailCode sends a new email code unless one went a moment ago. It reports whether the
@@ -216,6 +220,11 @@ func (a *App) handleMFA(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	if a.Sessions.GetString(r.Context(), sessionKeyMFAStamp) != pwStamp(user.PasswordHash) {
+		a.clearMFA(r) // the password changed since it was typed
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
 	st, err := a.TwoFactor.Get(r.Context(), uid)
 	if err != nil {
 		a.serverError(w, r, err)
@@ -234,7 +243,15 @@ func (a *App) handleMFA(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, err)
 		}
 	}
-	if st.Locked(time.Now()) || !a.mfaLimiter().allow(remoteIP(r)) {
+	// The try is taken before the code is checked, so parallel requests cannot all pass the lock.
+	reserved := false
+	if a.mfaLimiter().allow(remoteIP(r)) {
+		if reserved, err = a.TwoFactor.Reserve(r.Context(), uid, time.Now()); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
+	if !reserved {
 		st.LockedUntil = time.Now().Add(db.MFALock).Unix()
 		fail(http.StatusTooManyRequests)
 		return
@@ -245,7 +262,7 @@ func (a *App) handleMFA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !good {
-		if st, err = a.TwoFactor.Fail(r.Context(), uid, time.Now()); err != nil {
+		if st, err = a.TwoFactor.Get(r.Context(), uid); err != nil {
 			a.serverError(w, r, err)
 			return
 		}
@@ -464,6 +481,9 @@ func (a *App) handleTOTPConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	step, ok := mfa.Verify(secret, r.PostFormValue("code"), time.Now(), 0)
+	if ok && !a.passwordOK(r, user) {
+		ok = false // a signed-in session alone cannot turn the second step on
+	}
 	if !ok || !a.mfaLimiter().allow(remoteIP(r)) {
 		d := a.secData(r, user)
 		d.Error = a.t(r, "security.totp.err_code")
@@ -541,7 +561,7 @@ func (a *App) handleEmailConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ok := false
-	if a.mfaLimiter().allow(remoteIP(r)) {
+	if a.passwordOK(r, user) && a.mfaLimiter().allow(remoteIP(r)) {
 		var err error
 		code := strings.ReplaceAll(strings.TrimSpace(r.PostFormValue("code")), " ", "")
 		if ok, err = a.TwoFactor.UseEmailCode(r.Context(), user.ID, code, time.Now()); err != nil {

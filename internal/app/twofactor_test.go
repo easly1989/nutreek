@@ -5,9 +5,11 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/amon2126/nutreek/internal/auth"
 	"github.com/amon2126/nutreek/internal/mfa"
 	"github.com/amon2126/nutreek/internal/stores"
 )
@@ -238,14 +240,14 @@ func TestSecuritySetUpTheApp(t *testing.T) {
 	if code, _, _ := b.get("/settings/security/totp/confirm"); code != 200 {
 		t.Fatalf("step 2: %d", code)
 	}
-	if code, _, _ := b.submit("/settings/security/totp/confirm", "/settings/security/totp/confirm", url.Values{"code": {"000000"}}); code != 422 {
+	if code, _, _ := b.submit("/settings/security/totp/confirm", "/settings/security/totp/confirm", url.Values{"code": {"000000"}, "password": {"right-password"}}); code != 422 {
 		t.Fatalf("a wrong code: %d", code)
 	}
 	if st, _ := a.TwoFactor.Get(context.Background(), user.ID); st.TOTPOn {
 		t.Fatal("must not be on yet")
 	}
 	good, _ := mfa.CodeAt(secret, time.Now())
-	code, _, body = b.submit("/settings/security/totp/confirm", "/settings/security/totp/confirm", url.Values{"code": {good}})
+	code, _, body = b.submit("/settings/security/totp/confirm", "/settings/security/totp/confirm", url.Values{"code": {good}, "password": {"right-password"}})
 	if code != 200 || strings.Count(body, "<li>") < mfa.RecoveryCodes {
 		t.Fatalf("step 3 should show the recovery codes: %d", code)
 	}
@@ -280,10 +282,10 @@ func TestSecuritySetUpEmailAndNewCodes(t *testing.T) {
 	if code, _, _ := b.get("/settings/security/email"); code != 200 {
 		t.Fatalf("code page: %d", code)
 	}
-	if code, _, _ := b.submit("/settings/security/email", "/settings/security/email/confirm", url.Values{"code": {"000000"}}); code != 422 && g[1] != "000000" {
+	if code, _, _ := b.submit("/settings/security/email", "/settings/security/email/confirm", url.Values{"code": {"000000"}, "password": {"right-password"}}); code != 422 && g[1] != "000000" {
 		t.Fatalf("a wrong code: %d", code)
 	}
-	code, _, body := b.submit("/settings/security/email", "/settings/security/email/confirm", url.Values{"code": {g[1]}})
+	code, _, body := b.submit("/settings/security/email", "/settings/security/email/confirm", url.Values{"code": {g[1]}, "password": {"right-password"}})
 	if code != 200 || strings.Count(body, "<li>") < mfa.RecoveryCodes {
 		t.Fatalf("the codes page: %d", code)
 	}
@@ -332,5 +334,129 @@ func TestCodeMailEscapesAndCarriesTheCode(t *testing.T) {
 	subject, text, body := codeMail("it", "Carlo <b>", "123456")
 	if subject == "" || !strings.Contains(text, "123456") || !strings.Contains(body, "123456") || strings.Contains(body, "<b>") {
 		t.Fatalf("subject %q text %q", subject, text)
+	}
+}
+
+func TestMFAReserveIsAtomicAndDecays(t *testing.T) {
+	a, _, _ := mfaApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "right-password")
+	ctx := context.Background()
+	now := time.Now()
+
+	// Twenty tries at once: only five are let through, and the step is locked after them.
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	got := 0
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if ok, err := a.TwoFactor.Reserve(ctx, user.ID, now); err == nil && ok {
+				mu.Lock()
+				got++
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	if got != 5 {
+		t.Fatalf("tries let through = %d, want 5", got)
+	}
+	if ok, _ := a.TwoFactor.Reserve(ctx, user.ID, now); ok {
+		t.Fatal("the step should be locked")
+	}
+	// When the lock has ended the count starts again: one mistake does not lock for good.
+	later := now.Add(6 * time.Minute)
+	if ok, _ := a.TwoFactor.Reserve(ctx, user.ID, later); !ok {
+		t.Fatal("after the lock a try should be allowed")
+	}
+	if st, _ := a.TwoFactor.Get(ctx, user.ID); st.Failed != 1 || st.Locked(later) {
+		t.Fatalf("after the lock: failed=%d locked=%v", st.Failed, st.Locked(later))
+	}
+}
+
+func TestSecurityTurningOnNeedsThePassword(t *testing.T) {
+	a, _, b := mfaApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "right-password")
+	logIn(b, "carlo@example.test", "right-password")
+	b.get("/settings/security/totp")
+	st, _ := a.TwoFactor.Get(context.Background(), user.ID)
+	secret, _ := a.openTOTP(st)
+	good, _ := mfa.CodeAt(secret, time.Now())
+	for _, pw := range []string{"", "wrong"} {
+		if code, _, _ := b.submit("/settings/security/totp/confirm", "/settings/security/totp/confirm", url.Values{"code": {good}, "password": {pw}}); code != 422 {
+			t.Fatalf("password %q: %d, want 422", pw, code)
+		}
+	}
+	if st, _ := a.TwoFactor.Get(context.Background(), user.ID); st.TOTPOn {
+		t.Fatal("a session alone must not turn the second step on")
+	}
+}
+
+func TestPasswordResetClearsTheSecondStep(t *testing.T) {
+	a, _, b := mfaApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "old-password")
+	totpOn(t, a, user.ID)
+	codes, _ := mfa.NewRecoveryCodes(2)
+	_ = a.TwoFactor.ReplaceRecoveryCodes(context.Background(), user.ID, codes)
+	_ = a.PasswordResets.Create(context.Background(), user.ID, resetHash("tok"), time.Now().Add(time.Hour), 0)
+	if code, _, _ := b.submit("/reset/tok", "/reset/tok", url.Values{"password": {"a-new-password"}}); code != 303 {
+		t.Fatalf("reset: %d", code)
+	}
+	if st, _ := a.TwoFactor.Get(context.Background(), user.ID); st.Enabled() {
+		t.Fatal("the mailbox proved the account is theirs: the second step goes")
+	}
+	if left, _ := a.TwoFactor.RecoveryLeft(context.Background(), user.ID); left != 0 {
+		t.Fatalf("recovery codes left = %d", left)
+	}
+	if code, loc := logIn(newBrowser(t, a), "carlo@example.test", "a-new-password"); code != 303 || loc != "/" {
+		t.Fatalf("sign-in after the reset: %d -> %q", code, loc)
+	}
+}
+
+func TestMFAPendingSignInEndsWithAPasswordChange(t *testing.T) {
+	a, _, b := mfaApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "old-password")
+	secret := totpOn(t, a, user.ID)
+	logIn(b, "carlo@example.test", "old-password")
+	hash, _ := auth.HashPassword("a-new-password")
+	if err := a.Users.UpdatePassword(context.Background(), user.ID, hash); err != nil {
+		t.Fatal(err)
+	}
+	good, _ := mfa.CodeAt(secret, time.Now())
+	if code, loc, _ := code2fa(b, "totp", good); code == 303 && loc == "/" {
+		t.Fatal("a sign-in opened with the old password must not finish")
+	}
+	if signedIn(b) {
+		t.Fatal("must stay signed out")
+	}
+}
+
+func TestMFAAfterTheProviderLinkStep(t *testing.T) {
+	a, p, b := ssoApp(t, false)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "right-password")
+	box, _ := stores.NewBox("a-secret-key-of-enough-length")
+	a.StoreBox = box
+	totpOn(t, a, user.ID)
+	if status, redirect := ssoTrip(t, b, p); status != 303 || redirect != "/auth/oidc/link" {
+		t.Fatalf("callback: %d -> %q", status, redirect)
+	}
+	if code, loc, _ := b.submit("/auth/oidc/link", "/auth/oidc/link", url.Values{"password": {"right-password"}}); code != 303 || loc != "/login/2fa" {
+		t.Fatalf("link with the password: %d -> %q, want the second step", code, loc)
+	}
+	if signedIn(b) {
+		t.Fatal("the password alone must not finish the sign-in")
+	}
+}
+
+func TestIPv6ClientsShareTheirNetworkBucket(t *testing.T) {
+	if bucketIP("2001:db8:1:2::1") != bucketIP("2001:db8:1:2:ffff::9") {
+		t.Fatal("two addresses of one /64 are one client")
+	}
+	if bucketIP("2001:db8:1:2::1") == bucketIP("2001:db8:1:3::1") {
+		t.Fatal("another /64 is another client")
+	}
+	if bucketIP("203.0.113.9") != "203.0.113.9" {
+		t.Fatal("IPv4 stays as it is")
 	}
 }

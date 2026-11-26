@@ -223,7 +223,7 @@ func (a *App) handleReset(w http.ResponseWriter, r *http.Request) {
 	}
 	// Whoever held the account before is out: sessions that started with the old password
 	// stop working (see loadUserMiddleware), and API tokens and provider links go too.
-	if err := errors.Join(a.APITokens.RevokeAll(r.Context(), userID), a.Identities.UnlinkAll(r.Context(), userID)); err != nil {
+	if err := errors.Join(a.APITokens.RevokeAll(r.Context(), userID), a.Identities.UnlinkAll(r.Context(), userID), a.TwoFactor.Clear(r.Context(), userID)); err != nil {
 		a.serverError(w, r, err)
 		return
 	}

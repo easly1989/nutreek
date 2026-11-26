@@ -10,6 +10,7 @@
   <form method="post" action="/settings/security/email/confirm" class="card">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <label class="lab">{{t "security.mfa.code_label"}}<input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9 ]*" required autofocus autocomplete="one-time-code" maxlength="7" class="field field-lg text-center tabular-nums tracking-[0.3em]"></label>
+    <label class="lab">{{t "security.password"}}<input name="password" type="password" required autocomplete="current-password" class="field field-lg"></label>
     <button class="btn-primary btn-block">{{t "security.totp.confirm"}}</button>
   </form>
   <form method="post" action="/settings/security/email/start" class="text-center"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="min-h-9 text-accent font-semibold hover:underline">{{t "security.mfa.resend"}}</button></form>
