@@ -24,6 +24,7 @@ import (
 	"github.com/amon2126/nutreek/internal/notify"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/service"
+	"github.com/amon2126/nutreek/internal/sso"
 	"github.com/amon2126/nutreek/internal/stores"
 	"github.com/amon2126/nutreek/internal/updates"
 	"github.com/amon2126/nutreek/internal/web"
@@ -192,6 +193,16 @@ func run(logger *slog.Logger) error {
 		Household:     db.NewHousehold(store.DB),
 		StorePlugins:  db.NewStorePlugins(store.DB),
 		StoreClient:   stores.NewClient(cfg.StoresAllowPrivate),
+	}
+	if cfg.OIDCIssuer != "" {
+		a.Identities = db.NewIdentities(store.DB)
+		a.SSO = sso.New(sso.Config{
+			Issuer:       cfg.OIDCIssuer,
+			ClientID:     cfg.OIDCClientID,
+			ClientSecret: cfg.OIDCClientSecret,
+			RedirectURL:  cfg.BaseURL + "/auth/oidc/callback",
+			Name:         cfg.OIDCName,
+		}, nil)
 	}
 	// The integrated stores (#277) run in this process.
 	a.StoreClient.Builtin = map[string]http.Handler{}

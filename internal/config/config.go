@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -52,6 +54,16 @@ type Config struct {
 	// connected. StoresAllowPrivate lets a plugin sit on a private address (a home server).
 	SecretKey          string
 	StoresAllowPrivate bool
+
+	// BaseURL is the public address of this instance (no trailing slash): the
+	// callback of the sign-in provider is built on it (#333).
+	BaseURL string
+	// OIDC* turn on "Sign in with <name>" (#333). IssuerURL empty = off.
+	OIDCIssuer       string
+	OIDCClientID     string
+	OIDCClientSecret string
+	OIDCName         string
+	OIDCAutoCreate   bool
 }
 
 // Load reads the configuration from the env vars. It validates the prod
@@ -116,6 +128,17 @@ func Load() (*Config, error) {
 		return nil, errors.New("NUTREEK_SECRET_KEY: at least 16 characters required (e.g. openssl rand -hex 32)")
 	}
 
+	oidcAutoCreate, err := strconv.ParseBool(getenv("NUTREEK_OIDC_AUTO_CREATE", "false"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_OIDC_AUTO_CREATE: %w", err)
+	}
+	baseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("NUTREEK_BASE_URL")), "/")
+	if baseURL != "" {
+		if u, err := url.Parse(baseURL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			return nil, errors.New("NUTREEK_BASE_URL: an absolute http(s) address is required (e.g. https://nutreek.example.com)")
+		}
+	}
+
 	cfg := &Config{
 		Addr:              getenv("NUTREEK_ADDR", ":8080"),
 		DBPath:            getenv("NUTREEK_DB_PATH", "./data/nutreek.db"),
@@ -138,6 +161,21 @@ func Load() (*Config, error) {
 
 		SecretKey:          secret,
 		StoresAllowPrivate: storesAllowPrivate,
+
+		BaseURL:          baseURL,
+		OIDCIssuer:       strings.TrimSpace(os.Getenv("NUTREEK_OIDC_ISSUER")),
+		OIDCClientID:     strings.TrimSpace(os.Getenv("NUTREEK_OIDC_CLIENT_ID")),
+		OIDCClientSecret: os.Getenv("NUTREEK_OIDC_CLIENT_SECRET"),
+		OIDCName:         getenv("NUTREEK_OIDC_NAME", "Single sign-on"),
+		OIDCAutoCreate:   oidcAutoCreate,
+	}
+	if cfg.OIDCIssuer != "" {
+		switch {
+		case cfg.BaseURL == "":
+			return nil, errors.New("NUTREEK_OIDC_ISSUER needs NUTREEK_BASE_URL (the callback address)")
+		case cfg.OIDCClientID == "" || cfg.OIDCClientSecret == "":
+			return nil, errors.New("NUTREEK_OIDC_ISSUER needs NUTREEK_OIDC_CLIENT_ID and NUTREEK_OIDC_CLIENT_SECRET")
+		}
 	}
 
 	keyHex := os.Getenv("NUTREEK_SESSION_KEY")

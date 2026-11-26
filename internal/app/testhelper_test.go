@@ -59,6 +59,7 @@ func newTestApp(t *testing.T) *App {
 		WaterLogs:              db.NewWaterLogs(store.DB),
 		Categories:             db.NewCategories(store.DB),
 		Notifications:          db.NewNotifications(store.DB),
+		Identities:             db.NewIdentities(store.DB),
 		Household:              db.NewHousehold(store.DB),
 		StorePlugins:           db.NewStorePlugins(store.DB),
 		StoreClient:            stores.NewClient(true),
