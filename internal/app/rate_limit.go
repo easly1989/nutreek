@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/amon2126/nutreek/internal/i18n"
@@ -151,9 +152,34 @@ func clientIP(r *http.Request) string {
 	return chain[0].String()
 }
 
-// isTrustedProxy: loopback and private networks (10/8, 172.16/12, 192.168/16,
-// fc00::/7) count as our own infrastructure.
+// trustedProxies is the list set by NUTREEK_TRUSTED_PROXIES (#346); nil means it was not set.
+var trustedProxies atomic.Pointer[[]netip.Prefix]
+
+// SetTrustedProxies says which proxy addresses may tell us the client's address in
+// X-Forwarded-For. A nil list restores the default (loopback and private networks); an empty
+// list trusts nobody.
+func SetTrustedProxies(list []netip.Prefix, set bool) {
+	if !set {
+		trustedProxies.Store(nil)
+		return
+	}
+	if list == nil {
+		list = []netip.Prefix{}
+	}
+	trustedProxies.Store(&list)
+}
+
+// isTrustedProxy: with NUTREEK_TRUSTED_PROXIES set, an address in the list; otherwise loopback
+// and private networks (10/8, 172.16/12, 192.168/16, fc00::/7) count as our own infrastructure.
 func isTrustedProxy(a netip.Addr) bool {
 	a = a.Unmap()
+	if list := trustedProxies.Load(); list != nil {
+		for _, p := range *list {
+			if p.Contains(a) {
+				return true
+			}
+		}
+		return false
+	}
 	return a.IsLoopback() || a.IsPrivate()
 }

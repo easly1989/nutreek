@@ -197,6 +197,10 @@ func run(logger *slog.Logger) error {
 		StorePlugins:  db.NewStorePlugins(store.DB),
 		StoreClient:   stores.NewClient(cfg.StoresAllowPrivate),
 	}
+	app.SetTrustedProxies(cfg.TrustedProxies, cfg.TrustedProxiesSet)
+	if !cfg.TrustedProxiesSet {
+		logger.Warn("NUTREEK_TRUSTED_PROXIES is not set: any private address is believed when it sends X-Forwarded-For; list your proxy to close that")
+	}
 	a.TwoFactor = db.NewTwoFactor(store.DB)
 	if cfg.BaseURL != "" {
 		u, err := url.Parse(cfg.BaseURL)
