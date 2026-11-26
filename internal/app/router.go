@@ -99,6 +99,8 @@ func (a *App) Router() http.Handler {
 			ssoLimiter := newIPRateLimiter(20, oneMinute)
 			r.With(ssoLimiter.Middleware).Get("/auth/oidc/start", a.handleSSOStart)
 			r.With(ssoLimiter.Middleware).Get("/auth/oidc/callback", a.handleSSOCallback)
+			r.Get("/auth/oidc/link", a.handleSSOLinkForm)
+			r.Post("/auth/oidc/link", a.handleSSOLink)
 		}
 	}
 	r.Post("/logout", a.handleLogout)

@@ -1,0 +1,16 @@
+{{define "title"}}{{t "auth.link.title"}} — Nutreek{{end}}
+{{define "content"}}
+<div class="auth-box">
+  <div class="text-center">
+    <h1 class="h1">{{t "auth.link.title"}}</h1>
+    <p class="text-muted mt-1">{{t "auth.link.subtitle" "Name" .SSOName}}</p>
+  </div>
+  {{if .Error}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>{{end}}
+  <form method="post" action="/auth/oidc/link" class="card">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label class="lab">{{t "auth.field.password"}}<span class="field-pw"><input id="password" name="password" type="password" required autofocus autocomplete="current-password" class="field field-lg">{{template "pw_toggle" "password"}}</span></label>
+    <button class="btn-primary btn-block">{{t "auth.link.submit"}}</button>
+  </form>
+  <p class="text-center"><a href="/login" class="text-accent font-semibold hover:underline">{{t "auth.link.cancel"}}</a></p>
+</div>
+{{end}}

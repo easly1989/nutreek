@@ -30,8 +30,10 @@ type Config struct {
 
 // Identity is what Nutreek keeps of a sign-in: nothing is stored from the tokens.
 type Identity struct {
-	Email string
-	Name  string
+	Issuer  string
+	Subject string // who the person is at the provider: stable, unlike the email
+	Email   string
+	Name    string
 }
 
 // Client talks to one provider. The provider's discovery document is fetched on
@@ -58,15 +60,20 @@ func (c *Client) Name() string { return c.cfg.Name }
 
 func (c *Client) discover(ctx context.Context) (*oidc.Provider, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.provider != nil {
-		return c.provider, nil
+	p := c.provider
+	c.mu.Unlock()
+	if p != nil {
+		return p, nil
 	}
+	// The network call is made outside the lock: a provider that is slow or down
+	// must not make every other sign-in wait behind one fetch.
 	p, err := oidc.NewProvider(oidc.ClientContext(ctx, c.http), c.cfg.Issuer)
 	if err != nil {
 		return nil, fmt.Errorf("sso discovery: %w", err)
 	}
+	c.mu.Lock()
 	c.provider = p
+	c.mu.Unlock()
 	return p, nil
 }
 
@@ -133,6 +140,10 @@ func (c *Client) Exchange(ctx context.Context, code, nonce, verifier string) (*I
 		if err != nil {
 			return nil, fmt.Errorf("sso userinfo: %w", err)
 		}
+		// OpenID Connect Core 5.3.2: userinfo must be about the same person.
+		if ui.Subject != idt.Subject {
+			return nil, errors.New("sso: userinfo subject differs from the ID token")
+		}
 		var u struct {
 			Email         string `json:"email"`
 			EmailVerified *bool  `json:"email_verified"`
@@ -155,5 +166,5 @@ func (c *Client) Exchange(ctx context.Context, code, nonce, verifier string) (*I
 	if name == "" {
 		name = email
 	}
-	return &Identity{Email: email, Name: name}, nil
+	return &Identity{Issuer: c.cfg.Issuer, Subject: idt.Subject, Email: email, Name: name}, nil
 }

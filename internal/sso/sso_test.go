@@ -40,6 +40,7 @@ func TestExchange(t *testing.T) {
 		{name: "nonce of another sign-in", shape: func(p *ssotest.Server) { p.WrongNonce = true }, anyErr: true},
 		{name: "nonce the app does not know", shape: func(*ssotest.Server) {}, nonce: "other", anyErr: true},
 		{name: "bad code", shape: func(*ssotest.Server) {}, code: "bad", anyErr: true},
+		{name: "userinfo about someone else", shape: func(p *ssotest.Server) { p.EmailInToken = false; p.UserinfoSub = "u2" }, anyErr: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -63,7 +64,7 @@ func TestExchange(t *testing.T) {
 					t.Fatal("want an error")
 				}
 			default:
-				if err != nil || id.Email != "carlo@example.test" || id.Name != "Carlo" {
+				if err != nil || id.Email != "carlo@example.test" || id.Name != "Carlo" || id.Subject != "u1" || id.Issuer != p.URL {
 					t.Fatalf("got %+v, %v", id, err)
 				}
 			}

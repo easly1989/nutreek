@@ -24,10 +24,12 @@ type Server struct {
 	*httptest.Server
 	ClientID, ClientSecret string
 	Email, Name            string
-	Verified               bool // email_verified
-	EmailInToken           bool // false: the email is only in userinfo, as Authelia sends it
-	NoEmail                bool // the provider has no email at all
-	WrongNonce             bool // the ID token carries another nonce
+	Sub                    string // who the person is here; stays the same when the email changes
+	UserinfoSub            string // when set, userinfo answers about someone else
+	Verified               bool   // email_verified
+	EmailInToken           bool   // false: the email is only in userinfo, as Authelia sends it
+	NoEmail                bool   // the provider has no email at all
+	WrongNonce             bool   // the ID token carries another nonce
 
 	key       *rsa.PrivateKey
 	nonce     string
@@ -41,7 +43,7 @@ func New(t *testing.T) *Server {
 	if err != nil {
 		t.Fatalf("rsa key: %v", err)
 	}
-	s := &Server{ClientID: "nutreek", ClientSecret: "s3cret", Email: "carlo@example.test", Name: "Carlo",
+	s := &Server{ClientID: "nutreek", ClientSecret: "s3cret", Email: "carlo@example.test", Name: "Carlo", Sub: "u1",
 		Verified: true, EmailInToken: true, key: key}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +93,11 @@ func (s *Server) Visit(t *testing.T, authURL string) (code, state string) {
 }
 
 func (s *Server) claims(userinfo bool) map[string]any {
-	c := map[string]any{"sub": "u1", "preferred_username": "carlo"}
+	sub := s.Sub
+	if userinfo && s.UserinfoSub != "" {
+		sub = s.UserinfoSub
+	}
+	c := map[string]any{"sub": sub, "preferred_username": "carlo"}
 	if s.Name != "" {
 		c["name"] = s.Name
 	}
@@ -125,7 +131,7 @@ func (s *Server) token(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	std := jwt.Claims{Issuer: s.URL, Subject: "u1", Audience: jwt.Audience{s.ClientID},
+	std := jwt.Claims{Issuer: s.URL, Subject: s.Sub, Audience: jwt.Audience{s.ClientID},
 		Expiry: jwt.NewNumericDate(time.Now().Add(time.Hour)), IssuedAt: jwt.NewNumericDate(time.Now())}
 	raw, err := jwt.Signed(signer).Claims(std).Claims(map[string]any{"nonce": nonce}).Claims(s.claims(false)).Serialize()
 	if err != nil {

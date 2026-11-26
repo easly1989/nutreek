@@ -195,6 +195,7 @@ func run(logger *slog.Logger) error {
 		StoreClient:   stores.NewClient(cfg.StoresAllowPrivate),
 	}
 	if cfg.OIDCIssuer != "" {
+		a.Identities = db.NewIdentities(store.DB)
 		a.SSO = sso.New(sso.Config{
 			Issuer:       cfg.OIDCIssuer,
 			ClientID:     cfg.OIDCClientID,

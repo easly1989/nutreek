@@ -71,7 +71,8 @@ type App struct {
 
 	// SSO signs people in through an OpenID Connect provider (#333); nil when
 	// NUTREEK_OIDC_ISSUER is not set.
-	SSO *sso.Client
+	SSO        *sso.Client
+	Identities *db.Identities // who each account is at the provider
 
 	// Demo is set only in the demo build (#137, cmd/nutreek/demo_on.go).
 	Demo       Demo
