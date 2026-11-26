@@ -70,3 +70,36 @@ func TestLoadSMTP(t *testing.T) {
 		t.Fatal("a port that is not a number should fail")
 	}
 }
+
+func TestParseProxies(t *testing.T) {
+	list, err := ParseProxies("10.0.0.5, 172.18.0.0/16 ,fd00::1")
+	if err != nil || len(list) != 3 || list[0].String() != "10.0.0.5/32" || list[1].String() != "172.18.0.0/16" || list[2].String() != "fd00::1/128" {
+		t.Fatalf("got %v, %v", list, err)
+	}
+	if list, err := ParseProxies("::ffff:10.0.0.0/104"); err != nil || len(list) != 1 || list[0].String() != "10.0.0.0/8" {
+		t.Fatalf("a mapped range is unmapped: %v, %v", list, err)
+	}
+	if list, err := ParseProxies("none"); err != nil || len(list) != 0 {
+		t.Fatalf("none: %v, %v", list, err)
+	}
+	for _, bad := range []string{"not-an-address", "10.0.0.0/99", "10.0.0.1/x", "0.0.0.0/0", "::/0", "none,10.0.0.5", "::ffff:0.0.0.0/0"} {
+		if _, err := ParseProxies(bad); err == nil {
+			t.Errorf("%q should be refused", bad)
+		}
+	}
+}
+
+func TestLoadTrustedProxies(t *testing.T) {
+	t.Setenv("NUTREEK_TRUSTED_PROXIES", "")
+	if cfg, err := Load(); err != nil || cfg.TrustedProxiesSet {
+		t.Fatalf("not set: %v", err)
+	}
+	t.Setenv("NUTREEK_TRUSTED_PROXIES", "10.0.0.5")
+	if cfg, err := Load(); err != nil || !cfg.TrustedProxiesSet || len(cfg.TrustedProxies) != 1 {
+		t.Fatalf("set: %v", err)
+	}
+	t.Setenv("NUTREEK_TRUSTED_PROXIES", "nonsense")
+	if _, err := Load(); err == nil {
+		t.Fatal("a bad value should stop the start")
+	}
+}

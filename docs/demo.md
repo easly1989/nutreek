@@ -42,7 +42,7 @@ The GHCR package must be public, so Northflank pulls the image without credentia
 
 Leave `NUTREEK_OWNER_EMAIL` and `NUTREEK_ADMIN_TOKEN` unset: the demo build clears them anyway. The `NUTREEK_DEMO_*` limits keep their defaults unless the demo needs others. The image already sets `NUTREEK_ADDR=:8080` and `NUTREEK_DB_PATH=/data/nutreek.db`.
 
-Northflank's proxy connects from a private address, which the rate limits already trust for `X-Forwarded-For`, so the per-address limits count visitors, not the proxy.
+Northflank's proxy connects from a private address, which the rate limits believe for `X-Forwarded-For` only when it is listed in `NUTREEK_TRUSTED_PROXIES`: set that variable to the platform's proxy range, or the per-address limits count the proxy, not the visitors.
 
 **Health checks**, HTTP `GET /healthz` on port 8080 (it pings SQLite, which says more than a TCP check):
 

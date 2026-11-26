@@ -251,6 +251,7 @@ Every environment variable:
 | `NUTREEK_UPDATE_CHECK` | `true` | Checks once a day for a newer release and tells the owner (see [Updating](#updating)) |
 | `NUTREEK_SECRET_KEY` | *(none)* | 16+ characters (`openssl rand -hex 32`); seals the tokens of store plugins. Without it no store can be connected ([docs/store-plugins.md](docs/store-plugins.md)) |
 | `NUTREEK_STORES_ALLOW_PRIVATE` | `false` | Lets a store plugin sit on a private address (a server at home) |
+| `NUTREEK_TRUSTED_PROXIES` | *(not set)* | Reverse proxies whose `X-Forwarded-For` is believed for rate limiting: addresses or ranges, comma-separated (`none` for nobody). Not set, only the loopback address is believed, so list your reverse proxy if it runs in another container or machine |
 | `NUTREEK_BASE_URL` | *(none)* | Public address of the instance, e.g. `https://nutreek.example.com`. Needed for provider sign-in, emails and passkeys ([Sign-in options](#sign-in-options)) |
 | `NUTREEK_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_NAME`, `_AUTO_CREATE` | *(none)* | "Sign in with…" through an OpenID Connect provider such as Authelia |
 | `NUTREEK_SMTP_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_FROM`, `_TLS` | *(none)* | Your own SMTP server: turns on password recovery by email and the email code of the second step |

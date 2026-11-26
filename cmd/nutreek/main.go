@@ -197,6 +197,7 @@ func run(logger *slog.Logger) error {
 		StorePlugins:  db.NewStorePlugins(store.DB),
 		StoreClient:   stores.NewClient(cfg.StoresAllowPrivate),
 	}
+	app.SetTrustedProxies(cfg.TrustedProxies, cfg.TrustedProxiesSet)
 	a.TwoFactor = db.NewTwoFactor(store.DB)
 	if cfg.BaseURL != "" {
 		u, err := url.Parse(cfg.BaseURL)

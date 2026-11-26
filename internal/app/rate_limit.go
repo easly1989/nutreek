@@ -1,11 +1,13 @@
 package app
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/amon2126/nutreek/internal/i18n"
@@ -101,9 +103,8 @@ func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
 // remoteIP extracts the client's IP for rate limiting.
 //
 // X-Forwarded-For counts only when the connection comes from a trusted proxy
-// (loopback or a private network: Traefik/nginx on the same host or in
-// Docker). A client connecting directly cannot pick its IP by sending the
-// header. The chain is read from the right: the first untrusted address is
+// (the loopback address, or the proxies listed in NUTREEK_TRUSTED_PROXIES). A client
+// connecting directly cannot pick its IP by sending the header. The chain is read from the right: the first untrusted address is
 // the one added by our last proxy, so it cannot be forged. When the whole
 // chain is private (a client on the LAN), the first address counts.
 func remoteIP(r *http.Request) string { return bucketIP(clientIP(r)) }
@@ -129,31 +130,69 @@ func clientIP(r *http.Request) string {
 	}
 	peerAddr, err := netip.ParseAddr(peer)
 	if err != nil || !isTrustedProxy(peerAddr) {
+		if err == nil && r.Header.Get("X-Forwarded-For") != "" && (peerAddr.Unmap().IsPrivate() || peerAddr.Unmap().IsLoopback()) {
+			warnUnlistedProxy.Do(func() {
+				slog.Warn("X-Forwarded-For arrived from a private address that is not in NUTREEK_TRUSTED_PROXIES: it is ignored, so every visitor behind it counts as that address. If this is your reverse proxy, list it in NUTREEK_TRUSTED_PROXIES (and give its container a fixed address)", "peer", peer)
+			})
+		}
 		return peer
 	}
 
-	var chain []netip.Addr
+	// The chain is read from the right. An entry that does not parse (a proxy that writes
+	// ip:port, or "unknown") stops the walk: skipping it would pick an address the client wrote.
+	var parts []string
 	for _, v := range r.Header.Values("X-Forwarded-For") {
 		for part := range strings.SplitSeq(v, ",") {
-			if a, err := netip.ParseAddr(strings.TrimSpace(part)); err == nil {
-				chain = append(chain, a.Unmap())
-			}
+			parts = append(parts, strings.TrimSpace(part))
 		}
 	}
-	if len(chain) == 0 {
+	if len(parts) == 0 {
 		return peer
 	}
-	for i := len(chain) - 1; i >= 0; i-- {
-		if !isTrustedProxy(chain[i]) {
-			return chain[i].String()
+	for i := len(parts) - 1; i >= 0; i-- {
+		a, err := netip.ParseAddr(parts[i])
+		if err != nil {
+			return peer
+		}
+		a = a.Unmap()
+		if !isTrustedProxy(a) {
+			return a.String()
 		}
 	}
-	return chain[0].String()
+	first, _ := netip.ParseAddr(parts[0])
+	return first.Unmap().String()
 }
 
-// isTrustedProxy: loopback and private networks (10/8, 172.16/12, 192.168/16,
-// fc00::/7) count as our own infrastructure.
+var warnUnlistedProxy sync.Once
+
+// trustedProxies is the list set by NUTREEK_TRUSTED_PROXIES (#346); nil means it was not set.
+var trustedProxies atomic.Pointer[[]netip.Prefix]
+
+// SetTrustedProxies says which proxy addresses may tell us the client's address in
+// X-Forwarded-For. With set false the default holds (loopback only); an empty list trusts nobody.
+func SetTrustedProxies(list []netip.Prefix, set bool) {
+	if !set {
+		trustedProxies.Store(nil)
+		return
+	}
+	if list == nil {
+		list = []netip.Prefix{}
+	}
+	trustedProxies.Store(&list)
+}
+
+// isTrustedProxy: with NUTREEK_TRUSTED_PROXIES set, an address in the list; otherwise only the
+// loopback address (a proxy on the same host). A reverse proxy in another container or machine
+// has to be listed.
 func isTrustedProxy(a netip.Addr) bool {
 	a = a.Unmap()
-	return a.IsLoopback() || a.IsPrivate()
+	if list := trustedProxies.Load(); list != nil {
+		for _, p := range *list {
+			if p.Contains(a) {
+				return true
+			}
+		}
+		return false
+	}
+	return a.IsLoopback()
 }

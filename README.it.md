@@ -272,6 +272,7 @@ Tutte le variabili d'ambiente:
 | `NUTREEK_UPDATE_CHECK` | `true` | Controlla una volta al giorno se c'è una release più recente e lo dice al proprietario (vedi [Aggiornare](#aggiornare)) |
 | `NUTREEK_SECRET_KEY` | *(nessuno)* | Almeno 16 caratteri (`openssl rand -hex 32`); cifra i token dei plugin dei negozi. Senza, non si può collegare nessun negozio ([docs/store-plugins.md](docs/store-plugins.md)) |
 | `NUTREEK_STORES_ALLOW_PRIVATE` | `false` | Permette a un plugin di stare su un indirizzo privato (un server in casa) |
+| `NUTREEK_TRUSTED_PROXIES` | *(non impostata)* | Reverse proxy di cui si crede `X-Forwarded-For` per i limiti di tentativi: indirizzi o intervalli separati da virgola (`none` per nessuno). Se non è impostata si crede solo al loopback: elenca il tuo reverse proxy se gira in un altro container o su un'altra macchina |
 | `NUTREEK_BASE_URL` | *(nessuno)* | Indirizzo pubblico dell'istanza, per esempio `https://nutreek.example.com`. Serve per l'accesso con un provider, le email e le passkey ([Opzioni di accesso](#opzioni-di-accesso)) |
 | `NUTREEK_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_NAME`, `_AUTO_CREATE` | *(nessuno)* | "Accedi con…" tramite un provider OpenID Connect come Authelia |
 | `NUTREEK_SMTP_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_FROM`, `_TLS` | *(nessuno)* | Il tuo server SMTP: attiva il recupero password via email e il codice per email del secondo passaggio |

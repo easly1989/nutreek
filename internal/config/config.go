@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/netip"
 	"net/url"
 	"os"
 	"strconv"
@@ -72,6 +73,11 @@ type Config struct {
 	SMTPPassword string
 	SMTPFrom     string
 	SMTPTLS      string // starttls (default), tls or none
+
+	// TrustedProxies are the addresses whose X-Forwarded-For is believed (#346). TrustedProxiesSet is
+	// false when the variable is not set: then only the loopback address is believed.
+	TrustedProxies    []netip.Prefix
+	TrustedProxiesSet bool
 }
 
 // Load reads the configuration from the env vars. It validates the prod
@@ -188,6 +194,13 @@ func Load() (*Config, error) {
 		SMTPFrom:     strings.TrimSpace(os.Getenv("NUTREEK_SMTP_FROM")),
 		SMTPTLS:      strings.ToLower(getenv("NUTREEK_SMTP_TLS", "starttls")),
 	}
+	if raw, ok := os.LookupEnv("NUTREEK_TRUSTED_PROXIES"); ok && strings.TrimSpace(raw) != "" {
+		list, err := ParseProxies(raw)
+		if err != nil {
+			return nil, fmt.Errorf("NUTREEK_TRUSTED_PROXIES: %w", err)
+		}
+		cfg.TrustedProxies, cfg.TrustedProxiesSet = list, true
+	}
 	if cfg.SMTPHost != "" {
 		switch {
 		case cfg.BaseURL == "":
@@ -236,4 +249,46 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// ParseProxies reads a comma-separated list of addresses and ranges (10.0.0.5, 172.18.0.0/16,
+// fd00::/8). "none" trusts no proxy at all and cannot be mixed with others. A range must hold
+// only proxies, and one that holds every address is refused.
+func ParseProxies(raw string) ([]netip.Prefix, error) {
+	var out []netip.Prefix
+	none := false
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		switch {
+		case part == "":
+			continue
+		case strings.EqualFold(part, "none"):
+			none = true
+		case strings.Contains(part, "/"):
+			p, err := netip.ParsePrefix(part)
+			if err != nil {
+				return nil, fmt.Errorf("%q is not a range", part)
+			}
+			if a := p.Addr(); a.Is4In6() { // ::ffff:10.0.0.0/104 is 10.0.0.0/8
+				if p.Bits() < 96 {
+					return nil, fmt.Errorf("%q is too wide", part)
+				}
+				p = netip.PrefixFrom(a.Unmap(), p.Bits()-96)
+			}
+			if p.Bits() == 0 {
+				return nil, fmt.Errorf("%q would believe every address", part)
+			}
+			out = append(out, p.Masked())
+		default:
+			a, err := netip.ParseAddr(part)
+			if err != nil {
+				return nil, fmt.Errorf("%q is not an address", part)
+			}
+			out = append(out, netip.PrefixFrom(a.Unmap(), a.Unmap().BitLen()))
+		}
+	}
+	if none && len(out) > 0 {
+		return nil, errors.New(`"none" cannot be mixed with addresses`)
+	}
+	return out, nil
 }
