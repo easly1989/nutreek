@@ -14,6 +14,7 @@ import (
 	"github.com/amon2126/nutreek/internal/notify"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/service"
+	"github.com/amon2126/nutreek/internal/sso"
 	"github.com/amon2126/nutreek/internal/stores"
 	"github.com/amon2126/nutreek/internal/updates"
 	"github.com/amon2126/nutreek/internal/web"
@@ -67,6 +68,10 @@ type App struct {
 
 	Notify          *notify.Service
 	NotifyPublicKey string
+
+	// SSO signs people in through an OpenID Connect provider (#333); nil when
+	// NUTREEK_OIDC_ISSUER is not set.
+	SSO *sso.Client
 
 	// Demo is set only in the demo build (#137, cmd/nutreek/demo_on.go).
 	Demo       Demo

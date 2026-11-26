@@ -31,6 +31,7 @@ type authPageData struct {
 	ShowTour   bool   // true when the guided tour must be shown on the dashboard
 	Bare       bool   // a page with no sidebar and no bottom bar (onboarding)
 	IsOwner    bool   // true when the current user is the instance owner
+	SSOName    string // label of the sign-in provider (#333); empty when none is set
 	// Features maps key→bool: whether the user has access to the feature.
 	// With PremiumEnabled=false everything is always true (no gating).
 	Features map[string]bool
@@ -65,6 +66,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 		ActiveNav:  r.URL.Path,
 		ShowTour:   showTour,
 		IsOwner:    a.isOwner(user),
+		SSOName:    a.ssoName(),
 		Features:   features,
 	}
 	data.Update = a.ownerUpdate(r, data.IsOwner)
