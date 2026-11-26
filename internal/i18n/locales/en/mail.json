@@ -4,5 +4,8 @@
   "mail.reset.intro": "Someone asked to reset the password of your Nutreek account. If it was you, use the button below.",
   "mail.reset.button": "Choose a new password",
   "mail.reset.expiry": "The link expires in one hour and works once. If you did not ask for this, ignore this email: your password does not change.",
-  "mail.reset.fallback": "If the button does not open, copy this address into your browser:"
+  "mail.reset.fallback": "If the button does not open, copy this address into your browser:",
+  "mail.code.subject": "Your Nutreek sign-in code",
+  "mail.code.intro": "Your code is:",
+  "mail.code.expiry": "It works for ten minutes. If you did not try to sign in, change your password."
 }

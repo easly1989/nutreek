@@ -106,7 +106,23 @@ func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
 // header. The chain is read from the right: the first untrusted address is
 // the one added by our last proxy, so it cannot be forged. When the whole
 // chain is private (a client on the LAN), the first address counts.
-func remoteIP(r *http.Request) string {
+func remoteIP(r *http.Request) string { return bucketIP(clientIP(r)) }
+
+// bucketIP keys an IPv6 address by its /64: one network owns that many addresses, and a
+// client must not get a fresh limit for each of them.
+func bucketIP(ip string) string {
+	a, err := netip.ParseAddr(ip)
+	if err != nil || !a.Is6() || a.Is4In6() {
+		return ip
+	}
+	p, err := a.Prefix(64)
+	if err != nil {
+		return ip
+	}
+	return p.String()
+}
+
+func clientIP(r *http.Request) string {
 	peer := r.RemoteAddr
 	if host, _, err := net.SplitHostPort(peer); err == nil {
 		peer = host

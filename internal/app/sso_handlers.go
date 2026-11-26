@@ -278,6 +278,17 @@ func (a *App) handleSSOLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.clearSSOLink(r)
+	if a.TwoFactor != nil {
+		st, err := a.TwoFactor.Get(r.Context(), userID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		if st.Enabled() {
+			a.startMFA(w, r, user, st)
+			return
+		}
+	}
 	a.finishSSOSignIn(w, r, userID, false)
 }
 

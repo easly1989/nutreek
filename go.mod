@@ -6,6 +6,7 @@ require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/alexedwards/scs/sqlite3store v0.0.0-20251002162104-209de6e426de
 	github.com/alexedwards/scs/v2 v2.9.0
+	github.com/boombuler/barcode v1.1.1
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/easly1989/nutreek-store-plugins v0.1.1
 	github.com/go-chi/chi/v5 v5.5.0

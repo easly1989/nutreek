@@ -1,0 +1,19 @@
+{{define "title"}}{{t "security.totp.step2_title"}} — Nutreek{{end}}
+{{define "content"}}
+<div class="flex flex-col gap-4 max-w-[460px] mx-auto">
+  <header class="text-center">
+    <a href="/settings/sicurezza" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "security.title"}}</a>
+    <p class="text-muted text-sm" aria-hidden="true">2 / 3</p>
+    <h1 class="h1">{{t "security.totp.step2_title"}}</h1>
+    <p class="text-muted mt-1">{{t "security.totp.step2_text"}}</p>
+  </header>
+  {{if .Error}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>{{end}}
+  <form method="post" action="/settings/security/totp/confirm" class="card">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label class="lab">{{t "security.mfa.code_label"}}<input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9 ]*" required autofocus autocomplete="one-time-code" maxlength="7" class="field field-lg text-center tabular-nums tracking-[0.3em]"></label>
+    <label class="lab">{{t "security.password"}}<input name="password" type="password" required autocomplete="current-password" class="field field-lg"></label>
+    <button class="btn-primary btn-block">{{t "security.totp.confirm"}}</button>
+  </form>
+  <p class="text-center"><a href="/settings/security/totp" class="text-accent font-semibold hover:underline">{{t "security.back"}}</a></p>
+</div>
+{{end}}

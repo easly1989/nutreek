@@ -95,6 +95,11 @@ func (a *App) Router() http.Handler {
 		r.Post("/login", a.handleLogin)
 		r.Get("/register", a.handleRegisterForm)
 		r.With(registerLimiter.Middleware).Post("/register", a.handleRegister)
+		if a.TwoFactor != nil {
+			r.Get("/login/2fa", a.handleMFAForm)
+			r.Post("/login/2fa", a.handleMFA)
+			r.Post("/login/2fa/email", a.handleMFAEmail)
+		}
 		if a.mailOn() {
 			r.Get("/forgot", a.handleForgotForm)
 			r.Post("/forgot", a.handleForgot)
@@ -299,7 +304,7 @@ func (a *App) Router() http.Handler {
 		r.Get("/tu", a.handleTuPage)
 		// Account settings (GDPR export, password change, deletion, API tokens).
 		r.Get("/settings", a.handleSettingsPage)
-		r.Get("/settings/{section:(aspetto|orari|elenchi|app|account)}", a.handleSettingsSection)
+		r.Get("/settings/{section:(aspetto|orari|elenchi|app|account|sicurezza)}", a.handleSettingsSection)
 		r.Post("/settings/keep-awake", a.handleSettingsKeepAwake)
 		r.Get("/settings/notifications", a.handleNotificationsPage)
 		r.Post("/settings/notifications/reminder", a.handleNotificationsReminder)
@@ -334,6 +339,17 @@ func (a *App) Router() http.Handler {
 		r.Get("/settings/export", a.handleUserDataExport)
 		if a.Demo == nil { // both ask for the password a demo account does not have
 			r.Post("/settings/password", a.handleChangePassword)
+			if a.TwoFactor != nil && a.Demo == nil {
+				r.Get("/settings/security/totp", a.handleTOTPScan)
+				r.Get("/settings/security/totp/confirm", a.handleTOTPConfirmForm)
+				r.Post("/settings/security/totp/confirm", a.handleTOTPConfirm)
+				r.Post("/settings/security/totp/disable", a.handleTOTPDisable)
+				r.Post("/settings/security/email/start", a.handleEmailStart)
+				r.Get("/settings/security/email", a.handleEmailForm)
+				r.Post("/settings/security/email/confirm", a.handleEmailConfirm)
+				r.Post("/settings/security/email/disable", a.handleEmailDisable)
+				r.Post("/settings/security/codes", a.handleCodesRegenerate)
+			}
 			r.Post("/settings/delete-account", a.handleDeleteAccount)
 			r.With(a.requireFeature("api_access")).Post("/settings/api-tokens", a.handleSettingsAPITokenCreate)
 			r.Post("/settings/api-tokens/{id}/revoke", a.handleSettingsAPITokenRevoke)

@@ -19,7 +19,11 @@ var (
 
 // bcryptCost is the hash's exponential cost. 12 is a good 2024/2026
 // trade-off between security and latency (~250ms on a consumer CPU).
-const bcryptCost = 12
+var bcryptCost = 12
+
+// UseMinimumCostForTests makes hashing fast. Only a test main calls it: the race build of the
+// app tests hashes hundreds of passwords, and at cost 12 that is minutes.
+func UseMinimumCostForTests() { bcryptCost = bcrypt.MinCost }
 
 // HashPassword produces a bcrypt hash ready to be stored.
 func HashPassword(password string) (string, error) {

@@ -195,6 +195,7 @@ func run(logger *slog.Logger) error {
 		StorePlugins:  db.NewStorePlugins(store.DB),
 		StoreClient:   stores.NewClient(cfg.StoresAllowPrivate),
 	}
+	a.TwoFactor = db.NewTwoFactor(store.DB)
 	if cfg.SMTPHost != "" {
 		m, err := mailer.New(mailer.Config{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser,
 			Password: cfg.SMTPPassword, From: cfg.SMTPFrom, TLS: cfg.SMTPTLS})

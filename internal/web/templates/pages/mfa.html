@@ -1,0 +1,26 @@
+{{define "title"}}{{t "security.mfa.title"}} — Nutreek{{end}}
+{{define "content"}}
+<div class="auth-box">
+  <div class="text-center">
+    <h1 class="h1">{{if eq .Method "email"}}{{t "security.mfa.email_title"}}{{else if eq .Method "recovery"}}{{t "security.mfa.recovery_title"}}{{else}}{{t "security.mfa.title"}}{{end}}</h1>
+    <p class="text-muted mt-1">{{if eq .Method "email"}}{{t "security.mfa.email_text" "Email" .Email}}{{else if eq .Method "recovery"}}{{t "security.mfa.recovery_text"}}{{else}}{{t "security.mfa.totp_text"}}{{end}}</p>
+  </div>
+  {{if .Error}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>{{else if .Sent}}<p role="status" class="rounded-xl bg-accent-soft text-accent px-4 py-2.5">{{t "security.mfa.sent"}}</p>{{end}}
+  <form method="post" action="/login/2fa" class="card">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="method" value="{{.Method}}">
+    {{if eq .Method "recovery"}}
+    <label class="lab">{{t "security.mfa.code_label"}}<input id="code" name="code" type="text" required autofocus autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="16" class="field field-lg tabular-nums"></label>
+    {{else}}
+    <label class="lab">{{t "security.mfa.code_label"}}<input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9 ]*" required autofocus autocomplete="one-time-code" maxlength="7" class="field field-lg text-center tabular-nums tracking-[0.3em]"></label>
+    {{end}}
+    <button class="btn-primary btn-block">{{t "auth.login.submit"}}</button>
+  </form>
+  <div class="flex flex-col items-center gap-1">
+    {{if and (ne .Method "email") .HasEmail}}<form method="post" action="/login/2fa/email"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="min-h-9 text-accent font-semibold hover:underline">{{t "security.mfa.use_email"}}</button></form>{{end}}
+    {{if eq .Method "email"}}<form method="post" action="/login/2fa/email"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="min-h-9 text-accent font-semibold hover:underline">{{t "security.mfa.resend"}}</button></form>{{end}}
+    {{if ne .Method "recovery"}}<a href="/login/2fa?m=recovery" class="min-h-9 inline-flex items-center text-accent font-semibold hover:underline">{{t "security.mfa.use_recovery"}}</a>{{end}}
+    {{if and (ne .Method "totp") .HasTOTP}}<a href="/login/2fa?m=totp" class="min-h-9 inline-flex items-center text-accent font-semibold hover:underline">{{t "security.mfa.use_app"}}</a>{{end}}
+  </div>
+</div>
+{{end}}
