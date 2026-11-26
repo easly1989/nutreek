@@ -59,6 +59,33 @@
     });
   }
 
+  // A panel opens below its button; when the bottom of the screen (or the phone's
+  // bottom bar) would cut it, it opens above, or the page scrolls to show it.
+  function placePanel(panel) {
+    if (!panel || panel.classList.contains("hidden")) return;
+    panel.style.top = panel.style.bottom = panel.style.marginTop = panel.style.marginBottom = "";
+    var nav = document.getElementById("bottom-nav");
+    var floor = window.innerHeight;
+    if (nav && nav.offsetParent !== null) floor = Math.min(floor, nav.getBoundingClientRect().top);
+    var box = panel.getBoundingClientRect();
+    if (box.bottom <= floor - 4) return;
+    var btn = document.querySelector('[data-popover="' + panel.id + '"]');
+    var anchor = btn ? btn.getBoundingClientRect() : null;
+    if (anchor && anchor.top - 4 >= box.height + 56) { // room above, under the top bar
+      panel.style.top = "auto";
+      panel.style.bottom = "100%";
+      panel.style.marginTop = "0";
+      panel.style.marginBottom = "0.25rem";
+      return;
+    }
+    window.scrollBy({ top: box.bottom - floor + 12, behavior: "smooth" });
+  }
+  // The menu of a row fills in after it opens (the move targets): measure again.
+  document.addEventListener("htmx:afterSwap", function (e) {
+    var panel = e.detail && e.detail.target && e.detail.target.closest && e.detail.target.closest(".menu-panel");
+    if (panel) placePanel(panel);
+  });
+
   function init() {
     document.addEventListener("click", function (e) {
       var mode = e.target.closest("[data-appearance-mode]");
@@ -74,6 +101,7 @@
         closePopovers(panel);
         panel.classList.toggle("hidden", !open);
         trigger.setAttribute("aria-expanded", String(open));
+        if (open) placePanel(panel);
         return;
       }
       if (!e.target.closest(".menu-panel") || e.target.closest("[data-menu-close]")) closePopovers(null);
