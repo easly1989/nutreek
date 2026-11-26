@@ -31,15 +31,18 @@ type settingsPageData struct {
 	// the index; SectionTitle is the catalog key of its title.
 	Section      string
 	SectionTitle string
+	// Security is the page that lists the second step (#335); nil elsewhere.
+	Security *securityView
 }
 
 // settingsSections are the pages of Settings (#251) with the catalog key of their title.
 var settingsSections = map[string]string{
-	"aspetto": "settings.page.appearance",
-	"orari":   "meal_times.settings.title",
-	"elenchi": "settings.page.lists",
-	"app":     "settings.app.title",
-	"account": "settings.page.account",
+	"aspetto":   "settings.page.appearance",
+	"orari":     "meal_times.settings.title",
+	"elenchi":   "settings.page.lists",
+	"app":       "settings.app.title",
+	"account":   "settings.page.account",
+	"sicurezza": "security.title",
 }
 
 // withSection says which page of Settings a view model is for.
@@ -120,6 +123,18 @@ func (a *App) handleSettingsSection(w http.ResponseWriter, r *http.Request) {
 	data := settingsPageData{authPageData: a.baseData(r)}
 	data.ActiveNav = "/settings"
 	data.withSection(section)
+	if section == "sicurezza" {
+		if a.TwoFactor == nil || a.Demo != nil {
+			a.notFound(w, r)
+			return
+		}
+		sv, err := a.loadSecurity(r, user)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		data.Security = sv
+	}
 	if flash := r.URL.Query().Get("ok"); flash == "password" {
 		data.PasswordOK = true
 	}

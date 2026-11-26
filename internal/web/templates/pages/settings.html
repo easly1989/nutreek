@@ -17,6 +17,7 @@
     {{template "settings_row" (list "/settings/household" (t "household.title") (t "household.settings_desc"))}}
     {{if not .Demo}}{{template "settings_row" (list "/settings/stores" (t "stores.title") (t "stores.settings_desc"))}}{{end}}
     {{template "settings_row" (list "/settings/app" (t "settings.app.title") (t "settings.page.app_desc"))}}
+    {{if and (not .Demo) .TwoFactorOn}}{{template "settings_row" (list "/settings/sicurezza" (t "security.title") (t "security.desc"))}}{{end}}
     {{template "settings_row" (list "/settings/account" (t "settings.page.account") (t "settings.page.account_desc"))}}
   </div>
 </div>
@@ -224,6 +225,40 @@
         </div>
       </section>
 
+    {{end}}
+    {{if eq .Section "sicurezza"}}
+      {{with .Security}}
+      <section id="sicurezza" class="scroll-mt-6">
+        <div class="settings-sec">
+          <div><h2 class="h2">{{t "security.title"}}</h2><p class="settings-d">{{t "security.sso_note"}}</p></div>
+          <ul class="flex flex-col divide-y divide-border border-y border-border">
+            <li class="flex items-center gap-3 min-h-14 py-2">
+              <span class="grow min-w-0"><b class="block">{{t "security.row.totp"}}</b><span class="block settings-d">{{if or .HasKey .TOTPOn}}{{t "security.row.totp_desc"}}{{else}}{{t "security.need_key"}}{{end}}</span></span>
+              {{if .TOTPOn}}<span class="chip">{{t "security.on"}}</span>{{else if .HasKey}}<a href="/settings/security/totp" class="btn-secondary h-9">{{t "security.activate"}}</a>{{else}}<span class="chip">{{t "security.off"}}</span>{{end}}
+            </li>
+            {{if .TOTPOn}}<li class="py-2"><details><summary class="cursor-pointer text-accent font-semibold min-h-9 inline-flex items-center">{{t "security.turn_off"}}</summary>
+              <form method="post" action="/settings/security/totp/disable" class="flex flex-wrap items-end gap-2 pt-2"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <label class="lab flex-1 min-w-[200px] max-w-[280px]">{{t "security.password"}}<input name="password" type="password" required autocomplete="current-password" class="field"></label>
+                <button class="btn-secondary">{{t "security.turn_off"}}</button></form></details></li>{{end}}
+            <li class="flex items-center gap-3 min-h-14 py-2">
+              <span class="grow min-w-0"><b class="block">{{t "security.row.email"}}</b><span class="block settings-d">{{if or .MailOn .EmailOn}}{{t "security.row.email_desc"}}{{else}}{{t "security.need_mail"}}{{end}}</span></span>
+              {{if .EmailOn}}<span class="chip">{{t "security.on"}}</span>{{else if .MailOn}}<form method="post" action="/settings/security/email/start"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><button class="btn-secondary h-9">{{t "security.activate"}}</button></form>{{else}}<span class="chip">{{t "security.off"}}</span>{{end}}
+            </li>
+            {{if .EmailOn}}<li class="py-2"><details><summary class="cursor-pointer text-accent font-semibold min-h-9 inline-flex items-center">{{t "security.turn_off"}}</summary>
+              <form method="post" action="/settings/security/email/disable" class="flex flex-wrap items-end gap-2 pt-2"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <label class="lab flex-1 min-w-[200px] max-w-[280px]">{{t "security.password"}}<input name="password" type="password" required autocomplete="current-password" class="field"></label>
+                <button class="btn-secondary">{{t "security.turn_off"}}</button></form></details></li>{{end}}
+            <li class="flex items-center gap-3 min-h-14 py-2">
+              <span class="grow min-w-0"><b class="block">{{t "security.row.codes"}}</b><span class="block settings-d">{{if .Any}}{{t "security.row.codes_left" "Left" .CodesLeft}}{{else}}{{t "security.row.codes_none"}}{{end}}</span></span>
+            </li>
+            {{if .Any}}<li class="py-2"><details><summary class="cursor-pointer text-accent font-semibold min-h-9 inline-flex items-center">{{t "security.regenerate"}}</summary>
+              <form method="post" action="/settings/security/codes" class="flex flex-wrap items-end gap-2 pt-2"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <label class="lab flex-1 min-w-[200px] max-w-[280px]">{{t "security.password"}}<input name="password" type="password" required autocomplete="current-password" class="field"></label>
+                <button class="btn-secondary">{{t "security.regenerate"}}</button></form></details></li>{{end}}
+          </ul>
+        </div>
+      </section>
+      {{end}}
     {{end}}
     {{if eq .Section "account"}}
       <section>

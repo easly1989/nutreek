@@ -20,7 +20,9 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/i18n"
+	"github.com/amon2126/nutreek/internal/mfa"
 	"github.com/amon2126/nutreek/internal/off"
+	"github.com/amon2126/nutreek/internal/stores"
 )
 
 // notHTML lists the GET routes that do not return a page, and why. Every other
@@ -30,6 +32,8 @@ import (
 // The REST API (/api/v1/*) is JSON in English by design and skipped as a whole.
 var notHTML = map[string]string{
 	"/static/*":                 "static files",
+	"/login/2fa":                "the second sign-in step needs a started sign-in; its pages are checked in twofactor_test.go",
+	"/settings/security/email":  "needs email set up on the server; the page is checked in twofactor_test.go",
 	"/sw.js":                    "the service worker script",
 	"/healthz":                  "plain \"ok\" for the health check",
 	"/week/{start}/export":      "CSV file; its Italian day names are a file format, see the week import",
@@ -120,6 +124,11 @@ type finalPage struct {
 // a signed-out visitor.
 func TestEnglishEveryPage(t *testing.T) {
 	a := newTestApp(t)
+	box, boxErr := stores.NewBox("a-secret-key-of-enough-length")
+	if boxErr != nil {
+		t.Fatal(boxErr)
+	}
+	a.StoreBox = box // the authenticator app can be set up
 	a.OFF = off.NewClient(a.Store.DB, "http://127.0.0.1:1", nil)
 	a.OFFSyncer = off.NewSyncer(a.Store.DB, "http://127.0.0.1:1", "http://127.0.0.1:1", nil)
 	ctx := context.Background()
@@ -300,6 +309,12 @@ func TestEnglishEveryPage(t *testing.T) {
 		"Standard week", "Away from home", "Light", "Coach plan", "Candles", "Home Assistant", "Utente Test",
 		"Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica",
 		"Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"}
+	data = append(data, "https://") // the address field of a store; not interface text
+	// The key of the authenticator app is a random secret, the same in both languages.
+	pending, _ := mfa.NewSecret()
+	sealed, _ := a.StoreBox.Seal(pending)
+	must(a.TwoFactor.SetPendingTOTP(ctx, ada.ID, sealed))
+	data = append(data, mfa.FormatKey(pending))
 	data = append(data, italianMonths...)
 	for _, al := range allergens {
 		data = append(data, al.Name)
@@ -474,8 +489,11 @@ func TestEnglishEveryPage(t *testing.T) {
 		{route: "/tu", target: "/tu"},
 		{target: "/tu", as: "eve"},
 		{route: "/settings", target: "/settings"},
-		{route: "/settings/{section:(aspetto|orari|elenchi|app|account)}", target: "/settings/aspetto"},
+		{route: "/settings/{section:(aspetto|orari|elenchi|app|account|sicurezza)}", target: "/settings/aspetto"},
 		{target: "/settings/orari"},
+		{target: "/settings/sicurezza"},
+		{route: "/settings/security/totp", target: "/settings/security/totp"},
+		{route: "/settings/security/totp/confirm", target: "/settings/security/totp/confirm"},
 		{target: "/settings/elenchi"},
 		{target: "/settings/app"},
 		{target: "/settings/account"},

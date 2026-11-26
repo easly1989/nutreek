@@ -21,19 +21,20 @@ type authFormData struct {
 }
 
 type authPageData struct {
-	User       any
-	CSRFToken  string
-	Flash      string
-	Error      string
-	Form       authFormData
-	Appearance Appearance
-	ActiveNav  string // current URL path, to highlight the active link in the sidebar
-	ShowTour   bool   // true when the guided tour must be shown on the dashboard
-	Bare       bool   // a page with no sidebar and no bottom bar (onboarding)
-	IsOwner    bool   // true when the current user is the instance owner
-	SSOName    string // label of the sign-in provider (#333); empty when none is set
-	MailOn     bool   // emails can be sent: the login page offers "Forgot password?" (#334)
-	FormAction string // where a form posts, when the address has a token in it
+	User        any
+	CSRFToken   string
+	Flash       string
+	Error       string
+	Form        authFormData
+	Appearance  Appearance
+	ActiveNav   string // current URL path, to highlight the active link in the sidebar
+	ShowTour    bool   // true when the guided tour must be shown on the dashboard
+	Bare        bool   // a page with no sidebar and no bottom bar (onboarding)
+	IsOwner     bool   // true when the current user is the instance owner
+	SSOName     string // label of the sign-in provider (#333); empty when none is set
+	TwoFactorOn bool   // the second sign-in step exists (#335): Settings lists "Security"
+	MailOn      bool   // emails can be sent: the login page offers "Forgot password?" (#334)
+	FormAction  string // where a form posts, when the address has a token in it
 	// Features maps key→bool: whether the user has access to the feature.
 	// With PremiumEnabled=false everything is always true (no gating).
 	Features map[string]bool
@@ -61,16 +62,17 @@ func (a *App) baseData(r *http.Request) authPageData {
 		features[k] = a.HasFeature(r.Context(), user, k)
 	}
 	data := authPageData{
-		User:       user,
-		CSRFToken:  nosurf.Token(r),
-		Flash:      a.t(r, a.Sessions.PopString(r.Context(), "flash")),
-		Appearance: readAppearance(r),
-		ActiveNav:  r.URL.Path,
-		ShowTour:   showTour,
-		IsOwner:    a.isOwner(user),
-		SSOName:    a.ssoName(),
-		MailOn:     a.mailOn(),
-		Features:   features,
+		User:        user,
+		CSRFToken:   nosurf.Token(r),
+		Flash:       a.t(r, a.Sessions.PopString(r.Context(), "flash")),
+		Appearance:  readAppearance(r),
+		ActiveNav:   r.URL.Path,
+		ShowTour:    showTour,
+		IsOwner:     a.isOwner(user),
+		SSOName:     a.ssoName(),
+		MailOn:      a.mailOn(),
+		TwoFactorOn: a.TwoFactor != nil && a.Demo == nil,
+		Features:    features,
 	}
 	data.Update = a.ownerUpdate(r, data.IsOwner)
 	if a.Demo != nil {
@@ -153,6 +155,19 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// Successful login: reset the rate limiter so a legitimate user does not
 	// stay under the threshold because of earlier failed attempts.
 	limiter.reset(ip)
+
+	// With a second step on, the person is not in yet (#335).
+	if a.TwoFactor != nil {
+		st, err := a.TwoFactor.Get(r.Context(), user.ID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		if st.Enabled() {
+			a.startMFA(w, r, user, st)
+			return
+		}
+	}
 
 	// Regenerate the session id on privilege change to prevent fixation.
 	if err := a.Sessions.RenewToken(r.Context()); err != nil {

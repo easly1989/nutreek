@@ -91,7 +91,11 @@ type App struct {
 	forgotIP       *ipRateLimiter
 	forgotEmail    *ipRateLimiter
 	forgotSlots    chan struct{}
-	forgotOnce     sync.Once
+	mfaIP          *ipRateLimiter
+
+	// The second sign-in step (#335).
+	TwoFactor  *db.TwoFactor
+	forgotOnce sync.Once
 }
 
 // StoreBuiltin describes an integrated store.
@@ -125,6 +129,13 @@ func (a *App) initForgotLimiters() {
 	a.forgotIP = newIPRateLimiter(5, time.Minute)
 	a.forgotEmail = newIPRateLimiter(1, time.Minute)
 	a.forgotSlots = make(chan struct{}, 8)
+	a.mfaIP = newIPRateLimiter(10, time.Minute)
+}
+
+// mfaLimiter limits tries at a second-step code per client address (10 a minute).
+func (a *App) mfaLimiter() *ipRateLimiter {
+	a.forgotOnce.Do(a.initForgotLimiters)
+	return a.mfaIP
 }
 
 // Demo is the public demo: it creates a throwaway group of accounts in a
