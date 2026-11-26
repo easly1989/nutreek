@@ -64,6 +64,14 @@ type Config struct {
 	OIDCClientSecret string
 	OIDCName         string
 	OIDCAutoCreate   bool
+
+	// SMTP* turn on the emails (#334: password recovery). SMTPHost empty = no email is sent.
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUser     string
+	SMTPPassword string
+	SMTPFrom     string
+	SMTPTLS      string // starttls (default), tls or none
 }
 
 // Load reads the configuration from the env vars. It validates the prod
@@ -132,6 +140,10 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("NUTREEK_OIDC_AUTO_CREATE: %w", err)
 	}
+	smtpPort, err := strconv.Atoi(getenv("NUTREEK_SMTP_PORT", "587"))
+	if err != nil {
+		return nil, fmt.Errorf("NUTREEK_SMTP_PORT: %w", err)
+	}
 	baseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("NUTREEK_BASE_URL")), "/")
 	if baseURL != "" {
 		if u, err := url.Parse(baseURL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
@@ -168,6 +180,21 @@ func Load() (*Config, error) {
 		OIDCClientSecret: os.Getenv("NUTREEK_OIDC_CLIENT_SECRET"),
 		OIDCName:         getenv("NUTREEK_OIDC_NAME", "Single sign-on"),
 		OIDCAutoCreate:   oidcAutoCreate,
+
+		SMTPHost:     strings.TrimSpace(os.Getenv("NUTREEK_SMTP_HOST")),
+		SMTPPort:     smtpPort,
+		SMTPUser:     os.Getenv("NUTREEK_SMTP_USER"),
+		SMTPPassword: os.Getenv("NUTREEK_SMTP_PASSWORD"),
+		SMTPFrom:     strings.TrimSpace(os.Getenv("NUTREEK_SMTP_FROM")),
+		SMTPTLS:      strings.ToLower(getenv("NUTREEK_SMTP_TLS", "starttls")),
+	}
+	if cfg.SMTPHost != "" {
+		switch {
+		case cfg.BaseURL == "":
+			return nil, errors.New("NUTREEK_SMTP_HOST needs NUTREEK_BASE_URL (the links in the emails are built on it)")
+		case cfg.SMTPFrom == "":
+			return nil, errors.New("NUTREEK_SMTP_HOST needs NUTREEK_SMTP_FROM (the sender address)")
+		}
 	}
 	if cfg.OIDCIssuer != "" {
 		switch {

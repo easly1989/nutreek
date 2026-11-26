@@ -47,6 +47,13 @@ func (r *Identities) Link(ctx context.Context, userID int64, issuer, subject str
 	return nil
 }
 
+// UnlinkAll forgets every identity of the account (a password reset, #334): who got in
+// through the provider before must prove the account again.
+func (r *Identities) UnlinkAll(ctx context.Context, userID int64) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM user_identities WHERE user_id = ?`, userID)
+	return err
+}
+
 // CreateAccount makes a user and links its identity in one step: an account that cannot
 // be linked is not left behind. ErrEmailAlreadyUsed when the email is taken.
 func (r *Identities) CreateAccount(ctx context.Context, email, passwordHash, displayName, issuer, subject string) (int64, error) {

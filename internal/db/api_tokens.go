@@ -85,6 +85,12 @@ func (t *APITokens) Revoke(ctx context.Context, id, userID int64) error {
 	return nil
 }
 
+// RevokeAll deletes every token of the user (a password reset, #334).
+func (t *APITokens) RevokeAll(ctx context.Context, userID int64) error {
+	_, err := t.db.ExecContext(ctx, `DELETE FROM api_tokens WHERE user_id = ?`, userID)
+	return err
+}
+
 // Authenticate resolves a plaintext token to its owner and updates
 // last_used_at (best effort). ErrAPITokenNotFound when it is not valid.
 func (t *APITokens) Authenticate(ctx context.Context, plain string) (*domain.User, error) {

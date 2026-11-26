@@ -186,7 +186,13 @@ func (a *App) finishSSOSignIn(w http.ResponseWriter, r *http.Request, userID int
 		a.serverError(w, r, err)
 		return
 	}
+	user, err := a.Users.GetByID(r.Context(), userID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	a.Sessions.Put(r.Context(), sessionKeyUserID, userID)
+	a.Sessions.Put(r.Context(), sessionKeyPwStamp, pwStamp(user.PasswordHash))
 	if newAccount {
 		http.Redirect(w, r, "/onboarding", http.StatusSeeOther)
 		return

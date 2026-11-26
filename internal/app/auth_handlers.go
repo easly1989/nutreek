@@ -32,6 +32,8 @@ type authPageData struct {
 	Bare       bool   // a page with no sidebar and no bottom bar (onboarding)
 	IsOwner    bool   // true when the current user is the instance owner
 	SSOName    string // label of the sign-in provider (#333); empty when none is set
+	MailOn     bool   // emails can be sent: the login page offers "Forgot password?" (#334)
+	FormAction string // where a form posts, when the address has a token in it
 	// Features maps key→bool: whether the user has access to the feature.
 	// With PremiumEnabled=false everything is always true (no gating).
 	Features map[string]bool
@@ -67,6 +69,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 		ShowTour:   showTour,
 		IsOwner:    a.isOwner(user),
 		SSOName:    a.ssoName(),
+		MailOn:     a.mailOn(),
 		Features:   features,
 	}
 	data.Update = a.ownerUpdate(r, data.IsOwner)
@@ -157,6 +160,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), sessionKeyUserID, user.ID)
+	a.Sessions.Put(r.Context(), sessionKeyPwStamp, pwStamp(user.PasswordHash))
 	a.Sessions.Put(r.Context(), "flash", "auth.flash.logged_in")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -231,6 +235,7 @@ func (a *App) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), sessionKeyUserID, id)
+	a.Sessions.Put(r.Context(), sessionKeyPwStamp, pwStamp(hash))
 	http.Redirect(w, r, "/onboarding", http.StatusSeeOther)
 }
 
@@ -257,7 +262,7 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 // if that fails too falls back to a plain-text http.Error: an ugly page is
 // better than a half-written connection.
 func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
-	a.Logger.Error("server error", "err", err, "path", r.URL.Path)
+	a.Logger.Error("server error", "err", err, "path", logPath(r.URL.Path))
 	if rerr := a.Render.Render(w, r, http.StatusInternalServerError, "error_500", a.baseData(r)); rerr != nil {
 		http.Error(w, a.t(r, "layout.error.plain"), http.StatusInternalServerError)
 	}

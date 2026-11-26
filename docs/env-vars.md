@@ -31,6 +31,12 @@ Moved from CLAUDE.md. Read before adding or changing a NUTREEK_* setting.
 | `NUTREEK_OIDC_CLIENT_SECRET` | (none) | the client secret |
 | `NUTREEK_OIDC_NAME` | `Single sign-on` | the label on the button |
 | `NUTREEK_OIDC_AUTO_CREATE` | `false` | `true` creates an account for an email nobody has used; otherwise only existing accounts, matched by email, can sign in |
+| `NUTREEK_SMTP_HOST` | (none) | turns on email (#334): the login page gets "Forgot password?" and a reset link is mailed. Needs `NUTREEK_BASE_URL` (the links are built on it) and `NUTREEK_SMTP_FROM`. Nothing is sent without it |
+| `NUTREEK_SMTP_PORT` | `587` | the server's port: 587 (STARTTLS) or 465 (TLS from the start) |
+| `NUTREEK_SMTP_USER` | (none) | sign-in name at the server; empty = no sign-in |
+| `NUTREEK_SMTP_PASSWORD` | (none) | the password for it. Plain sign-in is only sent over an encrypted connection (or to localhost) |
+| `NUTREEK_SMTP_FROM` | (none) | the sender, `Nutreek <nutreek@example.com>` or a bare address |
+| `NUTREEK_SMTP_TLS` | `starttls` | `starttls` (refuses a server that does not offer it), `tls` (port 465) or `none` (a relay on your own machine or network) |
 | `NUTREEK_DEMO_IDLE` | `2h` | demo build only: a demo session ends, and its group is deleted, after this long without use; every group is deleted nightly at 03:00 UTC |
 | `NUTREEK_DEMO_MAX_USERS` | `200` | demo build only: live demo users; then the entry says the demo is full |
 | `NUTREEK_DEMO_STARTS_PER_HOUR` | `10` | demo build only: demos started per client address per hour; then 429 |

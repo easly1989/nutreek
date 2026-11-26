@@ -1,0 +1,15 @@
+{{define "title"}}{{t "auth.reset.title"}} — Nutreek{{end}}
+{{define "content"}}
+<div class="auth-box">
+  <div class="text-center">
+    <h1 class="h1">{{t "auth.reset.title"}}</h1>
+    <p class="text-muted mt-1">{{t "auth.reset.subtitle"}}</p>
+  </div>
+  {{if .Error}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>{{end}}
+  <form method="post" action="{{.FormAction}}" class="card">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label class="lab">{{t "auth.reset.title"}}<span class="field-pw"><input id="password" name="password" type="password" required autofocus minlength="8" maxlength="72" autocomplete="new-password" class="field field-lg">{{template "pw_toggle" "password"}}</span><span class="text-muted text-sm font-normal">{{t "auth.register.password_hint"}}</span></label>
+    <button class="btn-primary btn-block">{{t "auth.reset.submit"}}</button>
+  </form>
+</div>
+{{end}}

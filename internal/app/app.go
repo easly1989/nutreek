@@ -83,6 +83,15 @@ type App struct {
 	// so there is no constructor to initialize it in.
 	loginLimiter     *ipRateLimiter
 	loginLimiterOnce sync.Once
+
+	// Password recovery (#334): the mailer (nil without NUTREEK_SMTP_HOST), the links it
+	// sends, and the limits on asking for one.
+	Mailer         Sender
+	PasswordResets *db.PasswordResets
+	forgotIP       *ipRateLimiter
+	forgotEmail    *ipRateLimiter
+	forgotSlots    chan struct{}
+	forgotOnce     sync.Once
 }
 
 // StoreBuiltin describes an integrated store.
@@ -97,6 +106,25 @@ func (a *App) loginRateLimiter() *ipRateLimiter {
 		a.loginLimiter = newIPRateLimiter(5, time.Minute)
 	})
 	return a.loginLimiter
+}
+
+// forgotLimiter limits requests for a reset link per client address (5 a minute).
+func (a *App) forgotLimiter() *ipRateLimiter {
+	a.forgotOnce.Do(a.initForgotLimiters)
+	return a.forgotIP
+}
+
+// forgotEmailLimiter allows one reset email a minute for each address, so nobody's inbox
+// can be flooded through the form.
+func (a *App) forgotEmailLimiter() *ipRateLimiter {
+	a.forgotOnce.Do(a.initForgotLimiters)
+	return a.forgotEmail
+}
+
+func (a *App) initForgotLimiters() {
+	a.forgotIP = newIPRateLimiter(5, time.Minute)
+	a.forgotEmail = newIPRateLimiter(1, time.Minute)
+	a.forgotSlots = make(chan struct{}, 8)
 }
 
 // Demo is the public demo: it creates a throwaway group of accounts in a

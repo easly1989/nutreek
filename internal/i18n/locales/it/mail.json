@@ -1,0 +1,8 @@
+{
+  "mail.reset.subject": "Reimposta la password di Nutreek",
+  "mail.reset.hello": "Ciao {{.Name}},",
+  "mail.reset.intro": "Qualcuno ha chiesto di reimpostare la password del tuo account Nutreek. Se sei stato tu, usa il pulsante qui sotto.",
+  "mail.reset.button": "Scegli una nuova password",
+  "mail.reset.expiry": "Il link scade tra un'ora e funziona una volta sola. Se non hai chiesto tu il reset, ignora questa mail: la tua password non cambia.",
+  "mail.reset.fallback": "Se il pulsante non si apre, copia questo indirizzo nel browser:"
+}

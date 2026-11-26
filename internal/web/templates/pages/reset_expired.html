@@ -1,0 +1,11 @@
+{{define "title"}}{{t "auth.reset.expired_title"}} — Nutreek{{end}}
+{{define "content"}}
+<div class="auth-box">
+  <div class="text-center">
+    <h1 class="h1">{{t "auth.reset.expired_title"}}</h1>
+    <p class="text-muted mt-1">{{t "auth.reset.expired_text"}}</p>
+  </div>
+  <a href="/forgot" class="btn-primary btn-block">{{t "auth.reset.expired_cta"}}</a>
+  <p class="text-center"><a href="/login" class="text-accent font-semibold hover:underline">{{t "auth.back_to_login"}}</a></p>
+</div>
+{{end}}

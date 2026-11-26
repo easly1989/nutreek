@@ -326,6 +326,7 @@ func TestEnglishEveryPage(t *testing.T) {
 		sctx, err := a.Sessions.Load(ctx, "")
 		must(err)
 		a.Sessions.Put(sctx, sessionKeyUserID, u.ID)
+		a.Sessions.Put(sctx, sessionKeyPwStamp, pwStamp(u.PasswordHash))
 		token, _, err := a.Sessions.Commit(sctx)
 		must(err)
 		sessions[name] = &http.Cookie{Name: a.Sessions.Cookie.Name, Value: token}
