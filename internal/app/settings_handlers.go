@@ -240,13 +240,20 @@ func (a *App) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	password := r.PostFormValue("password")
-	if verr := auth.VerifyPassword(user.PasswordHash, password); verr != nil {
+	// The tries are limited for the account: a stolen session must not guess the password freely (#345).
+	allowed := a.pwTryAllowed(user.ID)
+	if !allowed || auth.VerifyPassword(user.PasswordHash, password) != nil {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
 		data.withSection("account")
 		data.DeleteError = a.t(r, "settings.delete.err_password")
+		status := http.StatusUnprocessableEntity
+		if !allowed {
+			data.DeleteError = a.t(r, "auth.error.too_many_attempts")
+			status = http.StatusTooManyRequests
+		}
 		a.fillMealTimes(r, &data)
-		if rerr := a.Render.Render(w, r, http.StatusUnprocessableEntity, "settings", data); rerr != nil {
+		if rerr := a.Render.Render(w, r, status, "settings", data); rerr != nil {
 			a.serverError(w, r, rerr)
 		}
 		return
@@ -269,17 +276,23 @@ func (a *App) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	newPw := r.PostFormValue("new_password")
 	confirmPw := r.PostFormValue("confirm_password")
 
-	renderErr := func(msg string) {
+	renderErrStatus := func(status int, msg string) {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
 		data.withSection("account")
 		data.PasswordError = msg
 		a.fillMealTimes(r, &data)
-		if err := a.Render.Render(w, r, http.StatusUnprocessableEntity, "settings", data); err != nil {
+		if err := a.Render.Render(w, r, status, "settings", data); err != nil {
 			a.serverError(w, r, err)
 		}
 	}
+	renderErr := func(msg string) { renderErrStatus(http.StatusUnprocessableEntity, msg) }
 
+	// The tries are limited for the account: a stolen session must not guess the password freely (#345).
+	if !a.pwTryAllowed(user.ID) {
+		renderErrStatus(http.StatusTooManyRequests, a.t(r, "auth.error.too_many_attempts"))
+		return
+	}
 	if err := auth.VerifyPassword(user.PasswordHash, currentPw); err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			renderErr(a.t(r, "settings.password.err_current"))

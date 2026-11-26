@@ -214,7 +214,7 @@ func (a *App) handlePasskeyAddBegin(w http.ResponseWriter, r *http.Request) {
 		pkError(w, http.StatusUnprocessableEntity, a.t(r, "security.passkey.err_name"))
 		return
 	}
-	if !a.loginRateLimiter().allow(remoteIP(r)) || auth.VerifyPassword(user.PasswordHash, in.Password) != nil {
+	if !a.pwTryAllowed(user.ID) || auth.VerifyPassword(user.PasswordHash, in.Password) != nil {
 		pkError(w, http.StatusForbidden, a.t(r, "security.flash.err_password"))
 		return
 	}

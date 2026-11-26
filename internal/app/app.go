@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
@@ -94,6 +95,7 @@ type App struct {
 	forgotSlots    chan struct{}
 	mfaIP          *ipRateLimiter
 	passkeyIP      *ipRateLimiter
+	pwTries        *ipRateLimiter
 
 	// The second sign-in step (#335).
 	TwoFactor *db.TwoFactor
@@ -137,12 +139,24 @@ func (a *App) initForgotLimiters() {
 	a.forgotSlots = make(chan struct{}, 8)
 	a.mfaIP = newIPRateLimiter(10, time.Minute)
 	a.passkeyIP = newIPRateLimiter(20, time.Minute)
+	a.pwTries = newIPRateLimiter(5, time.Minute)
 }
 
 // mfaLimiter limits tries at a second-step code per client address (10 a minute).
 func (a *App) mfaLimiter() *ipRateLimiter {
 	a.forgotOnce.Do(a.initForgotLimiters)
 	return a.mfaIP
+}
+
+// pwTryKey and pwTryAllowed limit the password checks of a signed-in person (changing the password,
+// deleting the account, turning a second step off, adding a passkey) to five a minute for the
+// account, wherever the tries come from: a stolen session cookie can be used from any address,
+// and a neighbour on the same address must not be able to use up someone else's tries (#345).
+func pwTryKey(userID int64) string { return "user:" + strconv.FormatInt(userID, 10) }
+
+func (a *App) pwTryAllowed(userID int64) bool {
+	a.forgotOnce.Do(a.initForgotLimiters)
+	return a.pwTries.allow(pwTryKey(userID))
 }
 
 // passkeyLimiter limits passkey sign-in tries per client address (20 a minute).

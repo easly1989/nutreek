@@ -369,7 +369,7 @@ func (a *App) securityBack(w http.ResponseWriter, r *http.Request, flash string)
 // passwordOK checks the password sent with a form that turns something off: the sign-in
 // limiter counts a wrong one.
 func (a *App) passwordOK(r *http.Request, user *domain.User) bool {
-	if !a.loginRateLimiter().allow(remoteIP(r)) {
+	if !a.pwTryAllowed(user.ID) {
 		return false
 	}
 	return auth.VerifyPassword(user.PasswordHash, r.PostFormValue("password")) == nil
