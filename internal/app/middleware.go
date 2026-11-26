@@ -37,7 +37,7 @@ func (a *App) csrfMiddleware(next http.Handler) http.Handler {
 	})
 	csrf.SetFailureHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a.Logger.Warn("csrf failure",
-			"path", r.URL.Path,
+			"path", logPath(r.URL.Path),
 			"method", r.Method,
 			"reason", nosurf.Reason(r),
 		)
@@ -70,13 +70,9 @@ func (a *App) loadUserMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		// A session stops working when the password changes: it remembers a fingerprint
-		// of the password it started with. One with none yet (it began before this
-		// existed, or just now) takes the current one.
-		stamp := pwStamp(user.PasswordHash)
-		switch got := a.Sessions.GetString(r.Context(), sessionKeyPwStamp); {
-		case got == "":
-			a.Sessions.Put(r.Context(), sessionKeyPwStamp, stamp)
-		case got != stamp:
+		// of the password it started with, set where it starts. One with none (it began
+		// before this existed) is over: its person signs in once more.
+		if a.Demo == nil && a.Sessions.GetString(r.Context(), sessionKeyPwStamp) != pwStamp(user.PasswordHash) {
 			a.Sessions.Remove(r.Context(), sessionKeyUserID)
 			a.Sessions.Remove(r.Context(), sessionKeyPwStamp)
 			next.ServeHTTP(w, r)
@@ -112,7 +108,7 @@ func (a *App) requestLogger(next http.Handler) http.Handler {
 		next.ServeHTTP(sw, r)
 		a.Logger.Info("http",
 			"method", r.Method,
-			"path", r.URL.Path,
+			"path", logPath(r.URL.Path),
 			"status", sw.status,
 			"bytes", sw.bytes,
 			"duration_ms", time.Since(start).Milliseconds(),

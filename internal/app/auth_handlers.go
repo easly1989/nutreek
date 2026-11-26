@@ -160,6 +160,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), sessionKeyUserID, user.ID)
+	a.Sessions.Put(r.Context(), sessionKeyPwStamp, pwStamp(user.PasswordHash))
 	a.Sessions.Put(r.Context(), "flash", "auth.flash.logged_in")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -234,6 +235,7 @@ func (a *App) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Sessions.Put(r.Context(), sessionKeyUserID, id)
+	a.Sessions.Put(r.Context(), sessionKeyPwStamp, pwStamp(hash))
 	http.Redirect(w, r, "/onboarding", http.StatusSeeOther)
 }
 
@@ -260,7 +262,7 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 // if that fails too falls back to a plain-text http.Error: an ugly page is
 // better than a half-written connection.
 func (a *App) serverError(w http.ResponseWriter, r *http.Request, err error) {
-	a.Logger.Error("server error", "err", err, "path", r.URL.Path)
+	a.Logger.Error("server error", "err", err, "path", logPath(r.URL.Path))
 	if rerr := a.Render.Render(w, r, http.StatusInternalServerError, "error_500", a.baseData(r)); rerr != nil {
 		http.Error(w, a.t(r, "layout.error.plain"), http.StatusInternalServerError)
 	}

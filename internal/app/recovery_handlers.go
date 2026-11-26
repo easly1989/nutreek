@@ -27,6 +27,7 @@ type Sender interface {
 
 const (
 	resetTTL = time.Hour
+	resetGap = 15 * time.Minute // a link younger than this is not replaced
 
 	sessionKeyPwStamp = "pw_stamp"
 )
@@ -44,6 +45,14 @@ func resetHash(token string) string {
 func pwStamp(passwordHash string) string {
 	sum := sha256.Sum256([]byte(passwordHash))
 	return hex.EncodeToString(sum[:8])
+}
+
+// logPath is a path fit for the logs: the token of a reset link is not written there.
+func logPath(p string) string {
+	if strings.HasPrefix(p, "/reset/") {
+		return "/reset/…"
+	}
+	return p
 }
 
 // handleForgotForm GET /forgot: asks for the email of the account.
@@ -81,7 +90,14 @@ func (a *App) handleForgot(w http.ResponseWriter, r *http.Request) {
 	}
 	if a.forgotEmailLimiter().allow(email) {
 		lang := i18n.FromContext(r.Context())
-		go a.sendReset(email, lang)
+		select {
+		case a.forgotSlots <- struct{}{}: // at most a few sends at once
+			go func() {
+				defer func() { <-a.forgotSlots }()
+				a.sendReset(email, lang)
+			}()
+		default:
+		}
 	}
 	http.Redirect(w, r, "/forgot/sent", http.StatusSeeOther)
 }
@@ -104,8 +120,10 @@ func (a *App) sendReset(email, lang string) {
 		return
 	}
 	token := base64.RawURLEncoding.EncodeToString(raw)
-	if err := a.PasswordResets.Create(ctx, user.ID, resetHash(token), time.Now().Add(resetTTL)); err != nil {
-		a.Logger.Error("password reset: store token", "err", err)
+	if err := a.PasswordResets.Create(ctx, user.ID, resetHash(token), time.Now().Add(resetTTL), resetGap); err != nil {
+		if !errors.Is(err, db.ErrResetRecent) {
+			a.Logger.Error("password reset: store token", "err", err)
+		}
 		return
 	}
 	if user.Locale != "" && i18n.Supported(user.Locale) {
@@ -147,7 +165,7 @@ func (a *App) handleForgotSent(w http.ResponseWriter, r *http.Request) {
 
 // handleResetForm GET /reset/{token}: the page to choose a new password, if the link still works.
 func (a *App) handleResetForm(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Referrer-Policy", "no-referrer") // the token is in the address
+	w.Header().Set("Referrer-Policy", "same-origin") // the token is in the address: no other site gets it
 	token := chi.URLParam(r, "token")
 	ok, err := a.PasswordResets.Valid(r.Context(), resetHash(token), time.Now())
 	if err != nil {
@@ -168,7 +186,7 @@ func (a *App) handleResetForm(w http.ResponseWriter, r *http.Request) {
 // handleReset POST /reset/{token}: sets the password and uses the link up. The password is
 // checked before the link is spent, so a short one can be corrected.
 func (a *App) handleReset(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("Referrer-Policy", "same-origin")
 	token := chi.URLParam(r, "token")
 	hash, err := auth.HashPassword(r.PostFormValue("password"))
 	if err != nil {
@@ -203,13 +221,18 @@ func (a *App) handleReset(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	// The password changed, so every session that started with the old one stops working
-	// (see loadUserMiddleware); this browser starts clean.
+	// Whoever held the account before is out: sessions that started with the old password
+	// stop working (see loadUserMiddleware), and API tokens and provider links go too.
+	if err := errors.Join(a.APITokens.RevokeAll(r.Context(), userID), a.Identities.UnlinkAll(r.Context(), userID)); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	if err := a.Sessions.RenewToken(r.Context()); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 	a.Sessions.Remove(r.Context(), sessionKeyUserID)
+	a.Sessions.Remove(r.Context(), sessionKeyPwStamp)
 	a.Sessions.Put(r.Context(), "flash", "auth.flash.password_reset")
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }

@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	"github.com/amon2126/nutreek/internal/config"
+	"github.com/amon2126/nutreek/internal/db"
 )
 
 type sentMail struct{ to, subject, text, html string }
@@ -160,7 +163,7 @@ func TestRecoveryExpiredAndReplacedLinks(t *testing.T) {
 	user := mustCreateTestUser(t, a, "carlo@example.test", "old-password")
 	ctx := context.Background()
 
-	if err := a.PasswordResets.Create(ctx, user.ID, resetHash("expired"), time.Now().Add(-time.Minute)); err != nil {
+	if err := a.PasswordResets.Create(ctx, user.ID, resetHash("expired"), time.Now().Add(-time.Minute), 0); err != nil {
 		t.Fatal(err)
 	}
 	if code, _, _ := b.get("/reset/expired"); code != 410 {
@@ -170,8 +173,8 @@ func TestRecoveryExpiredAndReplacedLinks(t *testing.T) {
 		t.Fatalf("an unknown link: %d", code)
 	}
 	// Asking again replaces the earlier link.
-	_ = a.PasswordResets.Create(ctx, user.ID, resetHash("first"), time.Now().Add(time.Hour))
-	_ = a.PasswordResets.Create(ctx, user.ID, resetHash("second"), time.Now().Add(time.Hour))
+	_ = a.PasswordResets.Create(ctx, user.ID, resetHash("first"), time.Now().Add(time.Hour), 0)
+	_ = a.PasswordResets.Create(ctx, user.ID, resetHash("second"), time.Now().Add(time.Hour), 0)
 	if code, _, _ := b.get("/reset/first"); code != 410 {
 		t.Fatalf("the replaced link: %d", code)
 	}
@@ -266,5 +269,89 @@ func TestResetMailInBothLanguages(t *testing.T) {
 		if strings.Contains(text, "{{") || strings.Contains(body, "{{") {
 			t.Errorf("%s: a placeholder is left", lang)
 		}
+	}
+}
+
+// Nobody can keep an account's link from working by asking over and over.
+func TestRecoveryRecentLinkIsNotReplaced(t *testing.T) {
+	a, _, b := recoveryApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "old-password")
+	ctx := context.Background()
+	if err := a.PasswordResets.Create(ctx, user.ID, resetHash("first"), time.Now().Add(resetTTL), resetGap); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.PasswordResets.Create(ctx, user.ID, resetHash("second"), time.Now().Add(resetTTL), resetGap); !errors.Is(err, db.ErrResetRecent) {
+		t.Fatalf("err = %v, want ErrResetRecent", err)
+	}
+	if code, _, _ := b.get("/reset/first"); code != 200 {
+		t.Fatalf("the first link should still work: %d", code)
+	}
+	if code, _, _ := b.get("/reset/second"); code != 410 {
+		t.Fatalf("the second was never made: %d", code)
+	}
+}
+
+// A reset takes away what the account's earlier holder had: API tokens and provider links.
+func TestRecoveryRevokesTokensAndLinks(t *testing.T) {
+	a, _, b := recoveryApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "old-password")
+	ctx := context.Background()
+	if _, err := a.APITokens.Create(ctx, user.ID, "script"); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Identities.Link(ctx, user.ID, "https://idp.test", "sub-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.PasswordResets.Create(ctx, user.ID, resetHash("tok"), time.Now().Add(time.Hour), 0); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, _ := b.submit("/reset/tok", "/reset/tok", url.Values{"password": {"a-new-password"}}); code != 303 {
+		t.Fatalf("reset: %d", code)
+	}
+	if toks, _ := a.APITokens.List(ctx, user.ID); len(toks) != 0 {
+		t.Fatalf("API tokens left: %d", len(toks))
+	}
+	if _, err := a.Identities.UserID(ctx, "https://idp.test", "sub-1"); !errors.Is(err, db.ErrIdentityNotFound) {
+		t.Fatalf("the provider link should be gone: %v", err)
+	}
+}
+
+// A session that has no password stamp (one from before stamps) does not survive.
+func TestSessionWithoutAStampIsOver(t *testing.T) {
+	a, _, b := recoveryApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "old-password")
+	ctx, err := a.Sessions.Load(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.Sessions.Put(ctx, sessionKeyUserID, user.ID)
+	token, _, err := a.Sessions.Commit(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, _ := url.Parse(b.srv.URL)
+	b.c.Jar.SetCookies(u, []*http.Cookie{{Name: a.Sessions.Cookie.Name, Value: token, Path: "/"}})
+	if code, loc, _ := b.get("/tu"); code != 303 || loc != "/login" {
+		t.Fatalf("a stampless session should be over: %d -> %q", code, loc)
+	}
+}
+
+func TestResetPageKeepsTheTokenToItself(t *testing.T) {
+	a, _, b := recoveryApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "old-password")
+	_ = a.PasswordResets.Create(context.Background(), user.ID, resetHash("tok"), time.Now().Add(time.Hour), 0)
+	resp, err := b.c.Get(b.srv.URL + "/reset/tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if got := resp.Header.Get("Referrer-Policy"); got != "same-origin" {
+		t.Fatalf("Referrer-Policy = %q", got)
+	}
+	if got := logPath("/reset/tok"); strings.Contains(got, "tok") {
+		t.Fatalf("the token is in the log path: %q", got)
+	}
+	if logPath("/week") != "/week" {
+		t.Fatal("other paths are logged as they are")
 	}
 }

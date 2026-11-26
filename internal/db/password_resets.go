@@ -11,19 +11,32 @@ import (
 // ErrResetNotFound means the link is unknown, used or expired.
 var ErrResetNotFound = errors.New("password reset not found")
 
+// ErrResetRecent means the account got a link a moment ago: asking again does not replace
+// it, so nobody can keep an account's link from working by asking over and over.
+var ErrResetRecent = errors.New("a reset link was sent a moment ago")
+
 // PasswordResets keeps the links to choose a new password (#334).
 type PasswordResets struct{ db *sql.DB }
 
 func NewPasswordResets(db *sql.DB) *PasswordResets { return &PasswordResets{db: db} }
 
 // Create stores the hash of a new token for the account, replacing the one it had, and
-// forgets every link that has expired.
-func (r *PasswordResets) Create(ctx context.Context, userID int64, tokenHash string, expires time.Time) error {
+// forgets every link that has expired. If the account's link is younger than gap it is
+// kept and ErrResetRecent is returned.
+func (r *PasswordResets) Create(ctx context.Context, userID int64, tokenHash string, expires time.Time, gap time.Duration) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	var recent int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM password_resets WHERE user_id = ? AND expires_at > ?`,
+		userID, expires.Add(-gap).Unix()).Scan(&recent); err != nil {
+		return fmt.Errorf("check recent reset: %w", err)
+	}
+	if recent > 0 {
+		return ErrResetRecent
+	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM password_resets WHERE user_id = ? OR expires_at < ?`, userID, time.Now().Unix()); err != nil {
 		return fmt.Errorf("clear resets: %w", err)
 	}

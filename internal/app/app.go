@@ -90,6 +90,7 @@ type App struct {
 	PasswordResets *db.PasswordResets
 	forgotIP       *ipRateLimiter
 	forgotEmail    *ipRateLimiter
+	forgotSlots    chan struct{}
 	forgotOnce     sync.Once
 }
 
@@ -123,6 +124,7 @@ func (a *App) forgotEmailLimiter() *ipRateLimiter {
 func (a *App) initForgotLimiters() {
 	a.forgotIP = newIPRateLimiter(5, time.Minute)
 	a.forgotEmail = newIPRateLimiter(1, time.Minute)
+	a.forgotSlots = make(chan struct{}, 8)
 }
 
 // Demo is the public demo: it creates a throwaway group of accounts in a
