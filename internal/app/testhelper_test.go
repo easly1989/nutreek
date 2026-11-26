@@ -62,6 +62,7 @@ func newTestApp(t *testing.T) *App {
 		Identities:             db.NewIdentities(store.DB),
 		PasswordResets:         db.NewPasswordResets(store.DB),
 		TwoFactor:              db.NewTwoFactor(store.DB),
+		Passkeys:               db.NewPasskeys(store.DB),
 		Household:              db.NewHousehold(store.DB),
 		StorePlugins:           db.NewStorePlugins(store.DB),
 		StoreClient:            stores.NewClient(true),

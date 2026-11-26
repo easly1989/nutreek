@@ -128,6 +128,7 @@ func fill(t *testing.T, d *sql.DB, userID int64) int64 {
 	exec(`INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, 'hash-' || ?, 4102444800)`, userID, userID)
 	exec(`INSERT INTO user_2fa (user_id, totp_secret, totp_on) VALUES (?, 'sealed', 1)`, userID)
 	exec(`INSERT INTO recovery_codes (user_id, salt, hash) VALUES (?, 's', 'h')`, userID)
+	exec(`INSERT INTO passkeys (user_id, user_handle, credential_id, name, credential, created_at) VALUES (?, x'01', x'02' || ?, 'Phone', '{}', 1)`, userID, userID)
 	exec(`INSERT INTO user_identities (user_id, issuer, subject) VALUES (?, 'https://idp.example', 'sub-' || ?)`, userID, userID)
 	return ing
 }

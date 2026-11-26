@@ -321,6 +321,8 @@ type securityView struct {
 	CodesLeft       int
 	HasKey, MailOn  bool
 	Any             bool
+	PasskeyOn       bool // passkeys can be added here
+	Passkeys        []db.Passkey
 }
 
 func (a *App) loadSecurity(r *http.Request, user *domain.User) (*securityView, error) {
@@ -332,8 +334,14 @@ func (a *App) loadSecurity(r *http.Request, user *domain.User) (*securityView, e
 	if err != nil {
 		return nil, err
 	}
-	return &securityView{TOTPOn: st.TOTPOn, EmailOn: st.EmailOn, CodesLeft: left, HasKey: a.StoreBox != nil,
-		MailOn: a.Mailer != nil, Any: st.Enabled()}, nil
+	v := &securityView{TOTPOn: st.TOTPOn, EmailOn: st.EmailOn, CodesLeft: left, HasKey: a.StoreBox != nil,
+		MailOn: a.Mailer != nil, Any: st.Enabled(), PasskeyOn: a.passkeyOn()}
+	if v.PasskeyOn {
+		if v.Passkeys, err = a.Passkeys.List(r.Context(), user.ID); err != nil {
+			return nil, err
+		}
+	}
+	return v, nil
 }
 
 // secPageData is a page of the set-up procedure.

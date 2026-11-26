@@ -20,6 +20,8 @@ import (
 	"github.com/amon2126/nutreek/internal/db"
 	"github.com/amon2126/nutreek/internal/domain"
 	"github.com/amon2126/nutreek/internal/i18n"
+	"github.com/go-webauthn/webauthn/webauthn"
+
 	"github.com/amon2126/nutreek/internal/mfa"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/stores"
@@ -129,6 +131,11 @@ func TestEnglishEveryPage(t *testing.T) {
 		t.Fatal(boxErr)
 	}
 	a.StoreBox = box // the authenticator app can be set up
+	wa, waErr := webauthn.New(&webauthn.Config{RPID: "n.test", RPDisplayName: "Nutreek", RPOrigins: []string{"https://n.test"}})
+	if waErr != nil {
+		t.Fatal(waErr)
+	}
+	a.WebAuthn = wa // passkeys can be added
 	a.OFF = off.NewClient(a.Store.DB, "http://127.0.0.1:1", nil)
 	a.OFFSyncer = off.NewSyncer(a.Store.DB, "http://127.0.0.1:1", "http://127.0.0.1:1", nil)
 	ctx := context.Background()
@@ -494,6 +501,7 @@ func TestEnglishEveryPage(t *testing.T) {
 		{target: "/settings/sicurezza"},
 		{route: "/settings/security/totp", target: "/settings/security/totp"},
 		{route: "/settings/security/totp/confirm", target: "/settings/security/totp/confirm"},
+		{route: "/settings/security/passkeys/new", target: "/settings/security/passkeys/new"},
 		{target: "/settings/elenchi"},
 		{target: "/settings/app"},
 		{target: "/settings/account"},

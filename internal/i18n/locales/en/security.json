@@ -49,5 +49,17 @@
   "security.mfa.resend": "Send the code again",
   "security.mfa.sent": "We sent a new code.",
   "security.mfa.err_code": "That code is not right. {{.Left}} tries left.",
-  "security.mfa.err_locked": "Too many wrong codes. Try again in a few minutes."
+  "security.mfa.err_locked": "Too many wrong codes. Try again in a few minutes.",
+  "security.row.passkeys": "Passkeys",
+  "security.row.passkeys_desc": "Sign in with a fingerprint, a face or a security key",
+  "security.passkey.add": "Add",
+  "security.passkey.add_title": "Add a passkey",
+  "security.passkey.add_text": "A name to tell it apart, such as the device. Your browser then asks you to confirm.",
+  "security.passkey.name": "Name",
+  "security.passkey.remove": "Remove",
+  "security.passkey.used": "Used {{.Day}} {{.Month}}",
+  "security.passkey.unused": "Not used yet",
+  "security.passkey.err_name": "Give it a name of up to 64 characters.",
+  "security.passkey.err_many": "You have the most passkeys an account can keep. Remove one first.",
+  "security.passkey.err_failed": "The passkey could not be added. Try again."
 }
