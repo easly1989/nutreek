@@ -34,11 +34,10 @@ func (a *App) passkeyOn() bool { return a.WebAuthn != nil && a.Passkeys != nil &
 
 // waUser is an account as the WebAuthn library sees it.
 type waUser struct {
-	id          int64
-	handle      []byte
-	name        string
-	creds       []webauthn.Credential
-	passwordKey string
+	id     int64
+	handle []byte
+	name   string
+	creds  []webauthn.Credential
 }
 
 func (u waUser) WebAuthnID() []byte                         { return u.handle }
