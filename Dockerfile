@@ -19,6 +19,9 @@ RUN case "$TARGETARCH" in \
 COPY web/tailwind ./web/tailwind
 COPY internal/web/templates ./internal/web/templates
 COPY internal/app ./internal/app
+# The scripts too: tailwind.config.js reads them, and a class used only there (the
+# day swipe hint) is left out of the bundle when they are missing.
+COPY internal/web/static/js ./internal/web/static/js
 RUN mkdir -p internal/web/static/css && \
     tailwindcss \
       -c ./web/tailwind/tailwind.config.js \
