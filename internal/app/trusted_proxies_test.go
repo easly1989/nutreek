@@ -46,6 +46,8 @@ func TestTrustedProxiesListed(t *testing.T) {
 		{"a public peer is never a proxy", "203.0.113.4", "8.8.8.8", "203.0.113.4"},
 		{"a listed proxy, a chain: the first address that is not ours", "10.0.0.5", "1.1.1.1, 8.8.8.8, 172.18.0.2", "8.8.8.8"},
 		{"a listed proxy with no header", "10.0.0.5", "", "10.0.0.5"},
+		{"our proxy wrote ip:port: the client's earlier entry is not believed", "10.0.0.5", "9.9.9.9, 203.0.113.7:51234", "10.0.0.5"},
+		{"our proxy wrote something else", "10.0.0.5", "9.9.9.9, unknown", "10.0.0.5"},
 	}
 	for _, tc := range cases {
 		if got := ipFrom(tc.peer, tc.xff); got != tc.want {

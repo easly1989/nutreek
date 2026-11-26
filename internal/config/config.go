@@ -252,20 +252,31 @@ func getenv(key, fallback string) string {
 }
 
 // ParseProxies reads a comma-separated list of addresses and ranges (10.0.0.5, 172.18.0.0/16,
-// fd00::/8). "none" trusts no proxy at all.
+// fd00::/8). "none" trusts no proxy at all and cannot be mixed with others. A range must hold
+// only proxies, and one that holds every address is refused.
 func ParseProxies(raw string) ([]netip.Prefix, error) {
 	var out []netip.Prefix
+	none := false
 	for _, part := range strings.Split(raw, ",") {
 		part = strings.TrimSpace(part)
 		switch {
 		case part == "":
 			continue
 		case strings.EqualFold(part, "none"):
-			continue
+			none = true
 		case strings.Contains(part, "/"):
 			p, err := netip.ParsePrefix(part)
 			if err != nil {
 				return nil, fmt.Errorf("%q is not a range", part)
+			}
+			if a := p.Addr(); a.Is4In6() { // ::ffff:10.0.0.0/104 is 10.0.0.0/8
+				if p.Bits() < 96 {
+					return nil, fmt.Errorf("%q is too wide", part)
+				}
+				p = netip.PrefixFrom(a.Unmap(), p.Bits()-96)
+			}
+			if p.Bits() == 0 {
+				return nil, fmt.Errorf("%q would believe every address", part)
 			}
 			out = append(out, p.Masked())
 		default:
@@ -275,6 +286,9 @@ func ParseProxies(raw string) ([]netip.Prefix, error) {
 			}
 			out = append(out, netip.PrefixFrom(a.Unmap(), a.Unmap().BitLen()))
 		}
+	}
+	if none && len(out) > 0 {
+		return nil, errors.New(`"none" cannot be mixed with addresses`)
 	}
 	return out, nil
 }

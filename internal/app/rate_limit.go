@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
@@ -130,27 +131,40 @@ func clientIP(r *http.Request) string {
 	}
 	peerAddr, err := netip.ParseAddr(peer)
 	if err != nil || !isTrustedProxy(peerAddr) {
+		if err == nil && trustedProxies.Load() != nil && r.Header.Get("X-Forwarded-For") != "" && (peerAddr.Unmap().IsPrivate() || peerAddr.Unmap().IsLoopback()) {
+			warnUnlistedProxy.Do(func() {
+				slog.Warn("X-Forwarded-For arrived from a private address that is not in NUTREEK_TRUSTED_PROXIES: it is ignored, so every visitor behind it counts as that address. If this is your reverse proxy, list it (and give its container a fixed address)", "peer", peer)
+			})
+		}
 		return peer
 	}
 
-	var chain []netip.Addr
+	// The chain is read from the right. An entry that does not parse (a proxy that writes
+	// ip:port, or "unknown") stops the walk: skipping it would pick an address the client wrote.
+	var parts []string
 	for _, v := range r.Header.Values("X-Forwarded-For") {
 		for part := range strings.SplitSeq(v, ",") {
-			if a, err := netip.ParseAddr(strings.TrimSpace(part)); err == nil {
-				chain = append(chain, a.Unmap())
-			}
+			parts = append(parts, strings.TrimSpace(part))
 		}
 	}
-	if len(chain) == 0 {
+	if len(parts) == 0 {
 		return peer
 	}
-	for i := len(chain) - 1; i >= 0; i-- {
-		if !isTrustedProxy(chain[i]) {
-			return chain[i].String()
+	for i := len(parts) - 1; i >= 0; i-- {
+		a, err := netip.ParseAddr(parts[i])
+		if err != nil {
+			return peer
+		}
+		a = a.Unmap()
+		if !isTrustedProxy(a) {
+			return a.String()
 		}
 	}
-	return chain[0].String()
+	first, _ := netip.ParseAddr(parts[0])
+	return first.Unmap().String()
 }
+
+var warnUnlistedProxy sync.Once
 
 // trustedProxies is the list set by NUTREEK_TRUSTED_PROXIES (#346); nil means it was not set.
 var trustedProxies atomic.Pointer[[]netip.Prefix]
