@@ -1,8 +1,8 @@
 {
   "stable": {
     "image": "ghcr.io/easly1989/nutreek:latest",
-    "sha": "d41fc65da0846bb3d5e160534a2b6e60e4d84c98",
-    "published": "2026-11-25T14:08:58Z",
+    "sha": "ddaa0ab76fe95d8791e9855e3e3c3dc9ebf79119",
+    "published": "2026-11-26T15:44:07Z",
     "version": "v3.0.0"
   }
 }
