@@ -87,7 +87,8 @@ func TestRecoveryCodes(t *testing.T) {
 		t.Fatal("a right code stays as it is")
 	}
 	s1, _ := NewSalt()
-	if HashCode(s1, "a") == HashCode(s1, "b") || HashCode(s1, "a") != HashCode(s1, "a") || HashCode(s1, "a") == HashCode(s1+"x", "a") {
+	h := HashCode(s1, "a")
+	if h == HashCode(s1, "b") || h != HashCode(s1, "a") || h == HashCode(s1+"x", "a") {
 		t.Fatal("the hash depends on the code and the salt, and nothing else")
 	}
 	if !Equal("x", "x") || Equal("x", "y") {
