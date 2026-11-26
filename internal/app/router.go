@@ -95,6 +95,10 @@ func (a *App) Router() http.Handler {
 		r.Post("/login", a.handleLogin)
 		r.Get("/register", a.handleRegisterForm)
 		r.With(registerLimiter.Middleware).Post("/register", a.handleRegister)
+		if a.passkeyOn() {
+			r.Post("/login/passkey/begin", a.handlePasskeyLoginBegin)
+			r.Post("/login/passkey/finish", a.handlePasskeyLoginFinish)
+		}
 		if a.TwoFactor != nil {
 			r.Get("/login/2fa", a.handleMFAForm)
 			r.Post("/login/2fa", a.handleMFA)
@@ -349,6 +353,12 @@ func (a *App) Router() http.Handler {
 				r.Post("/settings/security/email/confirm", a.handleEmailConfirm)
 				r.Post("/settings/security/email/disable", a.handleEmailDisable)
 				r.Post("/settings/security/codes", a.handleCodesRegenerate)
+			}
+			if a.passkeyOn() {
+				r.Get("/settings/security/passkeys/new", a.handlePasskeyNew)
+				r.Post("/settings/security/passkeys/begin", a.handlePasskeyAddBegin)
+				r.Post("/settings/security/passkeys/finish", a.handlePasskeyAddFinish)
+				r.Post("/settings/security/passkeys/{id}/delete", a.handlePasskeyDelete)
 			}
 			r.Post("/settings/delete-account", a.handleDeleteAccount)
 			r.With(a.requireFeature("api_access")).Post("/settings/api-tokens", a.handleSettingsAPITokenCreate)

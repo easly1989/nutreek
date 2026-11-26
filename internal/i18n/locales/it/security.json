@@ -49,5 +49,17 @@
   "security.mfa.resend": "Rimanda il codice",
   "security.mfa.sent": "Abbiamo mandato un nuovo codice.",
   "security.mfa.err_code": "Il codice non è giusto. Ti restano {{.Left}} tentativi.",
-  "security.mfa.err_locked": "Troppi codici sbagliati. Riprova tra qualche minuto."
+  "security.mfa.err_locked": "Troppi codici sbagliati. Riprova tra qualche minuto.",
+  "security.row.passkeys": "Passkey",
+  "security.row.passkeys_desc": "Entri con l'impronta, il volto o una chiave fisica",
+  "security.passkey.add": "Aggiungi",
+  "security.passkey.add_title": "Aggiungi una passkey",
+  "security.passkey.add_text": "Un nome per riconoscerla, per esempio il dispositivo. Poi il browser ti chiede di confermare.",
+  "security.passkey.name": "Nome",
+  "security.passkey.remove": "Rimuovi",
+  "security.passkey.used": "Usata il {{.Day}} {{.Month}}",
+  "security.passkey.unused": "Mai usata",
+  "security.passkey.err_name": "Dalle un nome di al massimo 64 caratteri.",
+  "security.passkey.err_many": "Hai il massimo di passkey che un account può tenere. Toglierne una prima.",
+  "security.passkey.err_failed": "Non è stato possibile aggiungere la passkey. Riprova."
 }

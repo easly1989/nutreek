@@ -5,8 +5,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -196,6 +198,16 @@ func run(logger *slog.Logger) error {
 		StoreClient:   stores.NewClient(cfg.StoresAllowPrivate),
 	}
 	a.TwoFactor = db.NewTwoFactor(store.DB)
+	if cfg.BaseURL != "" {
+		u, err := url.Parse(cfg.BaseURL)
+		if err != nil {
+			return err
+		}
+		if a.WebAuthn, err = webauthn.New(&webauthn.Config{RPID: u.Hostname(), RPDisplayName: "Nutreek", RPOrigins: []string{cfg.BaseURL}}); err != nil {
+			return err
+		}
+		a.Passkeys = db.NewPasskeys(store.DB)
+	}
 	if cfg.SMTPHost != "" {
 		m, err := mailer.New(mailer.Config{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser,
 			Password: cfg.SMTPPassword, From: cfg.SMTPFrom, TLS: cfg.SMTPTLS})

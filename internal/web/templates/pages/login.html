@@ -17,6 +17,14 @@
     {{if .MailOn}}<p class="text-right"><a href="/forgot" class="text-accent font-semibold hover:underline">{{t "auth.login.forgot"}}</a></p>{{end}}
     <button class="btn-primary btn-block">{{t "auth.login.submit"}}</button>
   </form>
+  {{if .PasskeyOn}}
+  <div class="flex flex-col gap-3">
+    <p class="text-center text-muted text-sm">{{t "auth.login.or"}}</p>
+    <p role="alert" hidden data-passkey-error data-default="{{t "auth.login.passkey_error"}}" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5"></p>
+    <button type="button" hidden data-passkey-login class="btn-secondary btn-block">{{template "icon_sm" "i-key"}}{{t "auth.login.passkey"}}</button>
+  </div>
+  {{end}}
   <p class="text-center text-muted">{{t "auth.login.no_account"}} <a href="/register" class="text-accent font-semibold hover:underline">{{t "auth.login.register_link"}}</a></p>
 </div>
 {{end}}
+{{define "scripts"}}{{if .PasskeyOn}}<script src="/static/js/passkey.js" defer></script>{{end}}{{end}}

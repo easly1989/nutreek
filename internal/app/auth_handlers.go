@@ -33,6 +33,7 @@ type authPageData struct {
 	IsOwner     bool   // true when the current user is the instance owner
 	SSOName     string // label of the sign-in provider (#333); empty when none is set
 	TwoFactorOn bool   // the second sign-in step exists (#335): Settings lists "Security"
+	PasskeyOn   bool   // a person can sign in with a passkey (#336)
 	MailOn      bool   // emails can be sent: the login page offers "Forgot password?" (#334)
 	FormAction  string // where a form posts, when the address has a token in it
 	// Features maps key→bool: whether the user has access to the feature.
@@ -70,6 +71,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 		ShowTour:    showTour,
 		IsOwner:     a.isOwner(user),
 		SSOName:     a.ssoName(),
+		PasskeyOn:   a.passkeyOn(),
 		MailOn:      a.mailOn(),
 		TwoFactorOn: a.TwoFactor != nil && a.Demo == nil,
 		Features:    features,

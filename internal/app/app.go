@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"log/slog"
 	"sync"
 	"time"
@@ -92,9 +93,14 @@ type App struct {
 	forgotEmail    *ipRateLimiter
 	forgotSlots    chan struct{}
 	mfaIP          *ipRateLimiter
+	passkeyIP      *ipRateLimiter
 
 	// The second sign-in step (#335).
-	TwoFactor  *db.TwoFactor
+	TwoFactor *db.TwoFactor
+
+	// Passkeys (#336); WebAuthn is nil without NUTREEK_BASE_URL.
+	WebAuthn   *webauthn.WebAuthn
+	Passkeys   *db.Passkeys
 	forgotOnce sync.Once
 }
 
@@ -130,12 +136,19 @@ func (a *App) initForgotLimiters() {
 	a.forgotEmail = newIPRateLimiter(1, time.Minute)
 	a.forgotSlots = make(chan struct{}, 8)
 	a.mfaIP = newIPRateLimiter(10, time.Minute)
+	a.passkeyIP = newIPRateLimiter(20, time.Minute)
 }
 
 // mfaLimiter limits tries at a second-step code per client address (10 a minute).
 func (a *App) mfaLimiter() *ipRateLimiter {
 	a.forgotOnce.Do(a.initForgotLimiters)
 	return a.mfaIP
+}
+
+// passkeyLimiter limits passkey sign-in tries per client address (20 a minute).
+func (a *App) passkeyLimiter() *ipRateLimiter {
+	a.forgotOnce.Do(a.initForgotLimiters)
+	return a.passkeyIP
 }
 
 // Demo is the public demo: it creates a throwaway group of accounts in a

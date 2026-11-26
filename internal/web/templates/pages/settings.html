@@ -248,6 +248,16 @@
               <form method="post" action="/settings/security/email/disable" class="flex flex-wrap items-end gap-2 pt-2"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                 <label class="lab flex-1 min-w-[200px] max-w-[280px]">{{t "security.password"}}<input name="password" type="password" required autocomplete="current-password" class="field"></label>
                 <button class="btn-secondary">{{t "security.turn_off"}}</button></form></details></li>{{end}}
+            {{if .PasskeyOn}}<li class="flex items-center gap-3 min-h-14 py-2">
+              <span class="grow min-w-0"><b class="block">{{t "security.row.passkeys"}}</b><span class="block settings-d">{{t "security.row.passkeys_desc"}}</span></span>
+              <a href="/settings/security/passkeys/new" class="btn-secondary h-9">{{t "security.passkey.add"}}</a>
+            </li>
+            {{range .Passkeys}}<li class="py-2"><div class="flex items-center gap-3 min-h-10">{{template "icon_sm" "i-key"}}<span class="grow min-w-0"><b class="block truncate">{{.Name}}</b><span class="block settings-d">{{if .LastUsedAt}}{{t "security.passkey.used" "Day" .LastUsedAt.Day "Month" (monthName .LastUsedAt)}}{{else}}{{t "security.passkey.unused"}}{{end}}</span></span></div>
+              <details><summary class="cursor-pointer text-accent font-semibold min-h-9 inline-flex items-center">{{t "security.passkey.remove"}}</summary>
+              <form method="post" action="/settings/security/passkeys/{{.ID}}/delete" class="flex flex-wrap items-end gap-2 pt-2"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <label class="lab flex-1 min-w-[200px] max-w-[280px]">{{t "security.password"}}<input name="password" type="password" required autocomplete="current-password" class="field"></label>
+                <button class="btn-secondary">{{t "security.passkey.remove"}}</button></form></details></li>{{end}}
+            {{end}}
             <li class="flex items-center gap-3 min-h-14 py-2">
               <span class="grow min-w-0"><b class="block">{{t "security.row.codes"}}</b><span class="block settings-d">{{if .Any}}{{t "security.row.codes_left" "Left" .CodesLeft}}{{else}}{{t "security.row.codes_none"}}{{end}}</span></span>
             </li>

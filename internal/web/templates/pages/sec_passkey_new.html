@@ -1,0 +1,19 @@
+{{define "title"}}{{t "security.passkey.add_title"}} — Nutreek{{end}}
+{{define "content"}}
+<div class="flex flex-col gap-4 max-w-[460px] mx-auto">
+  <header class="text-center">
+    <a href="/settings/sicurezza" class="crumb">{{template "icon_sm" "i-chevron-left"}}{{t "security.title"}}</a>
+    <h1 class="h1">{{t "security.passkey.add_title"}}</h1>
+    <p class="text-muted mt-1">{{t "security.passkey.add_text"}}</p>
+  </header>
+  <p role="alert" hidden data-passkey-error data-default="{{t "security.passkey.err_failed"}}" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5"></p>
+  <form class="card" data-passkey-add action="/settings/security/passkeys/begin" method="post">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label class="lab">{{t "security.passkey.name"}}<input name="name" required maxlength="64" autocomplete="off" class="field field-lg"></label>
+    <label class="lab">{{t "security.password"}}<input name="password" type="password" required autocomplete="current-password" class="field field-lg"></label>
+    <button class="btn-primary btn-block">{{t "security.next"}}</button>
+  </form>
+  <p class="text-center"><a href="/settings/sicurezza" class="text-accent font-semibold hover:underline">{{t "common.cancel"}}</a></p>
+</div>
+{{end}}
+{{define "scripts"}}<script src="/static/js/passkey.js" defer></script>{{end}}
