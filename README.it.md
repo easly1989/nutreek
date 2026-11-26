@@ -272,10 +272,22 @@ Tutte le variabili d'ambiente:
 | `NUTREEK_UPDATE_CHECK` | `true` | Controlla una volta al giorno se c'è una release più recente e lo dice al proprietario (vedi [Aggiornare](#aggiornare)) |
 | `NUTREEK_SECRET_KEY` | *(nessuno)* | Almeno 16 caratteri (`openssl rand -hex 32`); cifra i token dei plugin dei negozi. Senza, non si può collegare nessun negozio ([docs/store-plugins.md](docs/store-plugins.md)) |
 | `NUTREEK_STORES_ALLOW_PRIVATE` | `false` | Permette a un plugin di stare su un indirizzo privato (un server in casa) |
+| `NUTREEK_BASE_URL` | *(nessuno)* | Indirizzo pubblico dell'istanza, per esempio `https://nutreek.example.com`. Serve per l'accesso con un provider, le email e le passkey ([Opzioni di accesso](#opzioni-di-accesso)) |
+| `NUTREEK_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_NAME`, `_AUTO_CREATE` | *(nessuno)* | "Accedi con…" tramite un provider OpenID Connect come Authelia |
+| `NUTREEK_SMTP_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_FROM`, `_TLS` | *(nessuno)* | Il tuo server SMTP: attiva il recupero password via email e il codice per email del secondo passaggio |
 
 ### OpenFoodFacts
 
 Tutta la ricerca testuale su OpenFoodFacts è **locale**. Il sync scarica una volta l'export CSV di OFF (~0,8 GB compressi), tiene i prodotti italiani (~250k) e li indicizza con SQLite FTS5: le ricerche durano meno di 50 ms e non usano la rete. Poi, una volta al giorno, applica solo le modifiche che OFF pubblica; riscarica il CSV dopo più di ~13 giorni offline e ogni 30 giorni. Mentre un download è in corso le ricerche rispondono con i prodotti di prima, e dopo un download completo il file del database restituisce al disco lo spazio liberato, a piccoli passi (`incremental_vacuum`). Al primo avvio la tabella è vuota e il primo sync parte in background (una decina di minuti); finché non finisce le ricerche restano vuote. Solo la lettura per codice di un prodotto non ancora importato chiama l'API live di OFF.
+
+### Opzioni di accesso
+
+Email e password funzionano sempre. Altri quattro modi di proteggere o facilitare l'accesso sono spenti finché non li configuri; ognuno è descritto, con tutte le variabili, in [docs/env-vars.md](docs/env-vars.md).
+
+- **Accesso con un provider (OpenID Connect).** Imposta `NUTREEK_BASE_URL` e `NUTREEK_OIDC_*`. Registra un client presso il provider (Authelia, Keycloak, Authentik) con l'indirizzo di ritorno `<NUTREEK_BASE_URL>/auth/oidc/callback` e gli scope `openid profile email`. La pagina di accesso offre allora "Accedi con <nome>". La prima volta, un account esistente con la stessa email chiede una volta la sua password per collegarsi.
+- **Recupero password via email.** Nutreek non invia posta da solo: indicagli un server SMTP tuo o in affitto con `NUTREEK_SMTP_*` (e `NUTREEK_BASE_URL`, su cui si costruisce il link). Nella pagina di accesso compare "Password dimenticata?". Usa la porta 587 con `starttls`, oppure 465 con `tls`.
+- **Secondo passaggio.** Ogni persona può attivare un'app di autenticazione (serve `NUTREEK_SECRET_KEY`) e un codice per email (serve l'SMTP), con dieci codici di emergenza, da Impostazioni → Sicurezza.
+- **Passkey.** Con `NUTREEK_BASE_URL` su un indirizzo https, si possono aggiungere passkey da Impostazioni → Sicurezza e accedere con l'impronta, il volto o una chiave fisica. Una passkey è un accesso completo: non seguono né password né secondo passaggio.
 
 ---
 
