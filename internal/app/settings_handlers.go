@@ -240,8 +240,8 @@ func (a *App) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	password := r.PostFormValue("password")
-	// The tries share the sign-in limiter: a stolen session must not guess the password freely (#345).
-	allowed := a.loginRateLimiter().allow(remoteIP(r))
+	// The tries are limited for the account: a stolen session must not guess the password freely (#345).
+	allowed := a.pwTryAllowed(user.ID)
 	if !allowed || auth.VerifyPassword(user.PasswordHash, password) != nil {
 		data := settingsPageData{authPageData: a.baseData(r)}
 		data.ActiveNav = "/settings"
@@ -288,8 +288,8 @@ func (a *App) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	renderErr := func(msg string) { renderErrStatus(http.StatusUnprocessableEntity, msg) }
 
-	// The tries share the sign-in limiter: a stolen session must not guess the password freely (#345).
-	if !a.loginRateLimiter().allow(remoteIP(r)) {
+	// The tries are limited for the account: a stolen session must not guess the password freely (#345).
+	if !a.pwTryAllowed(user.ID) {
 		renderErrStatus(http.StatusTooManyRequests, a.t(r, "auth.error.too_many_attempts"))
 		return
 	}

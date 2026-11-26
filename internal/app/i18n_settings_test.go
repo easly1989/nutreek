@@ -198,7 +198,8 @@ func TestEnglishSettingsAdminCoach(t *testing.T) {
 			}
 			p.handler(w, r)
 		})
-		a.loginRateLimiter().reset(remoteIP(req)) // each page starts with a clean limiter: password checks count on it (#345)
+		a.forgotOnce.Do(a.initForgotLimiters)
+		a.pwTries.reset(pwTryKey(viewer.ID)) // each page starts with a clean limiter: password checks count on it (#345)
 		rec := httptest.NewRecorder()
 		languageMiddleware(a.Sessions.LoadAndSave(h)).ServeHTTP(rec, req)
 		if rec.Code >= 300 && rec.Code < 400 {
