@@ -45,6 +45,8 @@ func TestLoginRateLimiterWindowExpiry(t *testing.T) {
 }
 
 func TestRemoteIP(t *testing.T) {
+	// The proxies of these cases are listed: loopback, a Docker network and a private range.
+	withProxies(t, true, "127.0.0.0/8", "::1/128", "172.18.0.0/16", "10.0.0.0/8")
 	cases := []struct {
 		name     string
 		xff      string

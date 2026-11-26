@@ -1,6 +1,7 @@
 package app
 
 import (
+	"net"
 	"net/http/httptest"
 	"net/netip"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 func ipFrom(peer, xff string) string {
 	r := httptest.NewRequest("GET", "/", nil)
-	r.RemoteAddr = peer + ":40000"
+	r.RemoteAddr = net.JoinHostPort(peer, "40000")
 	if xff != "" {
 		r.Header.Set("X-Forwarded-For", xff)
 	}
@@ -25,11 +26,19 @@ func withProxies(t *testing.T, set bool, list ...string) {
 	t.Cleanup(func() { SetTrustedProxies(nil, false) })
 }
 
-// Not set: as before, loopback and private networks are believed.
+// Not set: only the loopback address is believed. A private host cannot choose its address.
 func TestTrustedProxiesDefault(t *testing.T) {
 	withProxies(t, false)
-	if got := ipFrom("10.0.0.9", "8.8.8.8"); got != "8.8.8.8" {
-		t.Fatalf("a private peer is trusted by default, got %q", got)
+	if got := ipFrom("127.0.0.1", "8.8.8.8"); got != "8.8.8.8" {
+		t.Fatalf("a proxy on the same host is believed by default, got %q", got)
+	}
+	if got := ipFrom("::1", "8.8.8.8"); got != "8.8.8.8" {
+		t.Fatalf("the IPv6 loopback too, got %q", got)
+	}
+	for _, peer := range []string{"10.0.0.9", "172.18.0.2", "192.168.1.5"} {
+		if got := ipFrom(peer, "8.8.8.8"); got != peer {
+			t.Fatalf("a private peer %s must not choose its address, got %q", peer, got)
+		}
 	}
 }
 

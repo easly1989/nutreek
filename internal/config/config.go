@@ -75,7 +75,7 @@ type Config struct {
 	SMTPTLS      string // starttls (default), tls or none
 
 	// TrustedProxies are the addresses whose X-Forwarded-For is believed (#346). TrustedProxiesSet is
-	// false when the variable is not set: then loopback and private networks are trusted, as before.
+	// false when the variable is not set: then only the loopback address is believed.
 	TrustedProxies    []netip.Prefix
 	TrustedProxiesSet bool
 }
