@@ -326,12 +326,53 @@ func TestPasskeyLimit(t *testing.T) {
 	for i := 0; i < db.MaxPasskeys; i++ {
 		id := make([]byte, 16)
 		_, _ = rand.Read(id)
-		if err := a.Passkeys.Add(t.Context(), user.ID, []byte("h"), id, "k", "{}", time.Now()); err != nil {
+		if err := a.Passkeys.Add(t.Context(), user.ID, []byte("h"), id, "k", "{}", 0, time.Now()); err != nil {
 			t.Fatal(err)
 		}
 	}
 	logIn(b, "carlo@example.test", "right-password")
 	if code, _ := postJSON(b, "/settings/security/passkeys/new", "/settings/security/passkeys/begin", map[string]string{"name": "one more", "password": "right-password"}); code == 200 {
 		t.Fatal("an account keeps at most ten passkeys")
+	}
+}
+
+// A reset takes passkeys away: otherwise a key someone added would outlive it.
+func TestPasswordResetRemovesPasskeys(t *testing.T) {
+	a, b := passkeyApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "right-password")
+	addPasskey(t, a, b, newSoftKey(t), "Phone")
+	_ = a.PasswordResets.Create(t.Context(), user.ID, resetHash("tok"), time.Now().Add(time.Hour), 0)
+	if code, _, _ := newBrowser(t, a).submit("/reset/tok", "/reset/tok", url.Values{"password": {"a-new-password"}}); code != 303 {
+		t.Fatalf("reset: %d", code)
+	}
+	if l, _ := a.Passkeys.List(t.Context(), user.ID); len(l) != 0 {
+		t.Fatalf("passkeys left: %d", len(l))
+	}
+}
+
+func TestPasskeySignCountOnlyMovesForward(t *testing.T) {
+	a, b := passkeyApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "right-password")
+	addPasskey(t, a, b, newSoftKey(t), "Phone")
+	l, _ := a.Passkeys.List(t.Context(), user.ID)
+	id := l[0].ID
+	for _, tc := range []struct {
+		count uint32
+		want  bool
+	}{{5, true}, {5, false}, {3, false}, {6, true}, {0, true}} {
+		if ok, err := a.Passkeys.Touch(t.Context(), id, "{}", tc.count, time.Now()); err != nil || ok != tc.want {
+			t.Fatalf("count %d: ok=%v err=%v, want %v", tc.count, ok, err, tc.want)
+		}
+	}
+}
+
+func TestPasskeysOfOneAccountShareTheirHandle(t *testing.T) {
+	a, _ := passkeyApp(t)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "right-password")
+	if err := a.Passkeys.Add(t.Context(), user.ID, []byte("handle-1"), []byte("c1"), "A", "{}", 0, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Passkeys.Add(t.Context(), user.ID, []byte("handle-2"), []byte("c2"), "B", "{}", 0, time.Now()); err == nil {
+		t.Fatal("a second passkey with another handle must be refused")
 	}
 }

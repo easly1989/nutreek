@@ -160,12 +160,18 @@ func (a *App) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	raw, err := json.Marshal(cred)
+	moved := false
 	if err == nil {
-		err = a.Passkeys.Touch(r.Context(), picked.ID, string(raw), time.Now())
+		moved, err = a.Passkeys.Touch(r.Context(), picked.ID, string(raw), cred.Authenticator.SignCount, time.Now())
 	}
 	if err != nil {
 		a.Logger.Error("passkey: record sign-in", "err", err)
 		pkError(w, http.StatusInternalServerError, "could not sign in")
+		return
+	}
+	if !moved { // the count did not move forward: a second sign-in with the same answer, or a copy of the key
+		a.Logger.Warn("passkey: sign-in refused, the sign count did not move forward")
+		pkError(w, http.StatusUnauthorized, "passkey not accepted")
 		return
 	}
 	user, err := a.Users.GetByID(r.Context(), wu.(waUser).id)
@@ -271,7 +277,7 @@ func (a *App) handlePasskeyAddFinish(w http.ResponseWriter, r *http.Request) {
 	}
 	raw, err := json.Marshal(cred)
 	if err == nil {
-		err = a.Passkeys.Add(r.Context(), user.ID, wu.handle, cred.ID, name, string(raw), time.Now())
+		err = a.Passkeys.Add(r.Context(), user.ID, wu.handle, cred.ID, name, string(raw), cred.Authenticator.SignCount, time.Now())
 	}
 	if err != nil {
 		a.Logger.Error("passkey: save", "err", err)

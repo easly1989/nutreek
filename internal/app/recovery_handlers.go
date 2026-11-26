@@ -47,6 +47,15 @@ func pwStamp(passwordHash string) string {
 	return hex.EncodeToString(sum[:8])
 }
 
+// dropPasskeys deletes the account's passkeys when passkeys are on. A passkey is the one way
+// in that a password reset would not end by itself.
+func (a *App) dropPasskeys(ctx context.Context, userID int64) error {
+	if a.Passkeys == nil {
+		return nil
+	}
+	return a.Passkeys.DeleteAll(ctx, userID)
+}
+
 // logPath is a path fit for the logs: the token of a reset link is not written there.
 func logPath(p string) string {
 	if strings.HasPrefix(p, "/reset/") {
@@ -223,7 +232,7 @@ func (a *App) handleReset(w http.ResponseWriter, r *http.Request) {
 	}
 	// Whoever held the account before is out: sessions that started with the old password
 	// stop working (see loadUserMiddleware), and API tokens and provider links go too.
-	if err := errors.Join(a.APITokens.RevokeAll(r.Context(), userID), a.Identities.UnlinkAll(r.Context(), userID), a.TwoFactor.Clear(r.Context(), userID)); err != nil {
+	if err := errors.Join(a.APITokens.RevokeAll(r.Context(), userID), a.Identities.UnlinkAll(r.Context(), userID), a.TwoFactor.Clear(r.Context(), userID), a.dropPasskeys(r.Context(), userID)); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
