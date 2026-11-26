@@ -291,6 +291,7 @@ func (a *App) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	a.Sessions.Put(ctx, sessionKeyPwStamp, pwStamp(hash)) // other sessions stop; this one goes on
 
 	http.Redirect(w, r, "/settings/account?ok=password", http.StatusSeeOther)
 }

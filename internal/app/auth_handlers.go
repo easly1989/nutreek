@@ -32,6 +32,8 @@ type authPageData struct {
 	Bare       bool   // a page with no sidebar and no bottom bar (onboarding)
 	IsOwner    bool   // true when the current user is the instance owner
 	SSOName    string // label of the sign-in provider (#333); empty when none is set
+	MailOn     bool   // emails can be sent: the login page offers "Forgot password?" (#334)
+	FormAction string // where a form posts, when the address has a token in it
 	// Features maps key→bool: whether the user has access to the feature.
 	// With PremiumEnabled=false everything is always true (no gating).
 	Features map[string]bool
@@ -67,6 +69,7 @@ func (a *App) baseData(r *http.Request) authPageData {
 		ShowTour:   showTour,
 		IsOwner:    a.isOwner(user),
 		SSOName:    a.ssoName(),
+		MailOn:     a.mailOn(),
 		Features:   features,
 	}
 	data.Update = a.ownerUpdate(r, data.IsOwner)

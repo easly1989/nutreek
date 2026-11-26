@@ -69,6 +69,19 @@ func (a *App) loadUserMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		// A session stops working when the password changes: it remembers a fingerprint
+		// of the password it started with. One with none yet (it began before this
+		// existed, or just now) takes the current one.
+		stamp := pwStamp(user.PasswordHash)
+		switch got := a.Sessions.GetString(r.Context(), sessionKeyPwStamp); {
+		case got == "":
+			a.Sessions.Put(r.Context(), sessionKeyPwStamp, stamp)
+		case got != stamp:
+			a.Sessions.Remove(r.Context(), sessionKeyUserID)
+			a.Sessions.Remove(r.Context(), sessionKeyPwStamp)
+			next.ServeHTTP(w, r)
+			return
+		}
 		if a.Demo != nil {
 			if err := a.Demo.Seen(r.Context(), uid); err != nil {
 				a.Logger.Warn("demo: record activity", "err", err, "user_id", uid)

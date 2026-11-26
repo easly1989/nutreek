@@ -95,6 +95,13 @@ func (a *App) Router() http.Handler {
 		r.Post("/login", a.handleLogin)
 		r.Get("/register", a.handleRegisterForm)
 		r.With(registerLimiter.Middleware).Post("/register", a.handleRegister)
+		if a.mailOn() {
+			r.Get("/forgot", a.handleForgotForm)
+			r.Post("/forgot", a.handleForgot)
+			r.Get("/forgot/sent", a.handleForgotSent)
+			r.Get("/reset/{token}", a.handleResetForm)
+			r.Post("/reset/{token}", a.handleReset)
+		}
 		if a.SSO != nil {
 			ssoLimiter := newIPRateLimiter(20, oneMinute)
 			r.With(ssoLimiter.Middleware).Get("/auth/oidc/start", a.handleSSOStart)

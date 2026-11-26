@@ -44,3 +44,29 @@ func TestLoadOIDC(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadSMTP(t *testing.T) {
+	for _, k := range []string{"NUTREEK_BASE_URL", "NUTREEK_SMTP_HOST", "NUTREEK_SMTP_FROM", "NUTREEK_SMTP_PORT"} {
+		t.Setenv(k, "")
+	}
+	if cfg, err := Load(); err != nil || cfg.SMTPHost != "" {
+		t.Fatalf("off by default: %v", err)
+	}
+	t.Setenv("NUTREEK_SMTP_HOST", "smtp.example.com")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "NUTREEK_BASE_URL") {
+		t.Fatalf("a host without a base address: %v", err)
+	}
+	t.Setenv("NUTREEK_BASE_URL", "https://n.example.com")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "NUTREEK_SMTP_FROM") {
+		t.Fatalf("a host without a sender: %v", err)
+	}
+	t.Setenv("NUTREEK_SMTP_FROM", "Nutreek <n@example.com>")
+	cfg, err := Load()
+	if err != nil || cfg.SMTPPort != 587 || cfg.SMTPTLS != "starttls" {
+		t.Fatalf("defaults: %+v, %v", cfg, err)
+	}
+	t.Setenv("NUTREEK_SMTP_PORT", "mail")
+	if _, err := Load(); err == nil {
+		t.Fatal("a port that is not a number should fail")
+	}
+}

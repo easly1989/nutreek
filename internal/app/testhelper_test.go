@@ -60,6 +60,7 @@ func newTestApp(t *testing.T) *App {
 		Categories:             db.NewCategories(store.DB),
 		Notifications:          db.NewNotifications(store.DB),
 		Identities:             db.NewIdentities(store.DB),
+		PasswordResets:         db.NewPasswordResets(store.DB),
 		Household:              db.NewHousehold(store.DB),
 		StorePlugins:           db.NewStorePlugins(store.DB),
 		StoreClient:            stores.NewClient(true),

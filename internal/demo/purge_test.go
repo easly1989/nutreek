@@ -125,6 +125,7 @@ func fill(t *testing.T, d *sql.DB, userID int64) int64 {
 		SELECT ?, id, '2020-01-06', 30, 200 FROM workout_activities LIMIT 1`, userID)
 	exec(`INSERT INTO api_tokens (user_id, name, token_hash) VALUES (?, 'cli', ?)`, userID, "hash-"+time.Now().String())
 	exec(`INSERT INTO subscriptions (user_id) VALUES (?)`, userID)
+	exec(`INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, 'hash-' || ?, 4102444800)`, userID, userID)
 	exec(`INSERT INTO user_identities (user_id, issuer, subject) VALUES (?, 'https://idp.example', 'sub-' || ?)`, userID, userID)
 	return ing
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/amon2126/nutreek/internal/app"
 	"github.com/amon2126/nutreek/internal/config"
 	"github.com/amon2126/nutreek/internal/db"
+	"github.com/amon2126/nutreek/internal/mailer"
 	"github.com/amon2126/nutreek/internal/notify"
 	"github.com/amon2126/nutreek/internal/off"
 	"github.com/amon2126/nutreek/internal/service"
@@ -193,6 +194,15 @@ func run(logger *slog.Logger) error {
 		Household:     db.NewHousehold(store.DB),
 		StorePlugins:  db.NewStorePlugins(store.DB),
 		StoreClient:   stores.NewClient(cfg.StoresAllowPrivate),
+	}
+	if cfg.SMTPHost != "" {
+		m, err := mailer.New(mailer.Config{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser,
+			Password: cfg.SMTPPassword, From: cfg.SMTPFrom, TLS: cfg.SMTPTLS})
+		if err != nil {
+			return err
+		}
+		a.Mailer = m
+		a.PasswordResets = db.NewPasswordResets(store.DB)
 	}
 	if cfg.OIDCIssuer != "" {
 		a.Identities = db.NewIdentities(store.DB)

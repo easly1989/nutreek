@@ -14,6 +14,7 @@
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <label class="lab">{{t "auth.field.email"}}<input id="email" name="email" type="email" required autofocus autocomplete="email" value="{{.Form.Email}}" class="field field-lg"></label>
     <label class="lab">{{t "auth.field.password"}}<span class="field-pw"><input id="password" name="password" type="password" required autocomplete="current-password" class="field field-lg">{{template "pw_toggle" "password"}}</span></label>
+    {{if .MailOn}}<p class="text-right"><a href="/forgot" class="text-accent font-semibold hover:underline">{{t "auth.login.forgot"}}</a></p>{{end}}
     <button class="btn-primary btn-block">{{t "auth.login.submit"}}</button>
   </form>
   <p class="text-center text-muted">{{t "auth.login.no_account"}} <a href="/register" class="text-accent font-semibold hover:underline">{{t "auth.login.register_link"}}</a></p>
