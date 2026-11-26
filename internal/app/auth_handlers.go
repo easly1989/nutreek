@@ -154,9 +154,9 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Successful login: reset the rate limiter so a legitimate user does not
-	// stay under the threshold because of earlier failed attempts.
-	limiter.reset(ip)
+	// The limiter is not reset by a right password: someone who can register an account could
+	// otherwise sign in to their own between guesses at another account and never be stopped
+	// (#338). The window is a minute, so a person who mistyped a few times is back soon.
 
 	// With a second step on, the person is not in yet (#335).
 	if a.TwoFactor != nil {
