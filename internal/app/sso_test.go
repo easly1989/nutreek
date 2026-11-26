@@ -130,6 +130,53 @@ func TestSSOAnotherIdentityWithTheSameEmailCannotTakeTheAccount(t *testing.T) {
 	}
 }
 
+// An account that already has an identity at the provider is refused cleanly, and
+// the waiting link is forgotten.
+func TestSSOAccountAlreadyLinkedElsewhere(t *testing.T) {
+	a, p, b := ssoApp(t, false)
+	user := mustCreateTestUser(t, a, "carlo@example.test", "right-password")
+	if err := a.Identities.Link(context.Background(), user.ID, p.URL, "old-subject"); err != nil {
+		t.Fatal(err)
+	}
+	if status, redirect := ssoTrip(t, b, p); status != 303 || redirect != "/auth/oidc/link" {
+		t.Fatalf("callback: %d -> %q", status, redirect)
+	}
+	if code, _, _ := b.submit("/auth/oidc/link", "/auth/oidc/link", url.Values{"password": {"right-password"}}); code != 409 {
+		t.Fatalf("got %d, want a clean refusal", code)
+	}
+	if code, loc, _ := b.get("/auth/oidc/link"); code != 303 || loc != "/login" {
+		t.Fatalf("the link should be forgotten: %d -> %q", code, loc)
+	}
+}
+
+// A link left open is dropped when another trip starts.
+func TestSSOStartForgetsAnOpenLink(t *testing.T) {
+	a, p, b := ssoApp(t, false)
+	mustCreateTestUser(t, a, "carlo@example.test", "right-password")
+	ssoTrip(t, b, p)
+	if code, _, _ := b.get("/auth/oidc/start"); code != 303 {
+		t.Fatalf("start: %d", code)
+	}
+	if code, loc, _ := b.get("/auth/oidc/link"); code != 303 || loc != "/login" {
+		t.Fatalf("got %d -> %q", code, loc)
+	}
+}
+
+// Making the account and linking it go together: nothing is left behind.
+func TestSSOCreateAccountIsAllOrNothing(t *testing.T) {
+	a, p, _ := ssoApp(t, true)
+	owner := mustCreateTestUser(t, a, "owner@example.test", "x-password")
+	if err := a.Identities.Link(context.Background(), owner.ID, p.URL, "u1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.Identities.CreateAccount(context.Background(), "new@example.test", "hash", "New", p.URL, "u1"); err == nil {
+		t.Fatal("a taken identity should be refused")
+	}
+	if _, err := a.Users.GetByEmail(context.Background(), "new@example.test"); err == nil {
+		t.Fatal("the account must not be left behind")
+	}
+}
+
 func TestSSOLinkPageNeedsATrip(t *testing.T) {
 	_, _, b := ssoApp(t, false)
 	if code, loc, _ := b.get("/auth/oidc/link"); code != 303 || loc != "/login" {

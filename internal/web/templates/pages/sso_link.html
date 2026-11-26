@@ -3,7 +3,7 @@
 <div class="auth-box">
   <div class="text-center">
     <h1 class="h1">{{t "auth.link.title"}}</h1>
-    <p class="text-muted mt-1">{{t "auth.link.subtitle" "Name" .SSOName}}</p>
+    <p class="text-muted mt-1">{{t "auth.link.subtitle" "Email" .Form.Email "Name" .SSOName}}</p>
   </div>
   {{if .Error}}<p role="alert" class="rounded-xl bg-danger-soft text-danger px-4 py-2.5">{{.Error}}</p>{{end}}
   <form method="post" action="/auth/oidc/link" class="card">

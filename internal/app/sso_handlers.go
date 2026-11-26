@@ -28,6 +28,10 @@ const (
 	sessionKeySSOLinkUser    = "sso_link_user"
 	sessionKeySSOLinkIssuer  = "sso_link_issuer"
 	sessionKeySSOLinkSubject = "sso_link_subject"
+	sessionKeySSOLinkEmail   = "sso_link_email"
+	sessionKeySSOLinkAt      = "sso_link_at"
+
+	ssoLinkTTL = 10 * time.Minute
 )
 
 // ssoName is the label of the sign-in button; empty when no provider is set.
@@ -53,6 +57,7 @@ func (a *App) handleSSOStart(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
+	a.clearSSOLink(r)
 	state, err1 := randomHex(16)
 	nonce, err2 := randomHex(16)
 	if err := errors.Join(err1, err2); err != nil {
@@ -78,6 +83,7 @@ func (a *App) handleSSOStart(w http.ResponseWriter, r *http.Request) {
 // with a code. An identity is matched to an account by its verified email; a new
 // email gets an account only with NUTREEK_OIDC_AUTO_CREATE.
 func (a *App) handleSSOCallback(w http.ResponseWriter, r *http.Request) {
+	a.clearSSOLink(r) // a link left open by an earlier trip is not this one's
 	state := a.Sessions.PopString(r.Context(), sessionKeySSOState)
 	nonce := a.Sessions.PopString(r.Context(), sessionKeySSONonce)
 	verifier := a.Sessions.PopString(r.Context(), sessionKeySSOVerifier)
@@ -122,6 +128,8 @@ func (a *App) handleSSOCallback(w http.ResponseWriter, r *http.Request) {
 		// An account with this email exists. Registration does not verify emails, so
 		// anyone may have made it: the person proves it is theirs with its password.
 		a.Sessions.Put(r.Context(), sessionKeySSOLinkUser, user.ID)
+		a.Sessions.Put(r.Context(), sessionKeySSOLinkEmail, ident.Email)
+		a.Sessions.Put(r.Context(), sessionKeySSOLinkAt, time.Now().Unix())
 		a.Sessions.Put(r.Context(), sessionKeySSOLinkIssuer, ident.Issuer)
 		a.Sessions.Put(r.Context(), sessionKeySSOLinkSubject, ident.Subject)
 		http.Redirect(w, r, "/auth/oidc/link", http.StatusSeeOther)
@@ -131,6 +139,11 @@ func (a *App) handleSSOCallback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		id, err := a.createSSOAccount(r.Context(), ident)
+		if errors.Is(err, db.ErrEmailAlreadyUsed) || errors.Is(err, db.ErrIdentityTaken) {
+			// Someone registered the address, or this identity got in, a moment ago.
+			a.renderSSOError(w, r, "auth.error.sso_failed")
+			return
+		}
 		if err != nil {
 			a.serverError(w, r, err)
 			return
@@ -160,11 +173,8 @@ func (a *App) createSSOAccount(ctx context.Context, ident *sso.Identity) (int64,
 	if err != nil {
 		return 0, err
 	}
-	id, err := a.Users.Create(ctx, ident.Email, hash, name)
+	id, err := a.Identities.CreateAccount(ctx, ident.Email, hash, name, ident.Issuer, ident.Subject)
 	if err != nil {
-		return 0, err
-	}
-	if err := a.Identities.Link(ctx, id, ident.Issuer, ident.Subject); err != nil {
 		return 0, err
 	}
 	return id, nil
@@ -190,7 +200,19 @@ func (a *App) pendingSSOLink(r *http.Request) (userID int64, issuer, subject str
 	userID, _ = a.Sessions.Get(r.Context(), sessionKeySSOLinkUser).(int64)
 	issuer = a.Sessions.GetString(r.Context(), sessionKeySSOLinkIssuer)
 	subject = a.Sessions.GetString(r.Context(), sessionKeySSOLinkSubject)
-	return userID, issuer, subject, userID != 0 && issuer != "" && subject != ""
+	at, _ := a.Sessions.Get(r.Context(), sessionKeySSOLinkAt).(int64)
+	ok = userID != 0 && issuer != "" && subject != "" && time.Since(time.Unix(at, 0)) < ssoLinkTTL
+	if !ok {
+		a.clearSSOLink(r)
+	}
+	return userID, issuer, subject, ok
+}
+
+// clearSSOLink forgets a link waiting for a password.
+func (a *App) clearSSOLink(r *http.Request) {
+	for _, k := range []string{sessionKeySSOLinkUser, sessionKeySSOLinkIssuer, sessionKeySSOLinkSubject, sessionKeySSOLinkEmail, sessionKeySSOLinkAt} {
+		a.Sessions.Remove(r.Context(), k)
+	}
 }
 
 // handleSSOLinkForm GET /auth/oidc/link: asks for the password of the account.
@@ -199,7 +221,9 @@ func (a *App) handleSSOLinkForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	if err := a.Render.Render(w, r, http.StatusOK, "sso_link", a.baseData(r)); err != nil {
+	data := a.baseData(r)
+	data.Form.Email = a.Sessions.GetString(r.Context(), sessionKeySSOLinkEmail)
+	if err := a.Render.Render(w, r, http.StatusOK, "sso_link", data); err != nil {
 		a.serverError(w, r, err)
 	}
 }
@@ -219,6 +243,11 @@ func (a *App) handleSSOLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, err := a.Users.GetByID(r.Context(), userID)
+	if errors.Is(err, db.ErrUserNotFound) {
+		a.clearSSOLink(r)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -231,14 +260,18 @@ func (a *App) handleSSOLink(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	limiter.reset(ip)
-	if err := a.Identities.Link(r.Context(), userID, issuer, subject); err != nil {
+	// The limiter is not reset here: a right password must not buy more guesses.
+	err = a.Identities.Link(r.Context(), userID, issuer, subject)
+	if errors.Is(err, db.ErrIdentityTaken) {
+		a.clearSSOLink(r)
+		a.renderSSOLinkError(w, r, http.StatusConflict, "auth.error.sso_already_linked")
+		return
+	}
+	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
-	a.Sessions.Remove(r.Context(), sessionKeySSOLinkUser)
-	a.Sessions.Remove(r.Context(), sessionKeySSOLinkIssuer)
-	a.Sessions.Remove(r.Context(), sessionKeySSOLinkSubject)
+	a.clearSSOLink(r)
 	a.finishSSOSignIn(w, r, userID, false)
 }
 
