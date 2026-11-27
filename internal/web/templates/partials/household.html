@@ -22,7 +22,7 @@
           <label class="skip-chip"><input type="checkbox" name="skip_owner" value="1" class="sr-only"{{if .OwnerSkip}} checked{{end}}>{{t "household.item.skip"}}</label>
         </span>
         <input id="q-owner" name="q_owner" inputmode="decimal" autocomplete="off" value="{{dec .OwnerBase 2}}"
-               aria-label="{{t "household.item.qty_for" "Name" .OwnerName}}" class="field w-24 text-right tabular-nums">
+               aria-label="{{t "household.item.qty_for" "Name" .OwnerName}}" class="field w-20 text-right tabular-nums">
         {{if .CanUnit}}
         <span class="segmented grid-cols-2 w-[5.5rem] shrink-0 [&>label]:px-0" role="radiogroup" aria-label="{{t "picker.unit"}}">
           <label><input type="radio" name="qty_unit" value="{{.PieceUnit}}"{{if ne .UnitCode "pz"}} checked{{end}}>{{.PieceUnit}}</label>
@@ -39,10 +39,10 @@
         <span class="grow min-w-0 flex flex-col items-start gap-1">
           <label for="q-{{.PersonID}}" class="block max-w-full font-semibold truncate">{{.Name}}</label>
           <span class="block max-w-full truncate text-[12.5px] text-muted">{{if .Manual}}{{t "household.item.by_hand"}} · {{end}}{{t "household.item.auto" "Qty" (dec .Auto 2) "Unit" .Unit}}</span>
-          <label class="skip-chip"><input type="checkbox" name="skip_{{.PersonID}}" value="1" class="sr-only"{{if and .Manual (eq .Qty 0.0)}} checked{{end}}>{{t "household.item.skip"}}</label>
+          <label class="skip-chip"><input type="checkbox" name="skip_{{.PersonID}}" value="1" class="sr-only"{{if and .Manual (eq .Hand 0.0)}} checked{{end}}>{{t "household.item.skip"}}</label>
         </span>
-        <input id="q-{{.PersonID}}" name="q_{{.PersonID}}" inputmode="decimal" autocomplete="off" value="{{if and .Manual (gt .Qty 0.0)}}{{dec .Qty 2}}{{end}}" placeholder="{{dec .Auto 2}}"
-               aria-label="{{t "household.item.qty_for" "Name" .Name}}" class="field w-24 text-right tabular-nums">
+        <input id="q-{{.PersonID}}" name="q_{{.PersonID}}" inputmode="decimal" autocomplete="off" value="{{if and .Manual (gt .Hand 0.0)}}{{dec .Hand 2}}{{end}}" placeholder="{{dec .Auto 2}}"
+               aria-label="{{t "household.item.qty_for" "Name" .Name}}" class="field w-20 text-right tabular-nums">
         <span class="w-[5.5rem] shrink-0 truncate text-muted">{{.Unit}}</span>
       </div>
       {{end}}

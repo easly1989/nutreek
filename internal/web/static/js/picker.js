@@ -111,7 +111,8 @@
     var radio = e.target;
     if (!radio.matches || !radio.matches('input[name="qty_unit"]')) return;
     var form = radio.closest("form[data-unit-weight]");
-    var qty = form && form.elements.quantity;
+    if (!form) return;
+    var qty = form.elements.quantity;
     if (qty) qty.value = convertQty(qty.value, radio.value, form.dataset.unitWeight);
     // The household's fields (q_<id>) are in the same unit.
     form.querySelectorAll('input[name^="q_"]').forEach(function (i) {

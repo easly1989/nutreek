@@ -136,7 +136,7 @@
         <label class="skip-chip"><input type="checkbox" name="skip_owner" value="1" class="sr-only">{{t "household.item.skip"}}</label>
       </span>
     {{end}}
-    <input name="quantity" required inputmode="decimal" aria-label="{{t "picker.quantity"}}" class="field {{if $hh}}w-24{{else}}w-[76px]{{end}} text-right tabular-nums"
+    <input name="quantity" required inputmode="decimal" aria-label="{{t "picker.quantity"}}" class="field {{if $hh}}w-20{{else}}w-[76px]{{end}} text-right tabular-nums"
            {{with $r.PickQuantity}}value="{{dec . 2}}"{{else}}placeholder="{{$r.Unit}}"{{end}}>
     {{if gt $r.UnitWeightG 0.0}}
       {{/* Proposed quantity and unit: ingredientRow.PickQuantity/PickUnit.
@@ -162,10 +162,13 @@
         <label class="skip-chip"><input type="checkbox" name="skip_{{.PersonID}}" value="1" class="sr-only">{{t "household.item.skip"}}</label>
       </span>
       <input name="q_{{.PersonID}}" inputmode="decimal" autocomplete="off" placeholder="{{t "household.item.auto_short"}}"
-             aria-label="{{t "household.item.qty_for" "Name" .Name}}" class="field w-24 text-right tabular-nums">
+             aria-label="{{t "household.item.qty_for" "Name" .Name}}" class="field w-20 text-right tabular-nums">
       <span data-unit-label class="w-[5.5rem] shrink-0 truncate text-muted">{{if eq $r.PickUnit "pz"}}{{t "picker.piece"}}{{else}}{{$r.Unit}}{{end}}</span>
     </div>
     {{end}}
+    {{- /* The hint that sits beside the quantity without a household. */}}
+    {{if gt $r.UnitWeightG 0.0}}<span class="basis-full text-[12.5px] text-muted">{{with $r.ServingG}}{{t "picker.serving" "Serving" (num .) "Unit" $r.Unit}} · {{end}}{{t "picker.piece_weight" "Weight" (num $r.UnitWeightG) "Unit" $r.Unit}}</span>
+    {{else if gt $r.ServingG 0.0}}<span class="basis-full text-[12.5px] text-muted">{{t "picker.serving" "Serving" (num $r.ServingG) "Unit" $r.Unit}}</span>{{end}}
     {{end}}
     <span class="ml-auto font-bold tabular-nums whitespace-nowrap" data-kcal-preview></span>
     <button class="btn h-[30px] px-3 text-[12.5px] {{if $cheat}}bg-danger text-surface hover:opacity-90{{else}}btn-primary{{end}}">{{if $cheat}}{{t "picker.add_cheat"}}{{else}}{{t "picker.add"}}{{end}}</button>

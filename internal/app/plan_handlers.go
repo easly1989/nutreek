@@ -470,6 +470,15 @@ func (a *App) dayIndexFromMealID(r *http.Request, mealID int64) (int, error) {
 	return day, err
 }
 
+// mealHasCheats says whether something was eaten instead of the meal: its rows are not the
+// household's then, so there are no quantities to set for the people.
+func (a *App) mealHasCheats(r *http.Request, mealID int64) bool {
+	var has bool
+	err := a.Store.DB.QueryRowContext(r.Context(),
+		`SELECT EXISTS(SELECT 1 FROM meal_cheat_items WHERE meal_id = ?)`, mealID).Scan(&has)
+	return err == nil && has
+}
+
 // dayIndexFromItemID resolves the day_of_week of the meal holding the item.
 func (a *App) dayIndexFromItemID(r *http.Request, itemID int64) (int, error) {
 	var day int
@@ -1010,7 +1019,7 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			InDialog:          inDialog,
 			SearchedOFF:       includeOFFParam(r),
 		}
-		if pkind == "meal_item" && a.Household != nil {
+		if pkind == "meal_item" && a.Household != nil && !a.mealHasCheats(r, mealID) {
 			people, err := a.Household.List(r.Context(), user.ID)
 			if err != nil {
 				a.serverError(w, r, err)
