@@ -66,7 +66,7 @@
     panel.style.top = panel.style.bottom = panel.style.marginTop = panel.style.marginBottom = "";
     var nav = document.getElementById("bottom-nav");
     var floor = window.innerHeight;
-    if (nav && nav.offsetParent !== null) floor = Math.min(floor, nav.getBoundingClientRect().top);
+    if (nav && nav.getClientRects().length) floor = Math.min(floor, nav.getBoundingClientRect().top);
     var box = panel.getBoundingClientRect();
     if (box.bottom <= floor - 4) return;
     var btn = document.querySelector('[data-popover="' + panel.id + '"]');
