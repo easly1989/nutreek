@@ -23,12 +23,12 @@
         <input id="q-owner" name="q_owner" inputmode="decimal" autocomplete="off" value="{{dec .OwnerQty 2}}"
                aria-label="{{t "household.item.qty_for" "Name" .OwnerName}}" class="field w-24 text-right tabular-nums">
         {{if .CanUnit}}
-        <span class="segmented w-[4.5rem] shrink-0" role="radiogroup" aria-label="{{t "picker.unit"}}">
+        <span class="segmented grid-cols-2 w-[5.5rem] shrink-0 [&>label]:px-0" role="radiogroup" aria-label="{{t "picker.unit"}}">
           <label><input type="radio" name="qty_unit" value="{{.PieceUnit}}"{{if ne .UnitCode "pz"}} checked{{end}}>{{.PieceUnit}}</label>
           <label><input type="radio" name="qty_unit" value="pz"{{if eq .UnitCode "pz"}} checked{{end}}>{{t "picker.piece"}}</label>
         </span>
         {{else}}
-        <span class="w-[4.5rem] shrink-0 truncate text-muted">{{.Unit}}</span>
+        <span class="w-[5.5rem] shrink-0 truncate text-muted">{{.Unit}}</span>
         {{end}}
       </div>
       {{end}}
@@ -41,7 +41,7 @@
         </span>
         <input name="q_{{.PersonID}}" inputmode="decimal" autocomplete="off" value="{{if .Manual}}{{dec .Qty 2}}{{end}}" placeholder="{{dec .Auto 2}}"
                aria-label="{{t "household.item.qty_for" "Name" .Name}}" class="field w-24 text-right tabular-nums">
-        <span class="w-[4.5rem] shrink-0 truncate text-muted">{{.Unit}}</span>
+        <span class="w-[5.5rem] shrink-0 truncate text-muted">{{.Unit}}</span>
       </label>
       {{end}}
     </div>
