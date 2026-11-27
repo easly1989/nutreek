@@ -177,8 +177,23 @@ func TestShoppingViewGrouping(t *testing.T) {
 	}
 
 	flat := buildShoppingView(items, user, cats, db.ShoppingGroupNone, nil)
-	if len(flat.Groups) != 0 || !flat.Rows[0].ShowCat {
-		t.Errorf("not grouped: groups %d, ShowCat %v", len(flat.Groups), flat.Rows[0].ShowCat)
+	if len(flat.Groups) != 0 || flat.Rows[0].ShowCat {
+		t.Errorf("not grouped: groups %d, ShowCat %v; a category under each row says nothing", len(flat.Groups), flat.Rows[0].ShowCat)
+	}
+
+	// The cart has no group headings: its rows name their category unless the list is not grouped.
+	cart := []domain.ShoppingListItem{shopItem(1, 10, "Zucchine", 400, true, 0)}
+	for grouping, want := range map[string]bool{db.ShoppingGroupNone: false, db.ShoppingGroupCategory: true, db.ShoppingGroupCustom: true} {
+		if v := buildShoppingView(cart, nil, cats, grouping, nil); len(v.Cart) != 1 || v.Cart[0].ShowCat != want {
+			t.Errorf("%s: the cart row's ShowCat = %v, want %v", grouping, v.Cart[0].ShowCat, want)
+		}
+	}
+	// With «Altro» as the only category, no row names it.
+	for _, grouping := range []string{db.ShoppingGroupCategory, db.ShoppingGroupCustom} {
+		bare := buildShoppingView([]domain.ShoppingListItem{shopItem(1, 10, "Zucchine", 400, false, 0), shopItem(2, 11, "Pasta", 500, true, 0)}, nil, nil, grouping, nil)
+		if bare.Rows[0].ShowCat || bare.Cart[0].ShowCat {
+			t.Errorf("%s: a row names «Altro» when it is the only category", grouping)
+		}
 	}
 }
 

@@ -43,5 +43,5 @@
   "household.item.hint": "Lascia vuoto un campo per la quantità automatica.",
   "household.item.hint_owner": "Attiva «Non lo mangia» per escludere la riga.",
   "household.item.change": "Quantità della famiglia per {{.Name}}",
-  "household.shopping.detail": "Chi ne serve quanto"
+  "household.shopping.detail": "A chi serve e quanto"
 }
