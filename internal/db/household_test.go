@@ -67,6 +67,25 @@ func TestShoppingWithHousehold(t *testing.T) {
 	if other, _ := shop.Shares(ctx, list.ID, alice+1); len(other) != 0 {
 		t.Error("another account reads the shares")
 	}
+	// The owner leaves the oil out (#353): Giulia still needs her 10 g, the owner none.
+	if err := plans.SetOwnerSkip(ctx, oilRow, alice, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := shop.Generate(ctx, list.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	full, _ = shop.LoadFull(ctx, list.ID, alice)
+	for _, it := range full.Items {
+		got[it.IngredientID] = it.TotalQuantity
+	}
+	if got[oil] != 10 || got[pasta] != 375 {
+		t.Errorf("totals with the owner's oil left out = %v, want oil 10 and pasta 375", got)
+	}
+	if s, _ := shop.Shares(ctx, list.ID, alice); s[oil][giulia] != 10 {
+		t.Errorf("oil shares = %v, want Giulia's 10 g", s[oil])
+	} else if _, ok := s[oil][0]; ok {
+		t.Errorf("the owner needs no oil: %v", s[oil])
+	}
 	// A person who goes takes their details along (their id can be given to the next one).
 	if err := h.Delete(ctx, alice, leo); err != nil {
 		t.Fatal(err)

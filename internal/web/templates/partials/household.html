@@ -6,13 +6,32 @@
   <div class="flex items-start gap-3 pl-4 lg:pl-5 pr-4 pt-4 pb-3">
     <div class="grow min-w-0">
       <h2 class="text-[17px] font-bold truncate">{{.Name}}</h2>
-      <p class="text-muted">{{t "household.item.base" "Qty" (dec .OwnerQty 2) "Unit" .Unit}}</p>
     </div>
     <button type="button" data-modal-close class="btn-secondary btn-icon" aria-label="{{t "common.close"}}">{{template "icon" "i-close"}}</button>
   </div>
   <form method="post" action="{{.Action}}" hx-post="{{.Action}}" hx-target="#day-panel section[data-day]" hx-swap="outerHTML" data-close-dialog class="flex flex-col min-h-0">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="divide-y divide-border border-t border-border">
+      {{- /* The owner's own row (#353): the quantity of the row itself, 0 = not eaten. A recipe with variations has none. */}}
+      {{if .Editable}}
+      <div class="flex items-center gap-3 px-4 lg:px-5 py-2.5">
+        <span class="hh-av" style="--hh-c:var(--hh0)" aria-hidden="true">{{initial .OwnerName}}</span>
+        <span class="grow min-w-0">
+          <label for="q-owner" class="block font-semibold truncate">{{.OwnerName}}</label>
+          {{if .OwnerSkip}}<span class="block text-[12.5px] text-muted">{{t "household.item.owner_skip" "Qty" (dec .OwnerBase 2) "Unit" .Unit}}</span>{{end}}
+        </span>
+        <input id="q-owner" name="q_owner" inputmode="decimal" autocomplete="off" value="{{dec .OwnerQty 2}}"
+               aria-label="{{t "household.item.qty_for" "Name" .OwnerName}}" class="field w-24 text-right tabular-nums">
+        {{if .CanUnit}}
+        <span class="segmented w-[4.5rem] shrink-0" role="radiogroup" aria-label="{{t "picker.unit"}}">
+          <label><input type="radio" name="qty_unit" value="{{.PieceUnit}}"{{if ne .UnitCode "pz"}} checked{{end}}>{{.PieceUnit}}</label>
+          <label><input type="radio" name="qty_unit" value="pz"{{if eq .UnitCode "pz"}} checked{{end}}>{{t "picker.piece"}}</label>
+        </span>
+        {{else}}
+        <span class="w-[4.5rem] shrink-0 truncate text-muted">{{.Unit}}</span>
+        {{end}}
+      </div>
+      {{end}}
       {{range .People}}
       <label class="flex items-center gap-3 px-4 lg:px-5 py-2.5">
         <span class="hh-av" style="--hh-c:var(--hh{{.Color}})" aria-hidden="true">{{initial .Name}}</span>
@@ -26,7 +45,7 @@
       </label>
       {{end}}
     </div>
-    <p class="px-4 lg:px-5 py-2.5 text-[12.5px] text-muted">{{t "household.item.hint"}}</p>
+    <p class="px-4 lg:px-5 py-2.5 text-[12.5px] text-muted">{{if .People}}{{t "household.item.hint"}}{{else}}{{t "household.item.hint_owner"}}{{end}}</p>
     <div class="flex items-center justify-end gap-2 px-4 lg:px-5 py-3 border-t border-border">
       <button type="button" data-modal-close class="btn-secondary">{{t "common.cancel"}}</button>
       <button type="submit" class="btn-primary">{{t "household.save"}}</button>

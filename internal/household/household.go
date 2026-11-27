@@ -98,6 +98,7 @@ func (p Person) Factor(it domain.MealItemFull) float64 {
 
 // ItemMacros are the macros of what the person eats of an item.
 func (p Person) ItemMacros(it domain.MealItemFull) macros.Macros {
+	it.OwnerSkip = false // the owner leaving a row out does not take it from the others
 	return macros.ForMealItem(it).Scale(p.Factor(it))
 }
 

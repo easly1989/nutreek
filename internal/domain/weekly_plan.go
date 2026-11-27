@@ -52,6 +52,9 @@ type MealItem struct {
 	// QuantityUnit is the unit the user picked: 'g', 'ml', or 'pz'.
 	// 'pz' needs ingredient.UnitWeightG for the macro calculation.
 	QuantityUnit string
+	// OwnerSkip: the account's owner does not eat this row. Quantity stays as the base
+	// the other people's quantities are scaled from.
+	OwnerSkip bool
 }
 
 // IsRecipe returns true when the item points to a recipe.

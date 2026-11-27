@@ -158,6 +158,82 @@ func TestHouseholdHandlers(t *testing.T) {
 		t.Errorf("Bob setting Alice's row: %d, %v", w.Code, week())
 	}
 
+	// The owner's own row (#353): 0 is not eaten and keeps the base the others scale from,
+	// a number brings it back (and sets it), empty changes nothing, a bad field saves nothing.
+	saveOwner := func(v url.Values) int {
+		return call(a.handleHouseholdItemSave, http.MethodPost, "/meal-items/x/people"+start, v, rowParam, alice, true).Code
+	}
+	ownerRow := func() domain.MealItemFull {
+		full, _ := a.WeeklyPlans.LoadFull(ctx, plan)
+		return full.Days[0][0].Items[0]
+	}
+	if code := saveOwner(url.Values{"q_owner": {"0"}}); code >= 400 {
+		t.Fatalf("owner 0: %d", code)
+	}
+	if it := ownerRow(); !it.OwnerSkip || it.Quantity != 100 {
+		t.Errorf("after 0: skip %v, base %v; want skipped with the base kept", it.OwnerSkip, it.Quantity)
+	}
+	if body := call(a.handleHouseholdItemForm, http.MethodGet, "/meal-items/x/people"+start, nil, rowParam, alice, true).Body.String(); !strings.Contains(body, `placeholder="75"`) || !strings.Contains(body, "base 100 g") {
+		t.Errorf("the dialog of a row the owner skips: Giulia keeps her automatic 75 g and the owner's note shows\n%s", body)
+	}
+	saveOwner(url.Values{"q_owner": {""}})
+	if !ownerRow().OwnerSkip {
+		t.Error("an empty owner field changed the row")
+	}
+	if code := saveOwner(url.Values{"q_owner": {"120"}, "qty_unit": {"g"}}); code >= 400 {
+		t.Fatalf("owner 120: %d", code)
+	}
+	if it := ownerRow(); it.OwnerSkip || it.Quantity != 120 {
+		t.Errorf("after 120: skip %v, quantity %v; want eaten, 120", it.OwnerSkip, it.Quantity)
+	}
+	saveOwner(url.Values{"q_owner": {"0"}, field: {"abc"}}) // a bad field of another person: nothing is saved
+	saveOwner(url.Values{"q_owner": {"lots"}})
+	if it := ownerRow(); it.OwnerSkip || it.Quantity != 120 {
+		t.Errorf("a bad field changed the owner's row: skip %v, quantity %v", it.OwnerSkip, it.Quantity)
+	}
+	if code := saveOwner(url.Values{"q_owner": {"5"}, "qty_unit": {"kg"}}); code != http.StatusUnprocessableEntity || ownerRow().Quantity != 120 {
+		t.Errorf("a unit the dialog does not offer: %d", code)
+	}
+	saveOwner(url.Values{"q_owner": {"100"}})
+	if ownerRow().Quantity != 100 {
+		t.Error("the owner's quantity is back to 100")
+	}
+	// A save that changes the unit drops the people's hand-set quantities: what they post is
+	// in the old unit, and it is not saved in the new one.
+	weight := 60.0
+	egg, _ := a.Ingredients.CreateLocal(ctx, "Egg", nil, domain.UnitGram, 143, 12.6, 0.7, 9.5, &alice.ID, &weight, nil, nil, nil, nil, nil)
+	eggRow, _ := a.WeeklyPlans.AddItem(ctx, meal, alice.ID, nil, &egg, 120, "g")
+	if err := a.Household.SetQuantity(ctx, alice.ID, giulia, eggRow, 90); err != nil {
+		t.Fatal(err)
+	}
+	if w := call(a.handleHouseholdItemSave, http.MethodPost, "/meal-items/x/people"+start, url.Values{"q_owner": {"2"}, "qty_unit": {"pz"}, field: {"90"}}, map[string]int64{"itemID": eggRow}, alice, true); w.Code >= 400 {
+		t.Fatalf("unit change: %d", w.Code)
+	}
+	if q, ok := week()[eggRow]; ok {
+		t.Errorf("Giulia's 90 g survived the change to pieces as %v", q)
+	}
+	// A quantity that rounds to what the field shows is not a change.
+	saveOwner(url.Values{"q_owner": {"100.004"}})
+	if ownerRow().Quantity != 100 {
+		t.Errorf("a rounded-away difference changed the row to %v", ownerRow().Quantity)
+	}
+
+	// An account with nobody else has the same dialog, with the owner only.
+	solo := mustCreateTestUser(t, a, "solo@x.com", "password-di-prova")
+	soloPlan, _ := a.WeeklyPlans.GetOrCreateForWeek(ctx, solo.ID, monday)
+	soloMeal, _ := a.WeeklyPlans.AddMeal(ctx, soloPlan.ID, solo.ID, 0, "Lunch")
+	soloRow, _ := a.WeeklyPlans.AddItem(ctx, soloMeal, solo.ID, nil, &oats, 50, "g")
+	soloParam := map[string]int64{"itemID": soloRow}
+	if w := call(a.handleHouseholdItemForm, http.MethodGet, "/meal-items/x/people"+start, nil, soloParam, solo, true); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `name="q_owner"`) || strings.Contains(w.Body.String(), `name="q_`+strconv.FormatInt(giulia, 10)) {
+		t.Errorf("the dialog without a household: %d\n%s", w.Code, w.Body.String())
+	}
+	if w := call(a.handleHouseholdItemSave, http.MethodPost, "/meal-items/x/people"+start, url.Values{"q_owner": {"0"}}, soloParam, solo, true); w.Code >= 400 {
+		t.Fatalf("owner 0 without a household: %d", w.Code)
+	}
+	if full, _ := a.WeeklyPlans.LoadFull(ctx, soloPlan); !full.Days[0][0].Items[0].OwnerSkip {
+		t.Error("the owner's skip is not saved without a household")
+	}
+
 	// A skipped meal: toggled on and off, refused for another account.
 	skip := func(v string, who *domain.User) *httptest.ResponseRecorder {
 		return call(a.handleHouseholdMealSkip, http.MethodPost, "/meals/x/people/y/skip"+start, url.Values{"skip": {v}}, map[string]int64{"mealID": meal, "personID": giulia}, who, true)

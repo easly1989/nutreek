@@ -152,6 +152,9 @@ func (r *ShoppingLists) Generate(ctx context.Context, listID, userID int64) erro
 					continue // cheats are ignored: already eaten, nothing to buy
 				}
 				for _, it := range meal.Items {
+					if it.OwnerSkip {
+						continue // the owner does not eat it (#353)
+					}
 					if it.Ingredient != nil {
 						// Items in pieces are bought by weight: «2 pz» of apples = 300 g.
 						add(it.Ingredient.ID, 0, macros.Grams(it.Quantity, it.QuantityUnit, it.Ingredient))

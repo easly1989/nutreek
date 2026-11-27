@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/amon2126/nutreek/internal/domain"
+	"github.com/amon2126/nutreek/internal/macros"
 )
 
 func ing(id int64, kcal float64) *domain.Ingredient {
@@ -54,6 +55,30 @@ func TestQuantity(t *testing.T) {
 	p.Skipped = map[int64]bool{10: true}
 	if p.Quantity(pasta) != 0 || p.Factor(pasta) != 0 {
 		t.Error("a skipped meal is not eaten")
+	}
+}
+
+// The owner leaving a row out (#353) counts for nothing in the owner's macros, and the
+// others still eat their share: the row keeps its quantity as the base.
+func TestOwnerSkipLeavesTheOthersAlone(t *testing.T) {
+	pasta := item(1, 10, 100, "g", ing(1, 350))
+	pasta.OwnerSkip = true
+	meals := []domain.MealWithItems{{Meal: domain.Meal{ID: 10}, Items: []domain.MealItemFull{pasta}}}
+	if got := macros.ForMeal(meals[0].Items).Kcal; got != 0 {
+		t.Errorf("the owner's kcal = %v, want 0", got)
+	}
+	auto := Person{Ratio: 0.5}
+	if got := auto.DayMacros(meals).Kcal; got != 175 {
+		t.Errorf("an automatic share = %v kcal, want 175 (50 g)", got)
+	}
+	byHand := Person{Ratio: 0.5, Quantities: map[int64]float64{1: 85}}
+	if got := byHand.DayMacros(meals).Kcal; got != 297.5 {
+		t.Errorf("85 g by hand = %v kcal, want 297.5", got)
+	}
+	need := map[int64]float64{}
+	byHand.Needs(meals, need)
+	if need[1] != 85 {
+		t.Errorf("needs = %v, want 85 g", need)
 	}
 }
 

@@ -278,10 +278,10 @@
 {{- /* An item (or a cheat) of a meal. View model: web.ItemCtx. */ -}}
 {{$v := .View}}{{$it := $v.Item}}{{$nm := ""}}{{if $it.Recipe}}{{$nm = $it.Recipe.Name}}{{else if $it.Ingredient}}{{$nm = $it.Ingredient.Name}}{{end}}
 {{- /* The quantity of an item (not of a cheat, nor of a customized recipe)
-       opens an editor in place (#206, picker.js): servings for a recipe,
-       quantity and g / pz for an ingredient. */ -}}
+       opens the same dialog as the household's columns (#353): the owner's quantity
+       first (0 = not eaten), then each person's. */ -}}
 {{$editable := and (not .Cheat) (or $it.Ingredient (and $it.Recipe (not $it.IsCustomized)))}}
-<li class="item-grid group grid gap-x-2.5 max-sm:data-[hh-s]:gap-x-1 gap-y-1.5 items-center min-h-[44px] py-0.5 border-t border-border first:border-t-0 data-[editing]:-mx-2 data-[editing]:px-2 data-[editing]:py-1.5 data-[editing]:bg-accent-soft" data-id="{{$it.ID}}"{{if $editable}} data-qty-row="{{$it.ID}}"{{end}}{{if $v.People}} data-hh style="--n:{{len $v.People}}"{{if le (len $v.People) 3}} data-hh-s{{end}}{{end}}>
+<li class="item-grid group grid gap-x-2.5 max-sm:data-[hh-s]:gap-x-1 gap-y-1.5 items-center min-h-[44px] py-0.5 border-t border-border first:border-t-0" data-id="{{$it.ID}}"{{if $v.People}} data-hh style="--n:{{len $v.People}}"{{if le (len $v.People) 3}} data-hh-s{{end}}{{end}}>
   <div class="col-start-1 min-w-0 flex items-start gap-1"{{if not .Cheat}} title="{{t "common.protein_short"}} {{num $v.Macros.Protein}} g · {{t "common.carbs_short"}} {{num $v.Macros.Carbs}} g · {{t "common.fat_short"}} {{num $v.Macros.Fat}} g"{{end}}>
     {{if not .Cheat}}<span data-item-grip class="relative max-lg:hidden grid w-4 h-6 -ml-4 place-items-center text-muted cursor-grab touch-none [@media(hover:hover)]:opacity-0 group-hover:opacity-100 before:content-[''] before:absolute before:-top-2 before:-bottom-2 before:-left-1 before:-right-1" aria-hidden="true"><svg class="w-3.5 h-3.5" fill="currentColor" aria-hidden="true"><use href="#i-grip"/></svg></span>{{end}}
     <div class="min-w-0 {{if .Struck}}line-through text-muted{{end}}">
@@ -298,39 +298,20 @@
   </div>
   {{- $pz := and $it.Ingredient (eq $it.QuantityUnit "pz") (gt $it.Ingredient.PieceWeight 0.0)}}
   {{- if $editable}}
-  <button type="button" data-qty-open{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}
-          class="group/q col-start-2 justify-self-end inline-flex items-center gap-1 h-8 px-1.5 -mr-1.5 rounded-lg border border-dashed border-transparent text-muted tabular-nums whitespace-nowrap hover:border-border hover:text-text focus-visible:border-border group-data-[editing]:hidden {{if .Struck}}line-through{{end}}">
+  <button type="button" hx-get="/meal-items/{{$it.ID}}/people?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}
+          class="group/q col-start-2 justify-self-end inline-flex items-center gap-1 h-8 px-1.5 -mr-1.5 rounded-lg border border-dashed border-transparent text-muted tabular-nums whitespace-nowrap hover:border-border hover:text-text focus-visible:border-border {{if .Struck}}line-through{{end}}">
     <span class="sr-only">{{t "picker.qty.change" "Name" $nm}}</span>
-    {{- template "meal_item_qty" .}}
+    {{- if $it.OwnerSkip}}—{{else}}{{template "meal_item_qty" .}}{{end}}
     <svg class="w-3.5 h-3.5 shrink-0 opacity-0 group-hover/q:opacity-100 group-focus-visible/q:opacity-100 [@media(hover:none)]:hidden" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>
   </button>
-  <form method="post" action="/meal-items/{{$it.ID}}?start={{.WeekStart}}" hx-post="/meal-items/{{$it.ID}}?start={{.WeekStart}}" hx-target="closest section[data-day]" hx-swap="outerHTML"
-        data-qty-editor{{if $it.Ingredient}} data-unit-weight="{{$it.Ingredient.PieceWeight}}"{{end}}
-        class="hidden group-data-[editing]:flex col-span-full order-last items-center gap-1.5">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <label for="qty-{{$it.ID}}" class="sr-only">{{if $it.Recipe}}{{t "picker.qty.servings_label" "Name" $nm}}{{else}}{{t "picker.qty.label" "Name" $nm}}{{end}}</label>
-    <input id="qty-{{$it.ID}}" name="quantity" required inputmode="decimal" autocomplete="off" value="{{dec $it.Quantity 2}}" class="field w-16 h-8 px-2 text-right tabular-nums">
-    {{if $it.Recipe}}
-      <span class="text-muted">{{t "picker.servings_unit"}}</span>
-    {{else if gt $it.Ingredient.PieceWeight 0.0}}
-      <span class="segmented" role="radiogroup" aria-label="{{t "picker.unit"}}">
-        <label><input type="radio" name="qty_unit" value="{{$it.Ingredient.Unit}}"{{if not $pz}} checked{{end}}>{{$it.Ingredient.Unit}}</label>
-        <label><input type="radio" name="qty_unit" value="pz"{{if $pz}} checked{{end}}>{{t "picker.piece"}}</label>
-      </span>
-    {{else}}
-      <input type="hidden" name="qty_unit" value="{{$it.Ingredient.Unit}}"><span class="text-muted">{{$it.Ingredient.Unit}}</span>
-    {{end}}
-    <button class="btn-primary btn-icon w-8 h-8" aria-label="{{t "picker.qty.save"}}" title="{{t "picker.qty.save"}}">{{template "icon_sm" "i-check"}}</button>
-    <button type="button" data-qty-cancel class="icon-action" aria-label="{{t "common.cancel"}}" title="{{t "common.cancel"}}">{{template "icon_sm" "i-close"}}</button>
-  </form>
   {{- else}}
-  <span class="col-start-2 text-right text-muted tabular-nums whitespace-nowrap {{if .Struck}}line-through{{end}}"{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}>{{template "meal_item_qty" .}}</span>
+  <span class="col-start-2 text-right text-muted tabular-nums whitespace-nowrap {{if .Struck}}line-through{{end}}"{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}>{{if $it.OwnerSkip}}—{{else}}{{template "meal_item_qty" .}}{{end}}</span>
   {{- end}}
   {{- /* Household (#238): a column for each person next to the quantity (the meal's header names them);
          a tap opens the dialog that changes it. The chips below take over when the columns would not fit. */}}
   {{range $v.People}}
   <button type="button" hx-get="/meal-items/{{$it.ID}}/people?start={{$.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
-          class="hh-cell justify-self-end items-center gap-0.5 h-8 px-1 -mr-1 rounded-lg text-[13px] tabular-nums whitespace-nowrap hover:bg-surface-2 hover:text-text group-data-[editing]:invisible {{if $.Struck}}line-through{{end}}">
+          class="hh-cell justify-self-end items-center gap-0.5 h-8 px-1 -mr-1 rounded-lg text-[13px] tabular-nums whitespace-nowrap hover:bg-surface-2 hover:text-text {{if $.Struck}}line-through{{end}}">
     <span class="sr-only">{{.Name}}:</span>{{if .None}}<span class="text-muted">—</span>{{else}}<span class="text-muted">{{if or (eq .Unit "g") (eq .Unit "ml")}}{{num .Qty}}{{else}}{{dec .Qty 1}}{{end}}</span><span class="sr-only"> {{.Unit}}</span>{{end}}{{if .Manual}}<svg class="w-3 h-3 text-accent" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>{{end}}
   </button>
   {{end}}
@@ -343,7 +324,7 @@
     <button class="icon-action hover:text-danger" title="{{t "week.delete"}}" aria-label="{{t "week.delete_named" "Name" $nm}}">{{template "icon" "i-trash"}}</button>
   </form>
   {{else}}
-  <div class="item-actions relative group-data-[editing]:invisible">
+  <div class="item-actions relative">
     <button type="button" class="icon-action" data-popover="move-menu-{{$it.ID}}" aria-expanded="false" aria-controls="move-menu-{{$it.ID}}"
             hx-get="/meal-items/{{$it.ID}}/move?start={{.WeekStart}}" hx-target="#move-targets-{{$it.ID}}" hx-swap="innerHTML" hx-trigger="click once"
             title="{{t "week.item_actions"}}" aria-label="{{t "week.item_actions_named" "Name" $nm}}">{{template "icon" "i-dots"}}</button>

@@ -224,6 +224,68 @@ func TestReorderMealItemsAndMeals(t *testing.T) {
 	}
 }
 
+// A row the owner does not eat (#353) keeps its quantity, comes back with a quantity,
+// follows the row into a copied week, and cannot be set by another account.
+func TestOwnerSkip(t *testing.T) {
+	store := newTestStore(t)
+	users := NewUsers(store.DB)
+	plans := NewWeeklyPlans(store.DB)
+	ings := NewIngredients(store.DB)
+	ctx := context.Background()
+	alice, _ := users.Create(ctx, "alice@x.com", "h", "Alice")
+	bob, _ := users.Create(ctx, "bob@x.com", "h", "Bob")
+	weekA, _ := time.Parse("2006-01-02", "2026-04-27")
+	weekB, _ := time.Parse("2006-01-02", "2026-05-04")
+	planA, _ := plans.GetOrCreateForWeek(ctx, alice, weekA)
+	planB, _ := plans.GetOrCreateForWeek(ctx, alice, weekB)
+	meal, _ := plans.AddMeal(ctx, planA.ID, alice, 0, "Pranzo")
+	pane, _ := ings.CreateLocal(ctx, "Pane", nil, "g", 240, 8, 44, 2, &alice, nil, nil, nil, nil, nil, nil)
+	item, err := plans.AddItem(ctx, meal, alice, nil, &pane, 50, "g")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := func(plan *domain.WeeklyPlan) domain.MealItemFull {
+		t.Helper()
+		full, err := plans.LoadFull(ctx, plan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return full.Days[0][0].Items[0]
+	}
+
+	if err := plans.SetOwnerSkip(ctx, item, alice, true); err != nil {
+		t.Fatal(err)
+	}
+	if it := first(planA); !it.OwnerSkip || it.Quantity != 50 {
+		t.Errorf("skip = %v, quantity = %v; want skipped, 50 kept", it.OwnerSkip, it.Quantity)
+	}
+	if err := plans.SetOwnerSkip(ctx, item, bob, false); !errors.Is(err, ErrMealItemNotFound) {
+		t.Errorf("Bob on Alice's row: want ErrMealItemNotFound, got %v", err)
+	}
+	if err := plans.CopyFrom(ctx, planA.ID, planB.ID, alice); err != nil {
+		t.Fatal(err)
+	}
+	if !first(planB).OwnerSkip {
+		t.Error("the copied week lost the skip")
+	}
+	if err := plans.UpdateItem(ctx, item, alice, 70, "g"); err != nil {
+		t.Fatal(err)
+	}
+	if it := first(planA); it.OwnerSkip || it.Quantity != 70 {
+		t.Errorf("after a quantity: skip = %v, quantity = %v; want eaten, 70", it.OwnerSkip, it.Quantity)
+	}
+	// A customized row has no owner's quantity to set, so customizing brings a skipped row back.
+	if err := plans.SetOwnerSkip(ctx, item, alice, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewMealItemCustomizations(store.DB).Replace(ctx, item, alice, []CustomizationInput{{IngredientID: pane, Quantity: 30}}); err != nil {
+		t.Fatal(err)
+	}
+	if first(planA).OwnerSkip {
+		t.Error("a customized row is still skipped")
+	}
+}
+
 func TestCopyFrom(t *testing.T) {
 	store := newTestStore(t)
 	users := NewUsers(store.DB)

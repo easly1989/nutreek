@@ -214,8 +214,11 @@ func TestMealItemQuantityEditor(t *testing.T) {
 	path := func(id int64) string { return "/meal-items/" + strconv.FormatInt(id, 10) + "?start=" + start }
 
 	_, _, body := alice.get(week + "&day=" + start)
-	if !strings.Contains(body, `data-qty-row="`+strconv.FormatInt(recItem, 10)+`"`) || !strings.Contains(body, "Servings of Eggs") || !strings.Contains(body, "Quantity of Egg") {
-		t.Error("the day card has no quantity editors")
+	// The quantity opens the same dialog as the household's columns (#353).
+	for _, id := range []int64{recItem, eggItem} {
+		if !strings.Contains(body, `hx-get="/meal-items/`+strconv.FormatInt(id, 10)+`/people?start=`+start+`"`) {
+			t.Errorf("the day card has no quantity dialog for item %d", id)
+		}
 	}
 
 	// The recipe: 2.5 servings (a unit sent along is ignored).
@@ -282,8 +285,8 @@ func TestMealItemQuantityEditor(t *testing.T) {
 	if it := full.Days[0][0].Items[0]; it.Quantity != 2.5 {
 		t.Errorf("customized item changed to %v servings", it.Quantity)
 	}
-	if _, _, body := alice.get(week + "&day=" + start); strings.Contains(body, `data-qty-row="`+strconv.FormatInt(recItem, 10)+`"`) {
-		t.Error("the customized item still has an editor")
+	if _, _, body := alice.get(week + "&day=" + start); strings.Contains(body, `hx-get="/meal-items/`+strconv.FormatInt(recItem, 10)+`/people?start=`+start+`"`) {
+		t.Error("the customized item still has a quantity dialog")
 	}
 
 	// Refused: invalid quantities, another user's item, no CSRF token.

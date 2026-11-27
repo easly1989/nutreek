@@ -105,7 +105,13 @@ func PerServing(total Macros, servings int) Macros {
 //   - a recipe with variations (non-empty Customizations): a direct sum of
 //     the absolute quantities in the variations (they already represent what
 //     was actually eaten, with no further scaling by servings).
+//
+// A row the owner does not eat (OwnerSkip) counts for nothing: these are the owner's
+// macros. The other people scale from the row as it is, see household.Person.ItemMacros.
 func ForMealItem(item domain.MealItemFull) Macros {
+	if item.OwnerSkip {
+		return Macros{}
+	}
 	if item.Ingredient != nil {
 		return FromIngredient(*item.Ingredient, Grams(item.Quantity, item.QuantityUnit, item.Ingredient))
 	}
