@@ -70,6 +70,10 @@ func (r *MealItemCustomizations) Replace(
 	}
 
 	if len(rows) > 0 {
+		// A customized row has no owner's quantity to set, so a row left out would stay out.
+		if _, err := tx.ExecContext(ctx, `UPDATE meal_items SET owner_skip = 0 WHERE id = ?`, mealItemID); err != nil {
+			return fmt.Errorf("clear owner_skip: %w", err)
+		}
 		stmt, err := tx.PrepareContext(ctx, `
 			INSERT INTO meal_item_customizations (meal_item_id, ingredient_id, quantity, sort_order)
 			VALUES (?, ?, ?, ?)

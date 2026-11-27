@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -252,6 +253,7 @@ func (a *App) handleHouseholdItemSave(w http.ResponseWriter, r *http.Request) {
 	}
 	// The owner's own row (#353): a number sets the quantity, 0 says they do not eat it,
 	// empty leaves it as it is. A recipe with variations has no quantity to set.
+	unitChanged := false
 	if raw, sent := r.PostForm["q_owner"]; sent && !iv.Item.IsCustomized() {
 		text := strings.TrimSpace(raw[0])
 		if text != "" {
@@ -269,11 +271,17 @@ func (a *App) handleHouseholdItemSave(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			var oerr error
+			// The field shows two decimals: a quantity that rounds to what is shown is not a change.
+			same := math.Abs(q-iv.Item.Quantity) < 0.005
 			switch {
+			case q == 0 && iv.Item.Quantity < 0.005 && !iv.Item.OwnerSkip: // shown as 0 already
 			case q == 0:
 				oerr = a.WeeklyPlans.SetOwnerSkip(r.Context(), itemID, user.ID, true)
-			case q != iv.Item.Quantity || unit != iv.Item.QuantityUnit || iv.Item.OwnerSkip:
+			case !same || unit != iv.Item.QuantityUnit || iv.Item.OwnerSkip:
 				oerr = a.WeeklyPlans.UpdateItem(r.Context(), itemID, user.ID, q, unit)
+				// The people's hand-set quantities went with the old unit, and the dialog
+				// still shows them in it: what they posted is not in the new one.
+				unitChanged = unit != iv.Item.QuantityUnit
 			}
 			if oerr != nil {
 				a.serverError(w, r, oerr)
@@ -289,6 +297,10 @@ func (a *App) handleHouseholdItemSave(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+	}
+	if unitChanged {
+		a.respondMutationOrRedirect(w, r, parseWeekStart(r), day)
+		return
 	}
 	// Read every field first, so a bad one saves nothing.
 	type change struct {

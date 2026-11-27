@@ -198,6 +198,26 @@ func TestHouseholdHandlers(t *testing.T) {
 	if ownerRow().Quantity != 100 {
 		t.Error("the owner's quantity is back to 100")
 	}
+	// A save that changes the unit drops the people's hand-set quantities: what they post is
+	// in the old unit, and it is not saved in the new one.
+	weight := 60.0
+	egg, _ := a.Ingredients.CreateLocal(ctx, "Egg", nil, domain.UnitGram, 143, 12.6, 0.7, 9.5, &alice.ID, &weight, nil, nil, nil, nil, nil)
+	eggRow, _ := a.WeeklyPlans.AddItem(ctx, meal, alice.ID, nil, &egg, 120, "g")
+	if err := a.Household.SetQuantity(ctx, alice.ID, giulia, eggRow, 90); err != nil {
+		t.Fatal(err)
+	}
+	if w := call(a.handleHouseholdItemSave, http.MethodPost, "/meal-items/x/people"+start, url.Values{"q_owner": {"2"}, "qty_unit": {"pz"}, field: {"90"}}, map[string]int64{"itemID": eggRow}, alice, true); w.Code >= 400 {
+		t.Fatalf("unit change: %d", w.Code)
+	}
+	if q, ok := week()[eggRow]; ok {
+		t.Errorf("Giulia's 90 g survived the change to pieces as %v", q)
+	}
+	// A quantity that rounds to what the field shows is not a change.
+	saveOwner(url.Values{"q_owner": {"100.004"}})
+	if ownerRow().Quantity != 100 {
+		t.Errorf("a rounded-away difference changed the row to %v", ownerRow().Quantity)
+	}
+
 	// An account with nobody else has the same dialog, with the owner only.
 	solo := mustCreateTestUser(t, a, "solo@x.com", "password-di-prova")
 	soloPlan, _ := a.WeeklyPlans.GetOrCreateForWeek(ctx, solo.ID, monday)

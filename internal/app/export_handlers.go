@@ -92,10 +92,6 @@ func exportRow(dayName, mealName string, it domain.MealItemFull) []string {
 		unit = it.QuantityUnit
 	}
 
-	if it.OwnerSkip { // the owner does not eat it: no quantity, and the macros above are 0
-		qty = 0
-	}
-
 	return []string{
 		dayName,
 		mealName,

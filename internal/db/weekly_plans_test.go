@@ -274,6 +274,16 @@ func TestOwnerSkip(t *testing.T) {
 	if it := first(planA); it.OwnerSkip || it.Quantity != 70 {
 		t.Errorf("after a quantity: skip = %v, quantity = %v; want eaten, 70", it.OwnerSkip, it.Quantity)
 	}
+	// A customized row has no owner's quantity to set, so customizing brings a skipped row back.
+	if err := plans.SetOwnerSkip(ctx, item, alice, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewMealItemCustomizations(store.DB).Replace(ctx, item, alice, []CustomizationInput{{IngredientID: pane, Quantity: 30}}); err != nil {
+		t.Fatal(err)
+	}
+	if first(planA).OwnerSkip {
+		t.Error("a customized row is still skipped")
+	}
 }
 
 func TestCopyFrom(t *testing.T) {
