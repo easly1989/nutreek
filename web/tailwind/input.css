@@ -197,6 +197,11 @@
   .src-n { @apply inline-grid place-items-center w-[22px] h-[22px] shrink-0 rounded-full bg-surface-2 text-muted text-[12px] font-bold; }
   .src-n::before { counter-increment: src; content: counter(src); }
   .hh-av { @apply inline-grid place-items-center w-[30px] h-[30px] rounded-full shrink-0 text-[12.5px] font-bold text-accent-fg; background: var(--hh-c, var(--accent)); }
+  /* «Does not eat it» of a person in the quantities dialog and in the picker: a switch that dims the number beside it. */
+  .skip-chip { @apply inline-flex items-center h-7 px-2.5 rounded-full border border-border text-[12.5px] font-semibold text-muted whitespace-nowrap cursor-pointer select-none; }
+  .skip-chip:has(input:checked) { @apply bg-accent-soft text-accent border-accent; }
+  .skip-chip:has(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .skip-row:has(.skip-chip input:checked) .field { @apply opacity-50; }
   .hh-chip { @apply inline-flex items-center gap-1.5 h-6 px-2 rounded-full text-[12.5px] font-bold tabular-nums text-text whitespace-nowrap; background: color-mix(in srgb, var(--hh-c, var(--accent)) 16%, var(--surface)); }
   .hh-fill { @apply block h-full rounded-full; background: var(--hh-c, var(--accent)); }
   .icon-action {

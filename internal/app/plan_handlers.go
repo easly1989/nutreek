@@ -895,9 +895,33 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		qtyUnit = "g"
 	}
 
-	if _, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, rPtr, iPtr, qty, qtyUnit); err != nil {
+	// Household (#238): what each person eats of the row comes with it (q_<id>, skip_<id>).
+	var people []hhShare
+	if a.Household != nil {
+		list, err := a.Household.List(r.Context(), user.ID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		for _, p := range list {
+			people = append(people, hhShare{PersonID: p.ID})
+		}
+		if _, ok := personChanges(r, people); !ok {
+			a.flashAndBack(w, r, weekStart, a.t(r, "household.error.quantity"))
+			return
+		}
+	}
+
+	itemID, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, rPtr, iPtr, qty, qtyUnit)
+	if err != nil {
 		a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.item_add_failed", "Error", a.errText(r, err)))
 		return
+	}
+	if len(people) > 0 {
+		if err := a.savePeopleOfNewItem(r, user.ID, itemID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 	}
 	day, dayErr := a.dayIndexFromMealID(r, mealID)
 	if dayErr != nil {
@@ -985,6 +1009,17 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			NutritionistItems: nutrRows,
 			InDialog:          inDialog,
 			SearchedOFF:       includeOFFParam(r),
+		}
+		if pkind == "meal_item" && a.Household != nil {
+			people, err := a.Household.List(r.Context(), user.ID)
+			if err != nil {
+				a.serverError(w, r, err)
+				return
+			}
+			data.OwnerName = user.DisplayName
+			for i, p := range people {
+				data.Household = append(data.Household, hhShare{PersonID: p.ID, Name: p.Name, Color: i + 1})
+			}
 		}
 		if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 			a.serverError(w, r, err)

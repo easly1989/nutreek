@@ -113,6 +113,12 @@
     var form = radio.closest("form[data-unit-weight]");
     var qty = form && form.elements.quantity;
     if (qty) qty.value = convertQty(qty.value, radio.value, form.dataset.unitWeight);
+    // The household's fields (q_<id>) are in the same unit.
+    form.querySelectorAll('input[name^="q_"]').forEach(function (i) {
+      if (i.value) i.value = convertQty(i.value, radio.value, form.dataset.unitWeight);
+    });
+    var name = radio.parentNode.textContent.trim();
+    form.querySelectorAll("[data-unit-label]").forEach(function (s) { s.textContent = name; });
   });
 
   ["input", "change"].forEach(function (type) {

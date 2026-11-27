@@ -126,21 +126,46 @@
     {{else}}
       <input type="hidden" name="ingredient_id" value="{{$r.LocalID}}">
     {{end}}
-    <input name="quantity" required inputmode="decimal" aria-label="{{t "picker.quantity"}}" class="field w-[76px] text-right tabular-nums"
+    {{- /* Household (#238): a row for each person, the owner first, with the quantity and the switch «does not eat it». */}}
+    {{- $hh := and (eq $d.PickerKind "meal_item") $d.Household}}
+    {{if $hh}}
+    <div class="skip-row basis-full flex items-center gap-2.5">
+      <span class="hh-av" style="--hh-c:var(--hh0)" aria-hidden="true">{{initial $d.OwnerName}}</span>
+      <span class="grow min-w-0 flex flex-col items-start gap-1">
+        <span class="block max-w-full font-semibold truncate">{{$d.OwnerName}}</span>
+        <label class="skip-chip"><input type="checkbox" name="skip_owner" value="1" class="sr-only">{{t "household.item.skip"}}</label>
+      </span>
+    {{end}}
+    <input name="quantity" required inputmode="decimal" aria-label="{{t "picker.quantity"}}" class="field {{if $hh}}w-24{{else}}w-[76px]{{end}} text-right tabular-nums"
            {{with $r.PickQuantity}}value="{{dec . 2}}"{{else}}placeholder="{{$r.Unit}}"{{end}}>
     {{if gt $r.UnitWeightG 0.0}}
       {{/* Proposed quantity and unit: ingredientRow.PickQuantity/PickUnit.
            For OFF products «pz» is the package: never preselected. */}}
-      <span class="segmented" role="radiogroup" aria-label="{{t "picker.unit"}}">
+      <span class="segmented{{if $hh}} grid-cols-2 w-[5.5rem] shrink-0 [&>label]:px-0{{end}}" role="radiogroup" aria-label="{{t "picker.unit"}}">
         <label><input type="radio" name="qty_unit" value="{{$r.Unit}}"{{if ne $r.PickUnit "pz"}} checked{{end}}>{{$r.Unit}}</label>
         <label><input type="radio" name="qty_unit" value="pz"{{if eq $r.PickUnit "pz"}} checked{{end}}>{{t "picker.piece"}}</label>
       </span>
-      <span class="hidden sm:inline text-[12.5px] text-muted">{{with $r.ServingG}}{{t "picker.serving" "Serving" (num .) "Unit" $r.Unit}} · {{end}}{{t "picker.piece_weight" "Weight" (num $r.UnitWeightG) "Unit" $r.Unit}}</span>
+      <span class="{{if $hh}}hidden{{else}}hidden sm:inline{{end}} text-[12.5px] text-muted">{{with $r.ServingG}}{{t "picker.serving" "Serving" (num .) "Unit" $r.Unit}} · {{end}}{{t "picker.piece_weight" "Weight" (num $r.UnitWeightG) "Unit" $r.Unit}}</span>
     {{else if gt $r.ServingG 0.0}}
-      <input type="hidden" name="qty_unit" value="{{$r.Unit}}"><span class="text-muted">{{$r.Unit}}</span>
-      <span class="hidden sm:inline text-[12.5px] text-muted">{{t "picker.serving" "Serving" (num $r.ServingG) "Unit" $r.Unit}}</span>
+      <input type="hidden" name="qty_unit" value="{{$r.Unit}}"><span class="text-muted{{if $hh}} w-[5.5rem] shrink-0{{end}}">{{$r.Unit}}</span>
+      <span class="{{if $hh}}hidden{{else}}hidden sm:inline{{end}} text-[12.5px] text-muted">{{t "picker.serving" "Serving" (num $r.ServingG) "Unit" $r.Unit}}</span>
     {{else}}
-      <input type="hidden" name="qty_unit" value="{{$r.Unit}}"><span class="text-muted">{{$r.Unit}}</span>
+      <input type="hidden" name="qty_unit" value="{{$r.Unit}}"><span class="text-muted{{if $hh}} w-[5.5rem] shrink-0{{end}}">{{$r.Unit}}</span>
+    {{end}}
+    {{if $hh}}
+    </div>
+    {{range $d.Household}}
+    <div class="skip-row basis-full flex items-center gap-2.5">
+      <span class="hh-av" style="--hh-c:var(--hh{{.Color}})" aria-hidden="true">{{initial .Name}}</span>
+      <span class="grow min-w-0 flex flex-col items-start gap-1">
+        <span class="block max-w-full font-semibold truncate">{{.Name}}</span>
+        <label class="skip-chip"><input type="checkbox" name="skip_{{.PersonID}}" value="1" class="sr-only">{{t "household.item.skip"}}</label>
+      </span>
+      <input name="q_{{.PersonID}}" inputmode="decimal" autocomplete="off" placeholder="{{t "household.item.auto_short"}}"
+             aria-label="{{t "household.item.qty_for" "Name" .Name}}" class="field w-24 text-right tabular-nums">
+      <span data-unit-label class="w-[5.5rem] shrink-0 truncate text-muted">{{if eq $r.PickUnit "pz"}}{{t "picker.piece"}}{{else}}{{$r.Unit}}{{end}}</span>
+    </div>
+    {{end}}
     {{end}}
     <span class="ml-auto font-bold tabular-nums whitespace-nowrap" data-kcal-preview></span>
     <button class="btn h-[30px] px-3 text-[12.5px] {{if $cheat}}bg-danger text-surface hover:opacity-90{{else}}btn-primary{{end}}">{{if $cheat}}{{t "picker.add_cheat"}}{{else}}{{t "picker.add"}}{{end}}</button>

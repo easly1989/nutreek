@@ -173,8 +173,8 @@ func TestHouseholdHandlers(t *testing.T) {
 	if it := ownerRow(); !it.OwnerSkip || it.Quantity != 100 {
 		t.Errorf("after 0: skip %v, base %v; want skipped with the base kept", it.OwnerSkip, it.Quantity)
 	}
-	if body := call(a.handleHouseholdItemForm, http.MethodGet, "/meal-items/x/people"+start, nil, rowParam, alice, true).Body.String(); !strings.Contains(body, `placeholder="75"`) || !strings.Contains(body, "base 100 g") {
-		t.Errorf("the dialog of a row the owner skips: Giulia keeps her automatic 75 g and the owner's note shows\n%s", body)
+	if body := call(a.handleHouseholdItemForm, http.MethodGet, "/meal-items/x/people"+start, nil, rowParam, alice, true).Body.String(); !strings.Contains(body, `placeholder="75"`) || !strings.Contains(body, `name="skip_owner" value="1" class="sr-only" checked`) || !strings.Contains(body, `value="100"`) {
+		t.Errorf("the dialog of a row the owner skips: Giulia keeps her automatic 75 g, the switch is on and the field keeps the base 100\n%s", body)
 	}
 	saveOwner(url.Values{"q_owner": {""}})
 	if !ownerRow().OwnerSkip {
@@ -198,6 +198,22 @@ func TestHouseholdHandlers(t *testing.T) {
 	if ownerRow().Quantity != 100 {
 		t.Error("the owner's quantity is back to 100")
 	}
+	// The «does not eat it» switch (skip_<id>) is a 0 that keeps what the field shows.
+	skipField := strings.Replace(field, "q_", "skip_", 1)
+	saveOwner(url.Values{"q_owner": {"100"}, "skip_owner": {"1"}, field: {"abc"}, skipField: {"1"}})
+	if it := ownerRow(); !it.OwnerSkip || it.Quantity != 100 {
+		t.Errorf("owner switch: skip %v, base %v; want skipped with the base kept", it.OwnerSkip, it.Quantity)
+	}
+	if q, ok := week()[row]; !ok || q != 0 {
+		t.Errorf("Giulia's switch: %v, %v; want 0 (not eaten)", q, ok)
+	}
+	saveOwner(url.Values{"q_owner": {"100"}, field: {""}})
+	if ownerRow().OwnerSkip {
+		t.Error("the owner's switch off, the row is eaten again")
+	}
+	if _, ok := week()[row]; ok {
+		t.Error("Giulia's field empty, her quantity is automatic again")
+	}
 	// A save that changes the unit drops the people's hand-set quantities: what they post is
 	// in the old unit, and it is not saved in the new one.
 	weight := 60.0
@@ -216,6 +232,40 @@ func TestHouseholdHandlers(t *testing.T) {
 	saveOwner(url.Values{"q_owner": {"100.004"}})
 	if ownerRow().Quantity != 100 {
 		t.Errorf("a rounded-away difference changed the row to %v", ownerRow().Quantity)
+	}
+
+	// Adding a row sets what each person eats of it: the picker has the fields, and the form's
+	// owner switch and person fields are saved with the row (a bad field adds nothing).
+	mealParam := map[string]int64{"mealID": meal}
+	pick := call(a.handleMealPicker, http.MethodGet, "/meals/x/picker?kind=ingredient&q=oats&start="+monday.Format("2006-01-02"), nil, mealParam, alice, true).Body.String()
+	for _, want := range []string{`name="skip_owner"`, `name="skip_` + strconv.FormatInt(giulia, 10) + `"`, `name="` + field + `"`} {
+		if !strings.Contains(pick, want) {
+			t.Errorf("the picker has no %s", want)
+		}
+	}
+	items := func() int {
+		full, _ := a.WeeklyPlans.LoadFull(ctx, plan)
+		return len(full.Days[0][0].Items)
+	}
+	before := items()
+	add := func(v url.Values) {
+		t.Helper()
+		v.Set("kind", "ingredient")
+		v.Set("ref_id", strconv.FormatInt(oats, 10))
+		call(a.handleAddMealItem, http.MethodPost, "/meals/x/items"+start, v, mealParam, alice, true)
+	}
+	add(url.Values{"quantity": {"40"}, field: {"abc"}})
+	if items() != before {
+		t.Error("a bad person field still added the row")
+	}
+	add(url.Values{"quantity": {"40"}, "skip_owner": {"1"}, field: {"25"}})
+	full, _ := a.WeeklyPlans.LoadFull(ctx, plan)
+	added := full.Days[0][0].Items[len(full.Days[0][0].Items)-1]
+	if items() != before+1 || !added.OwnerSkip || added.Quantity != 40 {
+		t.Fatalf("the added row: skip %v, quantity %v; want skipped, base 40", added.OwnerSkip, added.Quantity)
+	}
+	if q, ok := week()[added.ID]; !ok || q != 25 {
+		t.Errorf("Giulia's 25 g on the added row: %v, %v", q, ok)
 	}
 
 	// An account with nobody else has the same dialog, with the owner only.
