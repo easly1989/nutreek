@@ -188,6 +188,13 @@ func TestShoppingViewGrouping(t *testing.T) {
 			t.Errorf("%s: the cart row's ShowCat = %v, want %v", grouping, v.Cart[0].ShowCat, want)
 		}
 	}
+	// With «Altro» as the only category, no row names it.
+	for _, grouping := range []string{db.ShoppingGroupCategory, db.ShoppingGroupCustom} {
+		bare := buildShoppingView([]domain.ShoppingListItem{shopItem(1, 10, "Zucchine", 400, false, 0), shopItem(2, 11, "Pasta", 500, true, 0)}, nil, nil, grouping, nil)
+		if bare.Rows[0].ShowCat || bare.Cart[0].ShowCat {
+			t.Errorf("%s: a row names «Altro» when it is the only category", grouping)
+		}
+	}
 }
 
 // In the user's own order the rows the user placed come first, in their order,
