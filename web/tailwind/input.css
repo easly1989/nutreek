@@ -211,7 +211,7 @@
   /* Segmented control (Modalità in the Aspetto menu). */
   .segmented { @apply grid gap-1 p-[3px] rounded-[10px] bg-surface-2; }
   .segmented button { @apply h-[30px] rounded-lg text-[12.5px] font-semibold text-text; }
-  .segmented button[aria-checked="true"], .segmented button[aria-selected="true"] { @apply bg-surface; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .segmented button[aria-checked="true"], .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"] { @apply bg-surface; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
   .swatch {
     @apply flex flex-col items-center gap-1 py-1.5 rounded-lg text-[11.5px] font-medium text-text border-[1.5px] border-transparent hover:bg-surface-2;
   }
@@ -465,24 +465,39 @@
   .hh-ini { @apply inline-grid place-items-center w-5 h-5 rounded-full text-[11px] font-bold text-accent-fg; background: var(--hh-c, var(--accent)); }
   @media (max-width: 639px) {
     .item-grid[data-hh-s], .hh-headrow[data-hh-s] {
-      grid-template-columns: minmax(0, 1fr) 3.5rem repeat(var(--n), 2.25rem) 2.25rem 2rem;
+      grid-template-columns: minmax(0, 1fr) 3.5rem repeat(var(--n), 2.5rem) 2rem;
     }
     .hh-headrow[data-hh-s] { display: grid; column-gap: 0.25rem; }
   }
-  .item-grid[data-hh-s] .item-kcal { grid-column: -3 / -2; }
+  .item-grid[data-hh-s] .item-kcal { display: none; }
   .item-grid[data-hh-s] .item-actions { grid-column: -2 / -1; }
   .item-grid[data-hh-s] .hh-cell { display: inline-flex; }
   .item-grid[data-hh-s] .hh-chips { display: none; }
   @media (min-width: 640px) {
     .item-grid[data-hh], .hh-headrow {
-      grid-template-columns: minmax(0, 1fr) 5.5rem repeat(var(--n), 3.25rem) 2.75rem 2.25rem;
+      grid-template-columns: minmax(0, 1fr) 5.5rem repeat(var(--n), 3.25rem) 2.25rem;
     }
     .hh-headrow { display: grid; column-gap: 0.625rem; }
-    .item-grid[data-hh] .item-kcal { grid-column: -3 / -2; }
+    .item-grid[data-hh] .item-kcal { display: none; }
     .item-grid[data-hh] .item-actions { grid-column: -2 / -1; }
     .item-grid[data-hh] .hh-cell { display: inline-flex; }
     .item-grid[data-hh] .hh-chips { display: none; }
   }
+
+  /* What the columns show (#238): the quantities, or each person's kcal (the switch in the meal's header,
+     household.js sets data-hh-mode on <html>). The kcal column of the owner is one of these columns now. */
+  .hh-k { display: none; @apply font-bold text-text; }
+  html[data-hh-mode="kcal"] .item-grid[data-hh-s] .hh-q { display: none; }
+  html[data-hh-mode="kcal"] .item-grid[data-hh-s] .hh-k { display: inline; }
+  @media (min-width: 640px) {
+    html[data-hh-mode="kcal"] .item-grid[data-hh] .hh-q { display: none; }
+    html[data-hh-mode="kcal"] .item-grid[data-hh] .hh-k { display: inline; }
+  }
+  /* Whose macros the meal's line shows. */
+  [data-hh-macros][hidden] { display: none; }
+  .hh-who { @apply inline-flex items-center gap-1.5 h-6 px-2 rounded-full text-[12px] font-semibold text-muted; }
+  .hh-who[aria-pressed="true"] { @apply bg-surface text-text; box-shadow: 0 0 0 1px var(--border); }
+  .hh-who:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   /* A variant of the nutrition plan (#251): its chevron turns and its foods in short hide while it is open. */
   [data-var-toggle][aria-expanded="false"] .var-chev { transform: rotate(-90deg); }

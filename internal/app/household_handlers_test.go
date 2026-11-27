@@ -99,7 +99,7 @@ func TestHouseholdHandlers(t *testing.T) {
 	// an account with nobody else keeps the plain rows.
 	onMonday := start + "&day=" + monday.Format("2006-01-02")
 	dayHTML := call(a.handleDashboard, http.MethodGet, "/"+onMonday, nil, nil, alice, false).Body.String()
-	for _, want := range []string{`data-hh `, `data-hh-s`, `hh-headrow`, `class="hh-cell`} {
+	for _, want := range []string{`data-hh `, `data-hh-s`, `hh-headrow`, `class="hh-cell`, `data-hh-set="kcal"`, `data-popover="meal-sum-`, `data-hh-macros="1"`} {
 		if !strings.Contains(dayHTML, want) {
 			t.Errorf("the day has no %q", want)
 		}

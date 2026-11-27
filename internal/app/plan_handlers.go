@@ -124,6 +124,8 @@ type mealView struct {
 	Skips []hhSkip
 	// Owner is the account owner's name: the first column of the household's rows.
 	Owner string
+	// Totals is what each person eats of the meal, the owner first (#238). Nil without a household.
+	Totals []hhMealTotal
 }
 
 // scaledIngredient is an ingredient of a recipe with its quantity scaled to
