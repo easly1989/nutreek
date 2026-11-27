@@ -332,7 +332,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 	// 2. Copy the meal_items of every source meal.
 	if len(meals) > 0 {
 		insItem, err := tx.PrepareContext(ctx,
-			`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`)
+			`INSERT INTO meal_items (meal_id, recipe_id, ingredient_id, quantity, quantity_unit, sort_order, owner_skip) VALUES (?, ?, ?, ?, ?, ?, ?)`)
 		if err != nil {
 			return fmt.Errorf("prepare insert item: %w", err)
 		}
@@ -344,7 +344,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 		}
 		ph := strings.Repeat("?,", len(srcIDs)-1) + "?"
 		itemRows, err := tx.QueryContext(ctx,
-			`SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order, quantity_unit
+			`SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order, quantity_unit, owner_skip
 			 FROM meal_items WHERE meal_id IN (`+ph+`)
 			 ORDER BY meal_id, sort_order, id`, srcIDs...)
 		if err != nil {
@@ -358,11 +358,12 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 			Quantity     float64
 			SortOrder    int
 			QuantityUnit string
+			OwnerSkip    bool
 		}
 		var items []srcItem
 		for itemRows.Next() {
 			var it srcItem
-			if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngID, &it.Quantity, &it.SortOrder, &it.QuantityUnit); err != nil {
+			if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngID, &it.Quantity, &it.SortOrder, &it.QuantityUnit, &it.OwnerSkip); err != nil {
 				itemRows.Close()
 				return fmt.Errorf("scan src item: %w", err)
 			}
@@ -379,7 +380,7 @@ func (r *WeeklyPlans) CopyFrom(ctx context.Context, srcPlanID, dstPlanID, userID
 			if !ok {
 				continue
 			}
-			res, err := insItem.ExecContext(ctx, dstMealID, srcIt.RecipeID, srcIt.IngID, srcIt.Quantity, srcIt.QuantityUnit, srcIt.SortOrder)
+			res, err := insItem.ExecContext(ctx, dstMealID, srcIt.RecipeID, srcIt.IngID, srcIt.Quantity, srcIt.QuantityUnit, srcIt.SortOrder, srcIt.OwnerSkip)
 			if err != nil {
 				return fmt.Errorf("insert dst item: %w", err)
 			}
@@ -756,7 +757,7 @@ func (r *WeeklyPlans) UpdateItem(ctx context.Context, itemID, userID int64, quan
 		}
 	}
 	if _, err := r.db.ExecContext(ctx,
-		`UPDATE meal_items SET quantity = ?, quantity_unit = ? WHERE id = ?`,
+		`UPDATE meal_items SET quantity = ?, quantity_unit = ?, owner_skip = 0 WHERE id = ?`, // a quantity means the owner eats it
 		quantity, stored, itemID); err != nil {
 		return fmt.Errorf("update meal_item: %w", err)
 	}
@@ -764,6 +765,26 @@ func (r *WeeklyPlans) UpdateItem(ctx context.Context, itemID, userID int64, quan
 		if _, err := r.db.ExecContext(ctx, `DELETE FROM household_item_quantities WHERE meal_item_id = ?`, itemID); err != nil {
 			return fmt.Errorf("clear household quantities: %w", err)
 		}
+	}
+	return nil
+}
+
+// SetOwnerSkip says whether the owner eats a meal_item (#353): true keeps the quantity
+// as the base of the other people's and counts nothing for the owner. Checks ownership
+// through the plan: ErrMealItemNotFound otherwise.
+func (r *WeeklyPlans) SetOwnerSkip(ctx context.Context, itemID, userID int64, skip bool) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE meal_items SET owner_skip = ?
+		WHERE id = ?
+		  AND meal_id IN (
+		    SELECT m.id FROM meals m
+		    JOIN weekly_plans wp ON wp.id = m.weekly_plan_id
+		    WHERE wp.user_id = ?)`, skip, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("set owner_skip: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrMealItemNotFound
 	}
 	return nil
 }
@@ -812,7 +833,7 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 		args[i] = id
 	}
 	itemRows, err := r.db.QueryContext(ctx, `
-		SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order, quantity_unit
+		SELECT id, meal_id, recipe_id, ingredient_id, quantity, sort_order, quantity_unit, owner_skip
 		FROM meal_items WHERE meal_id IN (`+placeholders+`)
 		ORDER BY meal_id, sort_order, id
 	`, args...)
@@ -823,7 +844,7 @@ func (r *WeeklyPlans) LoadFull(ctx context.Context, plan *domain.WeeklyPlan) (*d
 	var recipeIDs, ingredientIDs []int64
 	for itemRows.Next() {
 		var it domain.MealItem
-		if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder, &it.QuantityUnit); err != nil {
+		if err := itemRows.Scan(&it.ID, &it.MealID, &it.RecipeID, &it.IngredientID, &it.Quantity, &it.SortOrder, &it.QuantityUnit, &it.OwnerSkip); err != nil {
 			itemRows.Close()
 			return nil, fmt.Errorf("scan item: %w", err)
 		}

@@ -123,9 +123,19 @@ func (a *App) handleHouseholdDelete(w http.ResponseWriter, r *http.Request) {
 // householdItemData is the view model of the dialog.
 type householdItemData struct {
 	authPageData
-	Name     string
-	OwnerQty float64
-	Unit     string
+	Name      string
+	OwnerName string
+	// OwnerQty is what the owner eats now (0 when they skip the row); OwnerBase is the
+	// row's own quantity, the one the others are scaled from.
+	OwnerQty  float64
+	OwnerBase float64
+	OwnerSkip bool
+	Unit      string // for the person, translated
+	UnitCode  string // g, ml, pz or "" (a recipe's servings)
+	CanUnit   bool   // an ingredient with a weight per piece: g or pieces
+	PieceUnit string // what the ingredient is counted in besides the pieces (g, ml)
+	// Editable is false for a recipe with variations: its quantity is what the variations make.
+	Editable bool
 	People   []hhShare
 	Action   string
 }
@@ -149,9 +159,8 @@ func (a *App) householdItem(r *http.Request, itemID int64) (v mealItemView, day 
 	}
 	for _, dv := range days {
 		for _, mv := range dv.Meals {
-			if mv.HasCheats {
-				continue
-			}
+			// A meal with cheats has no household columns (iv.People is empty), but its
+			// rows keep the owner's quantity.
 			for _, iv := range mv.ItemViews {
 				if iv.Item.ID == itemID {
 					return iv, dv.Index, true, nil
@@ -180,19 +189,27 @@ func (a *App) handleHouseholdItemForm(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
-	if !ok || len(iv.People) == 0 {
+	if !ok {
 		http.Error(w, a.t(r, "week.error.item_not_found"), http.StatusNotFound)
 		return
 	}
 	data := householdItemData{authPageData: authPageData{CSRFToken: nosurf.Token(r)}, People: iv.People,
-		OwnerQty: iv.Item.Quantity, Action: "/meal-items/" + strconv.FormatInt(itemID, 10) + "/people?start=" + formatDate(weekStart)}
+		OwnerName: userFromContext(r.Context()).DisplayName, OwnerBase: iv.Item.Quantity, OwnerSkip: iv.Item.OwnerSkip,
+		UnitCode: iv.Item.QuantityUnit, Editable: !iv.Item.IsCustomized(),
+		Action: "/meal-items/" + strconv.FormatInt(itemID, 10) + "/people?start=" + formatDate(weekStart)}
+	if !iv.Item.OwnerSkip {
+		data.OwnerQty = iv.Item.Quantity
+	}
 	switch {
 	case iv.Item.Recipe != nil:
-		data.Name, data.Unit = iv.Item.Recipe.Name, a.t(r, "picker.servings_unit")
+		data.Name, data.Unit, data.UnitCode = iv.Item.Recipe.Name, a.t(r, "picker.servings_unit"), ""
 	case iv.Item.Ingredient != nil:
 		data.Name, data.Unit = iv.Item.Ingredient.Name, iv.Item.QuantityUnit
 		if data.Unit == "pz" {
 			data.Unit = a.t(r, "picker.piece")
+		}
+		if iv.Item.Ingredient.PieceWeight() > 0 {
+			data.CanUnit, data.PieceUnit = true, string(iv.Item.Ingredient.Unit)
 		}
 	}
 	if err := a.Render.RenderPartial(w, r, http.StatusOK, "dashboard", "household_item_dialog", data); err != nil {
@@ -221,6 +238,57 @@ func (a *App) handleHouseholdItemSave(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		http.Error(w, a.t(r, "week.error.item_not_found"), http.StatusNotFound)
 		return
+	}
+	// A bad number anywhere saves nothing, so every field is read before the first change.
+	for _, p := range iv.People {
+		if raw, sent := r.PostForm["q_"+strconv.FormatInt(p.PersonID, 10)]; sent {
+			if text := strings.TrimSpace(raw[0]); text != "" {
+				if q, perr := parseNonNegFloat(text); perr != nil || q > MaxItemQuantity {
+					a.flashAndBack(w, r, parseWeekStart(r), a.t(r, "household.error.quantity"))
+					return
+				}
+			}
+		}
+	}
+	// The owner's own row (#353): a number sets the quantity, 0 says they do not eat it,
+	// empty leaves it as it is. A recipe with variations has no quantity to set.
+	if raw, sent := r.PostForm["q_owner"]; sent && !iv.Item.IsCustomized() {
+		text := strings.TrimSpace(raw[0])
+		if text != "" {
+			q, perr := parseNonNegFloat(text)
+			if perr != nil || q > MaxItemQuantity {
+				a.flashAndBack(w, r, parseWeekStart(r), a.t(r, "household.error.quantity"))
+				return
+			}
+			unit := strings.TrimSpace(r.PostFormValue("qty_unit"))
+			if unit == "" {
+				unit = iv.Item.QuantityUnit
+			}
+			if !validQtyUnit(unit) {
+				http.Error(w, a.t(r, "week.flash.invalid_quantity"), http.StatusUnprocessableEntity)
+				return
+			}
+			var oerr error
+			switch {
+			case q == 0:
+				oerr = a.WeeklyPlans.SetOwnerSkip(r.Context(), itemID, user.ID, true)
+			case q != iv.Item.Quantity || unit != iv.Item.QuantityUnit || iv.Item.OwnerSkip:
+				oerr = a.WeeklyPlans.UpdateItem(r.Context(), itemID, user.ID, q, unit)
+			}
+			if oerr != nil {
+				a.serverError(w, r, oerr)
+				return
+			}
+			// What the others get by the ratio follows the base: read the row again.
+			if iv, day, ok, err = a.householdItem(r, itemID); err != nil {
+				a.serverError(w, r, err)
+				return
+			}
+			if !ok {
+				http.Error(w, a.t(r, "week.error.item_not_found"), http.StatusNotFound)
+				return
+			}
+		}
 	}
 	// Read every field first, so a bad one saves nothing.
 	type change struct {
