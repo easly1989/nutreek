@@ -28,12 +28,13 @@
   "household.skips": "{{.Name}} skips this meal",
   "household.eats": "{{.Name}} eats this meal",
   "household.item.title": "Quantities",
-  "household.item.owner_skip": "not eaten · base {{.Qty}} {{.Unit}}",
+  "household.item.auto_short": "auto",
+  "household.item.skip": "Does not eat it",
   "household.item.by_hand": "set by hand",
   "household.item.auto": "auto {{.Qty}} {{.Unit}}",
   "household.item.qty_for": "Quantity for {{.Name}}",
-  "household.item.hint": "Type 0 if you do not eat it. For the others, leave a field empty for the automatic quantity, or type 0 if the person does not eat it.",
-  "household.item.hint_owner": "Type 0 if you do not eat it.",
+  "household.item.hint": "Leave a field empty for the automatic quantity.",
+  "household.item.hint_owner": "Switch on «Does not eat it» to leave the row out.",
   "household.item.change": "Quantities of the household for {{.Name}}",
   "household.shopping.detail": "Who needs how much"
 }

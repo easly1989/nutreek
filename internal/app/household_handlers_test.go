@@ -173,8 +173,8 @@ func TestHouseholdHandlers(t *testing.T) {
 	if it := ownerRow(); !it.OwnerSkip || it.Quantity != 100 {
 		t.Errorf("after 0: skip %v, base %v; want skipped with the base kept", it.OwnerSkip, it.Quantity)
 	}
-	if body := call(a.handleHouseholdItemForm, http.MethodGet, "/meal-items/x/people"+start, nil, rowParam, alice, true).Body.String(); !strings.Contains(body, `placeholder="75"`) || !strings.Contains(body, "base 100 g") {
-		t.Errorf("the dialog of a row the owner skips: Giulia keeps her automatic 75 g and the owner's note shows\n%s", body)
+	if body := call(a.handleHouseholdItemForm, http.MethodGet, "/meal-items/x/people"+start, nil, rowParam, alice, true).Body.String(); !strings.Contains(body, `placeholder="75"`) || !strings.Contains(body, `name="skip_owner" value="1" class="sr-only" checked`) || !strings.Contains(body, `value="100"`) {
+		t.Errorf("the dialog of a row the owner skips: Giulia keeps her automatic 75 g, the switch is on and the field keeps the base 100\n%s", body)
 	}
 	saveOwner(url.Values{"q_owner": {""}})
 	if !ownerRow().OwnerSkip {
@@ -198,6 +198,47 @@ func TestHouseholdHandlers(t *testing.T) {
 	if ownerRow().Quantity != 100 {
 		t.Error("the owner's quantity is back to 100")
 	}
+	// The «does not eat it» switch (skip_<id>) is a 0 that keeps what the field shows.
+	skipField := strings.Replace(field, "q_", "skip_", 1)
+	saveOwner(url.Values{"q_owner": {"100"}, "skip_owner": {"1"}, field: {"abc"}, skipField: {"1"}})
+	if it := ownerRow(); !it.OwnerSkip || it.Quantity != 100 {
+		t.Errorf("owner switch: skip %v, base %v; want skipped with the base kept", it.OwnerSkip, it.Quantity)
+	}
+	if q, ok := week()[row]; !ok || q != 0 {
+		t.Errorf("Giulia's switch: %v, %v; want 0 (not eaten)", q, ok)
+	}
+	saveOwner(url.Values{"q_owner": {"100"}, field: {""}})
+	if ownerRow().OwnerSkip {
+		t.Error("the owner's switch off, the row is eaten again")
+	}
+	if _, ok := week()[row]; ok {
+		t.Error("Giulia's field empty, her quantity is automatic again")
+	}
+	// The switch with a new base saves the base too; a number without the switch brings the row back.
+	saveOwner(url.Values{"q_owner": {"150"}, "skip_owner": {"1"}})
+	if it := ownerRow(); !it.OwnerSkip || it.Quantity != 150 {
+		t.Errorf("switch with a new base: skip %v, base %v; want skipped, 150", it.OwnerSkip, it.Quantity)
+	}
+	saveOwner(url.Values{"q_owner": {"100"}})
+	if it := ownerRow(); it.OwnerSkip || it.Quantity != 100 {
+		t.Errorf("a number without the switch: skip %v, quantity %v; want eaten, 100", it.OwnerSkip, it.Quantity)
+	}
+	// A quantity set by hand is still what the dialog shows when the person skips the whole meal.
+	if err := a.Household.SetQuantity(ctx, alice.ID, giulia, row, 80); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Household.SetSkip(ctx, alice.ID, giulia, meal, true); err != nil {
+		t.Fatal(err)
+	}
+	if body := call(a.handleHouseholdItemForm, http.MethodGet, "/meal-items/x/people"+start, nil, rowParam, alice, true).Body.String(); !strings.Contains(body, `value="80"`) || strings.Contains(body, `name="`+strings.Replace(field, "q_", "skip_", 1)+`" value="1" class="sr-only" checked`) {
+		t.Errorf("the dialog of a person who skips the meal lost her 80 g\n%s", body)
+	}
+	if err := a.Household.SetSkip(ctx, alice.ID, giulia, meal, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Household.ClearQuantity(ctx, alice.ID, giulia, row); err != nil {
+		t.Fatal(err)
+	}
 	// A save that changes the unit drops the people's hand-set quantities: what they post is
 	// in the old unit, and it is not saved in the new one.
 	weight := 60.0
@@ -212,10 +253,60 @@ func TestHouseholdHandlers(t *testing.T) {
 	if q, ok := week()[eggRow]; ok {
 		t.Errorf("Giulia's 90 g survived the change to pieces as %v", q)
 	}
+	// «Does not eat it» does not depend on the unit: it is kept when the unit changes.
+	if w := call(a.handleHouseholdItemSave, http.MethodPost, "/meal-items/x/people"+start, url.Values{"q_owner": {"120"}, "qty_unit": {"g"}, skipField: {"1"}}, map[string]int64{"itemID": eggRow}, alice, true); w.Code >= 400 {
+		t.Fatalf("unit change with the switch: %d", w.Code)
+	}
+	if q, ok := week()[eggRow]; !ok || q != 0 {
+		t.Errorf("Giulia's switch on a unit change: %v, %v; want 0", q, ok)
+	}
 	// A quantity that rounds to what the field shows is not a change.
 	saveOwner(url.Values{"q_owner": {"100.004"}})
 	if ownerRow().Quantity != 100 {
 		t.Errorf("a rounded-away difference changed the row to %v", ownerRow().Quantity)
+	}
+
+	// Adding a row sets what each person eats of it: the picker has the fields, and the form's
+	// owner switch and person fields are saved with the row (a bad field adds nothing).
+	mealParam := map[string]int64{"mealID": meal}
+	pick := call(a.handleMealPicker, http.MethodGet, "/meals/x/picker?kind=ingredient&q=oats&start="+monday.Format("2006-01-02"), nil, mealParam, alice, true).Body.String()
+	for _, want := range []string{`name="skip_owner"`, `name="skip_` + strconv.FormatInt(giulia, 10) + `"`, `name="` + field + `"`} {
+		if !strings.Contains(pick, want) {
+			t.Errorf("the picker has no %s", want)
+		}
+	}
+	items := func() int {
+		full, _ := a.WeeklyPlans.LoadFull(ctx, plan)
+		return len(full.Days[0][0].Items)
+	}
+	before := items()
+	add := func(v url.Values) {
+		t.Helper()
+		v.Set("kind", "ingredient")
+		v.Set("ref_id", strconv.FormatInt(oats, 10))
+		call(a.handleAddMealItem, http.MethodPost, "/meals/x/items"+start, v, mealParam, alice, true)
+	}
+	add(url.Values{"quantity": {"40"}, field: {"abc"}})
+	if items() != before {
+		t.Error("a bad person field still added the row")
+	}
+	add(url.Values{"quantity": {"40"}, "skip_owner": {"1"}, field: {"25"}})
+	full, _ := a.WeeklyPlans.LoadFull(ctx, plan)
+	added := full.Days[0][0].Items[len(full.Days[0][0].Items)-1]
+	if items() != before+1 || !added.OwnerSkip || added.Quantity != 40 {
+		t.Fatalf("the added row: skip %v, quantity %v; want skipped, base 40", added.OwnerSkip, added.Quantity)
+	}
+	if q, ok := week()[added.ID]; !ok || q != 25 {
+		t.Errorf("Giulia's 25 g on the added row: %v, %v", q, ok)
+	}
+
+	// A meal with something eaten instead has no household rows: the picker has no fields for the people.
+	cheatMeal, _ := a.WeeklyPlans.AddMeal(ctx, plan.ID, alice.ID, 1, "Dinner")
+	if _, err := a.Store.DB.ExecContext(ctx, `INSERT INTO meal_cheat_items (meal_id, ingredient_id, quantity, sort_order) VALUES (?, ?, 30, 0)`, cheatMeal, oats); err != nil {
+		t.Fatal(err)
+	}
+	if body := call(a.handleMealPicker, http.MethodGet, "/meals/x/picker?kind=ingredient&q=oats&start="+monday.Format("2006-01-02"), nil, map[string]int64{"mealID": cheatMeal}, alice, true).Body.String(); strings.Contains(body, `name="skip_owner"`) {
+		t.Error("the picker of a meal with cheats has fields for the people")
 	}
 
 	// An account with nobody else has the same dialog, with the owner only.

@@ -356,6 +356,10 @@ type ingredientsListData struct {
 	InDialog          bool            // picker in the dialog over the week (HTMX form)
 	SearchedOFF       bool            // the search also reached the OFF network (off=1)
 	NutritionistItems []ingredientRow // suggestions from the nutrition plan
+	// Household (#238): the people besides the owner, for the fields of what each eats when a
+	// meal's row is added. Empty without a household and for cheats.
+	Household []hhShare
+	OwnerName string
 }
 
 type ingredientsNewData struct {

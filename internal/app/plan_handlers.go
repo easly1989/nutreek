@@ -470,6 +470,15 @@ func (a *App) dayIndexFromMealID(r *http.Request, mealID int64) (int, error) {
 	return day, err
 }
 
+// mealHasCheats says whether something was eaten instead of the meal: its rows are not the
+// household's then, so there are no quantities to set for the people.
+func (a *App) mealHasCheats(r *http.Request, mealID int64) bool {
+	var has bool
+	err := a.Store.DB.QueryRowContext(r.Context(),
+		`SELECT EXISTS(SELECT 1 FROM meal_cheat_items WHERE meal_id = ?)`, mealID).Scan(&has)
+	return err == nil && has
+}
+
 // dayIndexFromItemID resolves the day_of_week of the meal holding the item.
 func (a *App) dayIndexFromItemID(r *http.Request, itemID int64) (int, error) {
 	var day int
@@ -895,9 +904,33 @@ func (a *App) handleAddMealItem(w http.ResponseWriter, r *http.Request) {
 		qtyUnit = "g"
 	}
 
-	if _, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, rPtr, iPtr, qty, qtyUnit); err != nil {
+	// Household (#238): what each person eats of the row comes with it (q_<id>, skip_<id>).
+	var people []hhShare
+	if a.Household != nil {
+		list, err := a.Household.List(r.Context(), user.ID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		for _, p := range list {
+			people = append(people, hhShare{PersonID: p.ID})
+		}
+		if _, ok := personChanges(r, people); !ok {
+			a.flashAndBack(w, r, weekStart, a.t(r, "household.error.quantity"))
+			return
+		}
+	}
+
+	itemID, err := a.WeeklyPlans.AddItem(r.Context(), mealID, user.ID, rPtr, iPtr, qty, qtyUnit)
+	if err != nil {
 		a.flashAndBack(w, r, weekStart, a.t(r, "week.flash.item_add_failed", "Error", a.errText(r, err)))
 		return
+	}
+	if len(people) > 0 {
+		if err := a.savePeopleOfNewItem(r, user.ID, itemID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 	}
 	day, dayErr := a.dayIndexFromMealID(r, mealID)
 	if dayErr != nil {
@@ -985,6 +1018,17 @@ func (a *App) handleMealPicker(w http.ResponseWriter, r *http.Request) {
 			NutritionistItems: nutrRows,
 			InDialog:          inDialog,
 			SearchedOFF:       includeOFFParam(r),
+		}
+		if pkind == "meal_item" && a.Household != nil && !a.mealHasCheats(r, mealID) {
+			people, err := a.Household.List(r.Context(), user.ID)
+			if err != nil {
+				a.serverError(w, r, err)
+				return
+			}
+			data.OwnerName = user.DisplayName
+			for i, p := range people {
+				data.Household = append(data.Household, hhShare{PersonID: p.ID, Name: p.Name, Color: i + 1})
+			}
 		}
 		if err := a.Render.RenderPartial(w, r, http.StatusOK, "ingredients_list", "picker_results", data); err != nil {
 			a.serverError(w, r, err)

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"math"
 	"net/http"
@@ -218,6 +219,81 @@ func (a *App) handleHouseholdItemForm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// postedQty reads what the form says a person eats of a row: the field q_<id>, or "0" when
+// the switch skip_<id> is on («does not eat it»). sent is false when the form has neither.
+func postedQty(r *http.Request, id int64) (text string, sent bool) {
+	key := strconv.FormatInt(id, 10)
+	if r.PostForm.Get("skip_"+key) == "1" {
+		return "0", true
+	}
+	raw, sent := r.PostForm["q_"+key]
+	if !sent {
+		return "", false
+	}
+	return strings.TrimSpace(raw[0]), true
+}
+
+// personChange is what the form sets for a person on a row: a quantity, or back to the automatic one.
+type personChange struct {
+	person int64
+	qty    float64
+	clear  bool
+}
+
+// personChanges reads the people's fields of a form (q_<id>, skip_<id>): empty is the automatic
+// quantity, a number is theirs, 0 is not eaten. ok is false when a field is not a quantity.
+func personChanges(r *http.Request, people []hhShare) (cs []personChange, ok bool) {
+	for _, p := range people {
+		text, sent := postedQty(r, p.PersonID)
+		if !sent {
+			continue
+		}
+		if text == "" {
+			cs = append(cs, personChange{person: p.PersonID, clear: true})
+			continue
+		}
+		q, err := parseNonNegFloat(text)
+		if err != nil || q > MaxItemQuantity {
+			return nil, false
+		}
+		// The same as the automatic quantity: nothing to keep.
+		cs = append(cs, personChange{person: p.PersonID, qty: q, clear: q == household.RoundTo(p.Auto, 0.01)})
+	}
+	return cs, true
+}
+
+func (a *App) savePersonChanges(ctx context.Context, userID, itemID int64, cs []personChange) error {
+	for _, c := range cs {
+		var err error
+		if c.clear {
+			err = a.Household.ClearQuantity(ctx, userID, c.person, itemID)
+		} else {
+			err = a.Household.SetQuantity(ctx, userID, c.person, itemID, c.qty)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// savePeopleOfNewItem applies the household's fields of the form that added a row: the owner's
+// switch (skip_owner: the quantity stays as the base) and what each person eats. The row is
+// read again first, so the automatic quantities follow the base just added.
+func (a *App) savePeopleOfNewItem(r *http.Request, userID, itemID int64) error {
+	if r.PostForm.Get("skip_owner") == "1" {
+		if err := a.WeeklyPlans.SetOwnerSkip(r.Context(), itemID, userID, true); err != nil {
+			return err
+		}
+	}
+	iv, _, ok, err := a.householdItem(r, itemID)
+	if err != nil || !ok {
+		return err
+	}
+	cs, _ := personChanges(r, iv.People) // checked before the row was added
+	return a.savePersonChanges(r.Context(), userID, itemID, cs)
+}
+
 // handleHouseholdItemSave POST /meal-items/{itemID}/people?start=, one field q_<person id>
 // for each person: empty is the automatic quantity, a number is theirs (0 = not eaten).
 func (a *App) handleHouseholdItemSave(w http.ResponseWriter, r *http.Request) {
@@ -241,26 +317,29 @@ func (a *App) handleHouseholdItemSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// A bad number anywhere saves nothing, so every field is read before the first change.
-	for _, p := range iv.People {
-		if raw, sent := r.PostForm["q_"+strconv.FormatInt(p.PersonID, 10)]; sent {
-			if text := strings.TrimSpace(raw[0]); text != "" {
-				if q, perr := parseNonNegFloat(text); perr != nil || q > MaxItemQuantity {
+	if _, ok := personChanges(r, iv.People); !ok {
+		a.flashAndBack(w, r, parseWeekStart(r), a.t(r, "household.error.quantity"))
+		return
+	}
+	// The owner's own row (#353): a number sets the quantity (the base the others scale from),
+	// 0 or the switch skip_owner says they do not eat it (the base stays), empty leaves it as it
+	// is. A recipe with variations has no quantity to set.
+	unitChanged := false
+	raw, sent := r.PostForm["q_owner"]
+	skip := r.PostForm.Get("skip_owner") == "1"
+	if (sent || skip) && !iv.Item.IsCustomized() {
+		text := ""
+		if sent {
+			text = strings.TrimSpace(raw[0])
+		}
+		if text != "" || skip {
+			q := iv.Item.Quantity // an empty field with the switch on keeps the base
+			if text != "" {
+				var perr error
+				if q, perr = parseNonNegFloat(text); perr != nil || q > MaxItemQuantity {
 					a.flashAndBack(w, r, parseWeekStart(r), a.t(r, "household.error.quantity"))
 					return
 				}
-			}
-		}
-	}
-	// The owner's own row (#353): a number sets the quantity, 0 says they do not eat it,
-	// empty leaves it as it is. A recipe with variations has no quantity to set.
-	unitChanged := false
-	if raw, sent := r.PostForm["q_owner"]; sent && !iv.Item.IsCustomized() {
-		text := strings.TrimSpace(raw[0])
-		if text != "" {
-			q, perr := parseNonNegFloat(text)
-			if perr != nil || q > MaxItemQuantity {
-				a.flashAndBack(w, r, parseWeekStart(r), a.t(r, "household.error.quantity"))
-				return
 			}
 			unit := strings.TrimSpace(r.PostFormValue("qty_unit"))
 			if unit == "" {
@@ -270,18 +349,25 @@ func (a *App) handleHouseholdItemSave(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, a.t(r, "week.flash.invalid_quantity"), http.StatusUnprocessableEntity)
 				return
 			}
-			var oerr error
+			skip = skip || (text != "" && q == 0)
 			// The field shows two decimals: a quantity that rounds to what is shown is not a change.
-			same := math.Abs(q-iv.Item.Quantity) < 0.005
+			changed := q > 0 && (math.Abs(q-iv.Item.Quantity) >= 0.005 || unit != iv.Item.QuantityUnit)
+			var oerr error
 			switch {
-			case q == 0 && iv.Item.Quantity < 0.005 && !iv.Item.OwnerSkip: // shown as 0 already
-			case q == 0:
-				oerr = a.WeeklyPlans.SetOwnerSkip(r.Context(), itemID, user.ID, true)
-			case !same || unit != iv.Item.QuantityUnit || iv.Item.OwnerSkip:
+			case changed:
 				oerr = a.WeeklyPlans.UpdateItem(r.Context(), itemID, user.ID, q, unit)
 				// The people's hand-set quantities went with the old unit, and the dialog
 				// still shows them in it: what they posted is not in the new one.
 				unitChanged = unit != iv.Item.QuantityUnit
+				if oerr == nil && skip {
+					oerr = a.WeeklyPlans.SetOwnerSkip(r.Context(), itemID, user.ID, true)
+				}
+			case skip:
+				if !iv.Item.OwnerSkip && iv.Item.Quantity >= 0.005 { // a base of 0 is shown as 0 already
+					oerr = a.WeeklyPlans.SetOwnerSkip(r.Context(), itemID, user.ID, true)
+				}
+			case iv.Item.OwnerSkip: // a number without the switch: eaten again
+				oerr = a.WeeklyPlans.UpdateItem(r.Context(), itemID, user.ID, q, unit)
 			}
 			if oerr != nil {
 				a.serverError(w, r, oerr)
@@ -299,45 +385,23 @@ func (a *App) handleHouseholdItemSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if unitChanged {
+		// What was typed for the people is in the old unit and is dropped; «does not eat it» is not.
+		for _, p := range iv.People {
+			if r.PostForm.Get("skip_"+strconv.FormatInt(p.PersonID, 10)) != "1" {
+				continue
+			}
+			if err := a.Household.SetQuantity(r.Context(), user.ID, p.PersonID, itemID, 0); err != nil {
+				a.serverError(w, r, err)
+				return
+			}
+		}
 		a.respondMutationOrRedirect(w, r, parseWeekStart(r), day)
 		return
 	}
-	// Read every field first, so a bad one saves nothing.
-	type change struct {
-		person int64
-		qty    float64
-		clear  bool
-	}
-	var changes []change
-	for _, p := range iv.People {
-		raw, sent := r.PostForm["q_"+strconv.FormatInt(p.PersonID, 10)]
-		if !sent {
-			continue
-		}
-		text := strings.TrimSpace(raw[0])
-		if text == "" {
-			changes = append(changes, change{person: p.PersonID, clear: true})
-			continue
-		}
-		q, perr := parseNonNegFloat(text)
-		if perr != nil || q > MaxItemQuantity {
-			a.flashAndBack(w, r, parseWeekStart(r), a.t(r, "household.error.quantity"))
-			return
-		}
-		// The same as the automatic quantity: nothing to keep.
-		changes = append(changes, change{person: p.PersonID, qty: q, clear: q == household.RoundTo(p.Auto, 0.01)})
-	}
-	for _, c := range changes {
-		var err error
-		if c.clear {
-			err = a.Household.ClearQuantity(r.Context(), user.ID, c.person, itemID)
-		} else {
-			err = a.Household.SetQuantity(r.Context(), user.ID, c.person, itemID, c.qty)
-		}
-		if err != nil {
-			a.serverError(w, r, err)
-			return
-		}
+	changes, _ := personChanges(r, iv.People) // read and checked above
+	if err := a.savePersonChanges(r.Context(), user.ID, itemID, changes); err != nil {
+		a.serverError(w, r, err)
+		return
 	}
 	a.respondMutationOrRedirect(w, r, parseWeekStart(r), day)
 }

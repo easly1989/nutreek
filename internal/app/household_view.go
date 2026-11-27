@@ -52,7 +52,8 @@ type hhShare struct {
 	Auto     float64 // what the ratio gives, without a hand-set quantity
 	Unit     string
 	Manual   bool
-	None     bool // not eaten: the meal is skipped or the quantity is 0
+	None     bool    // not eaten: the meal is skipped or the quantity is 0
+	Hand     float64 // the quantity set by hand, kept when the person skips the whole meal
 }
 
 // attachHousehold fills the household's part of the days. It does nothing when the
@@ -110,7 +111,7 @@ func (a *App) attachHousehold(r *http.Request, user *domain.User, full *domain.W
 				for i, p := range people {
 					q := persons[i].Quantity(it)
 					mv.ItemViews[k].People = append(mv.ItemViews[k].People, hhShare{PersonID: p.ID, Name: p.Name, Color: i + 1,
-						Qty: q, Auto: persons[i].Auto(it), Unit: unit, Manual: persons[i].Manual(it), None: q <= 0})
+						Qty: q, Auto: persons[i].Auto(it), Unit: unit, Manual: persons[i].Manual(it), None: q <= 0, Hand: persons[i].Quantities[it.ID]})
 				}
 			}
 		}
