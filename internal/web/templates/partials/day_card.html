@@ -179,7 +179,33 @@
       {{if $m.HasCheats}}<span class="chip bg-danger-soft text-danger">{{t "week.cheat"}}</span>{{end}}
       {{range $m.Skips}}{{if .Skipped}}<span class="chip bg-surface-2 text-muted" style="--hh-c:var(--hh{{.Color}})"><span class="hh-dot mr-1.5" aria-hidden="true"></span>{{t "household.skips_chip" "Name" .Name}}</span>{{end}}{{end}}
     </div>
+    {{- /* Household (#238): the kcal of each person, and a sheet with their macros from a tap on them. */}}
+    {{if $m.Totals}}
+    <div class="relative shrink-0">
+      <button type="button" data-popover="meal-sum-{{$m.Meal.ID}}" aria-expanded="false" aria-controls="meal-sum-{{$m.Meal.ID}}" aria-label="{{t "household.sheet.open" "Name" $m.Meal.Name}}"
+              class="flex flex-col items-end -mx-1.5 px-1.5 py-0.5 rounded-lg hover:bg-surface-2 font-bold tabular-nums text-[13.5px] leading-[1.35]">
+        {{range $m.Totals}}<span class="inline-flex items-center gap-1.5" style="--hh-c:var(--hh{{.Color}})"><span class="hh-dot" aria-hidden="true"></span>{{num .Macros.Kcal}} <span class="font-medium text-muted">kcal</span></span>{{end}}
+      </button>
+      <div id="meal-sum-{{$m.Meal.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-[min(21rem,calc(100vw-4rem))] z-20 p-3">
+        <p class="font-semibold mb-1.5">{{t "household.sheet.title" "Name" $m.Meal.Name}}</p>
+        <table class="w-full text-[13px] tabular-nums">
+          <thead><tr class="text-[12px] text-muted"><th class="text-left font-semibold pb-1"><span class="sr-only">{{t "household.sheet.person"}}</span></th><th class="text-right font-semibold pb-1">kcal</th><th class="text-right font-semibold pb-1 text-prot" title="{{t "common.protein"}}">{{t "common.protein_short"}}</th><th class="text-right font-semibold pb-1 text-carb" title="{{t "common.carbs"}}">{{t "common.carbs_short"}}</th><th class="text-right font-semibold pb-1 text-fat" title="{{t "common.fat"}}">{{t "common.fat_short"}}</th></tr></thead>
+          <tbody>
+            {{range $m.Totals}}
+            <tr class="border-t border-border" style="--hh-c:var(--hh{{.Color}})">
+              <th scope="row" class="text-left font-semibold py-1.5"><span class="inline-flex items-center gap-1.5 min-w-0"><span class="hh-dot" aria-hidden="true"></span><span class="truncate max-w-[6rem]">{{.Name}}</span></span></th>
+              <td class="text-right font-bold py-1.5">{{num .Macros.Kcal}}{{if .Target}}<span class="block h-1 mt-1 rounded-full bg-track overflow-hidden" aria-hidden="true"><span class="hh-fill" style="width:{{.Pct}}%"></span></span>{{end}}</td>
+              <td class="text-right py-1.5 pl-2">{{num .Macros.Protein}} g</td><td class="text-right py-1.5 pl-2">{{num .Macros.Carbs}} g</td><td class="text-right py-1.5 pl-2">{{num .Macros.Fat}} g</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        <p class="mt-1.5 text-[12px] text-muted">{{t "household.sheet.goal_note"}}</p>
+      </div>
+    </div>
+    {{else}}
     <span class="shrink-0 font-bold tabular-nums leading-6 py-1">{{num $m.MealTotal.Kcal}} kcal</span>
+    {{end}}
     <div class="relative shrink-0">
       <button type="button" class="icon-action" data-popover="meal-menu-{{$m.Meal.ID}}" aria-expanded="false" aria-controls="meal-menu-{{$m.Meal.ID}}" aria-label="{{t "week.meal_actions" "Name" $m.Meal.Name}}">{{template "icon" "i-dots"}}</button>
       <div id="meal-menu-{{$m.Meal.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-56 z-20 p-1.5 flex flex-col">
@@ -203,17 +229,37 @@
       </div>
     </div>
   </header>
+  {{- /* The macros of one person at a time when there is a household: the buttons pick whose (household.js). */}}
+  {{if $m.Totals}}
+  <div class="mb-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-muted tabular-nums">
+    <span class="inline-flex gap-0.5 p-0.5 rounded-full bg-surface-2" role="group" aria-label="{{t "household.macros_of"}}">
+      {{range $i, $t := $m.Totals}}<button type="button" data-hh-person="{{$i}}" aria-pressed="{{if eq $i 0}}true{{else}}false{{end}}" class="hh-who" style="--hh-c:var(--hh{{$t.Color}})"><span class="hh-dot" aria-hidden="true"></span>{{initial $t.Name}}<span class="sr-only"> {{$t.Name}}</span></button>{{end}}
+    </span>
+    {{range $i, $t := $m.Totals}}
+    <span data-hh-macros="{{$i}}" class="flex gap-3"{{if $i}} hidden{{end}}>
+      <span title="{{t "common.protein"}}"><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{num $t.Macros.Protein}} g</span>
+      <span title="{{t "common.carbs"}}"><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num $t.Macros.Carbs}} g</span>
+      <span title="{{t "common.fat"}}"><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{num $t.Macros.Fat}} g</span>
+    </span>
+    {{end}}
+  </div>
+  {{else}}
   <p class="mb-0.5 flex gap-3 text-[12.5px] text-muted tabular-nums">
     <span title="{{t "common.protein"}}"><b class="text-prot font-semibold">{{t "common.protein_short"}}</b> {{num $m.MealTotal.Protein}} g</span>
     <span title="{{t "common.carbs"}}"><b class="text-carb font-semibold">{{t "common.carbs_short"}}</b> {{num $m.MealTotal.Carbs}} g</span>
     <span title="{{t "common.fat"}}"><b class="text-fat font-semibold">{{t "common.fat_short"}}</b> {{num $m.MealTotal.Fat}} g</span>
   </p>
+  {{end}}
   {{- /* Household (#238): who each column of the rows is (the owner first). Hidden where the chips replace the columns. */}}
   {{if and $m.Skips (not $m.HasCheats)}}
-  <div class="hh-headrow" style="--n:{{len $m.Skips}}"{{if le (len $m.Skips) 3}} data-hh-s{{end}} aria-hidden="true">
-    <span></span>
-    <span class="justify-self-end"><span class="hh-ini" style="--hh-c:var(--hh0)" title="{{$m.Owner}}">{{initial $m.Owner}}</span></span>
-    {{range $m.Skips}}<span class="justify-self-end"><span class="hh-ini" style="--hh-c:var(--hh{{.Color}})" title="{{.Name}}">{{initial .Name}}</span></span>{{end}}
+  <div class="hh-headrow" style="--n:{{len $m.Skips}}"{{if le (len $m.Skips) 3}} data-hh-s{{end}}>
+    {{- /* What the columns show: the quantities or the kcal (household.js keeps it for all the meals). */}}
+    <span class="segmented w-max max-w-full" role="radiogroup" aria-label="{{t "household.mode.label"}}">
+      <button type="button" role="radio" data-hh-set="qty" aria-checked="true" class="px-2.5">{{t "household.mode.qty"}}</button>
+      <button type="button" role="radio" data-hh-set="kcal" aria-checked="false" class="px-2.5">kcal</button>
+    </span>
+    <span class="justify-self-end" aria-hidden="true"><span class="hh-ini" style="--hh-c:var(--hh0)" title="{{$m.Owner}}">{{initial $m.Owner}}</span></span>
+    {{range $m.Skips}}<span class="justify-self-end" aria-hidden="true"><span class="hh-ini" style="--hh-c:var(--hh{{.Color}})" title="{{.Name}}">{{initial .Name}}</span></span>{{end}}
   </div>
   {{end}}
 
@@ -301,7 +347,8 @@
   <button type="button" hx-get="/meal-items/{{$it.ID}}/people?start={{.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"{{if $pz}} title="{{num $v.EffectiveGrams}} g"{{end}}
           class="group/q col-start-2 justify-self-end inline-flex items-center gap-1 h-8 px-1.5 -mr-1.5 rounded-lg border border-dashed border-transparent text-muted tabular-nums whitespace-nowrap hover:border-border hover:text-text focus-visible:border-border {{if .Struck}}line-through{{end}}">
     <span class="sr-only">{{t "picker.qty.change" "Name" $nm}}</span>
-    {{- if $it.OwnerSkip}}—{{else}}{{template "meal_item_qty" .}}{{end}}
+    <span class="hh-q">{{if $it.OwnerSkip}}—{{else}}{{template "meal_item_qty" .}}{{end}}</span>
+    {{- if $v.People}}<span class="hh-k">{{num $v.Macros.Kcal}}</span>{{end}}
     <svg class="w-3.5 h-3.5 shrink-0 opacity-0 group-hover/q:opacity-100 group-focus-visible/q:opacity-100 [@media(hover:none)]:hidden" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>
   </button>
   {{- else}}
@@ -312,7 +359,7 @@
   {{range $v.People}}
   <button type="button" hx-get="/meal-items/{{$it.ID}}/people?start={{$.WeekStart}}" hx-target="#modal-host" hx-swap="innerHTML"
           class="hh-cell justify-self-end items-center gap-0.5 h-8 px-1 -mr-1 rounded-lg text-[13px] tabular-nums whitespace-nowrap hover:bg-surface-2 hover:text-text {{if $.Struck}}line-through{{end}}">
-    <span class="sr-only">{{.Name}}:</span>{{if .None}}<span class="text-muted">—</span>{{else}}<span class="text-muted">{{if or (eq .Unit "g") (eq .Unit "ml")}}{{num .Qty}}{{else}}{{dec .Qty 1}}{{end}}</span><span class="sr-only"> {{.Unit}}</span>{{end}}{{if .Manual}}<svg class="w-3 h-3 text-accent" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>{{end}}
+    <span class="sr-only">{{.Name}}:</span><span class="hh-q">{{if .None}}<span class="text-muted">—</span>{{else}}<span class="text-muted">{{if or (eq .Unit "g") (eq .Unit "ml")}}{{num .Qty}}{{else}}{{dec .Qty 1}}{{end}}</span><span class="sr-only"> {{.Unit}}</span>{{end}}</span><span class="hh-k">{{num .Macros.Kcal}}<span class="sr-only"> kcal</span></span>{{if .Manual}}<svg class="w-3 h-3 text-accent" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-edit"/></svg>{{end}}
   </button>
   {{end}}
   <span class="item-kcal text-right tabular-nums {{if .Cheat}}text-danger{{end}} {{if .Struck}}line-through text-muted{{end}}">{{num $v.Macros.Kcal}}</span>
