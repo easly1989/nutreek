@@ -11,7 +11,7 @@
   function sync() {
     var mode = root.getAttribute("data-hh-mode") === "kcal" ? "kcal" : "qty";
     document.querySelectorAll("button[data-hh-set]").forEach(function (b) {
-      b.setAttribute("aria-checked", String(b.dataset.hhSet === mode));
+      b.setAttribute("aria-pressed", String(b.dataset.hhSet === mode));
     });
   }
 

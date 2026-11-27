@@ -182,9 +182,10 @@
     {{- /* Household (#238): the kcal of each person, and a sheet with their macros from a tap on them. */}}
     {{if $m.Totals}}
     <div class="relative shrink-0">
-      <button type="button" data-popover="meal-sum-{{$m.Meal.ID}}" aria-expanded="false" aria-controls="meal-sum-{{$m.Meal.ID}}" aria-label="{{t "household.sheet.open" "Name" $m.Meal.Name}}"
+      <button type="button" data-popover="meal-sum-{{$m.Meal.ID}}" aria-expanded="false" aria-controls="meal-sum-{{$m.Meal.ID}}"
               class="flex flex-col items-end -mx-1.5 px-1.5 py-0.5 rounded-lg hover:bg-surface-2 font-bold tabular-nums text-[13.5px] leading-[1.35]">
         {{range $m.Totals}}<span class="inline-flex items-center gap-1.5" style="--hh-c:var(--hh{{.Color}})"><span class="hh-dot" aria-hidden="true"></span>{{num .Macros.Kcal}} <span class="font-medium text-muted">kcal</span></span>{{end}}
+        <span class="sr-only">{{t "household.sheet.open" "Name" $m.Meal.Name}}</span>
       </button>
       <div id="meal-sum-{{$m.Meal.ID}}" class="menu-panel hidden absolute right-0 top-full mt-1 w-[min(21rem,calc(100vw-4rem))] z-20 p-3">
         <p class="font-semibold mb-1.5">{{t "household.sheet.title" "Name" $m.Meal.Name}}</p>
@@ -254,9 +255,9 @@
   {{if and $m.Skips (not $m.HasCheats)}}
   <div class="hh-headrow" style="--n:{{len $m.Skips}}"{{if le (len $m.Skips) 3}} data-hh-s{{end}}>
     {{- /* What the columns show: the quantities or the kcal (household.js keeps it for all the meals). */}}
-    <span class="segmented w-max max-w-full" role="radiogroup" aria-label="{{t "household.mode.label"}}">
-      <button type="button" role="radio" data-hh-set="qty" aria-checked="true" class="px-2.5">{{t "household.mode.qty"}}</button>
-      <button type="button" role="radio" data-hh-set="kcal" aria-checked="false" class="px-2.5">kcal</button>
+    <span class="segmented w-max max-w-full" role="group" aria-label="{{t "household.mode.label"}}">
+      <button type="button" data-hh-set="qty" aria-pressed="true" class="px-2.5">{{t "household.mode.qty"}}</button>
+      <button type="button" data-hh-set="kcal" aria-pressed="false" class="px-2.5">kcal</button>
     </span>
     <span class="justify-self-end" aria-hidden="true"><span class="hh-ini" style="--hh-c:var(--hh0)" title="{{$m.Owner}}">{{initial $m.Owner}}</span></span>
     {{range $m.Skips}}<span class="justify-self-end" aria-hidden="true"><span class="hh-ini" style="--hh-c:var(--hh{{.Color}})" title="{{.Name}}">{{initial .Name}}</span></span>{{end}}
