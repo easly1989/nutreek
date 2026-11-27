@@ -177,8 +177,8 @@ func TestShoppingViewGrouping(t *testing.T) {
 	}
 
 	flat := buildShoppingView(items, user, cats, db.ShoppingGroupNone, nil)
-	if len(flat.Groups) != 0 || !flat.Rows[0].ShowCat {
-		t.Errorf("not grouped: groups %d, ShowCat %v", len(flat.Groups), flat.Rows[0].ShowCat)
+	if len(flat.Groups) != 0 || flat.Rows[0].ShowCat {
+		t.Errorf("not grouped: groups %d, ShowCat %v; a category under each row says nothing", len(flat.Groups), flat.Rows[0].ShowCat)
 	}
 }
 

@@ -132,7 +132,7 @@ type shoppingRow struct {
 	EditUnit    string
 	PieceWeight float64
 	Legacy      bool             // manual item with a free-text quantity, from before units
-	ShowCat     bool             // the row names its category (only when the list is not grouped)
+	ShowCat     bool             // the row names its category (in the user's own order, and in the cart when the list is grouped)
 	Reorder     bool             // the row can be dragged (the user's own order)
 	Ignored     bool             // greyed out and not counted (#230)
 	Similar     *shoppingSimilar // the notice under the row: it looks like another row (#233)
@@ -243,7 +243,7 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 
 	v := shoppingView{Grouping: grouping}
 	for i := range rows {
-		rows[i].ShowCat = grouping != db.ShoppingGroupCategory
+		rows[i].ShowCat = grouping == db.ShoppingGroupCustom                // with no grouping a category under each row says nothing
 		rows[i].Reorder = custom && (!rows[i].checked() || rows[i].Ignored) // the rows in the cart are not draggable
 	}
 	for _, r := range rows {
@@ -254,7 +254,7 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 		v.Total++
 		v.Print = append(v.Print, r)
 		if r.checked() {
-			r.ShowCat = true // the cart has no group headings: its rows name their category
+			r.ShowCat = grouping != db.ShoppingGroupNone // the cart has no group headings: its rows name their category
 			v.Cart = append(v.Cart, r)
 			v.Done++
 			continue

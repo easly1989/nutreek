@@ -35,5 +35,5 @@
   "household.item.hint": "Scrivi 0 se non lo mangi. Per gli altri, lascia vuoto per la quantità automatica, o scrivi 0 se la persona non lo mangia.",
   "household.item.hint_owner": "Scrivi 0 se non lo mangi.",
   "household.item.change": "Quantità della famiglia per {{.Name}}",
-  "household.shopping.detail": "Chi ne serve quanto"
+  "household.shopping.detail": "A chi serve e quanto"
 }
