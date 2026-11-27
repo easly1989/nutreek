@@ -312,7 +312,7 @@
      apart. Merging two ingredients of the meals also changes the weekly plan. */}}
 {{define "shop_similar"}}{{$p := .Page}}{{$s := .Row.Similar}}{{if $s}}{{$u := $s.Unit}}
 <div class="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-warn-bg text-warn-fg text-[12.5px]" data-similar>
-  <span class="grow min-w-0 basis-full sm:basis-0">{{t "shopping.similar" "Name" $s.OtherName}}{{if $s.HasSum}}: {{template "shop_n" $s.QtyA}} + {{template "shop_n" $s.QtyB}} = <b>{{template "shop_n" $s.Sum}}</b> {{if eq $u "pz"}}{{t "shopping.unit_pieces"}}{{else}}{{$u}}{{end}}{{end}}</span>
+  <span class="grow min-w-0 basis-full sm:basis-72">{{t "shopping.similar" "Name" $s.OtherName}}{{if $s.HasSum}}: {{template "shop_n" $s.QtyA}} + {{template "shop_n" $s.QtyB}} = <b>{{template "shop_n" $s.Sum}}</b> {{if eq $u "pz"}}{{t "shopping.unit_pieces"}}{{else}}{{$u}}{{end}}{{end}}</span>
   {{range $s.Options}}
   <form method="post" action="/shopping-list/{{$p.List.ID}}/merge?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-post="/shopping-list/{{$p.List.ID}}/merge?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button">
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}"><input type="hidden" name="keep" value="{{.Keep}}"><input type="hidden" name="drop" value="{{.Drop}}">
