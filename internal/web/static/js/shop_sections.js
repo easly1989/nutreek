@@ -40,7 +40,7 @@
     var q = norm(query.trim());
     var matches = 0;
     list.querySelectorAll("li.swipe-row").forEach(function (li) {
-      var nm = li.querySelector(".shop-nm");
+      var nm = li.querySelector("[data-shop-name]") || li.querySelector(".shop-nm");
       var hit = !q || norm((nm || li).textContent).indexOf(q) >= 0;
       li.hidden = !hit;
       if (hit) matches++;

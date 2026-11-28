@@ -27,22 +27,41 @@
   // lock holds the request itself, so a second call while the first is pending
   // does not make a second lock.
   var lock = null;
+  var retries = 0; // asks again after a release the browser made on its own, a few times
   function wanted() { return document.body.dataset.keepAwake === "1"; }
+
+  // status writes what happened where the page has a [data-awake-status] (the settings
+  // card and the menu of the list), so a refusal does not pass in silence.
+  function status(kind, reason) {
+    document.querySelectorAll("[data-awake-status]").forEach(function (el) {
+      var t = el.dataset[kind];
+      el.textContent = t ? t.replace("{reason}", reason || "") : "";
+    });
+  }
+
   function acquire() {
     if (!wanted() || lock || document.visibilityState !== "visible") return;
     lock = navigator.wakeLock.request("screen").then(function (l) {
-      l.addEventListener("release", function () { lock = null; });
+      l.addEventListener("release", function () {
+        lock = null;
+        if (!wanted() || document.visibilityState !== "visible") return;
+        status("released");
+        if (retries++ < 3) setTimeout(acquire, 500);
+      });
+      status("held");
       return l;
-    }).catch(function () {
+    }).catch(function (err) {
       lock = null; // refused (battery saver, no HTTPS): the screen sleeps as usual
+      status("denied", err && err.name ? err.name : "?");
     });
   }
   function release() {
     var p = lock;
     lock = null;
+    status("");
     if (p) p.then(function (l) { if (l) l.release(); });
   }
-  document.addEventListener("visibilitychange", acquire);
+  document.addEventListener("visibilitychange", function () { retries = 0; acquire(); });
 
   // The item in the menu of the shopping list: its hidden field holds the value the
   // next tap saves (1 when the screen is not kept on now).

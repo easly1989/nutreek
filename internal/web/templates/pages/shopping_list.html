@@ -10,9 +10,9 @@
       <p class="text-muted mt-0.5">{{if gt $wc 1}}{{t "shopping.intro_weeks" "Weeks" $wc}}{{else}}{{t "shopping.intro_week"}}{{end}}</p>
     </div>
     <div class="flex items-center gap-2 shrink-0 max-lg:ml-auto">
-      {{if and .View.Rows (not .Check)}}<a href="/shopping-list?week={{$ws}}&weeks={{$wc}}&check=1" class="btn-secondary" title="{{t "shopping.precheck_title"}}">{{t "shopping.precheck"}}</a>{{end}}
+      {{if and (or .View.Rows .View.Skipped) (not .Check)}}<a href="/shopping-list?week={{$ws}}&weeks={{$wc}}&check=1" class="btn-secondary" title="{{t "shopping.precheck_title"}}">{{t "shopping.precheck"}}</a>{{end}}
       {{/* On a wide screen the search and the «+» sit up here; on a phone they are the dock at the bottom. */}}
-      {{if or .View.Total .View.Skipped}}<label class="shop-search max-lg:hidden w-56">{{template "icon_sm" "i-search"}}<input type="search" data-shop-search placeholder="{{t "shopping.search"}}" aria-label="{{t "shopping.search"}}" autocomplete="off" enterkeyhint="search"></label>{{end}}
+      {{if not .Check}}<label class="shop-search max-lg:hidden w-56">{{template "icon_sm" "i-search"}}<input type="search" data-shop-search placeholder="{{t "shopping.search"}}" aria-label="{{t "shopping.search"}}" autocomplete="off" enterkeyhint="search"></label>{{end}}
       <button type="button" class="btn-secondary btn-icon max-lg:hidden" data-sheet="shop-add" aria-label="{{t "shopping.add_label"}}" title="{{t "shopping.add_label"}}">{{template "icon" "i-plus"}}</button>
       <div class="relative">
         <button type="button" class="btn-secondary btn-icon" data-popover="shop-menu" aria-expanded="false" aria-controls="shop-menu" aria-label="{{t "shopping.more"}}" title="{{t "shopping.more"}}">{{template "icon" "i-dots"}}</button>
@@ -27,7 +27,7 @@
           <form method="post" action="/settings/keep-awake" hx-post="/settings/keep-awake" hx-swap="none" class="hidden" data-awake-menu>
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <input type="hidden" name="keep_awake" value="{{if .User.KeepAwake}}0{{else}}1{{end}}">
-            <button class="nav-link w-full" role="menuitemcheckbox" aria-checked="{{.User.KeepAwake}}">{{template "icon" "i-sun"}}<span class="grow text-left">{{t "settings.awake.label"}}</span><span class="text-accent{{if not .User.KeepAwake}} invisible{{end}}" data-awake-mark>{{template "icon_sm" "i-check"}}</span></button>
+            <button class="nav-link w-full" role="menuitemcheckbox" aria-checked="{{.User.KeepAwake}}">{{template "icon" "i-sun"}}<span class="grow text-left">{{t "settings.awake.label"}}<span data-awake-status data-held="{{t "settings.awake.held"}}" data-denied="{{t "settings.awake.denied"}}" data-released="{{t "settings.awake.released"}}" class="block text-[12px] font-normal text-muted" aria-live="polite"></span></span><span class="text-accent{{if not .User.KeepAwake}} invisible{{end}}" data-awake-mark>{{template "icon_sm" "i-check"}}</span></button>
           </form>
           <button type="button" class="nav-link w-full" onclick="window.print()">{{template "icon" "i-printer"}}{{t "shopping.print"}}</button>
         </div>
@@ -85,7 +85,7 @@
     <div id="shop-list" class="flex flex-col gap-3">
       {{/* After a merge: a toast with «Undo», for a few seconds (the server keeps the undo for three minutes). */}}
       {{if .CanUndo}}
-      <div class="toast-undo print:hidden fixed z-40 inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[360px] flex items-center justify-between gap-3 rounded-xl bg-[#1f2328] text-white px-4 py-3 shadow-lg" role="status">
+      <div class="toast-undo print:hidden fixed z-40 inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom,0px))] lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[360px] flex items-center justify-between gap-3 rounded-xl bg-[#1f2328] text-white px-4 py-3 shadow-lg" role="status">
         <span>{{t "shopping.merged"}}</span>
         <form method="post" action="/shopping-list/{{.List.ID}}/merge/undo?week={{$ws}}&weeks={{$wc}}" hx-post="/shopping-list/{{.List.ID}}/merge/undo?week={{$ws}}&weeks={{$wc}}" hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" hx-disabled-elt="find button">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
@@ -144,7 +144,7 @@
           {{range .View.Rows}}{{template "shop_row" (row . $)}}{{end}}
         </ul>
         {{end}}
-        {{else}}
+        {{else if .View.Cart}}
         <p class="px-4 py-6 text-center text-muted">{{t "shopping.all_in_cart"}}</p>
         {{end}}
 
@@ -178,7 +178,7 @@
         </details>
         {{end}}
 
-        <p class="hidden px-4 py-6 text-center text-muted" data-shop-none>{{t "shopping.search_none"}}</p>
+        <p class="px-4 py-6 text-center text-muted" hidden data-shop-none>{{t "shopping.search_none"}}</p>
 
         {{/* The prices come from a store's site, for its default shop, so they are indicative (#277);
              the notice closes for this visit or for good. */}}
@@ -223,7 +223,7 @@
      (shop_sections.js filters the rows while typing). On a wide screen they are in the header. */}}
 {{if not .Check}}
 <div class="shop-dock lg:hidden no-print fixed z-20 inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] flex items-center gap-2 p-2 rounded-2xl bg-surface border border-border shadow-lg">
-  {{if or .View.Total .View.Skipped}}<label class="shop-search grow min-w-0">{{template "icon_sm" "i-search"}}<input type="search" data-shop-search placeholder="{{t "shopping.search"}}" aria-label="{{t "shopping.search"}}" autocomplete="off" enterkeyhint="search"></label>{{else}}<span class="grow"></span>{{end}}
+  <label class="shop-search grow min-w-0">{{template "icon_sm" "i-search"}}<input type="search" data-shop-search placeholder="{{t "shopping.search"}}" aria-label="{{t "shopping.search"}}" autocomplete="off" enterkeyhint="search"></label>
   <button type="button" class="btn-primary btn-icon shrink-0" data-sheet="shop-add" aria-label="{{t "shopping.add_label"}}" title="{{t "shopping.add_label"}}">{{template "icon" "i-plus"}}</button>
 </div>
 {{end}}
@@ -300,6 +300,7 @@
   <div class="card overflow-hidden">
     <ul>
       {{range .View.Rows}}{{template "shop_check_row" (row . $)}}{{end}}
+      {{range .View.Skipped}}{{template "shop_check_row" (row . $)}}{{end}}
     </ul>
   </div>
 </form>
@@ -384,7 +385,7 @@
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
     <button id="shop-item-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
-      <span class="shop-name">{{if $r.Ignored}}<span class="sr-only">{{t "shopping.ignored"}}</span>{{end}}<span class="shop-nm block">{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}</span>{{template "shop_category" $r}}</span>
+      <span class="shop-name">{{if $r.Ignored}}<span class="sr-only">{{t "shopping.ignored"}}</span>{{end}}<span class="shop-nm block"><span data-shop-name>{{$it.Ingredient.Name}}{{with $it.Ingredient.Brand}} <span class="text-[12.5px] text-muted">{{.}}</span>{{end}}</span></span>{{template "shop_category" $r}}</span>
       <span class="flex flex-col items-end shrink-0">{{template "shop_cols" $r}}{{template "shop_price" $r}}</span>
     </button>
   </form>
@@ -447,7 +448,7 @@
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
     <button id="shop-user-{{$it.ID}}" class="shop-item" aria-pressed="{{$it.Checked}}">
       <span class="shop-box" aria-hidden="true">{{if $it.Checked}}{{template "icon_sm" "i-check"}}{{end}}</span>
-      <span class="shop-name">{{if $r.Ignored}}<span class="sr-only">{{t "shopping.ignored"}}</span>{{end}}<span class="shop-nm block">{{$it.Description}}<span class="inline-block align-[-2px] ml-1 text-muted" title="{{t "shopping.by_hand"}}">{{template "icon_sm" "i-user"}}<span class="sr-only">{{t "shopping.by_hand"}}</span></span>{{if $r.User.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}</span>{{template "shop_category" $r}}</span>
+      <span class="shop-name">{{if $r.Ignored}}<span class="sr-only">{{t "shopping.ignored"}}</span>{{end}}<span class="shop-nm block"><span data-shop-name>{{$it.Description}}</span><span class="inline-block align-[-2px] ml-1 text-muted" title="{{t "shopping.by_hand"}}">{{template "icon_sm" "i-user"}}<span class="sr-only">{{t "shopping.by_hand"}}</span></span>{{if $r.User.Duplicate}} <span class="chip chip-warn ml-1" title="{{t "shopping.duplicate_title"}}">{{t "shopping.duplicate"}}</span>{{end}}</span>{{template "shop_category" $r}}</span>
       {{template "shop_cols" $r}}
     </button>
   </form>

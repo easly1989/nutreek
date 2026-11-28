@@ -76,7 +76,7 @@
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <div><h2 class="h2">{{t "settings.awake.title"}}</h2><p class="settings-d">{{t "settings.awake.desc"}}</p></div>
           <label class="flex items-start gap-3 cursor-pointer">
-            <span class="grow min-w-0"><b class="block">{{t "settings.awake.label"}}</b><span class="block settings-d">{{t "settings.awake.hint"}}</span></span>
+            <span class="grow min-w-0"><b class="block">{{t "settings.awake.label"}}</b><span class="block settings-d">{{t "settings.awake.hint"}}</span><span data-awake-status data-held="{{t "settings.awake.held"}}" data-denied="{{t "settings.awake.denied"}}" data-released="{{t "settings.awake.released"}}" class="block settings-d" aria-live="polite"></span></span>
             <input type="hidden" name="keep_awake" value="0">
             <input type="checkbox" role="switch" name="keep_awake" value="1" class="toggle"{{if .User.KeepAwake}} checked{{end}} aria-label="{{t "settings.awake.label"}}">
           </label>

@@ -282,7 +282,8 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 	}
 	for _, r := range rows {
 		if r.Ignored {
-			v.Skipped = append(v.Skipped, r) // set aside in its own section; not counted
+			r.ShowCat = named && grouping != db.ShoppingGroupNone // like the cart: no group headings, so the row names its category
+			v.Skipped = append(v.Skipped, r)                      // set aside in its own section; not counted
 			continue
 		}
 		v.Total++
