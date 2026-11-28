@@ -61,3 +61,21 @@ func TestSettingsKeepAwake(t *testing.T) {
 		t.Error("a new user starts with it off")
 	}
 }
+
+// The shopping list's menu posts the same setting through HTMX: it saves and answers
+// with no content, not with a redirect to the settings page.
+func TestSettingsKeepAwakeFromList(t *testing.T) {
+	a := newTestApp(t)
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	r := httptest.NewRequest(http.MethodPost, "/settings/keep-awake", strings.NewReader("keep_awake=1"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set("HX-Request", "true")
+	w := httptest.NewRecorder()
+	a.Sessions.LoadAndSave(http.HandlerFunc(a.handleSettingsKeepAwake)).ServeHTTP(w, requestWithUser(r, alice))
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("code %d, want 204", w.Code)
+	}
+	if u, _ := a.Users.GetByID(context.Background(), alice.ID); !u.KeepAwake {
+		t.Error("the setting was not saved")
+	}
+}

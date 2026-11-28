@@ -224,6 +224,21 @@ func TestShoppingViewCustomOrder(t *testing.T) {
 	}
 }
 
+// A closed section shows its first three names and how many more there are.
+func TestShoppingViewPreview(t *testing.T) {
+	var items []domain.ShoppingListItem
+	for i, n := range []string{"Uova", "Latte", "Pane", "Riso", "Sale"} {
+		items = append(items, shopItem(int64(i+1), int64(10+i), n, 100, true, 0))
+	}
+	v := buildShoppingView(items, nil, nil, db.ShoppingGroupNone, nil)
+	if got := v.CartPreview; got.Names != "Latte, Pane, Riso" || got.More != 2 {
+		t.Errorf("cart preview = %+v, want «Latte, Pane, Riso» and 2 more", got)
+	}
+	if got := v.SkippedPreview; got.Names != "" || got.More != 0 {
+		t.Errorf("nothing is set aside, preview = %+v", got)
+	}
+}
+
 // Only the rows still to buy can be dragged; the ones in the cart cannot.
 func TestShoppingViewCustomCartNotDraggable(t *testing.T) {
 	items := []domain.ShoppingListItem{shopItem(1, 10, "Mela", 100, true, 0), shopItem(2, 11, "Pasta", 100, false, 0)}
@@ -233,16 +248,19 @@ func TestShoppingViewCustomCartNotDraggable(t *testing.T) {
 	}
 }
 
-// An ignored row stays in its place, in the list, and does not count in the
-// progress or on the printed sheet, checked or not.
+// An ignored row goes to its own section, out of the list, and does not count in
+// the progress or on the printed sheet, checked or not.
 func TestShoppingViewIgnored(t *testing.T) {
 	a := shopItem(1, 10, "Mela", 100, false, 0)
 	b := shopItem(2, 11, "Pasta", 100, true, 0)
-	b.Ignored = true // ignored while checked: it still stays in the list, not in the cart
+	b.Ignored = true // ignored while checked: it is set aside, not in the cart
 	c := shopItem(3, 12, "Sale", 100, true, 0)
 	v := buildShoppingView([]domain.ShoppingListItem{a, b, c}, nil, nil, db.ShoppingGroupNone, nil)
-	if len(v.Rows) != 2 || v.Rows[1].name != "Pasta" || !v.Rows[1].Ignored {
-		t.Fatalf("rows = %+v, want Mela and the ignored Pasta", v.Rows)
+	if len(v.Rows) != 1 || v.Rows[0].name != "Mela" {
+		t.Fatalf("rows = %+v, want only Mela", v.Rows)
+	}
+	if len(v.Skipped) != 1 || v.Skipped[0].name != "Pasta" || !v.Skipped[0].Ignored || v.SkippedPreview.Names != "Pasta" {
+		t.Fatalf("skipped = %+v (preview %+v), want the ignored Pasta", v.Skipped, v.SkippedPreview)
 	}
 	if len(v.Cart) != 1 || v.Cart[0].name != "Sale" {
 		t.Errorf("cart = %+v, want only Sale", v.Cart)

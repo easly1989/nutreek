@@ -9,9 +9,11 @@
       <h1 class="h1">{{t "shopping.title"}}</h1>
       <p class="text-muted mt-0.5">{{if gt $wc 1}}{{t "shopping.intro_weeks" "Weeks" $wc}}{{else}}{{t "shopping.intro_week"}}{{end}}</p>
     </div>
-    <div class="flex items-center gap-2 shrink-0">
+    <div class="flex items-center gap-2 shrink-0 max-lg:ml-auto">
       {{if and .View.Rows (not .Check)}}<a href="/shopping-list?week={{$ws}}&weeks={{$wc}}&check=1" class="btn-secondary" title="{{t "shopping.precheck_title"}}">{{t "shopping.precheck"}}</a>{{end}}
-      <button type="button" class="btn-secondary btn-icon" data-sheet="shop-add" aria-label="{{t "shopping.add_label"}}" title="{{t "shopping.add_label"}}">{{template "icon" "i-plus"}}</button>
+      {{/* On a wide screen the search and the «+» sit up here; on a phone they are the dock at the bottom. */}}
+      {{if or .View.Total .View.Skipped}}<label class="shop-search max-lg:hidden w-56">{{template "icon_sm" "i-search"}}<input type="search" data-shop-search placeholder="{{t "shopping.search"}}" aria-label="{{t "shopping.search"}}" autocomplete="off" enterkeyhint="search"></label>{{end}}
+      <button type="button" class="btn-secondary btn-icon max-lg:hidden" data-sheet="shop-add" aria-label="{{t "shopping.add_label"}}" title="{{t "shopping.add_label"}}">{{template "icon" "i-plus"}}</button>
       <div class="relative">
         <button type="button" class="btn-secondary btn-icon" data-popover="shop-menu" aria-expanded="false" aria-controls="shop-menu" aria-label="{{t "shopping.more"}}" title="{{t "shopping.more"}}">{{template "icon" "i-dots"}}</button>
         <div id="shop-menu" class="menu-panel hidden absolute right-0 top-full mt-1 w-60 z-20 p-1.5 flex flex-col">
@@ -21,6 +23,12 @@
             <button class="nav-link w-full">{{template "icon" "i-refresh"}}{{t "shopping.regenerate"}}</button>
           </form>
           {{if .Past}}<button type="button" class="nav-link w-full" data-menu-close data-open-sheet="shop-sheet-copy">{{template "icon" "i-copy"}}{{t "shopping.copy_title"}}</button>{{end}}
+          {{/* Keep the phone screen on (#249): awake.js shows it where the browser can, and flips it after the save. */}}
+          <form method="post" action="/settings/keep-awake" hx-post="/settings/keep-awake" hx-swap="none" class="hidden" data-awake-menu>
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input type="hidden" name="keep_awake" value="{{if .User.KeepAwake}}0{{else}}1{{end}}">
+            <button class="nav-link w-full" role="menuitemcheckbox" aria-checked="{{.User.KeepAwake}}">{{template "icon" "i-sun"}}<span class="grow text-left">{{t "settings.awake.label"}}</span><span class="text-accent{{if not .User.KeepAwake}} invisible{{end}}" data-awake-mark>{{template "icon_sm" "i-check"}}</span></button>
+          </form>
           <button type="button" class="nav-link w-full" onclick="window.print()">{{template "icon" "i-printer"}}{{t "shopping.print"}}</button>
         </div>
         {{if .Past}}
@@ -72,7 +80,8 @@
   <p class="rounded-xl bg-warn-bg text-warn-fg px-4 py-2.5">{{t "shopping.multi_week_warning" "Weeks" $wc}}</p>
   {{end}}
 
-  <div class="flex flex-col gap-3 max-w-3xl lg:max-w-none [overflow-anchor:none]">
+  {{/* On a phone the last row and the sections end above the dock, so scrolled to the bottom nothing hides under it. */}}
+  <div class="flex flex-col gap-3 max-w-3xl lg:max-w-none [overflow-anchor:none] max-lg:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]">
     <div id="shop-list" class="flex flex-col gap-3">
       {{/* After a merge: a toast with «Undo», for a few seconds (the server keeps the undo for three minutes). */}}
       {{if .CanUndo}}
@@ -86,7 +95,7 @@
       {{end}}
       {{if .Check}}
       {{template "shop_precheck" .}}
-      {{else if or .View.Total .View.Rows .View.Cart}}
+      {{else if or .View.Total .View.Rows .View.Skipped .View.Cart}}
       {{if .View.Total}}
       {{/* shop_progress.js animates the fill (clip-path) when the items in the cart change, and celebrates when it reaches the total.
            It reads the list and the counts from the progressbar: htmx keeps the old attributes of a swapped element that has an id until it settles. */}}
@@ -121,8 +130,8 @@
         {{if .View.Groups}}
         <div class="lg:columns-2 xl:columns-3 min-[1700px]:columns-4 lg:gap-x-6">
         {{range .View.Groups}}
-        <div class="break-inside-avoid">
-        <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{if .Other}}{{t "shopping.other"}}{{else}}{{.Name}}{{end}}</span><span class="tabular-nums">{{len .Rows}}</span></h2>
+        <div class="break-inside-avoid" data-shop-group>
+        <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{if .Other}}{{t "shopping.other"}}{{else}}{{.Name}}{{end}}</span><span class="tabular-nums" data-shop-count>{{len .Rows}}</span></h2>
         <ul>
           {{range .Rows}}{{template "shop_row" (row . $)}}{{end}}
         </ul>
@@ -130,7 +139,7 @@
         {{end}}
         </div>
         {{else}}
-        <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums">{{len .View.Rows}}</span></h2>
+        <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums" data-shop-count>{{len .View.Rows}}</span></h2>
         <ul class="lg:columns-2 xl:columns-3 min-[1700px]:columns-4 lg:gap-x-6 [&>li]:break-inside-avoid"{{if eq .View.Grouping "custom"}} data-sortable="shop" data-sortable-handle="[data-shop-grip]" data-sort-url="/shopping-list/{{.List.ID}}/order" data-csrf="{{.CSRFToken}}" data-reorder-list{{end}}>
           {{range .View.Rows}}{{template "shop_row" (row . $)}}{{end}}
         </ul>
@@ -139,18 +148,37 @@
         <p class="px-4 py-6 text-center text-muted">{{t "shopping.all_in_cart"}}</p>
         {{end}}
 
+        {{/* What was set aside and what is in the cart: two sections, closed, with the first names under the heading.
+             shop_sections.js keeps them open across the swaps of #shop-list and opens the ones a search matches. */}}
+        {{if .View.Skipped}}
+        <details data-shop-acc="skipped" class="group border-t border-border">
+          <summary class="flex flex-wrap items-center gap-x-2 px-4 py-3 text-muted font-semibold text-[13px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            {{template "icon_sm" "i-ban"}}{{t "shopping.skipped_group"}} · {{len .View.Skipped}}
+            <span class="ml-auto text-accent group-open:hidden">{{t "shopping.show"}}</span>
+            <span class="ml-auto text-accent hidden group-open:inline">{{t "shopping.hide"}}</span>
+            {{with .View.SkippedPreview}}<span class="basis-full truncate text-[12.5px] font-normal group-open:hidden">{{.Names}}{{if .More}} <b class="font-semibold text-accent">+{{.More}}</b>{{end}}</span>{{end}}
+          </summary>
+          <ul>
+            {{range .View.Skipped}}{{template "shop_row" (row . $)}}{{end}}
+          </ul>
+        </details>
+        {{end}}
+
         {{if .View.Cart}}
-        <details open class="group border-t border-border">
-          <summary class="flex items-center gap-2 px-4 py-3 text-muted font-semibold text-[13px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        <details data-shop-acc="cart" class="group border-t border-border">
+          <summary class="flex flex-wrap items-center gap-x-2 px-4 py-3 text-muted font-semibold text-[13px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
             {{template "icon_sm" "i-check"}}{{t "shopping.cart_group"}} · {{len .View.Cart}}
             <span class="ml-auto text-accent group-open:hidden">{{t "shopping.show"}}</span>
             <span class="ml-auto text-accent hidden group-open:inline">{{t "shopping.hide"}}</span>
+            {{with .View.CartPreview}}<span class="basis-full truncate text-[12.5px] font-normal group-open:hidden">{{.Names}}{{if .More}} <b class="font-semibold text-accent">+{{.More}}</b>{{end}}</span>{{end}}
           </summary>
           <ul>
             {{range .View.Cart}}{{template "shop_row" (row . $)}}{{end}}
           </ul>
         </details>
         {{end}}
+
+        <p class="hidden px-4 py-6 text-center text-muted" data-shop-none>{{t "shopping.search_none"}}</p>
 
         {{/* The prices come from a store's site, for its default shop, so they are indicative (#277);
              the notice closes for this visit or for good. */}}
@@ -190,6 +218,15 @@
   </div>
 
 </div>
+
+{{/* The dock of a phone: search and «+» always in reach, above the bottom bar
+     (shop_sections.js filters the rows while typing). On a wide screen they are in the header. */}}
+{{if not .Check}}
+<div class="shop-dock lg:hidden no-print fixed z-20 inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] flex items-center gap-2 p-2 rounded-2xl bg-surface border border-border shadow-lg">
+  {{if or .View.Total .View.Skipped}}<label class="shop-search grow min-w-0">{{template "icon_sm" "i-search"}}<input type="search" data-shop-search placeholder="{{t "shopping.search"}}" aria-label="{{t "shopping.search"}}" autocomplete="off" enterkeyhint="search"></label>{{else}}<span class="grow"></span>{{end}}
+  <button type="button" class="btn-primary btn-icon shrink-0" data-sheet="shop-add" aria-label="{{t "shopping.add_label"}}" title="{{t "shopping.add_label"}}">{{template "icon" "i-plus"}}</button>
+</div>
+{{end}}
 
 {{/* Adding an item by hand: a dialog opened by the «+» of the header (theme.js, data-sheet),
      closed when the request goes through (modal.js, data-close-dialog). What was added before

@@ -6,6 +6,8 @@
 //    asks for the lock while it is visible, and asks again when it comes back to
 //    the foreground (the browser drops the lock when the page is hidden). Where
 //    the API is missing, or the page is not on HTTPS, it does nothing.
+//  - Shopping list: the same switch as an item of its menu (form[data-awake-menu]),
+//    shown on the same terms; after the save the page takes the new value without a reload.
 (function () {
   "use strict";
 
@@ -20,13 +22,14 @@
     form.addEventListener("change", function () { form.requestSubmit(); });
   }
 
-  if (!supported || !touch || document.body.dataset.keepAwake !== "1") return;
+  if (!supported || !touch) return;
 
   // lock holds the request itself, so a second call while the first is pending
   // does not make a second lock.
   var lock = null;
+  function wanted() { return document.body.dataset.keepAwake === "1"; }
   function acquire() {
-    if (lock || document.visibilityState !== "visible") return;
+    if (!wanted() || lock || document.visibilityState !== "visible") return;
     lock = navigator.wakeLock.request("screen").then(function (l) {
       l.addEventListener("release", function () { lock = null; });
       return l;
@@ -34,6 +37,28 @@
       lock = null; // refused (battery saver, no HTTPS): the screen sleeps as usual
     });
   }
+  function release() {
+    var p = lock;
+    lock = null;
+    if (p) p.then(function (l) { if (l) l.release(); });
+  }
   document.addEventListener("visibilitychange", acquire);
+
+  // The item in the menu of the shopping list: its hidden field holds the value the
+  // next tap saves (1 when the screen is not kept on now).
+  var item = document.querySelector("form[data-awake-menu]");
+  if (item) {
+    item.classList.remove("hidden");
+    item.addEventListener("htmx:afterRequest", function (e) {
+      if (!e.detail.successful) return;
+      var field = item.querySelector("input[name=keep_awake]");
+      var on = field.value === "1";
+      document.body.dataset.keepAwake = on ? "1" : "0";
+      field.value = on ? "0" : "1";
+      item.querySelector("button").setAttribute("aria-checked", on ? "true" : "false");
+      item.querySelector("[data-awake-mark]").classList.toggle("invisible", !on);
+      if (on) acquire(); else release();
+    });
+  }
   acquire();
 })();

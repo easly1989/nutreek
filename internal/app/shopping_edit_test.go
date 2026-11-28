@@ -254,4 +254,10 @@ func TestShoppingListShowsIgnoredOnly(t *testing.T) {
 	if w.Code != http.StatusOK || !strings.Contains(body, "Candele") || !strings.Contains(body, "/user-items/") {
 		t.Errorf("an all-ignored list must still list its items: code %d", w.Code)
 	}
+	if !strings.Contains(body, `data-shop-acc="skipped"`) || strings.Contains(body, `data-shop-acc="cart"`) {
+		t.Error("the ignored item must be in the «not needed» section, and there is no cart section")
+	}
+	if !strings.Contains(body, "data-shop-search") || !strings.Contains(body, "shop-dock") {
+		t.Error("the page needs the search and the dock")
+	}
 }
