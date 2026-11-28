@@ -52,6 +52,9 @@ func (a *App) Router() http.Handler {
 	// A page left open across an update learns of it from its next HTMX request (#167).
 	r.Use(middleware.SetHeader("X-Nutreek-Build", web.StaticVersion()))
 	r.Use(requestIDMiddleware)
+	// Text responses are compressed: the shopping list alone is about 300 KB of HTML. Images,
+	// fonts and the manifest are left as they are. The request log below counts the bytes before compression.
+	r.Use(middleware.Compress(5, "text/html", "text/css", "text/javascript", "application/javascript", "application/json", "image/svg+xml"))
 	r.Use(a.requestLogger)
 	r.Use(a.Sessions.LoadAndSave)
 	r.Use(a.csrfMiddleware)
