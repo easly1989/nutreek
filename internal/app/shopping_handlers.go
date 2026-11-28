@@ -373,6 +373,14 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 		a.shoppingFlashBack(w, r, back, "shopping.flash.description_too_long")
 		return
 	}
+	// The queue of the page sends a client id (cid): a request it sends again, because the first
+	// answer came late, must not add the item twice (an item that repeats one from the meals adds
+	// to its quantity).
+	cid := r.PostFormValue("cid")
+	if cid != "" && (len(cid) > 64 || shopAddsSeen.seen(user.ID, cid)) {
+		shoppingDone(w, r, back)
+		return
+	}
 	if _, err := a.ShoppingLists.AddManualItem(r.Context(), listID, user.ID, desc, qty, unit); err != nil {
 		if errors.Is(err, db.ErrShoppingListNotFound) {
 			a.notFound(w, r)
@@ -381,13 +389,20 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, back, http.StatusSeeOther)
+	if cid != "" {
+		shopAddsSeen.remember(user.ID, cid)
+	}
+	shoppingDone(w, r, back)
 }
 
 // shoppingFlashBack leaves a flash message and sends the user back to the
 // list. An htmx request gets HX-Redirect, so the whole page loads and shows
 // the message; the swap that follows a success only takes #shop-list.
 func (a *App) shoppingFlashBack(w http.ResponseWriter, r *http.Request, back, key string) {
+	if r.Header.Get("X-Shop-Queue") != "" { // the queue sent a value the form would have refused: nothing to flash, the change is dropped
+		http.Error(w, key, http.StatusBadRequest)
+		return
+	}
 	a.Sessions.Put(r.Context(), "flash", key)
 	if r.Header.Get("HX-Request") == "true" {
 		w.Header().Set("HX-Redirect", back)
@@ -438,7 +453,7 @@ func (a *App) handleShoppingItemQuantity(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
-	http.Redirect(w, r, back, http.StatusSeeOther)
+	shoppingDone(w, r, back)
 }
 
 // shoppingUnit keeps a unit the list knows (g, ml or pz) and reads anything
@@ -497,7 +512,7 @@ func (a *App) handleShoppingUserItemEdit(w http.ResponseWriter, r *http.Request)
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, back, http.StatusSeeOther)
+	shoppingDone(w, r, back)
 }
 
 // handleToggleShoppingUserItem POST /shopping-list/user-items/{id}/toggle
@@ -540,7 +555,7 @@ func (a *App) handleRemoveShoppingUserItem(w http.ResponseWriter, r *http.Reques
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	shoppingCheckDone(w, r)
 }
 
 // handleShoppingGenerate POST /shopping-list/generate?week=YYYY-MM-DD&weeks=N
@@ -604,26 +619,42 @@ func (a *App) shoppingCheck(r *http.Request, toggle func() error, set func(bool)
 // errShoppingCheckInvalid is a «checked» field that is neither 0 nor 1: refused, not read as a flip.
 var errShoppingCheckInvalid = errors.New("shopping: checked must be 0 or 1")
 
-// shoppingCheckDone answers a tick. The page's queue (shop_queue.js) sends the header
-// and takes the list itself afterwards, so it gets no redirect to follow.
+// shoppingCheckDone answers a change of the list. The page's queue (shop_queue.js) sends
+// the header and takes the list itself afterwards, so it gets no redirect to follow.
 func shoppingCheckDone(w http.ResponseWriter, r *http.Request) {
+	shoppingDone(w, r, shoppingListURL(r))
+}
+
+func shoppingDone(w http.ResponseWriter, r *http.Request, back string) {
 	if r.Header.Get("X-Shop-Queue") != "" {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 // shoppingItemAction runs one change on an item of the user's list and goes
 // back to the list: the ignore toggles of the swipe and the buttons.
-func (a *App) shoppingItemAction(w http.ResponseWriter, r *http.Request, do func(ctx context.Context, itemID, userID int64) error) {
+func (a *App) shoppingItemAction(w http.ResponseWriter, r *http.Request, toggle func(ctx context.Context, itemID, userID int64) error, set func(ctx context.Context, itemID, userID int64, on bool) error) {
 	user := userFromContext(r.Context())
 	itemID, err := parseID(r, "id")
 	if err != nil {
 		a.notFound(w, r)
 		return
 	}
-	if err := do(r.Context(), itemID, user.ID); err != nil {
+	// «ignored» (0 or 1) sets the state, which a repeated request leaves as it is; without it the state flips.
+	do := func() error { return toggle(r.Context(), itemID, user.ID) }
+	switch r.PostFormValue("ignored") {
+	case "1":
+		do = func() error { return set(r.Context(), itemID, user.ID, true) }
+	case "0":
+		do = func() error { return set(r.Context(), itemID, user.ID, false) }
+	case "":
+	default:
+		http.Error(w, "ignored must be 0 or 1", http.StatusBadRequest)
+		return
+	}
+	if err := do(); err != nil {
 		if errors.Is(err, db.ErrShoppingItemNotFound) {
 			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
 			return
@@ -631,17 +662,17 @@ func (a *App) shoppingItemAction(w http.ResponseWriter, r *http.Request, do func
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	shoppingCheckDone(w, r)
 }
 
 // handleShoppingIgnore POST /shopping-list/items/{id}/ignore
 func (a *App) handleShoppingIgnore(w http.ResponseWriter, r *http.Request) {
-	a.shoppingItemAction(w, r, a.ShoppingLists.ToggleItemIgnored)
+	a.shoppingItemAction(w, r, a.ShoppingLists.ToggleItemIgnored, a.ShoppingLists.SetItemIgnored)
 }
 
 // handleShoppingUserItemIgnore POST /shopping-list/user-items/{id}/ignore
 func (a *App) handleShoppingUserItemIgnore(w http.ResponseWriter, r *http.Request) {
-	a.shoppingItemAction(w, r, a.ShoppingLists.ToggleUserItemIgnored)
+	a.shoppingItemAction(w, r, a.ShoppingLists.ToggleUserItemIgnored, a.ShoppingLists.SetUserItemIgnored)
 }
 
 // shoppingListURL is the address of the list the request comes from,

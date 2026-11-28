@@ -347,3 +347,85 @@ func TestShoppingCheckAutoItem(t *testing.T) {
 		t.Errorf("checked=yes: code %d, want 400", code)
 	}
 }
+
+// The other actions of the list take the queue's header too: «ignored» sets the state (twice is
+// the same as once), a delete of a row that is gone is 404 (the queue drops it), a quantity the
+// form would refuse is 400 and not a flash, and an added item that carries the same client id
+// twice is added once.
+func TestShoppingQueuedActions(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	monday, _ := time.Parse("2006-01-02", "2026-10-12")
+	list, err := a.ShoppingLists.GetOrCreateList(ctx, alice.ID, monday, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Candele", 2, "pz"); err != nil {
+		t.Fatal(err)
+	}
+	full, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+	id := full.UserItems[0].ID
+	post := func(h http.HandlerFunc, itemID int64, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodPost, "/x?week=2026-10-12&weeks=1", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.Header.Set("X-Shop-Queue", "1")
+		w := httptest.NewRecorder()
+		a.Sessions.LoadAndSave(h).ServeHTTP(w, withIDParam(requestWithUser(r, alice), itemID))
+		return w
+	}
+	ignored := func() bool {
+		got, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+		return got.UserItems[0].Ignored
+	}
+	for i := 0; i < 2; i++ {
+		if w := post(a.handleShoppingUserItemIgnore, id, "ignored=1"); w.Code != http.StatusNoContent || !ignored() {
+			t.Fatalf("ignore, round %d: code %d, ignored %v", i, w.Code, ignored())
+		}
+	}
+	if w := post(a.handleShoppingUserItemIgnore, id, "ignored=0"); w.Code != http.StatusNoContent || ignored() {
+		t.Fatalf("restore: code %d, ignored %v", w.Code, ignored())
+	}
+	if w := post(a.handleShoppingUserItemIgnore, id, "ignored=yes"); w.Code != http.StatusBadRequest {
+		t.Errorf("ignored=yes: code %d, want 400", w.Code)
+	}
+	if w := post(a.handleShoppingItemQuantity, 999999, "quantity=abc&qty_unit=g"); w.Code != http.StatusBadRequest {
+		t.Errorf("a quantity the form refuses: code %d, want 400 (no flash, no redirect)", w.Code)
+	}
+	if w := post(a.handleShoppingUserItemEdit, id, "description=Candele+rosse&quantity=3&qty_unit=pz"); w.Code != http.StatusNoContent {
+		t.Fatalf("edit: code %d, want 204", w.Code)
+	}
+	if got, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID); got.UserItems[0].Description != "Candele rosse" {
+		t.Errorf("description = %q", got.UserItems[0].Description)
+	}
+
+	add := func(cid string) int {
+		r := httptest.NewRequest(http.MethodPost, "/x", strings.NewReader("description=Sale+grosso&quantity=1&unit=pz&cid="+cid))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.Header.Set("X-Shop-Queue", "1")
+		w := httptest.NewRecorder()
+		a.Sessions.LoadAndSave(http.HandlerFunc(a.handleAddShoppingUserItem)).ServeHTTP(w, withIDParam(requestWithUser(r, alice), list.ID))
+		return w.Code
+	}
+	for i := 0; i < 2; i++ { // the same client id twice: one item
+		if code := add("cid-test-1"); code != http.StatusNoContent {
+			t.Fatalf("add, round %d: code %d, want 204", i, code)
+		}
+	}
+	if got, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID); len(got.UserItems) != 2 {
+		t.Errorf("items = %d, want 2 (Candele and one Sale grosso)", len(got.UserItems))
+	}
+	if code := add("cid-test-2"); code != http.StatusNoContent {
+		t.Fatalf("another client id: code %d", code)
+	}
+	if got, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID); len(got.UserItems) != 3 {
+		t.Errorf("items = %d, want 3", len(got.UserItems))
+	}
+
+	if w := post(a.handleRemoveShoppingUserItem, id, ""); w.Code != http.StatusNoContent {
+		t.Fatalf("delete: code %d, want 204", w.Code)
+	}
+	if w := post(a.handleRemoveShoppingUserItem, id, ""); w.Code != http.StatusNotFound {
+		t.Errorf("delete again: code %d, want 404", w.Code)
+	}
+}

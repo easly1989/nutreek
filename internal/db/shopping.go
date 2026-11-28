@@ -556,6 +556,40 @@ func (r *ShoppingLists) ToggleItemIgnored(ctx context.Context, itemID, userID in
 	return nil
 }
 
+// SetItemIgnored sets «ignored» on an item from the meals; sent twice, it changes nothing more.
+func (r *ShoppingLists) SetItemIgnored(ctx context.Context, itemID, userID int64, ignored bool) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE shopping_list_items
+		SET ignored = ?
+		WHERE id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+	`, ignored, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("set ignored item: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrShoppingItemNotFound
+	}
+	return nil
+}
+
+// SetUserItemIgnored is SetItemIgnored for a manual item.
+func (r *ShoppingLists) SetUserItemIgnored(ctx context.Context, itemID, userID int64, ignored bool) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE shopping_user_items
+		SET ignored = ?
+		WHERE id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+	`, ignored, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("set ignored user item: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrShoppingItemNotFound
+	}
+	return nil
+}
+
 // ToggleUserItemIgnored flips «ignored» on a manual item.
 func (r *ShoppingLists) ToggleUserItemIgnored(ctx context.Context, itemID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `
