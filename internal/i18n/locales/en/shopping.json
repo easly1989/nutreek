@@ -19,6 +19,8 @@
   "shopping.skipped_group": "Not needed",
   "shopping.search": "Search the list",
   "shopping.search_none": "Nothing matches",
+  "shopping.sync_one": "1 change waiting to be sent",
+  "shopping.sync_many": "{n} changes waiting to be sent",
   "shopping.show": "Show",
   "shopping.hide": "Hide",
   "shopping.empty_title": "No food in this week's meals",
