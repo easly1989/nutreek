@@ -23,16 +23,14 @@ func seenKey(userID int64, id string) string {
 	return strconv.FormatInt(userID, 10) + "/" + id
 }
 
-func (s *seenIDs) seen(userID int64, id string) bool {
+// claim marks the id as seen and says whether it was new: of two requests with the same id
+// that arrive together (two tabs, or a retry while the first is still running) only one gets true.
+func (s *seenIDs) claim(userID int64, id string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	t, ok := s.at[seenKey(userID, id)]
-	return ok && time.Since(t) < s.ttl
-}
-
-func (s *seenIDs) remember(userID int64, id string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	if t, ok := s.at[seenKey(userID, id)]; ok && time.Since(t) < s.ttl {
+		return false
+	}
 	if len(s.at) >= s.max { // drop the old ones; if they are all recent, start over
 		for k, t := range s.at {
 			if time.Since(t) >= s.ttl {
@@ -44,4 +42,12 @@ func (s *seenIDs) remember(userID int64, id string) {
 		}
 	}
 	s.at[seenKey(userID, id)] = time.Now()
+	return true
+}
+
+// release forgets an id whose request failed, so the retry can add the item.
+func (s *seenIDs) release(userID int64, id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.at, seenKey(userID, id))
 }

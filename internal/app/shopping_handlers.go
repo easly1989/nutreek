@@ -377,20 +377,24 @@ func (a *App) handleAddShoppingUserItem(w http.ResponseWriter, r *http.Request) 
 	// answer came late, must not add the item twice (an item that repeats one from the meals adds
 	// to its quantity).
 	cid := r.PostFormValue("cid")
-	if cid != "" && (len(cid) > 64 || shopAddsSeen.seen(user.ID, cid)) {
+	if len(cid) > 64 {
+		http.Error(w, "cid too long", http.StatusBadRequest)
+		return
+	}
+	if cid != "" && !shopAddsSeen.claim(user.ID, cid) {
 		shoppingDone(w, r, back)
 		return
 	}
 	if _, err := a.ShoppingLists.AddManualItem(r.Context(), listID, user.ID, desc, qty, unit); err != nil {
+		if cid != "" {
+			shopAddsSeen.release(user.ID, cid)
+		}
 		if errors.Is(err, db.ErrShoppingListNotFound) {
 			a.notFound(w, r)
 			return
 		}
 		a.serverError(w, r, err)
 		return
-	}
-	if cid != "" {
-		shopAddsSeen.remember(user.ID, cid)
 	}
 	shoppingDone(w, r, back)
 }

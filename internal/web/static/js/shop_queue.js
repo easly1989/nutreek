@@ -41,9 +41,14 @@
   var epoch = 0;          // counts the changes: a list fetched before the last one is stale
   var refreshEpoch = null; // the epoch a list request in flight was started in
 
+  function validMeta(m) {
+    if (m === undefined) return true;
+    return !!m && typeof m === "object" && typeof m.act === "string" &&
+      (m.act === "add" ? /^[\w-]{1,64}$/.test(String(m.cid)) && typeof m.name === "string" : (m.kind === "items" || m.kind === "user-items") && /^\d+$/.test(String(m.id)));
+  }
   function valid(op) {
     return op && typeof op.key === "string" && typeof op.body === "string" && typeof op.path === "string" &&
-      (ROW.test(op.path) || ADD.test(op.path)) && (op.meta === undefined || typeof op.meta === "object");
+      (ROW.test(op.path) || ADD.test(op.path)) && validMeta(op.meta);
   }
   // The first version of the queue stored only ticks: {kind, id, checked}.
   function upgrade(op) {
@@ -85,7 +90,7 @@
     if (box) box.innerHTML = on ? CHECK : "";
   }
   function paintIgnore(li, on) { if (li) li.classList.toggle("is-ignored", on); }
-  function paintDelete(li) { if (li) li.style.display = "none"; }
+  function paintDelete(li) { if (li) li.hidden = true; }
   function paintName(li, text) {
     var n = li && li.querySelector("[data-shop-name]");
     if (n) n.firstChild ? (n.firstChild.nodeValue = text) : (n.textContent = text);
@@ -98,13 +103,15 @@
     if (pc) pc.innerHTML = "";
     if (q.unit === "pz") {
       if (pc) { var b = document.createElement("b"); b.textContent = q.n + " " + q.label; pc.appendChild(b); }
-      if (gr) gr.textContent = q.grams ? q.grams + " g" : "";
+      if (gr) gr.textContent = q.grams ? q.grams + " " + (q.base || "g") : "";
     } else if (gr) {
       gr.textContent = q.n + " " + q.unit;
     }
   }
   function placeholder(meta) {
-    var list = document.querySelector("#shop-list > .card ul");
+    // The list of the rows still to buy: the first one that is not inside a closed section.
+    var lists = document.querySelectorAll("#shop-list > .card ul"), list = null;
+    for (var i = 0; i < lists.length && !list; i++) if (!lists[i].closest("details")) list = lists[i];
     if (!list || document.querySelector('#shop-list [data-pending-add="' + meta.cid + '"]')) return;
     var li = document.createElement("li");
     li.className = "swipe-row";
@@ -137,7 +144,9 @@
     else if (m.act === "quantity" || m.act === "edit") { if (m.name !== undefined) paintName(li, m.name); if (m.q) paintQty(li, m.q); }
   }
   // The list the server sends does not know the changes still in the queue: show them again.
-  function reapply() { queue.forEach(paintOp); }
+  function reapply() {
+    queue.forEach(function (op) { try { paintOp(op); } catch (e) { /* a row that is not on this page */ } });
+  }
 
   function note() {
     var el = document.querySelector("[data-shop-sync]");
@@ -249,11 +258,17 @@
 
   // ---- reading a form ----------------------------------------------------------------------
 
+  // The same numbers the server reads (a comma or a dot, no hex or exponent): 0 for none, NaN for a refusal.
   function parseQty(raw) {
     raw = String(raw || "").trim().replace(",", ".");
     if (raw === "") return 0;
+    if (!/^(\d+\.?\d*|\.\d+)$/.test(raw)) return NaN;
     var n = Number(raw);
     return isFinite(n) && n > 0 && n <= 100000 ? n : NaN;
+  }
+  function baseUnit(form) {
+    var r = form.querySelector("input[name=qty_unit]:not([value=pz])");
+    return r ? r.value : "g";
   }
   function body(form, extra) {
     var p = new URLSearchParams(new FormData(form));
@@ -335,7 +350,8 @@
         if (!n || isNaN(n)) return false;
         var u = unitOf(form);
         var w = Number(form.dataset.unitWeight) || 0;
-        meta.q = { n: num(n), unit: u.unit, label: u.label, grams: u.unit === "pz" && w ? num(n * w) : "" };
+        if (u.unit === "pz" && w && n * w > 1000000) return false; // more than the list accepts: the server says so
+        meta.q = { n: num(n), unit: u.unit, label: u.label, grams: u.unit === "pz" && w ? num(n * w) : "", base: baseUnit(form) };
       } else {
         var d = (el.description ? el.description.value : "").trim();
         if (!d || d.length > 200) return false;

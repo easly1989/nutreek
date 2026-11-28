@@ -2,7 +2,7 @@
 // the server has to compute (merge two rows, copy a list, regenerate, the grouping, ...), so a
 // tap that does not answer at once does not look like nothing happened. It shows only when the
 // wait passes 250 ms. The list's own refresh (shop_queue.js, header X-Shop-Refresh) and the
-// searches typed into a field (hx-trigger "input") stay out of it.
+// searches typed into a field and the pickers that load themselves (hx-trigger "input", "load") stay out of it.
 (function () {
   "use strict";
 
@@ -14,7 +14,7 @@
   function ignored(e) {
     var d = e.detail || {};
     var h = (d.requestConfig && d.requestConfig.headers) || {};
-    return !!h["X-Shop-Refresh"] || (d.elt && d.elt.matches && d.elt.matches("[hx-trigger*=input]"));
+    return !!h["X-Shop-Refresh"] || (d.elt && d.elt.matches && d.elt.matches("[hx-trigger*=input], [hx-trigger*=load]"));
   }
 
   function make() {
