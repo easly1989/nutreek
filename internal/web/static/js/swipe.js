@@ -4,7 +4,7 @@
 //                 from the weekly plan can be ignored, never deleted)
 // A row is <li class="swipe-row" data-swipe-ignore="url" data-swipe-delete="url"
 // data-csrf="token"> with a .swipe-fg that slides over the two layers behind it.
-// Past the threshold the action is posted with htmx and #shop-list is swapped;
+// Past the threshold the action is queued by shop_queue.js (or posted with htmx and #shop-list swapped);
 // short of it the row springs back. A mouse uses the buttons on the row instead.
 (function () {
   "use strict";
@@ -58,6 +58,11 @@
     setTimeout(function () { s.li.removeEventListener("click", swallow, true); }, 350);
     var url = s.dx > 0 ? s.li.getAttribute("data-swipe-ignore") : s.li.getAttribute("data-swipe-delete");
     if (e.type !== "pointercancel" && Math.abs(s.dx) >= THRESHOLD && url && typeof htmx !== "undefined") {
+      // The queue of the list (shop_queue.js) shows the change at once and sends it in the background.
+      if (window.nutreekShopQueue && window.nutreekShopQueue.submit(s.li, s.dx > 0 ? "ignore" : "delete")) {
+        reset(s.li, s.fg);
+        return;
+      }
       s.li.setAttribute("data-busy", "");
       s.fg.style.transition = "transform 140ms ease";
       s.fg.style.transform = "translateX(" + (s.dx > 0 ? "100%" : "-100%") + ")";
