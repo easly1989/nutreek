@@ -369,6 +369,11 @@
   }
   .shop-item[aria-pressed="true"] .shop-box { @apply bg-accent border-accent text-accent-fg; }
   .shop-name { @apply flex flex-col justify-center flex-1 min-w-0; }
+  /* The search of the shopping list (header on a wide screen, dock on a phone). */
+  .shop-search { @apply flex items-center gap-2 h-9 px-3 rounded-[10px] border border-border bg-surface text-muted; }
+  .shop-search:focus-within { @apply outline outline-2 outline-accent; }
+  .shop-search input { @apply flex-1 min-w-0 bg-transparent text-text outline-none border-0 p-0 text-[15px]; }
+  .shop-dock .shop-search { @apply h-10 bg-surface-2 border-transparent; }
 
   /* A line that scrolls when it does not fit (#259, marquee.js): the box has one
      line and a fixed width, the text inside it moves. */

@@ -16,17 +16,44 @@ import (
 // already in the cart apart; and the progress. The printed sheet has every row.
 type shoppingView struct {
 	Rows []shoppingRow // still to buy
+	// Skipped is what the user set aside («not needed»): out of the list, in its own
+	// section, not counted.
+	Skipped []shoppingRow
 	// Groups is Rows grouped by category, in category order and «Altro» last;
 	// it is only filled when the user chose to group by category.
 	Grouping string
 	Groups   []shoppingGroup
 	Cart     []shoppingRow // checked
-	Print    []shoppingRow // every row, checked or not
-	Done     int
-	Total    int
-	Percent  int
-	Rest     int // 100 - Percent: what the progress bar still has to fill
-	Prices   shoppingPrices
+	// SkippedPreview and CartPreview are the first names of each section, shown under its
+	// closed heading.
+	SkippedPreview shoppingPreview
+	CartPreview    shoppingPreview
+	Print          []shoppingRow // every row, checked or not
+	Done           int
+	Total          int
+	Percent        int
+	Rest           int // 100 - Percent: what the progress bar still has to fill
+	Prices         shoppingPrices
+}
+
+// shoppingPreview is what a closed section shows of its rows: the first names and
+// how many more there are.
+type shoppingPreview struct {
+	Names string
+	More  int
+}
+
+const shoppingPreviewNames = 3
+
+func previewOf(rows []shoppingRow) shoppingPreview {
+	var names []string
+	for i, r := range rows {
+		if i == shoppingPreviewNames {
+			break
+		}
+		names = append(names, r.name)
+	}
+	return shoppingPreview{Names: strings.Join(names, ", "), More: max(0, len(rows)-shoppingPreviewNames)}
 }
 
 // shoppingPrice is the estimate of a row from the store product an ingredient was
@@ -83,6 +110,7 @@ func (v shoppingView) withPrices(links map[int64]db.StoreLink) shoppingView {
 		}
 	}
 	fill(v.Rows)
+	fill(v.Skipped)
 	fill(v.Cart)
 	fill(v.Print)
 	for g := range v.Groups {
@@ -190,6 +218,7 @@ func (v shoppingView) withShares(people []db.HouseholdPerson, ownerName string, 
 		}
 	}
 	fill(v.Rows)
+	fill(v.Skipped)
 	fill(v.Cart)
 	fill(v.Print)
 	for g := range v.Groups {
@@ -248,12 +277,13 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 		named = named || r.Category != ""
 	}
 	for i := range rows {
-		rows[i].ShowCat = named && grouping == db.ShoppingGroupCustom       // with no grouping a category under each row says nothing
-		rows[i].Reorder = custom && (!rows[i].checked() || rows[i].Ignored) // the rows in the cart are not draggable
+		rows[i].ShowCat = named && grouping == db.ShoppingGroupCustom      // with no grouping a category under each row says nothing
+		rows[i].Reorder = custom && !rows[i].checked() && !rows[i].Ignored // the rows in the cart and the ones set aside are not draggable
 	}
 	for _, r := range rows {
 		if r.Ignored {
-			v.Rows = append(v.Rows, r) // stays in its place, greyed out; not counted
+			r.ShowCat = named && grouping != db.ShoppingGroupNone // like the cart: no group headings, so the row names its category
+			v.Skipped = append(v.Skipped, r)                      // set aside in its own section; not counted
 			continue
 		}
 		v.Total++
@@ -266,6 +296,7 @@ func buildShoppingView(items []domain.ShoppingListItem, user []shoppingUserItemV
 		}
 		v.Rows = append(v.Rows, r)
 	}
+	v.SkippedPreview, v.CartPreview = previewOf(v.Skipped), previewOf(v.Cart)
 	if v.Total > 0 {
 		v.Percent = v.Done * 100 / v.Total
 		v.Rest = 100 - v.Percent

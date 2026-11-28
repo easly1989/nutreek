@@ -76,6 +76,10 @@ func (a *App) handleSettingsKeepAwake(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	if r.Header.Get("HX-Request") != "" { // the item in the shopping list's menu: nothing to show
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	http.Redirect(w, r, "/settings/aspetto", http.StatusSeeOther)
 }
 
