@@ -42,7 +42,17 @@ func TestRouterCompressesText(t *testing.T) {
 	if zipped.Body.Len() >= plain.Body.Len() {
 		t.Errorf("gzipped %d bytes, plain %d: not smaller", zipped.Body.Len(), plain.Body.Len())
 	}
-	if css := get("/static/css/tailwind.css", true); css.Header().Get("Content-Encoding") != "gzip" {
-		t.Errorf("stylesheet: encoding %q, want gzip", css.Header().Get("Content-Encoding"))
+	// tailwind.css is built, not committed, so the test uses a stylesheet that is in the repo.
+	if css := get("/static/css/shepherd.css", true); css.Header().Get("Content-Encoding") != "gzip" {
+		t.Errorf("stylesheet: code %d, encoding %q, want gzip", css.Code, css.Header().Get("Content-Encoding"))
+	}
+	// A byte range is of the file, not of its gzip: that answer is left alone.
+	rr := httptest.NewRequest(http.MethodGet, "/static/css/shepherd.css", nil)
+	rr.Header.Set("Accept-Encoding", "gzip")
+	rr.Header.Set("Range", "bytes=0-9")
+	rw := httptest.NewRecorder()
+	h.ServeHTTP(rw, rr)
+	if rw.Code != http.StatusPartialContent || rw.Header().Get("Content-Encoding") != "" || rw.Body.Len() != 10 {
+		t.Errorf("range: code %d, encoding %q, %d bytes, want 206, none, 10", rw.Code, rw.Header().Get("Content-Encoding"), rw.Body.Len())
 	}
 }
