@@ -247,7 +247,7 @@
      it out: the server goes back to the list and HTMX takes #shop-list from
      it, because the progress changes. The id on the button keeps the focus. */}}
 {{define "shop_item"}}{{$r := .Row}}{{$it := $r.Auto.Item}}{{$p := .Page}}
-<li class="swipe-row{{if $r.Ignored}} is-ignored{{end}}" data-id="{{$r.Key}}" data-csrf="{{$p.CSRFToken}}" data-swipe-ignore="/shopping-list/items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}">
+<li class="swipe-row{{if $r.Ignored}} is-ignored{{end}}" data-id="{{$r.Key}}" data-cat="{{$r.Category}}" data-csrf="{{$p.CSRFToken}}" data-swipe-ignore="/shopping-list/items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}">
   {{/* What a swipe shows behind the row (swipe.js): right ignores, left deletes. */}}
   <span class="swipe-bg swipe-bg-l" aria-hidden="true">{{template "icon_sm" "i-ban"}}{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}</span>
   <div class="swipe-fg flex items-center pr-2 bg-surface">
@@ -309,7 +309,7 @@
 
 {{/* An item added by hand: the same row, marked with a pencil, plus the button to remove it. */}}
 {{define "shop_user_item"}}{{$r := .Row}}{{$it := $r.User.Item}}{{$p := .Page}}
-<li class="swipe-row{{if $r.Ignored}} is-ignored{{end}}" data-id="{{$r.Key}}" data-csrf="{{$p.CSRFToken}}" data-swipe-ignore="/shopping-list/user-items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" data-swipe-delete="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}">
+<li class="swipe-row{{if $r.Ignored}} is-ignored{{end}}" data-id="{{$r.Key}}" data-cat="{{$r.Category}}" data-csrf="{{$p.CSRFToken}}" data-swipe-ignore="/shopping-list/user-items/{{$it.ID}}/ignore?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" data-swipe-delete="/shopping-list/user-items/{{$it.ID}}/delete?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}">
   {{/* What a swipe shows behind the row (swipe.js): right ignores, left deletes. */}}
   <span class="swipe-bg swipe-bg-l" aria-hidden="true">{{template "icon_sm" "i-ban"}}{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}</span>
   <span class="swipe-bg swipe-bg-r" aria-hidden="true">{{t "shopping.delete"}}{{template "icon_sm" "i-trash"}}</span>
@@ -418,12 +418,11 @@
   </form>
 
   <div class="card overflow-hidden sm:overflow-visible">
-    {{if .View.Rows}}
     {{/* On a wide screen the categories flow into columns (3 from xl, 4 from 1700 px); a category never splits. */}}
     {{if .View.Groups}}
     <div class="lg:columns-2 xl:columns-3 min-[1700px]:columns-4 lg:gap-x-6">
     {{range .View.Groups}}
-    <div class="break-inside-avoid" data-shop-group>
+    <div class="break-inside-avoid" data-shop-group="{{.Name}}">
     <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{if .Other}}{{t "shopping.other"}}{{else}}{{.Name}}{{end}}</span><span class="tabular-nums" data-shop-count>{{len .Rows}}</span></h2>
     <ul>
       {{range .Rows}}{{template "shop_row" (row . $)}}{{end}}
@@ -431,14 +430,13 @@
     </div>
     {{end}}
     </div>
-    {{else}}
-    <h2 class="flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums" data-shop-count>{{len .View.Rows}}</span></h2>
-    <ul class="lg:columns-2 xl:columns-3 min-[1700px]:columns-4 lg:gap-x-6 [&>li]:break-inside-avoid"{{if eq .View.Grouping "custom"}} data-sortable="shop" data-sortable-handle="[data-shop-grip]" data-sort-url="/shopping-list/{{.List.ID}}/order" data-csrf="{{.CSRFToken}}" data-reorder-list{{end}}>
+    {{else if or .View.Rows .View.Cart}}
+    {{/* With every row in the cart the heading and the list stay, hidden: shop_queue.js shows them when a row comes out of the cart. */}}
+    <h2 class="{{if not .View.Rows}}hidden {{end}}flex justify-between px-4 pt-3 pb-1 text-[12.5px] font-bold text-muted"><span>{{t "shopping.all_items"}}</span><span class="tabular-nums" data-shop-count>{{len .View.Rows}}</span></h2>
+    <ul class="{{if not .View.Rows}}hidden {{end}}lg:columns-2 xl:columns-3 min-[1700px]:columns-4 lg:gap-x-6 [&>li]:break-inside-avoid"{{if eq .View.Grouping "custom"}} data-sortable="shop" data-sortable-handle="[data-shop-grip]" data-sort-url="/shopping-list/{{.List.ID}}/order" data-csrf="{{.CSRFToken}}" data-reorder-list{{end}}>
       {{range .View.Rows}}{{template "shop_row" (row . $)}}{{end}}
     </ul>
-    {{end}}
-    {{else if .View.Cart}}
-    <p class="px-4 py-6 text-center text-muted">{{t "shopping.all_in_cart"}}</p>
+    {{if .View.Cart}}<p data-shop-allin class="{{if .View.Rows}}hidden {{end}}px-4 py-6 text-center text-muted">{{t "shopping.all_in_cart"}}</p>{{end}}
     {{end}}
 
     {{/* What was set aside and what is in the cart: two sections, closed, with the first names under the heading.

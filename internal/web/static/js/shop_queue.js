@@ -180,7 +180,7 @@
 
   // moveRow puts a ticked row in the cart and an unticked one back in the list, and brings the
   // counts and the progress along. It returns false when it could not finish (no cart section yet,
-  // the list grouped by category, the last row leaving the list): the list is then taken soon.
+  // a category the list no longer has, a search on, the user's own order): the list is then taken soon.
   function moveRow(li, on) {
     if (!li) return false;
     // A row set aside stays in its section when it is ticked; with a search on, hidden rows and
@@ -196,12 +196,34 @@
       insertSorted(cart.querySelector(":scope > ul"), li);
     } else {
       var card = document.querySelector("#shop-list > .card"), ul = card && card.querySelector(":scope > ul");
-      if (!ul) return false; // grouped by category: the group of the row is not known here
+      if (!ul) { // grouped by category: the group the row belongs to, if the list still has one
+        var g = document.querySelector('#shop-list [data-shop-group="' + CSS.escape(li.getAttribute("data-cat") || "") + '"]');
+        ul = g && g.querySelector(":scope > ul");
+        if (!ul) return false;
+      } else {
+        var gr = document.querySelector("#shop-list input[name=group]:checked");
+        if (gr && gr.value === "category") ok = false; // an empty list has no groups: the row waits in the plain one until the list comes
+      }
       insertSorted(ul, li);
+      if (ul.classList.contains("hidden")) { // every row was in the cart: the list and its heading come back
+        ul.classList.remove("hidden");
+        var h = ul.previousElementSibling;
+        if (h && h.tagName === "H2") h.classList.remove("hidden");
+        var all = document.querySelector("#shop-list [data-shop-allin]");
+        if (all) all.classList.add("hidden");
+      }
     }
     if (cart && from && from.closest("details[data-shop-acc=cart]")) updateSection(cart);
     if (on && cart) updateSection(cart);
-    if (on && from && !from.closest("details") && !visibleRows(from).length && !from.closest("[data-shop-group]")) ok = false; // the list is empty: the server draws its message
+    if (on && from && !from.closest("details") && !from.closest("[data-shop-group]") && !visibleRows(from).length) { // the last row left the list: its message takes its place
+      var msg = document.querySelector("#shop-list [data-shop-allin]");
+      if (msg) {
+        from.classList.add("hidden");
+        var head = from.previousElementSibling;
+        if (head && head.tagName === "H2") head.classList.add("hidden");
+        msg.classList.remove("hidden");
+      } else ok = false;
+    }
     recount();
     updateProgress();
     return ok && !custom;
@@ -410,7 +432,7 @@
     if (queue.length) { send(); return; }
     failing = "";
     note();
-    scheduleRefresh(fast ? 350 : IDLE);
+    scheduleRefresh(fast ? 150 : IDLE);
   }
 
   function scheduleRefresh(ms) {
