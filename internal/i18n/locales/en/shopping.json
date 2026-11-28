@@ -21,6 +21,7 @@
   "shopping.search_none": "Nothing matches",
   "shopping.sync_one": "1 change waiting to be sent",
   "shopping.sync_many": "{n} changes waiting to be sent",
+  "shopping.sync_auth": "Signed out: reload the page to send the waiting changes",
   "shopping.show": "Show",
   "shopping.hide": "Hide",
   "shopping.empty_title": "No food in this week's meals",
