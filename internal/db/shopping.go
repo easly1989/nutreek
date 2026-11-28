@@ -446,6 +446,41 @@ func (r *ShoppingLists) LoadFull(ctx context.Context, listID, userID int64) (*do
 	return out, nil
 }
 
+// SetItemChecked sets the checked state of an auto item. Unlike ToggleItem it can be
+// sent twice: the queue of the browser may repeat a request that was answered late.
+func (r *ShoppingLists) SetItemChecked(ctx context.Context, itemID, userID int64, checked bool) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE shopping_list_items
+		SET checked = ?
+		WHERE id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+	`, checked, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("set item checked: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrShoppingItemNotFound
+	}
+	return nil
+}
+
+// SetUserItemChecked is SetItemChecked for an item added by hand.
+func (r *ShoppingLists) SetUserItemChecked(ctx context.Context, itemID, userID int64, checked bool) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE shopping_user_items
+		SET checked = ?
+		WHERE id = ?
+		  AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)
+	`, checked, itemID, userID)
+	if err != nil {
+		return fmt.Errorf("set user item checked: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrShoppingItemNotFound
+	}
+	return nil
+}
+
 // ToggleItem flips the checked state of an auto item.
 func (r *ShoppingLists) ToggleItem(ctx context.Context, itemID, userID int64) error {
 	res, err := r.db.ExecContext(ctx, `

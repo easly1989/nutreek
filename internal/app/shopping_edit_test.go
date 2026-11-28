@@ -260,10 +260,66 @@ func TestShoppingListShowsIgnoredOnly(t *testing.T) {
 	if !strings.Contains(body, "data-shop-search") || !strings.Contains(body, "shop-dock") {
 		t.Error("the page needs the search and the dock")
 	}
+	if !strings.Contains(body, `data-shop-check="user-items"`) || !strings.Contains(body, "data-shop-sync") {
+		t.Error("the tick forms carry what the queue needs, and the page has its note")
+	}
 	if strings.Contains(body, "Everything is in the cart.") {
 		t.Error("nothing is in the cart: the list must not say everything is")
 	}
 	if !strings.Contains(body, `hidden data-shop-none`) {
 		t.Error("the «nothing matches» line starts hidden through the attribute the search script toggles")
+	}
+}
+
+// A tick with a «checked» field sets the state, so the same request sent twice leaves
+// it as it is; without the field it flips, as the form of a browser without scripts
+// does. The browser's queue (X-Shop-Queue) gets no redirect, only 204; another user's
+// item is 404.
+func TestShoppingCheckSetsAndFlips(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	bob := mustCreateTestUser(t, a, "bob@x.com", "password-di-prova")
+	monday, _ := time.Parse("2006-01-02", "2026-10-12")
+	list, err := a.ShoppingLists.GetOrCreateList(ctx, alice.ID, monday, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Candele", 2, "pz"); err != nil {
+		t.Fatal(err)
+	}
+	full, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+	id := full.UserItems[0].ID
+	checked := func() bool {
+		got, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+		return got.UserItems[0].Checked
+	}
+	post := func(body string, queue bool, asBob bool) *httptest.ResponseRecorder {
+		user := alice
+		if asBob {
+			user = bob
+		}
+		r := httptest.NewRequest(http.MethodPost, "/x?week=2026-10-12&weeks=1", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if queue {
+			r.Header.Set("X-Shop-Queue", "1")
+		}
+		w := httptest.NewRecorder()
+		a.Sessions.LoadAndSave(http.HandlerFunc(a.handleToggleShoppingUserItem)).ServeHTTP(w, withIDParam(requestWithUser(r, user), id))
+		return w
+	}
+	for i := 0; i < 2; i++ { // sent twice: still checked
+		if w := post("checked=1", true, false); w.Code != http.StatusNoContent || !checked() {
+			t.Fatalf("set on, round %d: code %d, checked %v", i, w.Code, checked())
+		}
+	}
+	if w := post("checked=0", true, false); w.Code != http.StatusNoContent || checked() {
+		t.Fatalf("set off: code %d, checked %v", w.Code, checked())
+	}
+	if w := post("", false, false); w.Code != http.StatusSeeOther || !checked() {
+		t.Fatalf("flip: code %d, checked %v, want 303 and on", w.Code, checked())
+	}
+	if w := post("checked=0", true, true); w.Code != http.StatusNotFound || !checked() {
+		t.Errorf("Bob on Alice's item: code %d, checked %v, want 404 and unchanged", w.Code, checked())
 	}
 }

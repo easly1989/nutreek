@@ -19,6 +19,8 @@
   "shopping.skipped_group": "Non servono",
   "shopping.search": "Cerca nella lista",
   "shopping.search_none": "Nessun risultato",
+  "shopping.sync_one": "1 modifica in attesa di invio",
+  "shopping.sync_many": "{n} modifiche in attesa di invio",
   "shopping.show": "Mostra",
   "shopping.hide": "Nascondi",
   "shopping.empty_title": "Nessun alimento nei pasti di questa settimana",

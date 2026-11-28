@@ -219,6 +219,9 @@
 
 </div>
 
+{{/* Shown by shop_queue.js only when a tick could not be sent yet (no network): how many wait. */}}
+<p data-shop-sync hidden role="status" data-one="{{t "shopping.sync_one"}}" data-many="{{t "shopping.sync_many"}}" class="no-print fixed z-30 left-1/2 -translate-x-1/2 bottom-[calc(8.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 max-w-[calc(100vw-2rem)] rounded-full bg-[#1f2328] text-white px-4 py-2 text-[12.5px] shadow-lg"></p>
+
 {{/* The dock of a phone: search and «+» always in reach, above the bottom bar
      (shop_sections.js filters the rows while typing). On a wide screen they are in the header. */}}
 {{if not .Check}}
@@ -379,7 +382,7 @@
   <span class="swipe-bg swipe-bg-l" aria-hidden="true">{{template "icon_sm" "i-ban"}}{{if $r.Ignored}}{{t "shopping.restore"}}{{else}}{{t "shopping.ignore"}}{{end}}</span>
   <div class="swipe-fg flex items-center pr-2 bg-surface">
   {{template "shop_grip" $r}}
-  <form method="post" action="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+  <form method="post" action="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" data-shop-check="items" data-id="{{$it.ID}}"
         hx-post="/shopping-list/items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="grow min-w-0">
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">
@@ -442,7 +445,7 @@
   <span class="swipe-bg swipe-bg-r" aria-hidden="true">{{t "shopping.delete"}}{{template "icon_sm" "i-trash"}}</span>
   <div class="swipe-fg flex items-center pr-2 bg-surface">
   {{template "shop_grip" $r}}
-  <form method="post" action="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
+  <form method="post" action="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}" data-shop-check="user-items" data-id="{{$it.ID}}"
         hx-post="/shopping-list/user-items/{{$it.ID}}/toggle?week={{$p.WeekStart}}&weeks={{$p.WeekCount}}"
         hx-target="#shop-list" hx-select="#shop-list" hx-swap="outerHTML" class="grow min-w-0">
     <input type="hidden" name="csrf_token" value="{{$p.CSRFToken}}">

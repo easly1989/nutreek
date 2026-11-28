@@ -508,7 +508,8 @@ func (a *App) handleToggleShoppingUserItem(w http.ResponseWriter, r *http.Reques
 		a.notFound(w, r)
 		return
 	}
-	if err := a.ShoppingLists.ToggleUserItem(r.Context(), itemID, user.ID); err != nil {
+	if err := a.shoppingCheck(r, func() error { return a.ShoppingLists.ToggleUserItem(r.Context(), itemID, user.ID) },
+		func(on bool) error { return a.ShoppingLists.SetUserItemChecked(r.Context(), itemID, user.ID, on) }); err != nil {
 		if errors.Is(err, db.ErrShoppingItemNotFound) {
 			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
 			return
@@ -516,7 +517,7 @@ func (a *App) handleToggleShoppingUserItem(w http.ResponseWriter, r *http.Reques
 		a.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
+	shoppingCheckDone(w, r)
 }
 
 // handleRemoveShoppingUserItem POST /shopping-list/user-items/{id}/delete
@@ -565,12 +566,36 @@ func (a *App) handleShoppingToggle(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, r)
 		return
 	}
-	if err := a.ShoppingLists.ToggleItem(r.Context(), itemID, user.ID); err != nil {
+	if err := a.shoppingCheck(r, func() error { return a.ShoppingLists.ToggleItem(r.Context(), itemID, user.ID) },
+		func(on bool) error { return a.ShoppingLists.SetItemChecked(r.Context(), itemID, user.ID, on) }); err != nil {
 		if errors.Is(err, db.ErrShoppingItemNotFound) {
 			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
 			return
 		}
 		a.serverError(w, r, err)
+		return
+	}
+	shoppingCheckDone(w, r)
+}
+
+// shoppingCheck runs the change of a tick: with a «checked» field (0 or 1) it sets the
+// state, which a repeated request leaves as it is; without one it flips it, as the
+// form of a browser without scripts does.
+func (a *App) shoppingCheck(r *http.Request, toggle func() error, set func(bool) error) error {
+	switch r.PostFormValue("checked") {
+	case "1":
+		return set(true)
+	case "0":
+		return set(false)
+	}
+	return toggle()
+}
+
+// shoppingCheckDone answers a tick. The page's queue (shop_queue.js) sends the header
+// and takes the list itself afterwards, so it gets no redirect to follow.
+func shoppingCheckDone(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("X-Shop-Queue") != "" {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	http.Redirect(w, r, shoppingListURL(r), http.StatusSeeOther)
