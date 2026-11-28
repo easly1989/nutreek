@@ -437,3 +437,44 @@ func TestShoppingQueuedActions(t *testing.T) {
 		t.Errorf("delete again: code %d, want 404", w.Code)
 	}
 }
+
+// With every row in the cart the list and its heading are still in the page, hidden, next to the
+// message that replaces them, and a row carries its category: shop_queue.js needs them to move a
+// row out of the cart at once.
+func TestShoppingListAllInCartKeepsHiddenList(t *testing.T) {
+	a := newTestApp(t)
+	ctx := context.Background()
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	monday, _ := time.Parse("2006-01-02", "2026-10-12")
+	list, err := a.ShoppingLists.GetOrCreateList(ctx, alice.ID, monday, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.ShoppingLists.AddManualItem(ctx, list.ID, alice.ID, "Candele", 2, "pz"); err != nil {
+		t.Fatal(err)
+	}
+	full, _ := a.ShoppingLists.LoadFull(ctx, list.ID, alice.ID)
+	if err := a.ShoppingLists.ToggleUserItem(ctx, full.UserItems[0].ID, alice.ID); err != nil {
+		t.Fatal(err)
+	}
+	get := func(refresh bool) string {
+		r := httptest.NewRequest(http.MethodGet, "/shopping-list?week=2026-10-12&weeks=1", nil)
+		if refresh {
+			r.Header.Set("X-Shop-Refresh", "1")
+		}
+		w := httptest.NewRecorder()
+		a.Sessions.LoadAndSave(http.HandlerFunc(a.handleShoppingList)).ServeHTTP(w, requestWithUser(r, alice))
+		return w.Body.String()
+	}
+	for name, body := range map[string]string{"page": get(false), "refresh": get(true)} {
+		if !strings.Contains(body, "data-shop-allin") || strings.Contains(body, `data-shop-allin class="hidden`) {
+			t.Errorf("%s: the «all in the cart» message must be there and visible", name)
+		}
+		if !strings.Contains(body, `<ul class="hidden `) || !strings.Contains(body, `<h2 class="hidden flex`) {
+			t.Errorf("%s: the list and its heading must be in the page, hidden", name)
+		}
+		if !strings.Contains(body, `data-cat=""`) {
+			t.Errorf("%s: a row carries its category", name)
+		}
+	}
+}

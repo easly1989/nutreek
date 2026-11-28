@@ -178,9 +178,20 @@
     else document.dispatchEvent(new Event("shop:progress"));
   }
 
+  // revealList brings back the list and its heading when every row was in the cart (they are in the
+  // page, hidden, with the message that takes their place).
+  function revealList(ul) {
+    if (!ul.classList.contains("hidden")) return;
+    ul.classList.remove("hidden");
+    var h = ul.previousElementSibling;
+    if (h && h.tagName === "H2") h.classList.remove("hidden");
+    var all = document.querySelector("#shop-list [data-shop-allin]");
+    if (all) all.classList.add("hidden");
+  }
+
   // moveRow puts a ticked row in the cart and an unticked one back in the list, and brings the
   // counts and the progress along. It returns false when it could not finish (no cart section yet,
-  // the list grouped by category, the last row leaving the list): the list is then taken soon.
+  // a category the list no longer has, a search on, the user's own order): the list is then taken soon.
   function moveRow(li, on) {
     if (!li) return false;
     // A row set aside stays in its section when it is ticked; with a search on, hidden rows and
@@ -196,12 +207,30 @@
       insertSorted(cart.querySelector(":scope > ul"), li);
     } else {
       var card = document.querySelector("#shop-list > .card"), ul = card && card.querySelector(":scope > ul");
-      if (!ul) return false; // grouped by category: the group of the row is not known here
+      if (!ul) { // grouped by category: the group the row belongs to, if the list still has one
+        var g = document.querySelector('#shop-list [data-shop-group="' + CSS.escape(li.getAttribute("data-cat") || "") + '"]');
+        ul = g && g.querySelector(":scope > ul");
+        if (!ul) return false;
+      } else {
+        var gr = document.querySelector("#shop-list input[name=group]:checked");
+        if (gr && gr.value === "category") ok = false; // an empty list has no groups: the row waits in the plain one until the list comes
+      }
       insertSorted(ul, li);
+      revealList(ul);
     }
     if (cart && from && from.closest("details[data-shop-acc=cart]")) updateSection(cart);
     if (on && cart) updateSection(cart);
-    if (on && from && !from.closest("details") && !visibleRows(from).length && !from.closest("[data-shop-group]")) ok = false; // the list is empty: the server draws its message
+    // The last row left the list: in the plain list its message takes its place (grouped by category the
+    // groups just hide, and the list is taken from the server, which draws the message).
+    if (on && from && !from.closest("details") && !from.closest("[data-shop-group]") && !visibleRows(from).length) {
+      var msg = document.querySelector("#shop-list [data-shop-allin]");
+      if (msg) {
+        from.classList.add("hidden");
+        var head = from.previousElementSibling;
+        if (head && head.tagName === "H2") head.classList.add("hidden");
+        msg.classList.remove("hidden");
+      } else ok = false;
+    }
     recount();
     updateProgress();
     return ok && !custom;
@@ -231,6 +260,7 @@
     var lists = document.querySelectorAll("#shop-list > .card ul"), list = null;
     for (var i = 0; i < lists.length && !list; i++) if (!lists[i].closest("details")) list = lists[i];
     if (!list || document.querySelector('#shop-list [data-pending-add="' + meta.cid + '"]')) return;
+    var shown = list;
     var li = document.createElement("li");
     li.className = "swipe-row";
     li.setAttribute("data-pending-add", meta.cid);
@@ -249,6 +279,7 @@
     row.appendChild(box); row.appendChild(nm); row.appendChild(qty);
     fg.appendChild(row); li.appendChild(fg);
     list.insertBefore(li, list.firstChild);
+    revealList(shown);
   }
 
   function paintOp(op) {
@@ -399,7 +430,10 @@
     while (pos) { var nx = pos.nextSibling; oldP.removeChild(pos); pos = nx; }
   }
   function morph(cur, next) {
+    // reorder.js marks the list while the user's own order is being edited: the server's list does not know it.
+    var reorder = cur.getAttribute("data-reorder-on");
     syncAttrs(cur, next);
+    if (reorder !== null) cur.setAttribute("data-reorder-on", reorder);
     morphChildren(cur, next);
   }
 
@@ -410,7 +444,7 @@
     if (queue.length) { send(); return; }
     failing = "";
     note();
-    scheduleRefresh(fast ? 350 : IDLE);
+    scheduleRefresh(fast ? 150 : IDLE);
   }
 
   function scheduleRefresh(ms) {
