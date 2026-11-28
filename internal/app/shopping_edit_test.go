@@ -322,4 +322,28 @@ func TestShoppingCheckSetsAndFlips(t *testing.T) {
 	if w := post("checked=0", true, true); w.Code != http.StatusNotFound || !checked() {
 		t.Errorf("Bob on Alice's item: code %d, checked %v, want 404 and unchanged", w.Code, checked())
 	}
+	if w := post("checked=true", true, false); w.Code != http.StatusBadRequest || !checked() {
+		t.Errorf("checked=true: code %d, checked %v, want 400 and unchanged (it is not read as a flip)", w.Code, checked())
+	}
+}
+
+// The handler of an item computed from the meals takes the same fields: a row the
+// server does not have is 404 (the queue drops it), a «checked» that is not 0 or 1 is 400.
+func TestShoppingCheckAutoItem(t *testing.T) {
+	a := newTestApp(t)
+	alice := mustCreateTestUser(t, a, "alice@x.com", "password-di-prova")
+	post := func(body string) int {
+		r := httptest.NewRequest(http.MethodPost, "/x", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.Header.Set("X-Shop-Queue", "1")
+		w := httptest.NewRecorder()
+		a.Sessions.LoadAndSave(http.HandlerFunc(a.handleShoppingToggle)).ServeHTTP(w, withIDParam(requestWithUser(r, alice), 999999))
+		return w.Code
+	}
+	if code := post("checked=1"); code != http.StatusNotFound {
+		t.Errorf("a missing item: code %d, want 404", code)
+	}
+	if code := post("checked=yes"); code != http.StatusBadRequest {
+		t.Errorf("checked=yes: code %d, want 400", code)
+	}
 }

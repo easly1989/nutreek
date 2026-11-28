@@ -220,7 +220,7 @@
 </div>
 
 {{/* Shown by shop_queue.js only when a tick could not be sent yet (no network): how many wait. */}}
-<p data-shop-sync hidden role="status" data-one="{{t "shopping.sync_one"}}" data-many="{{t "shopping.sync_many"}}" class="no-print fixed z-30 left-1/2 -translate-x-1/2 bottom-[calc(8.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 max-w-[calc(100vw-2rem)] rounded-full bg-[#1f2328] text-white px-4 py-2 text-[12.5px] shadow-lg"></p>
+<p data-shop-sync hidden role="status" data-one="{{t "shopping.sync_one"}}" data-many="{{t "shopping.sync_many"}}" data-auth="{{t "shopping.sync_auth"}}" class="no-print fixed z-30 left-1/2 -translate-x-1/2 bottom-[calc(8.25rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 max-w-[calc(100vw-2rem)] rounded-full bg-[#1f2328] text-white px-4 py-2 text-[12.5px] shadow-lg"></p>
 
 {{/* The dock of a phone: search and «+» always in reach, above the bottom bar
      (shop_sections.js filters the rows while typing). On a wide screen they are in the header. */}}

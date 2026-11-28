@@ -510,6 +510,10 @@ func (a *App) handleToggleShoppingUserItem(w http.ResponseWriter, r *http.Reques
 	}
 	if err := a.shoppingCheck(r, func() error { return a.ShoppingLists.ToggleUserItem(r.Context(), itemID, user.ID) },
 		func(on bool) error { return a.ShoppingLists.SetUserItemChecked(r.Context(), itemID, user.ID, on) }); err != nil {
+		if errors.Is(err, errShoppingCheckInvalid) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		if errors.Is(err, db.ErrShoppingItemNotFound) {
 			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
 			return
@@ -568,6 +572,10 @@ func (a *App) handleShoppingToggle(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.shoppingCheck(r, func() error { return a.ShoppingLists.ToggleItem(r.Context(), itemID, user.ID) },
 		func(on bool) error { return a.ShoppingLists.SetItemChecked(r.Context(), itemID, user.ID, on) }); err != nil {
+		if errors.Is(err, errShoppingCheckInvalid) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		if errors.Is(err, db.ErrShoppingItemNotFound) {
 			http.Error(w, a.t(r, "shopping.item_not_found"), http.StatusNotFound)
 			return
@@ -587,9 +595,14 @@ func (a *App) shoppingCheck(r *http.Request, toggle func() error, set func(bool)
 		return set(true)
 	case "0":
 		return set(false)
+	case "":
+		return toggle()
 	}
-	return toggle()
+	return errShoppingCheckInvalid
 }
+
+// errShoppingCheckInvalid is a «checked» field that is neither 0 nor 1: refused, not read as a flip.
+var errShoppingCheckInvalid = errors.New("shopping: checked must be 0 or 1")
 
 // shoppingCheckDone answers a tick. The page's queue (shop_queue.js) sends the header
 // and takes the list itself afterwards, so it gets no redirect to follow.

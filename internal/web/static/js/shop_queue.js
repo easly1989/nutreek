@@ -6,10 +6,13 @@
 // sent in the background, one request at a time, in order:
 //   - the request sets the state («checked=1»), it does not flip it, so a request the
 //     server answered late and the browser sent again does no harm;
-//   - a request that fails (no network, a 5xx, a session that expired) stays in the queue and
-//     is tried again, after 1 s, 2 s, 4 s ... up to 30 s, and at once when the phone is online
+//   - a request that fails (no network, no answer in 15 s, a 5xx) stays in the queue and is
+//     tried again, after 1 s, 2 s, 4 s ... up to 30 s, and at once when the phone is online
 //     again or the page comes back to the foreground; the queue survives a closed page;
-//   - a row the server no longer has (404) is dropped;
+//   - a session that expired or a CSRF token that is too old (a redirect, 401, 403) keeps the
+//     queue too, and the note asks for a reload, which brings a fresh token and sends it;
+//   - a row the server no longer has (404) or a request it refuses (another 4xx) is dropped,
+//     so it does not hold the ones behind it;
 //   - when the queue is empty the page takes the list from the server once, which moves the
 //     row to the cart and brings the progress up to date;
 //   - when a request has failed, a note says how many changes wait to be sent.
@@ -18,14 +21,17 @@
   "use strict";
 
   var KEY = "nutreek.shop.queue";
+  var TIMEOUT = 15000;
   var CHECK = '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-check"/></svg>';
 
   var queue = load(); // [{kind: "items" | "user-items", id: "12", checked: true}]
   var busy = false;   // a request is out: queue[0]
-  var failing = false;
+  var failing = ""; // "" | "net" (try again later) | "auth" (needs a reload)
   var wait = 1000;
   var retry = null;
   var refreshTimer = null;
+  var epoch = 0;          // counts the taps: a list fetched before the last one is stale
+  var refreshEpoch = null; // the epoch a list request in flight was started in
 
   function valid(op) {
     return op && (op.kind === "items" || op.kind === "user-items") && /^\d+$/.test(String(op.id)) && typeof op.checked === "boolean";
@@ -39,6 +45,10 @@
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(queue)); } catch (e) { /* private mode: the queue lives in this page only */ }
   }
+  // Another tab of Nutreek writes the same key: take its queue when this page is not sending.
+  window.addEventListener("storage", function (e) {
+    if (e.key === KEY && !busy) { queue = load(); note(); send(); }
+  });
 
   function button(op) {
     return document.getElementById((op.kind === "items" ? "shop-item-" : "shop-user-") + op.id);
@@ -62,7 +72,9 @@
     if (!el) return;
     var n = queue.length;
     el.hidden = !(failing && n > 0);
-    if (!el.hidden) el.textContent = (n === 1 ? el.dataset.one : el.dataset.many).replace("{n}", String(n));
+    if (el.hidden) return;
+    var t = failing === "auth" ? el.dataset.auth : (n === 1 ? el.dataset.one : el.dataset.many);
+    el.textContent = t.replace("{n}", String(n));
   }
 
   function csrf() {
@@ -76,51 +88,83 @@
     wait = Math.min(wait * 2, 30000);
   }
 
+  // refresh takes the list from the server once the queue is empty. It waits while a quantity
+  // editor is open or a field of the list has the focus, so it does not wipe what is typed.
   function refresh() {
     if (queue.length || busy || !window.htmx || !document.getElementById("shop-list")) return;
+    var a = document.activeElement;
+    if (document.querySelector("#shop-list details[data-sheet][open]") || (a && a.matches && a.matches("#shop-list input, #shop-list select, #shop-list textarea"))) {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(refresh, 2000);
+      return;
+    }
+    refreshEpoch = epoch;
     window.htmx.ajax("GET", location.pathname + location.search, { target: "#shop-list", select: "#shop-list", swap: "outerHTML" });
+  }
+
+  // A list requested before the last tap does not know it: do not swap it in (the answer to
+  // that tap asks for a newer one).
+  document.addEventListener("htmx:beforeSwap", function (e) {
+    if (refreshEpoch !== null && refreshEpoch !== epoch && e.detail && e.detail.target && e.detail.target.id === "shop-list") {
+      e.detail.shouldSwap = false;
+    }
+    refreshEpoch = null;
+  });
+
+  function drop() {
+    queue.shift();
+    save();
+    wait = 1000;
+    if (queue.length) { send(); return; }
+    failing = "";
+    note();
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refresh, 350);
   }
 
   function send() {
     clearTimeout(retry);
     if (busy || !queue.length) return;
     var token = csrf();
-    if (!token) { failing = true; note(); schedule(); return; }
+    if (!token) return; // a page without forms: the next page that has the token sends it
     var op = queue[0];
     busy = true;
+    var ctl = window.AbortController ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, TIMEOUT) : null;
     fetch("/shopping-list/" + op.kind + "/" + op.id + "/toggle", {
       method: "POST",
       credentials: "same-origin",
       redirect: "manual", // a session that expired answers with a redirect to the login: not a success
       keepalive: true,
+      signal: ctl ? ctl.signal : undefined,
       headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Shop-Queue": "1" },
       body: "csrf_token=" + encodeURIComponent(token) + "&checked=" + (op.checked ? "1" : "0")
     }).then(function (r) {
+      clearTimeout(timer);
       busy = false;
-      if (r.status === 204 || r.status === 404) { // done, or the row is gone
-        queue.shift();
-        save();
-        failing = false;
-        wait = 1000;
-        note();
-        if (queue.length) send();
-        else { clearTimeout(refreshTimer); refreshTimer = setTimeout(refresh, 350); }
-        return;
+      if (r.status === 204) { drop(); return; }
+      if (r.type === "opaqueredirect" || r.status === 401 || r.status === 403) { // signed out, or an old token
+        failing = "auth"; note(); schedule(); return;
       }
-      throw new Error("status " + r.status);
+      if (r.status >= 400 && r.status < 500) { drop(); return; } // 404: the row is gone; any other 4xx: it will not be accepted
+      failing = "net"; note(); schedule(); // 5xx
     }).catch(function () {
+      clearTimeout(timer);
       busy = false;
-      failing = true;
+      failing = "net";
       note();
       schedule();
     });
   }
 
   function enqueue(kind, id, checked) {
+    if (!busy) queue = load(); // another tab may have added or sent changes meanwhile
     // A change not sent yet to the same row is replaced by this one; the one on its way stays.
     queue = queue.filter(function (op, i) { return !(op.kind === kind && op.id === id && !(i === 0 && busy)); });
     queue.push({ kind: kind, id: id, checked: checked });
+    epoch++;
     save();
+    note();
     clearTimeout(refreshTimer);
     send();
   }
