@@ -16,8 +16,10 @@
 //     queue too, and the note asks for a reload, which brings a fresh token and sends it;
 //   - a row the server no longer has (404) or a request it refuses (another 4xx) is dropped,
 //     so it does not hold the ones behind it;
-//   - when the queue is empty the page takes the list from the server once, which moves the
-//     rows between the sections and brings the numbers up to date;
+//   - a tick also moves the row between the list and the cart on screen, and brings the counts of
+//     the sections and the progress bar up to date, so nothing waits for the server; the page
+//     takes the list from the server once things have been quiet for 6 s (at once, 350 ms after
+//     the queue empties, for the actions that need what the server computes);
 //   - when a request has failed, a note says how many changes wait to be sent.
 // What the server computes (merging two rows, copying a list, regenerating, the check before
 // shopping, the grouping) is not queued: those forms go through htmx and the page shows a bar
@@ -38,6 +40,8 @@
   var wait = 1000;
   var retry = null;
   var refreshTimer = null;
+  var IDLE = 6000;        // how long things stay quiet before the list is taken from the server
+  var fast = false;       // a change the page could not finish on screen: take the list soon
   var epoch = 0;          // counts the changes: a list fetched before the last one is stale
   var refreshEpoch = null; // the epoch a list request in flight was started in
 
@@ -89,6 +93,106 @@
     var box = btn.querySelector(".shop-box");
     if (box) box.innerHTML = on ? CHECK : "";
   }
+  // ---- a tick moves the row: list <-> cart ---------------------------------------------------
+
+  function section(name) { return document.querySelector('#shop-list details[data-shop-acc="' + name + '"]'); }
+  function nameOf(li) {
+    var n = li.querySelector("[data-shop-name]");
+    return (n ? n.textContent : "").trim().toLowerCase();
+  }
+  function insertSorted(ul, li) {
+    var nm = nameOf(li), kids = ul.querySelectorAll(":scope > li.swipe-row");
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i] !== li && nameOf(kids[i]).localeCompare(nm) > 0) { ul.insertBefore(li, kids[i]); return; }
+    }
+    ul.appendChild(li);
+  }
+  function visibleRows(ul) { return ul.querySelectorAll(":scope > li.swipe-row:not([hidden])"); }
+
+  // updateSection brings the heading of a closed section up to date: the count and the first names.
+  function updateSection(d) {
+    var ul = d.querySelector(":scope > ul"), rows = ul ? visibleRows(ul) : [];
+    if (!rows.length) { d.remove(); return; }
+    var sum = d.querySelector(":scope > summary");
+    if (!sum) return;
+    for (var i = 0; i < sum.childNodes.length; i++) {
+      var t = sum.childNodes[i];
+      if (t.nodeType === 3 && /·\s*\d+/.test(t.nodeValue)) { t.nodeValue = t.nodeValue.replace(/·\s*\d+/, "· " + rows.length); break; }
+    }
+    var pv = sum.querySelector(".basis-full");
+    if (pv) {
+      var names = [];
+      for (var k = 0; k < rows.length && k < 3; k++) {
+        var n = rows[k].querySelector("[data-shop-name]");
+        names.push(n ? n.textContent.trim() : "");
+      }
+      pv.textContent = names.join(", ");
+      if (rows.length > 3) {
+        var b = document.createElement("b");
+        b.className = "font-semibold text-accent";
+        b.textContent = "+" + (rows.length - 3);
+        pv.appendChild(document.createTextNode(" "));
+        pv.appendChild(b);
+      }
+    }
+  }
+
+  // recount follows the rows in the headings and hides a group with none left.
+  function recount() {
+    document.querySelectorAll("#shop-list [data-shop-count]").forEach(function (c) {
+      var ul = c.closest("h2") && c.closest("h2").nextElementSibling;
+      if (!ul) return;
+      var n = String(visibleRows(ul).length);
+      c.textContent = n;
+      if (c.dataset.total) c.dataset.total = n; // shop_sections.js shows this when no search is on
+    });
+    document.querySelectorAll("#shop-list [data-shop-group]").forEach(function (g) {
+      g.hidden = !g.querySelector("li.swipe-row:not([hidden])");
+    });
+  }
+
+  // updateProgress takes the numbers of the progress card from the rows in the cart.
+  function updateProgress() {
+    var bar = document.querySelector("#shop-progress [role=progressbar]");
+    var cart = section("cart");
+    if (!bar) return;
+    var total = parseInt(bar.getAttribute("aria-valuemax"), 10) || 0;
+    var done = cart ? visibleRows(cart.querySelector(":scope > ul")).length : 0;
+    var pct = total ? Math.floor(done * 100 / total) : 0;
+    bar.setAttribute("aria-valuenow", String(done));
+    var fill = bar.querySelector("[data-progress-fill]");
+    if (fill) { fill.style.transition = "clip-path 300ms cubic-bezier(0.23, 1, 0.32, 1)"; fill.style.clipPath = "inset(0 " + (100 - pct) + "% 0 0 round 9999px)"; }
+    var card = bar.closest("#shop-progress");
+    var b = card && card.querySelector("b");
+    if (b) b.textContent = b.textContent.replace(/\d+/, String(done));
+    var p = card && card.querySelector("span.ml-auto");
+    if (p) p.textContent = pct + "%";
+  }
+
+  // moveRow puts a ticked row in the cart and an unticked one back in the list, and brings the
+  // counts and the progress along. It returns false when it could not finish (no cart section yet,
+  // the list grouped by category, the last row leaving the list): the list is then taken soon.
+  function moveRow(li, on) {
+    if (!li) return false;
+    var cart = section("cart"), inCart = !!li.closest("details[data-shop-acc=cart]");
+    if (on === inCart) return true;
+    var from = li.parentNode, ok = true;
+    if (on) {
+      if (!cart) return false;
+      insertSorted(cart.querySelector(":scope > ul"), li);
+    } else {
+      var card = document.querySelector("#shop-list > .card"), ul = card && card.querySelector(":scope > ul");
+      if (!ul) return false; // grouped by category: the group of the row is not known here
+      insertSorted(ul, li);
+    }
+    if (cart && from && from.closest("details[data-shop-acc=cart]")) updateSection(cart);
+    if (on && cart) updateSection(cart);
+    if (on && from && !from.closest("details") && !visibleRows(from).length && !from.closest("[data-shop-group]")) ok = false; // the list is empty: the server draws its message
+    recount();
+    updateProgress();
+    return ok;
+  }
+
   function paintIgnore(li, on) { if (li) li.classList.toggle("is-ignored", on); }
   function paintDelete(li) { if (li) li.hidden = true; }
   function paintName(li, text) {
@@ -138,7 +242,11 @@
     if (!m) return;
     if (m.act === "add") { placeholder(m); return; }
     var li = liOf(m.kind, m.id);
-    if (m.act === "toggle") paintCheck(document.getElementById((m.kind === "items" ? "shop-item-" : "shop-user-") + m.id), m.on);
+    if (m.act === "toggle") {
+      var tb = document.getElementById((m.kind === "items" ? "shop-item-" : "shop-user-") + m.id);
+      paintCheck(tb, m.on);
+      if (tb && !moveRow(tb.closest("li.swipe-row"), m.on)) fast = true;
+    }
     else if (m.act === "ignore") paintIgnore(li, m.on);
     else if (m.act === "delete") paintDelete(li);
     else if (m.act === "quantity" || m.act === "edit") { if (m.name !== undefined) paintName(li, m.name); if (m.q) paintQty(li, m.q); }
@@ -201,8 +309,12 @@
     if (queue.length) { send(); return; }
     failing = "";
     note();
+    scheduleRefresh(fast ? 350 : IDLE);
+  }
+
+  function scheduleRefresh(ms) {
     clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(refresh, 350);
+    refreshTimer = setTimeout(function () { fast = false; refresh(); }, ms);
   }
 
   function send() {
@@ -249,6 +361,7 @@
       return o.key !== op.key && !(sameRow && o.row === op.row);
     });
     queue.push(op);
+    if (!op.meta || op.meta.act !== "toggle") fast = true;
     epoch++;
     save();
     note();
@@ -326,6 +439,7 @@
       if (!btn) return false;
       var on = btn.getAttribute("aria-pressed") !== "true";
       paintCheck(btn, on);
+      if (!moveRow(btn.closest("li.swipe-row"), on)) fast = true;
       enqueue({ key: "toggle:" + row, row: row, path: path, body: "checked=" + (on ? "1" : "0"), meta: { act: "toggle", kind: kind, id: id, on: on } }, false);
       return true;
     }
