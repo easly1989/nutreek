@@ -263,6 +263,14 @@ func TestShoppingListShowsIgnoredOnly(t *testing.T) {
 	if !strings.Contains(body, `data-shop-check="user-items"`) || !strings.Contains(body, "data-shop-sync") {
 		t.Error("the tick forms carry what the queue needs, and the page has its note")
 	}
+	// The page's own refresh asks for the list alone.
+	r2 := httptest.NewRequest(http.MethodGet, "/shopping-list?week=2026-10-12&weeks=1", nil)
+	r2.Header.Set("X-Shop-Refresh", "1")
+	w2 := httptest.NewRecorder()
+	a.Sessions.LoadAndSave(http.HandlerFunc(a.handleShoppingList)).ServeHTTP(w2, requestWithUser(r2, alice))
+	if frag := w2.Body.String(); w2.Code != http.StatusOK || !strings.HasPrefix(strings.TrimSpace(frag), `<div id="shop-list"`) || strings.Contains(frag, "<html") || strings.Contains(frag, "bottom-nav") || !strings.Contains(frag, "Candele") {
+		t.Errorf("the refresh must be the list alone (code %d, %d bytes, starts %.40q)", w2.Code, len(frag), frag)
+	}
 	if strings.Contains(body, "Everything is in the cart.") {
 		t.Error("nothing is in the cart: the list must not say everything is")
 	}

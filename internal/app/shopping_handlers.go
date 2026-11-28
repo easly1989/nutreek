@@ -175,7 +175,12 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		NextWeek:     weekStart.AddDate(0, 0, 7).Format("2006-01-02"),
 	}
 	data.PricesNotice = notice && data.View.Prices.Any
-	if err := a.Render.Render(w, r, http.StatusOK, "shopping_list", data); err != nil {
+	// The page's own refresh asks for the list alone: the rest of the page has not changed.
+	render := func() error { return a.Render.Render(w, r, http.StatusOK, "shopping_list", data) }
+	if r.Header.Get("X-Shop-Refresh") != "" {
+		render = func() error { return a.Render.RenderPartial(w, r, http.StatusOK, "shopping_list", "shop_list", data) }
+	}
+	if err := render(); err != nil {
 		a.serverError(w, r, err)
 	}
 }

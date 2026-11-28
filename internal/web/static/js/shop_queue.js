@@ -43,7 +43,6 @@
   var IDLE = 6000;        // how long things stay quiet before the list is taken from the server
   var fast = false;       // a change the page could not finish on screen: take the list soon
   var epoch = 0;          // counts the changes: a list fetched before the last one is stale
-  var refreshEpoch = null; // the epoch a list request in flight was started in
 
   function validMeta(m) {
     if (m === undefined) return true;
@@ -279,28 +278,108 @@
     wait = Math.min(wait * 2, 30000);
   }
 
-  // refresh takes the list from the server once the queue is empty. It waits while a quantity
-  // editor is open or a field of the list has the focus, so it does not wipe what is typed.
+  // refresh takes the list from the server once the queue is empty, and changes the page only where
+  // the list differs from what it shows (a row that is the same is left alone), so the page does not
+  // rebuild a few hundred rows for a tap. It waits while a quantity editor is open or a field of
+  // the list has the focus, so it does not wipe what is typed.
   function refresh() {
-    if (queue.length || busy || !window.htmx || !document.getElementById("shop-list")) return;
+    if (queue.length || busy || !document.getElementById("shop-list")) return;
     var a = document.activeElement;
     if (document.querySelector("#shop-list details[data-sheet][open]") || (a && a.matches && a.matches("#shop-list input, #shop-list select, #shop-list textarea"))) {
-      clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(refresh, 2000);
+      scheduleRefresh(2000);
       return;
     }
-    refreshEpoch = epoch;
-    window.htmx.ajax("GET", location.pathname + location.search, { target: "#shop-list", select: "#shop-list", swap: "outerHTML", headers: { "X-Shop-Refresh": "1" } });
+    var mine = epoch;
+    fetch(location.pathname + location.search, { credentials: "same-origin", redirect: "manual", headers: { "X-Shop-Refresh": "1" } })
+      .then(function (r) { if (r.status !== 200) throw new Error("status " + r.status); return r.text(); })
+      .then(function (html) {
+        if (mine !== epoch || queue.length || busy) return; // a change came meanwhile: its own refresh asks again
+        var next = new DOMParser().parseFromString("<body>" + html + "</body>", "text/html").getElementById("shop-list");
+        var cur = document.getElementById("shop-list");
+        if (!next || !cur) return;
+        // Every response has a new CSRF token in its forms; any of them is good for the session, so
+        // take the one the page has and a row that did not change is equal to the one on screen.
+        var tok = csrf();
+        if (tok) {
+          next.querySelectorAll("input[name=csrf_token]").forEach(function (i) { i.setAttribute("value", tok); });
+          next.querySelectorAll("[data-csrf]").forEach(function (e) { e.setAttribute("data-csrf", tok); });
+        }
+        morph(cur, next);
+        cur.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true, detail: { target: cur } }));
+        cur.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true, detail: { target: cur } }));
+      })
+      .catch(function () { /* the next change, or the next visit, takes the list */ });
   }
 
-  // A list requested before the last change does not know it: do not swap it in (the answer to
-  // that change asks for a newer one).
-  document.addEventListener("htmx:beforeSwap", function (e) {
-    if (refreshEpoch !== null && refreshEpoch !== epoch && e.detail && e.detail.target && e.detail.target.id === "shop-list") {
-      e.detail.shouldSwap = false;
+  // ---- changing only what differs ------------------------------------------------------------
+
+  // key names the elements that keep their identity from one list to the next: a row, an element
+  // with an id, a section.
+  function key(el) {
+    if (el.nodeType !== 1) return null;
+    var id = el.getAttribute("data-id");
+    if (id) return "r:" + id;
+    if (el.id) return "#" + el.id;
+    var acc = el.getAttribute("data-shop-acc");
+    return acc ? "a:" + acc : null;
+  }
+  function syncAttrs(o, n) {
+    var i, a;
+    for (i = o.attributes.length - 1; i >= 0; i--) {
+      a = o.attributes[i].name;
+      if (!n.hasAttribute(a) && !(a === "open" && o.tagName === "DETAILS")) o.removeAttribute(a);
     }
-    refreshEpoch = null;
-  });
+    for (i = 0; i < n.attributes.length; i++) {
+      a = n.attributes[i];
+      if (a.name === "open" && o.tagName === "DETAILS") continue; // the sections keep how the user left them
+      if (o.getAttribute(a.name) !== a.value) o.setAttribute(a.name, a.value);
+    }
+  }
+  function adopt(n) {
+    var c = document.importNode(n, true);
+    if (window.htmx && c.nodeType === 1) window.htmx.process(c); // the hx-* attributes of a new element
+    return c;
+  }
+  // patch makes o look like n and returns the node that stays in the page.
+  function patch(o, n) {
+    if (o.nodeType !== 1 || n.nodeType !== 1) {
+      if (o.nodeType === n.nodeType && o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue;
+      return o;
+    }
+    if (o.tagName !== n.tagName) { var c = adopt(n); o.replaceWith(c); return c; }
+    if (o.isEqualNode(n)) return o;
+    var k = key(o);
+    if (k && k.charAt(0) === "r") { var r = adopt(n); o.replaceWith(r); return r; } // a row that changed is replaced whole
+    syncAttrs(o, n);
+    morphChildren(o, n);
+    return o;
+  }
+  function morphChildren(oldP, newP) {
+    var byKey = {}, loose = [], li = 0, kept = [];
+    Array.prototype.forEach.call(oldP.childNodes, function (o) {
+      var k = key(o);
+      if (k) byKey[k] = o; else loose.push(o);
+    });
+    Array.prototype.forEach.call(newP.childNodes, function (n) {
+      var k = key(n), o = null;
+      if (k) o = byKey[k] || null;
+      else {
+        while (li < loose.length && !(loose[li].nodeType === n.nodeType && loose[li].nodeName === n.nodeName)) li++;
+        if (li < loose.length) o = loose[li++];
+      }
+      kept.push(o ? patch(o, n) : adopt(n));
+    });
+    var pos = oldP.firstChild;
+    kept.forEach(function (el) {
+      if (el === pos) pos = pos.nextSibling;
+      else oldP.insertBefore(el, pos);
+    });
+    while (pos) { var nx = pos.nextSibling; oldP.removeChild(pos); pos = nx; }
+  }
+  function morph(cur, next) {
+    syncAttrs(cur, next);
+    morphChildren(cur, next);
+  }
 
   function drop() {
     queue.shift();
