@@ -119,6 +119,10 @@
 
   var last = read();
 
+  // The page works the numbers out itself after a tick (shop_queue.js): compare with those next time,
+  // so the list that comes from the server later does not play the fill again.
+  document.addEventListener("shop:progress", function () { last = read(); });
+
   // afterSwap, not afterSettle: the settle comes 20 ms later and the new card
   // would show its final state for a frame before the animation starts.
   document.addEventListener("htmx:afterSwap", function () {

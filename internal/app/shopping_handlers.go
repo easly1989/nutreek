@@ -168,7 +168,7 @@ func (a *App) handleShoppingList(w http.ResponseWriter, r *http.Request) {
 		Past:         pastCopyLists(past, full.UserItems),
 		Check:        r.URL.Query().Get("check") == "1",
 		View:         buildShoppingView(full.Items, userViews, cats, grouping, full.Order).withSimilar(full.Dismissed, usage).withShares(people, user.DisplayName, shares).withPrices(links),
-		CanUndo:      a.showMergeToast(r, list.ID),
+		CanUndo:      r.Header.Get("X-Shop-Refresh") == "" && a.showMergeToast(r, list.ID), // the page's own refresh must not use up the toast
 		WeekStart:    weekStart.Format("2006-01-02"),
 		WeekCount:    weeks,
 		PrevWeek:     weekStart.AddDate(0, 0, -7).Format("2006-01-02"),

@@ -95,9 +95,16 @@
   // ---- a tick moves the row: list <-> cart ---------------------------------------------------
 
   function section(name) { return document.querySelector('#shop-list details[data-shop-acc="' + name + '"]'); }
-  function nameOf(li) {
+  // The name of a row as the server sorts it: the name alone, without the brand after it.
+  function rawName(li) {
     var n = li.querySelector("[data-shop-name]");
-    return (n ? n.textContent : "").trim().toLowerCase();
+    return n && n.firstChild ? n.firstChild.nodeValue.trim() : "";
+  }
+  function nameOf(li) { return rawName(li).toLowerCase(); }
+  // A search is on: rows hidden by it must not decide counts or sections.
+  function searching() {
+    var i = document.querySelector("input[data-shop-search]");
+    return !!(i && i.value.trim());
   }
   function insertSorted(ul, li) {
     var nm = nameOf(li), kids = ul.querySelectorAll(":scope > li.swipe-row");
@@ -122,8 +129,7 @@
     if (pv) {
       var names = [];
       for (var k = 0; k < rows.length && k < 3; k++) {
-        var n = rows[k].querySelector("[data-shop-name]");
-        names.push(n ? n.textContent.trim() : "");
+        names.push(rawName(rows[k]));
       }
       pv.textContent = names.join(", ");
       if (rows.length > 3) {
@@ -166,6 +172,10 @@
     if (b) b.textContent = b.textContent.replace(/\d+/, String(done));
     var p = card && card.querySelector("span.ml-auto");
     if (p) p.textContent = pct + "%";
+    // Reaching the total is celebrated by shop_progress.js when the list comes from the server (soon);
+    // any other change tells it the numbers it should compare with next.
+    if (total && done === total) fast = true;
+    else document.dispatchEvent(new Event("shop:progress"));
   }
 
   // moveRow puts a ticked row in the cart and an unticked one back in the list, and brings the
@@ -173,9 +183,14 @@
   // the list grouped by category, the last row leaving the list): the list is then taken soon.
   function moveRow(li, on) {
     if (!li) return false;
+    // A row set aside stays in its section when it is ticked; with a search on, hidden rows and
+    // sections would give wrong counts: the page paints the tick and takes the list soon.
+    if (li.closest("details[data-shop-acc=skipped]") || li.classList.contains("is-ignored")) return true;
+    if (searching()) return false;
     var cart = section("cart"), inCart = !!li.closest("details[data-shop-acc=cart]");
     if (on === inCart) return true;
     var from = li.parentNode, ok = true;
+    var custom = !!document.querySelector("#shop-list [data-reorder-list]"); // the user's own order: the server knows it, the page does not
     if (on) {
       if (!cart) return false;
       insertSorted(cart.querySelector(":scope > ul"), li);
@@ -189,7 +204,7 @@
     if (on && from && !from.closest("details") && !visibleRows(from).length && !from.closest("[data-shop-group]")) ok = false; // the list is empty: the server draws its message
     recount();
     updateProgress();
-    return ok;
+    return ok && !custom;
   }
 
   function paintIgnore(li, on) { if (li) li.classList.toggle("is-ignored", on); }
@@ -284,11 +299,16 @@
   // the list has the focus, so it does not wipe what is typed.
   function refresh() {
     if (queue.length || busy || !document.getElementById("shop-list")) return;
+    if (document.querySelector("form[data-precheck]")) return; // the check before shopping keeps what is typed in its own forms
     var a = document.activeElement;
-    if (document.querySelector("#shop-list details[data-sheet][open]") || (a && a.matches && a.matches("#shop-list input, #shop-list select, #shop-list textarea"))) {
+    // Something is being done on a row: an editor or a menu is open, a field has the focus, a row is
+    // being dragged or swiped. The list waits.
+    if (document.querySelector("#shop-list details[open]:not([data-shop-acc]), #shop-list .menu-panel:not(.hidden), #shop-list .sortable-chosen, #shop-list [data-swipe], #shop-list [data-busy]") ||
+        (a && a.matches && a.matches("#shop-list input, #shop-list select, #shop-list textarea"))) {
       scheduleRefresh(2000);
       return;
     }
+    var focusId = a && a.id && a.closest && a.closest("#shop-list") ? a.id : "";
     var mine = epoch;
     fetch(location.pathname + location.search, { credentials: "same-origin", redirect: "manual", headers: { "X-Shop-Refresh": "1" } })
       .then(function (r) { if (r.status !== 200) throw new Error("status " + r.status); return r.text(); })
@@ -299,12 +319,14 @@
         if (!next || !cur) return;
         // Every response has a new CSRF token in its forms; any of them is good for the session, so
         // take the one the page has and a row that did not change is equal to the one on screen.
-        var tok = csrf();
+        var firstToken = cur.querySelector("input[name=csrf_token]");
+        var tok = firstToken ? firstToken.value : csrf();
         if (tok) {
           next.querySelectorAll("input[name=csrf_token]").forEach(function (i) { i.setAttribute("value", tok); });
           next.querySelectorAll("[data-csrf]").forEach(function (e) { e.setAttribute("data-csrf", tok); });
         }
         morph(cur, next);
+        if (focusId) { var f = document.getElementById(focusId); if (f && document.activeElement !== f) f.focus({ preventScroll: true }); }
         cur.dispatchEvent(new CustomEvent("htmx:afterSwap", { bubbles: true, detail: { target: cur } }));
         cur.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true, detail: { target: cur } }));
       })
@@ -576,6 +598,7 @@
     e.stopImmediatePropagation();
   }, true);
 
+  document.addEventListener("htmx:beforeRequest", function () { epoch++; }); // a list on its way does not know this change
   document.addEventListener("htmx:afterSwap", function () { reapply(); note(); });
   window.addEventListener("online", function () { wait = 1000; send(); });
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { wait = 1000; send(); } });
